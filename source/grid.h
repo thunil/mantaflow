@@ -1,0 +1,340 @@
+/******************************************************************************
+ *
+ * MantaFlow fluid solver framework
+ * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ *
+ * This program is free software, distributed under the terms of the
+ * GNU General Public License (GPL) 
+ * http://www.gnu.org/licenses
+ *
+ * Grid representation
+ *
+ ******************************************************************************/
+
+#ifndef _GRID_H
+#define _GRID_H
+
+#include "pclass.h"
+#include "vectorbase.h"
+#include "interpol.h"
+#include "kernel.h"
+
+namespace Manta {
+    
+//! Base class for all grids
+PYTHON class GridBase : public PbClass {
+public:
+    enum GridType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4, TypeMAC = 8, TypeLevelset = 16, TypeFlags = 32};
+        
+    PYTHON GridBase(FluidSolver* parent);
+    
+    //! Get the grids X dimension
+    inline int getSizeX() const { return mSize.x; }
+    //! Get the grids Y dimension
+    inline int getSizeY() const { return mSize.y; }
+    //! Get the grids Z dimension
+    inline int getSizeZ() const { return mSize.z; }
+    //! Get the grids dimensions
+    inline Vec3i getSize() const { return mSize; }
+    
+    //! Get Stride in X dimension
+    inline int getStrideX() const { return 1; }
+    //! Get Stride in Y dimension
+    inline int getStrideY() const { return mSize.x; }
+    //! Get Stride in Z dimension
+    inline int getStrideZ() const { return mStrideZ; }
+    
+    inline Real getDx() { return mDx; }
+    
+    //! Check if indices are within bounds, otherwise error
+    void checkIndex(int i, int j, int k) const;
+    //! Check if indices are within bounds, otherwise error
+    void checkIndex(int idx) const;
+    //! Check if index is within given boundaries
+    bool isInBounds(const Vec3i& pos, int bnd);
+    //! Check if index is within given boundaries
+    bool isInBounds(const Vec3i& pos);
+    //! Check if index is within given boundaries
+    bool isInBounds(const Vec3& pos, int bnd = 0);
+    
+    //! Get the type of grid
+    inline GridType getType() { return mType; }
+    
+    //! Get index into the data
+    inline int index(int i, int j, int k) const;
+    //! Get index into the data
+    inline int index(const Vec3i& pos) const;
+protected:
+    
+    GridType mType;
+    Vec3i mSize;
+    Real mDx;
+    int mStrideZ; // precomputed for speed
+};
+
+//! Grid class
+PYTHON template<class T>
+class Grid : public GridBase {
+public:
+    PYTHON Grid(FluidSolver* parent, bool show = true);
+    virtual ~Grid();
+    
+    typedef T BASETYPE;
+    
+    PYTHON void save(std::string name);
+    
+    //! set all cells to zero
+    void clear();
+    
+    //! access data
+    inline T& get(int i,int j, int k) { return mData[index(i,j,k)]; }
+    //! access data
+    inline T get(int idx) const;
+    //! access data
+    inline T get(const Vec3i& pos) const { return mData[index(pos)]; }
+    //! access data
+    inline T& operator()(int i, int j, int k) { return mData[index(i, j, k)]; }
+    //! access data
+    inline T operator()(int i, int j, int k) const { return mData[index(i, j, k)]; }
+    //! access data
+    inline T& operator()(const Vec3i& pos) { return mData[index(pos)]; }
+    //! access data
+    inline T operator()(const Vec3i& pos) const { return mData[index(pos)]; }
+    //! access data
+    inline T& operator[](int idx);
+    //! access data
+    inline const T operator[](int idx) const;
+    
+    // interpolated access
+    inline T getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
+    inline void setInterpolated(const Vec3& pos, const T& val, Grid<Real>& sumBuffer) const { setInterpol<T>(mData, mSize, mStrideZ, pos, val, &sumBuffer[0]); }
+    
+    // operators
+    template<class S> Grid<T>& operator+=(const Grid<S>& a);
+    template<class S> Grid<T>& operator+=(const S& a);
+    template<class S> Grid<T>& operator-=(const Grid<S>& a);
+    template<class S> Grid<T>& operator-=(const S& a);
+    template<class S> Grid<T>& operator*=(const Grid<S>& a);
+    template<class S> Grid<T>& operator*=(const S& a);
+    template<class S> Grid<T>& operator/=(const Grid<S>& a);
+    template<class S> Grid<T>& operator/=(const S& a);
+    Grid<T>& operator=(const T& a);
+    Grid<T>& operator=(const Grid<T>& a);
+    Grid<T>& safeDivide(const Grid<T>& a);    
+    PYTHON void add(const Grid<T>& a, const Grid<T>& b);
+    PYTHON void scale(T a) { (*this) *= a; }
+    PYTHON void copyFrom(const Grid<T>& a) { *this = a; }
+    
+    // common compound operators
+    //! Grid += a*factor
+    void scaledAdd(const Grid<T>& a, const T& factor);
+    //! get absolute max value in grid (only Real grids)
+    Real getMaxAbsValue();
+    //! get max value in grid (only Real grids)
+    Real getMaxValue();
+    //! get min value in grid (only Real grids)
+    Real getMinValue();    
+    //! Swap data with another grid (no actual data is moved)
+    void swap(Grid<T>& other);
+    
+protected:
+    T* mData;
+};
+
+// explicit instantiation
+PYTHON template class Grid<int>;
+PYTHON template class Grid<Real>;
+PYTHON template class Grid<Vec3>;
+
+//! Special function for staggered grids
+PYTHON class MACGrid : public Grid<Vec3> {
+public:
+    PYTHON MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { mType = (GridType)(TypeMAC | TypeVec3); }
+    
+    // specialized functions for interpolating MAC information
+    inline Vec3 getCentered(int i, int j, int k);
+    inline Vec3 getCentered(const Vec3i& pos) { return getCentered(pos.x, pos.y, pos.z); }
+    inline Vec3 getAtMACX(int i, int j, int k);
+    inline Vec3 getAtMACY(int i, int j, int k);
+    inline Vec3 getAtMACZ(int i, int j, int k);
+    template<int comp> inline Real getInterpolatedComponent(Vec3 pos) const { return interpolComponent<comp>(mData, mSize, mStrideZ, pos); }
+    inline Vec3 getInterpolated(const Vec3& pos) const { return interpolMAC(mData, mSize, mStrideZ, pos); }
+    inline void setInterpolated(const Vec3& pos, const Vec3& val, Vec3* tmp) { return setInterpolMAC(mData, mSize, mStrideZ, pos, val, tmp); }
+    
+protected:
+};
+
+//! Special functions for FlagGrid
+PYTHON class FlagGrid : public Grid<int> {
+public:
+    PYTHON FlagGrid(FluidSolver* parent, bool show=true) : Grid<int>(parent, show) { mType = (GridType)(TypeFlags | TypeInt); }
+    
+    enum CellType { 
+        TypeNone = 0,
+        TypeFluid = 1,
+        TypeObstacle = 2,
+        TypeEmpty = 4,
+        TypeInflow = 8,
+        TypeOutflow = 16 };
+        
+    //! access for particles
+    inline int getAt(const Vec3& pos) const { return mData[index((int)pos.x, (int)pos.y, (int)pos.z)]; }
+            
+    inline bool isObstacle(int idx) { return get(idx) & TypeObstacle; }
+    inline bool isObstacle(int i, int j, int k) { return get(i,j,k) & TypeObstacle; }
+    inline bool isObstacle(const Vec3i& pos) { return get(pos) & TypeObstacle; }
+    inline bool isObstacle(const Vec3& pos) { return getAt(pos) & TypeObstacle; }
+    inline bool isFluid(int idx) { return get(idx) & TypeFluid; }
+    inline bool isFluid(int i, int j, int k) { return get(i,j,k) & TypeFluid; }
+    inline bool isFluid(const Vec3i& pos) { return get(pos) & TypeFluid; }
+    inline bool isFluid(const Vec3& pos) { return getAt(pos) & TypeFluid; }
+    inline bool isEmpty(int idx) { return get(idx) & TypeEmpty; }
+    inline bool isEmpty(int i, int j, int k) { return get(i,j,k) & TypeEmpty; }
+    inline bool isEmpty(const Vec3i& pos) { return get(pos) & TypeEmpty; }
+    inline bool isEmpty(const Vec3& pos) { return getAt(pos) & TypeEmpty; }
+    
+    // Python callables
+    PYTHON void initDomain();
+    PYTHON void fillGrid();
+};
+
+
+//******************************************************************************
+// Implementation of inline functions
+
+inline int GridBase::index(int i, int j, int k) const { 
+#ifdef DEBUG
+    checkIndex(i, j, k);
+#endif
+    return i + mSize.x * (j + mSize.y * k);
+}
+
+inline int GridBase::index(const Vec3i& pos) const { 
+#ifdef DEBUG
+    checkIndex(pos.x, pos.y, pos.z);
+#endif
+    return pos.x + mSize.x * (pos.y + mSize.y * pos.z);
+}
+
+inline bool GridBase::isInBounds(const Vec3i& p, int bnd) {
+    return (p.x >= bnd && p.y >= bnd && p.z >= bnd &&
+            p.x < mSize.x-bnd && p.y < mSize.y-bnd && p.z < mSize.z-bnd);
+}
+
+inline bool GridBase::isInBounds(const Vec3i& p) {
+    return (p.x >= 0 && p.y >= 0 && p.z >= 0 &&
+            p.x < mSize.x && p.y < mSize.y && p.z < mSize.z);
+}
+
+inline bool GridBase::isInBounds(const Vec3& p, int bnd) {
+    return isInBounds(toVec3i(p), bnd);
+}
+
+template<class T> inline T Grid<T>::get(int idx) const { 
+#ifdef DEBUG
+    checkIndex(idx); 
+#endif
+    return mData[idx];         
+}   
+
+template<class T> inline T& Grid<T>::operator[](int idx) { 
+#ifdef DEBUG
+    checkIndex(idx); 
+#endif
+    return mData[idx];         
+}
+
+template<class T> inline const T Grid<T>::operator[](int idx) const { 
+#ifdef DEBUG
+    checkIndex(idx); 
+#endif
+    return mData[idx];         
+}
+
+inline Vec3 MACGrid::getCentered(int i, int j, int k) {
+#ifdef DEBUG
+    checkIndex(i+1,j+1,k+1);
+#endif
+    const int idx = index(i,j,k);
+    return Vec3(0.5* (mData[idx].x + mData[idx+1].x),
+                0.5* (mData[idx].y + mData[idx+mSize.x].y),
+                0.5* (mData[idx].z + mData[idx+mStrideZ].z) );
+}
+
+inline Vec3 MACGrid::getAtMACX(int i, int j, int k) {
+#ifdef DEBUG
+    checkIndex(i-1,j+1,k+1);
+#endif
+    const int idx = index(i,j,k);
+    return Vec3(      (mData[idx].x),
+                0.25* (mData[idx].y + mData[idx-1].y + mData[idx+mSize.x].y + mData[idx+mSize.x-1].y),
+                0.25* (mData[idx].z + mData[idx-1].z + mData[idx+mStrideZ].z + mData[idx+mStrideZ-1].z) );
+}
+
+inline Vec3 MACGrid::getAtMACY(int i, int j, int k) {
+#ifdef DEBUG
+    checkIndex(i+1,j-1,k+1);
+#endif
+    const int idx = index(i,j,k);
+    return Vec3(0.25* (mData[idx].x + mData[idx-mSize.x].x + mData[idx+1].x + mData[idx+1-mSize.x].x),
+                      (mData[idx].y),
+                0.25* (mData[idx].z + mData[idx-mSize.x].z + mData[idx+mStrideZ].z + mData[idx+mStrideZ-mSize.x].z) );
+}
+
+inline Vec3 MACGrid::getAtMACZ(int i, int j, int k) {
+#ifdef DEBUG
+    checkIndex(i+1,j+1,k-1);
+#endif
+    const int idx = index(i,j,k);
+    return Vec3(0.25* (mData[idx].x + mData[idx-mStrideZ].x + mData[idx+1].x + mData[idx+1-mStrideZ].x),
+                0.25* (mData[idx].y + mData[idx-mStrideZ].y + mData[idx+mSize.x].y + mData[idx+mSize.x-mStrideZ].y),
+                      (mData[idx].z) );
+}
+
+
+KERNEL(idx) template<class T> gridAdd2 (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] + b[idx]; }
+KERNEL(idx) template<class T, class S> gridAdd (Grid<T>& me, const Grid<S>& other) { me[idx] += other[idx]; }
+KERNEL(idx) template<class T, class S> gridSub (Grid<T>& me, const Grid<S>& other) { me[idx] -= other[idx]; }
+KERNEL(idx) template<class T, class S> gridMult (Grid<T>& me, const Grid<S>& other) { me[idx] *= other[idx]; }
+KERNEL(idx) template<class T, class S> gridDiv (Grid<T>& me, const Grid<S>& other) { me[idx] /= other[idx]; }
+KERNEL(idx) template<class T> gridSafeDiv (Grid<T>& me, const Grid<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
+KERNEL(idx) template<class T, class S> gridAddScalar (Grid<T>& me, const S& other) { me[idx] += other; }
+KERNEL(idx) template<class T, class S> gridMultScalar (Grid<T>& me, const S& other) { me[idx] *= other; }
+KERNEL(idx) template<class T> gridScaleAdd (Grid<T>& me, const Grid<T>& other, const T& factor) { me[idx] += factor * other[idx]; }
+
+template<class T> template<class S> Grid<T>& Grid<T>::operator+= (const Grid<S>& a) {
+    gridAdd<T,S> (*this, a);
+    return *this;
+}
+template<class T> template<class S> Grid<T>& Grid<T>::operator+= (const S& a) {
+    gridAddScalar<T,S> (*this, a);
+    return *this;
+}
+template<class T> template<class S> Grid<T>& Grid<T>::operator-= (const Grid<S>& a) {
+    gridSub<T,S> (*this, a);
+    return *this;
+}
+template<class T> template<class S> Grid<T>& Grid<T>::operator-= (const S& a) {
+    gridAddScalar<T,S> (*this, -a);
+    return *this;
+}
+template<class T> template<class S> Grid<T>& Grid<T>::operator*= (const Grid<S>& a) {
+    gridMult<T,S> (*this, a);
+    return *this;
+}
+template<class T> template<class S> Grid<T>& Grid<T>::operator*= (const S& a) {
+    gridMultScalar<T,S> (*this, a);
+    return *this;
+}
+template<class T> template<class S> Grid<T>& Grid<T>::operator/= (const Grid<S>& a) {
+    gridDiv<T,S> (*this, a);
+    return *this;
+}
+template<class T> template<class S> Grid<T>& Grid<T>::operator/= (const S& a) {
+    S rez((S)1.0 / a);
+    gridMultScalar<T,S> (*this, rez);
+    return *this;
+}
+
+} //namespace
+#endif

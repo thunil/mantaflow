@@ -1,0 +1,522 @@
+/******************************************************************************
+ *
+ * MantaFlow fluid solver framework
+ * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ *
+ * This program is free software, distributed under the terms of the
+ * GNU General Public License (GPL) 
+ * http://www.gnu.org/licenses
+ *
+ * Functions for property setting/getting via python
+ *
+ ******************************************************************************/
+
+#include <Python.h>
+#include "structmember.h"
+#include "pclass.h"
+#include "general.h"
+#include <iostream>
+
+using namespace std;
+namespace Manta {
+
+const string gDefaultModuleName = "manta";
+
+//******************************************************************************
+// Custom object definition
+
+struct PbClassData {
+    string pythonName;
+    PbInitFunc init;
+    PyTypeObject typeInfo;
+    vector<PyMethodDef> methods;
+    vector<string> methodNames;
+    vector<PyGetSetDef> getset;
+    map<string,PyGetSetDef*> getsetLookup;
+    PbClassData* baseclass;
+    PbConstructor constructor;
+};
+
+struct PbObject {
+    PyObject_HEAD
+    PbClass *instance;
+    PbClassData *classdef;
+};
+
+//******************************************************************************
+// Free functions
+
+#ifdef GUI
+    extern void updateQtGui(bool full, int frame);
+#else
+    inline void updateQtGui(bool full, int frame) {}
+#endif
+
+void pbPreparePlugin(FluidSolver* parent, const string& name) {
+    if (parent)
+        parent->pluginStart(name);
+}
+
+void pbFinalizePlugin(FluidSolver *parent, const string& name) {
+    if (parent)
+        parent->pluginStop(name);
+    
+    // GUI update
+    updateQtGui(false, 0);
+    
+    // name unnamed PbClass Objects from var name
+    PbWrapperRegistry::instance().renameObjects();
+}
+
+void pbSetError(const string& fn, const string& ex) {
+    cout << "Error in " << fn << endl;
+    if (!ex.empty())
+        PyErr_SetString(PyExc_RuntimeError, ex.c_str());
+}
+
+
+//******************************************************************************
+// Wrapper module def
+
+PbWrapperRegistry::PbWrapperRegistry() {
+    addClass("__modclass__", "__modclass__" , "");
+    addClass("PbClass", "PbClass", "");
+}
+
+static PyObject* zeroGetter(PyObject* self, void* closure) {
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+void PbWrapperRegistry::addClass(const string& pythonName, const string& internalName, const string& baseclass) {
+    // store class info
+    PbClassData* data = new PbClassData;
+    data->pythonName = pythonName;
+    data->baseclass = baseclass.empty() ? NULL : lookup(baseclass);    
+    if (!baseclass.empty() && !data->baseclass)
+        throw Error("Registering class '" + internalName + "' : Base class '" + baseclass + "' not found");
+    mClasses[internalName] = data;
+    mClassList.push_back(data);
+    
+    // register info object
+    addGetSet(internalName, "__mantaclass__", zeroGetter, NULL);
+    
+    // register all methods of base classes
+    if (data->baseclass) {
+        for (vector<PyMethodDef>::iterator it = data->baseclass->methods.begin(); it != data->baseclass->methods.end(); ++it) {
+            addMethod(internalName, it->ml_name, (PbGenericFunction)it->ml_meth);
+        }
+    }        
+}
+
+void PbWrapperRegistry::addExternalInitializer(PbInitFunc func) {
+    mExtInitializers.push_back(func);
+}
+
+void PbWrapperRegistry::addPythonPath(const string& path) {
+    mPaths.push_back(path);
+}
+
+void PbWrapperRegistry::addPythonCode(const string& file, const string& code) {
+    mCode += code + "\n";
+}
+
+void PbWrapperRegistry::addGetSet(const string& classname, const string& property, PbGetter getfunc, PbSetter setfunc) {
+    if (mClasses.find(classname) == mClasses.end())
+        throw Error("Register class " + classname + " before registering get/setter " + property);
+    
+    PbClassData* classdef = mClasses[classname];
+    PyGetSetDef* def = classdef->getsetLookup[property];
+    if (!def) {
+        char* nameptr = (char*)classdef->getsetLookup.find(property)->first.c_str(); // reuse name pointer of map
+        PyGetSetDef gs = { nameptr, NULL, NULL, nameptr, NULL };
+        classdef->getset.push_back(gs);
+        def = &*classdef->getset.rbegin();
+        classdef->getsetLookup[property] = def;
+    }
+    if (getfunc) def->get = getfunc;
+    if (setfunc) def->set = setfunc;
+}
+
+void PbWrapperRegistry::addGenericFunction(const string& funcname, PbGenericFunction func) {
+    addMethod("__modclass__", funcname, func);
+}
+
+void PbWrapperRegistry::addAlias(const string& classname, const string& alias) {
+    if (mClasses.find(classname) == mClasses.end())
+        throw Error("Trying to register alias '" + alias +"' for non-existing class '" + classname + "'");
+    mClasses[alias] = mClasses[classname];
+}
+
+void PbWrapperRegistry::addMethod(const string& classname, const string& methodname, PbGenericFunction func) {
+    if (mClasses.find(classname) == mClasses.end())
+        throw Error("Register class " + classname + " before registering methods.");
+    
+    PbClassData* classdef = mClasses[classname];
+    classdef->methodNames.push_back(methodname); // store name in array, to avoid dangling pointers
+    char* nameptr = (char*)classdef->methodNames.rbegin()->c_str();
+    PyMethodDef meth = { nameptr, (PyCFunction) func, METH_VARARGS | METH_KEYWORDS, nameptr };
+    classdef->methods.push_back(meth);    
+}
+
+void PbWrapperRegistry::addConstructor(const string& classname, PbConstructor func) {
+    if (mClasses.find(classname) == mClasses.end())
+        throw Error("Register class " + classname + " before registering constructor.");
+    
+    PbClassData* classdef = mClasses[classname];
+    classdef->constructor = func;    
+}
+
+PbClassData* PbWrapperRegistry::lookup(const string& name) {
+    if (mClasses.find(name) != mClasses.end())
+        return mClasses[name];
+    
+    for(map<string, PbClassData*>::iterator it = mClasses.begin(); it != mClasses.end(); ++it) {
+        if (it->second->pythonName == name)
+            return it->second;
+    }
+    return NULL;    
+}
+
+void PbWrapperRegistry::cleanup() {
+    for(vector<PbClassData*>::iterator it = mClassList.begin(); it != mClassList.end(); ++it) {
+        delete *it;
+    }
+    mClasses.clear();
+    mClassList.clear();
+}
+
+PbWrapperRegistry& PbWrapperRegistry::instance() {
+    static PbWrapperRegistry inst;
+    return inst;
+}
+
+bool PbWrapperRegistry::canConvert(PbClassData* from, PbClassData* to) {
+    if (from == to) return true;
+    if (from->baseclass)
+        return canConvert(from->baseclass, to);
+    return false;
+}
+
+//! Assign unnamed PbClass objects their Python variable name
+void PbWrapperRegistry::renameObjects() {
+    PyObject* sys_mod_dict = PyImport_GetModuleDict();
+    PyObject* loc_mod = PyMapping_GetItemString(sys_mod_dict, (char*)"__main__");
+    if (!loc_mod) return;
+    PyObject* locdict = PyObject_GetAttrString(loc_mod, "__dict__");
+    if (!locdict) return;
+        
+    // iterate all PbClass instances 
+    for (size_t i=0; i<PbClass::mInstances.size(); i++) {
+        PbClass* obj = PbClass::mInstances[i];
+        if (obj->getName().empty()) {
+            // empty, try to find instance in module local dictionary
+            
+            PyObject *lkey, *lvalue;
+            Py_ssize_t lpos = 0;
+            while (PyDict_Next(locdict, &lpos, &lkey, &lvalue)) {
+                if (lvalue == obj->mPyObject) {
+                    string varName = fromPy<string>(PyObject_Str(lkey));
+                    obj->setName(varName);
+                    //cout << "assigning variable name '" << varName << "' to unnamed instance" << endl;
+                    break;
+                }
+            }
+        }
+    }
+    Py_DECREF(locdict);
+    Py_DECREF(loc_mod);    
+}
+
+//******************************************************************************
+// Callback functions
+
+PyMODINIT_FUNC PyInit_Main(void) {
+    return PbWrapperRegistry::instance().initModule();   
+}
+
+void cbDealloc(PbObject* self) {
+    if (self->instance) {
+        // don't delete top-level objects
+        if (self->instance->getParent() != self->instance)
+            delete self->instance;
+    }
+    Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+PyObject* cbNew(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+    PbObject *self = (PbObject*) type->tp_alloc(type, 0);
+    if (self != NULL) {
+        // lookup and link classdef
+        self->classdef = PbWrapperRegistry::instance().lookup(type->tp_name);
+        self->instance = NULL;
+    } else
+        throw Error("can't allocate new python class object");
+    return (PyObject*) self;
+}
+
+PyObject* PbWrapperRegistry::initModule() {    
+    
+    // prepare module info
+    static PyModuleDef MainModule = {
+        PyModuleDef_HEAD_INIT,
+        gDefaultModuleName.c_str(),
+        "Bridge module to the C++ solver",
+        -1,
+        NULL, NULL, NULL, NULL, NULL
+    };
+    
+    // terminate all method lists    
+    PyMethodDef sentinelFunc = { NULL, NULL, 0, NULL };
+    PyGetSetDef sentinelGetSet = { NULL, NULL, NULL, NULL, NULL };
+    for (map<string, PbClassData*>::iterator it = mClasses.begin(); it != mClasses.end(); ++it) {
+        it->second->methods.push_back(sentinelFunc);
+        it->second->getset.push_back(sentinelGetSet);
+    }
+    
+    // get generic methods (plugin functions)
+    MainModule.m_methods = &mClasses["__modclass__"]->methods[0];
+    
+    // create module
+    PyObject* module = PyModule_Create(&MainModule);
+    if (module == NULL)
+        return NULL;
+
+    // load classes
+    for(map<string, PbClassData*>::iterator it = mClasses.begin(); it != mClasses.end(); ++it) {        
+        char* nameptr = (char*)it->first.c_str();
+        PbClassData& data = *it->second;
+        
+        // define python classinfo
+        PyTypeObject t = {
+            PyVarObject_HEAD_INIT(NULL, 0)
+            (char*)data.pythonName.c_str(),// tp_name 
+            sizeof(PbObject),          // tp_basicsize 
+            0,                         // tp_itemsize 
+            (destructor)cbDealloc,     // tp_dealloc 
+            0,                         // tp_print 
+            0,                         // tp_getattr 
+            0,                         // tp_setattr 
+            0,                         // tp_reserved 
+            0,                         // tp_repr 
+            0,                         // tp_as_number 
+            0,                         // tp_as_sequence 
+            0,                         // tp_as_mapping 
+            0,                         // tp_hash  
+            0,                         // tp_call 
+            0,                         // tp_str 
+            0,                         // tp_getattro 
+            0,                         // tp_setattro 
+            0,                         // tp_as_buffer 
+            Py_TPFLAGS_DEFAULT | 
+            Py_TPFLAGS_BASETYPE,       // tp_flags 
+            nameptr,                   // tp_doc 
+            0,                         // tp_traverse
+            0,                         // tp_clear 
+            0,                         // tp_richcompare 
+            0,                         // tp_weaklistoffset 
+            0,                         // tp_iter 
+            0,                         // tp_iternext 
+            &data.methods[0],   // tp_methods 
+            0,                         // tp_members 
+            &data.getset[0],    // tp_getset 
+            0,                         // tp_base 
+            0,                         // tp_dict 
+            0,                         // tp_descr_get 
+            0,                         // tp_descr_set 
+            0,                         // tp_dictoffset 
+            (initproc)(data.constructor),// tp_init 
+            0,                         // tp_alloc 
+            cbNew                     // tp_new 
+        };
+        data.typeInfo = t;
+        
+        if (PyType_Ready(&data.typeInfo) < 0)
+            continue;
+    
+        Py_INCREF(&data.typeInfo);
+        PyModule_AddObject(module, (char*)data.pythonName.c_str(), (PyObject*) &data.typeInfo);
+    }
+    
+    // externals
+    for(vector<PbInitFunc>::iterator it = mExtInitializers.begin(); it != mExtInitializers.end(); ++it) {
+        (*it)(module);
+    }    
+    return module;
+}
+
+PyObject* PbWrapperRegistry::createPyObject(const string& classname, const string& name, PbArgs& args, PbClass *parent) {
+    PbClassData* classdef = lookup(classname);
+    if (!classdef)
+        throw Error("Class " + classname + " doesn't exist.");    
+    
+    // create object
+    PyObject* obj = cbNew(&classdef->typeInfo, NULL, NULL);    
+    PbObject* self = (PbObject*)obj;
+    PyObject* nkw = 0;
+    
+    if (args.kwds())
+        nkw = PyDict_Copy(args.kwds());
+    else
+        nkw = PyDict_New();
+    
+    PyObject* nocheck = Py_BuildValue("s","yes");
+    PyDict_SetItemString(nkw, "nocheck", nocheck);
+    if (parent) PyDict_SetItemString(nkw, "parent", parent->getPyObject());
+    
+    // create instance
+    if (self->classdef->constructor(obj, args.linArgs(), nkw) < 0)
+        throw Error(""); // assume condition is already set
+    
+    Py_DECREF(nkw);
+    Py_DECREF(nocheck);
+    self->instance->setName(name);
+        
+    return obj;    
+}
+
+void PbWrapperRegistry::addInstance(PbClass* obj) {
+    PbClass::mInstances.push_back(obj);
+}
+
+// prepare typeinfo and register python module
+void PbWrapperRegistry::construct(const string& scriptname) {
+    mScriptName = scriptname;
+    
+    // load main extension module
+    PyImport_AppendInittab(gDefaultModuleName.c_str(), PyInit_Main);
+}
+
+void PbWrapperRegistry::runPreInit(vector<string>& args) {
+    // add python directories to path
+    PyObject *sys_path = PySys_GetObject("path");
+    for (size_t i=0; i<mPaths.size(); i++) {
+        PyObject *path = toPy(mPaths[i]);
+        if (sys_path == NULL || path == NULL || PyList_Append(sys_path, path) < 0) {
+            throw Error("unable to set python path");
+        }
+        Py_DECREF(path);
+    }
+    
+    // run preinit code
+    
+    // provide arguments
+    string iargs = "args = ['";
+    for (size_t i=1; i<args.size(); i++) {
+        if (i>1) iargs+="', '";
+        iargs+=args[i];
+    }
+    iargs += "']\n";
+    PyRun_SimpleString(iargs.c_str());
+    
+    // provide compile flags
+    string cfl = "";
+#ifdef CUDA
+    cfl+="CUDA=True\n";
+#else
+    cfl+="CUDA=False\n";
+#endif
+#ifdef DEBUG
+    cfl+="DEBUG=True\n";
+#else
+    cfl+="DEBUG=False\n";
+#endif
+#ifdef MT
+    cfl+="MT=True\n";
+#else
+    cfl+="MT=False\n";
+#endif
+#ifdef GUI
+    cfl+="GUI=True\n";
+#else
+    cfl+="GUI=False\n";
+#endif
+    cfl+="SCENEFILE='"+mScriptName+"'\n";
+    PyRun_SimpleString(cfl.c_str());
+    
+    if (!mCode.empty())
+        PyRun_SimpleString(mCode.c_str());
+}
+
+//******************************************************************************
+// PbClass
+
+PbClass::PbClass(FluidSolver* parent, const string& name, PyObject* obj)
+    : mName(name), mPyObject(obj), mParent(parent), mHidden(false), mMutex()
+{
+}
+
+PbClass::~PbClass() {   
+    for(vector<PbClass*>::iterator it = mInstances.begin(); it != mInstances.end(); ++it) {
+        if (*it == this) {
+            mInstances.erase(it);
+            break;
+        }
+    }
+}
+    
+void PbClass::lock() {
+    mMutex.lock();
+}
+void PbClass::unlock() {
+    mMutex.unlock();
+}
+bool PbClass::tryLock() {
+    return mMutex.tryLock();
+}
+    
+PbClass* PbClass::getInstance(int idx) {
+    if (idx<0 || idx > (int)mInstances.size())
+        throw Error("PbClass::getInstance(): invalid index");
+    return mInstances[idx];
+}
+
+int PbClass::getNumInstances() {
+    return mInstances.size();
+}
+    
+PbClass* PbClass::fromPyObject(PyObject* o) {
+    if(!PyObject_HasAttrString(o, "__mantaclass__"))
+        return NULL;
+        
+    return ((PbObject*) o)->instance;
+}
+
+bool PbClass::isNullRef(PyObject* obj) {
+    return PyLong_Check(obj) && PyLong_AsDouble(obj)==0;
+}
+
+void PbClass::setPyObject(PyObject* obj) {
+    if(!PyObject_HasAttrString(obj, "__mantaclass__"))
+        return;
+    
+    // cross link
+    ((PbObject*) obj)->instance = this;
+    mPyObject = obj;
+    
+    mInstances.push_back(this);
+}
+
+PbClass* PbClass::createPyObject(const string& classname, const string& name, PbArgs& args, PbClass* parent) {
+    PyObject* obj = PbWrapperRegistry::instance().createPyObject(classname, name, args, parent);
+    return ((PbObject*)obj)->instance;
+}
+
+bool PbClass::canConvertTo(const string& classname) {
+    PbClassData* from = ((PbObject*)mPyObject)->classdef;
+    PbClassData* dest = PbWrapperRegistry::instance().lookup(classname);
+    if (!dest)
+        throw Error("Classname '" + classname + "' is not registered.");
+    return PbWrapperRegistry::instance().canConvert(from, dest);
+}
+
+void PbClass::checkParent() {
+    if (getParent() == NULL) {
+        throw Error("New class " + mName + ": no parent given -- specify using parent=xxx !");
+    }
+}
+   
+
+vector<PbClass*> PbClass::mInstances;
+
+} // namespace

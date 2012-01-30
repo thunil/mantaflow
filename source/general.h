@@ -1,0 +1,86 @@
+/******************************************************************************
+ *
+ * MantaFlow fluid solver framework
+ * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ *
+ * This program is free software, distributed under the terms of the
+ * GNU General Public License (GPL) 
+ * http://www.gnu.org/licenses
+ *
+ * Globally used macros and functions
+ *
+ ******************************************************************************/
+
+#ifndef _GENERAL_H
+#define _GENERAL_H
+
+#include <iostream>
+#include <sstream>
+#include <cmath>
+
+namespace Manta {
+
+// Standard exception
+class Error : public std::exception
+{
+public:
+   Error(const std::string& s) : mS(s) {}
+   virtual ~Error() throw() {}
+   virtual const char* what() const throw() { return mS.c_str(); }
+private:
+   std::string mS;   
+};
+
+
+// Debug output functions and macros
+extern int gDebugLevel;
+
+#define MSGSTREAM std::ostringstream msg; msg.precision(7); msg.width(9);
+#define debMsg(mStr, level)     if (_chklevel(level)) { MSGSTREAM; msg << mStr << std::endl; std::cout << msg.str(); }
+inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
+
+
+// Commonly used enums and types
+//! Timing class for preformance measuring
+struct MuTime {
+    MuTime() { get(); }
+    MuTime operator-(const MuTime& a) { MuTime b; b.time = time - a.time; return b; };
+    MuTime operator+(const MuTime& a) { MuTime b; b.time = time + a.time; return b; };
+    MuTime operator/(unsigned long a) { MuTime b; b.time = time / a; return b; };
+    MuTime& operator+=(const MuTime& a) { time += a.time; return *this; }
+    MuTime& operator-=(const MuTime& a) { time -= a.time; return *this; }
+    MuTime& operator/=(unsigned long a) { time /= a; return *this; }
+    std::string toString();
+    
+    void clear() { time = 0; }
+    void get();
+    MuTime update();
+    
+    unsigned long time;
+};
+std::ostream& operator<< (std::ostream& os, const MuTime& t);
+    
+
+// Some commonly used math helpers
+template<class T> inline T square(T a) {
+    return a*a;
+}
+
+template<class T> inline T clamp(const T& val, const T& vmin, const T& vmax) {
+    if (val < vmin) return vmin;
+    if (val > vmax) return vmax;
+    return val;
+}
+
+template<class T> inline T nmod(const T& a, const T& b);
+template<> inline int nmod(const int& a, const int& b) { int c=a%b; return (c<0) ? (c+b) : c; }
+template<> inline float nmod(const float& a, const float& b) { float c=std::fmod(a,b); return (c<0) ? (c+b) : c; }
+template<> inline double nmod(const double& a, const double& b) { double c=std::fmod(a,b); return (c<0) ? (c+b) : c; }
+template<class T> inline T safeDivide(const T& a, const T& b);
+template<> inline int safeDivide<int>(const int &a, const int& b) { return (b) ? (a/b) : a; }
+template<> inline float safeDivide<float>(const float &a, const float& b) { return (b) ? (a/b) : a; }
+template<> inline double safeDivide<double>(const double &a, const double& b) { return (b) ? (a/b) : a; }
+
+} // namespace
+
+#endif
