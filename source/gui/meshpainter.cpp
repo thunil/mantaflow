@@ -12,9 +12,11 @@
  ******************************************************************************/
 
 #include "meshpainter.h"
-#include "vortexsheet.h"
 #include <QtOpenGL>
-//#include <iomanip>
+#include "mesh.h"
+#ifdef MESHCODE
+    #include "vortexsheet.h"
+#endif
 
 using namespace std;
 
@@ -212,6 +214,7 @@ void MeshPainter::paint() {
         
         const int numTris = (int)mLocalMesh->numTris();
         for(int tri=0; tri<numTris; tri++) {
+#ifdef MESHCODE
             if (!nodeColor && triColor) {
                 VortexSheetInfo& info = ((VortexSheetMesh*)mLocalMesh)->sheet(tri);
                 Vec3 v = info.vorticity;
@@ -222,7 +225,9 @@ void MeshPainter::paint() {
                 Vec3 ca = v * 20.0 * mColorScale;
                 Vec3 color = Vec3(fabs(ca.x),fabs(ca.y),fabs(ca.z));  
                 glColor3f(color.x, color.y, color.z);
-            } else if (mLocalMesh->isTriangleFixed(tri))
+            } else 
+#endif    
+            if (mLocalMesh->isTriangleFixed(tri))
                 glColor3f(0,1,0);
             else if (mLocalMesh->tris(tri).flags & Mesh::FfMarked)
                 glColor3f(1,0,0);
@@ -230,6 +235,7 @@ void MeshPainter::paint() {
                 glColor4f(0.5,0.5,0.5, isoAlpha);
                 
             for (int c=0; c<3; c++) {
+#ifdef MESHCODE
                 if (nodeColor) {
                     Vec3 tc = ((VortexSheetMesh*)mLocalMesh)->tex1(mLocalMesh->tris(tri).c[c]);
                     //Vec3 tc2 = ((VortexSheetMesh*)mLocalMesh)->tex2(mLocalMesh->tris(tri).c[c]);
@@ -238,6 +244,7 @@ void MeshPainter::paint() {
                     tc = nmod(tc, Vec3(1,1,1));
                     glColor3f(tc.x, tc.y ,tc.z);
                 }
+#endif
                 glNormal3fv(&(mLocalMesh->getFaceNormal(tri)[0]));
                 glVertex(mLocalMesh->getNode(tri,c), dx);
             }

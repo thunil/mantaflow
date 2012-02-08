@@ -16,8 +16,11 @@
 #include <cstdlib>
 #include <zlib.h>
 #include "fileio.h"
-#include "vortexsheet.h"
 #include "grid.h"
+#include "mesh.h"
+#ifdef MESHCODE
+    #include "vortexsheet.h"
+#endif
 
 using namespace std;
 
@@ -71,7 +74,8 @@ void writeBobjFile(const string& name, Mesh* mesh) {
             gzwrite(gzf, &trip, sizeof(int)); 
         }
     }
-        
+    
+#ifdef MESHCODE
     // per vertex smoke densities
     if (mesh->getType() == Mesh::TypeVortexSheet) {
         VortexSheetMesh* vmesh = (VortexSheetMesh*) mesh;
@@ -117,6 +121,7 @@ void writeBobjFile(const string& name, Mesh* mesh) {
             gzwrite(gzf, &alpha, sizeof(float));             
         }
     }
+#endif
 
     gzclose( gzf );    
 }

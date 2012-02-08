@@ -96,6 +96,7 @@ SET(PP_SOURCES
     source/noisefield.cpp
     source/kernel.cpp
     source/plugin/pressure.cpp
+    source/plugin/initplugins.cpp
     source/plugin/advection.cpp
     source/plugin/extforces.cpp
     source/python/defines.py

@@ -12,10 +12,12 @@
  ******************************************************************************/
 
 #include "particlepainter.h"
-#include "vortexpart.h"
 #include <QtOpenGL>
 #include <sstream>
 #include <iomanip>
+#ifdef MESHCODE
+    #include "vortexpart.h"
+#endif
 
 using namespace std;
 
@@ -88,6 +90,7 @@ void ParticlePainter::paint() {
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);
     
+#ifdef MESHCODE
     // draw vertex points
     if(mLocal->getType() == ParticleBase::VORTEX) {
         VortexParticleSystem* vp = (VortexParticleSystem*) mLocal;
@@ -103,6 +106,7 @@ void ParticlePainter::paint() {
         }        
         glPointSize(1.0);
     }
+#endif
 }
 
 } // namespace

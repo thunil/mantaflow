@@ -15,7 +15,10 @@
 #include "grid.h"
 #include "kernel.h"
 #include "integrator.h"
-#include "vortexpart.h"
+
+#ifdef MESHCODE
+    #include "vortexpart.h"
+#endif
 
 using namespace std;
 namespace Manta {
@@ -136,7 +139,9 @@ void ParticleSystem<S>::velocitiesToGrid(FlagGrid& flaggrid, MACGrid& grid, bool
 }
 */
 
-// explicit instantiation
-template class ParticleSystem<VortexParticleData>;
+#ifdef MESHCODE
+    // explicit instantiation
+    template class ParticleSystem<VortexParticleData>;
+#endif
 
 } // namespace
