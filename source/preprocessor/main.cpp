@@ -40,7 +40,7 @@ string readFile(const string& name) {
     string str;
     
     t.seekg(0, ios::end);   
-    str.reserve(t.tellg());
+    str.reserve((unsigned)t.tellg());
     t.seekg(0, ios::beg);
 
     str.assign((istreambuf_iterator<char>(t)),
@@ -86,7 +86,7 @@ void doMerge(int argc, char* argv[]) {
     for (int i=3; i<argc; i++) {
         merged += readFile(argv[i]) + "\n";
     }
-    writeFile(outfile, generateMerge(merged));
+    writeFile(outfile, generateMerge(merged));    
 }
 
 void doGenerate(int argc, char* argv[], bool docs) {

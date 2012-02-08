@@ -13,6 +13,7 @@
 project (MantaFlow)
 cmake_minimum_required(VERSION 2.8) # 2.8 needed for CUDA
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/source/cmake/")
 SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 SET(VERBOSE 1) 
 
@@ -68,7 +69,9 @@ SET(SOURCES
     source/preprocessor/tokenize.cpp
 )
 add_executable(prep ${SOURCES})
-set_target_properties(prep PROPERTIES COMPILE_FLAGS "-O3 -Wall")
+if (NOT WIN32)
+	set_target_properties(prep PROPERTIES COMPILE_FLAGS "-Wall -O2")
+endif()
 
 #******************************************************************************
 # Setup main project
@@ -92,8 +95,6 @@ SET(PP_SOURCES
     source/fileio.cpp   
     source/noisefield.cpp
     source/kernel.cpp
-    source/vortexsheet.cpp
-    source/vortexpart.cpp
     source/plugin/pressure.cpp
     source/plugin/advection.cpp
     source/plugin/extforces.cpp
@@ -105,15 +106,12 @@ SET(PP_HEADERS
     source/conjugategrad.h
     source/fastmarch.h
     source/fluidsolver.h
-    source/edgecollapse.h
     source/grid.h
     source/mesh.h
     source/particle.h
     source/levelset.h
     source/shapes.h
     source/noisefield.h
-    source/vortexsheet.h
-    source/vortexpart.h
 )
 
 # no pre-processing needed
@@ -167,10 +165,17 @@ endif()
 
 if(MESHCODE)
     add_definitions(-DMESHCODE)
+	list(APPEND PP_HEADERS
+		source/edgecollapse.h
+		source/vortexsheet.h
+		source/vortexpart.h
+    )
     list(APPEND PP_SOURCES
         source/test.cpp    
         source/edgecollapse.cpp
         source/plugin/vortexplugins.cpp
+		source/vortexsheet.cpp    
+		source/vortexpart.cpp    
         source/plugin/meshplugins.cpp    
     )
     if (CUDA)
@@ -207,6 +212,9 @@ if(MT)
     else()
         list(APPEND F_LIBS tbb)
     endif()
+	if (WIN32)
+		find_package(TBB REQUIRED)
+	endif()
 endif()
 
 #******************************************************************************
@@ -247,7 +255,7 @@ if(APPLE)
     list(APPEND F_LIB_PATHS /Library/Frameworks/Python.framework/Versions/3.2/lib)
     list(APPEND F_LIBS "python3.2")
 else()
-    set(Python_ADDITIONAL_VERSIONS 3.2)
+    set(Python_ADDITIONAL_VERSIONS 3.1 3.2)
     find_package(PythonLibs REQUIRED)
     list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
     list(APPEND F_LIBS ${PYTHON_LIBRARIES})
@@ -256,6 +264,7 @@ endif()
 # Z compression
 include(FindZLIB)
 LIST(APPEND F_LIBS "z")
+LIST(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
 
 # CUDA
 if(CUDA)

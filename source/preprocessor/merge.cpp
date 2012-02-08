@@ -22,9 +22,9 @@ string generateMerge(const string& text) {
     vector<string> lines, replLines;
     lines.push_back("");
     for (size_t i=0; i<text.size(); i++) {
-        if (text[i] == '\n')
-            lines.push_back("");
-        else
+        if (text[i] == '\n') {
+            lines.push_back("");            
+        } else
             *lines.rbegin() += text[i];
     }
     
@@ -38,8 +38,10 @@ string generateMerge(const string& text) {
             templates[tclass].push_back(expr);
         }        
     }
+    
     // instantiate templates
     for(vector<string>::iterator it = lines.begin(); it != lines.end(); it++) {
+        if (it->empty()) continue;
         if (!it->compare(0,10,"@instance ")) {
             size_t p = it->find(' ', 10);
             string tclass = it->substr(10, p-10);
@@ -54,7 +56,7 @@ string generateMerge(const string& text) {
             replLines.push_back(*it);
         }
     }
-    
+
     //sort in heaps
     string declares, calls, includes, converters;
     for(vector<string>::iterator it = replLines.begin(); it != replLines.end(); it++) {

@@ -13,6 +13,7 @@
 
 #include <Python.h>
 #include <string>
+#include <math.h>
 #include <sstream>
 #include <limits>
 #include "vectorbase.h"
@@ -44,9 +45,9 @@ static int PbVec3Init(PbVec3 *self, PyObject *args, PyObject *kwds) {
     if (!PyArg_ParseTuple(args,"|fff",&x1, &x2, &x3))
         return -1;
     
-    if (!isnan(x1)) {
+    if (!c_isnan(x1)) {
         self->data[0] = x1;
-        if (!isnan(x2) && !isnan(x3)) {
+        if (!c_isnan(x2) && !c_isnan(x3)) {
             self->data[1] = x2;
             self->data[2] = x3;
         } else {

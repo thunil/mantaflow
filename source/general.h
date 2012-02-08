@@ -81,6 +81,11 @@ template<> inline int safeDivide<int>(const int &a, const int& b) { return (b) ?
 template<> inline float safeDivide<float>(const float &a, const float& b) { return (b) ? (a/b) : a; }
 template<> inline double safeDivide<double>(const double &a, const double& b) { return (b) ? (a/b) : a; }
 
+inline bool c_isnan(float c) { 
+    volatile float d=c;
+    return d != d;
+}
+
 } // namespace
 
 #endif
