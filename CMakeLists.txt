@@ -50,9 +50,11 @@ MESSAGE("")
 MESSAGE("Options - "
     " -DMT='${MT}' "
     " -DDEBUG='${DEBUG}' "
-    " -DPREPDEBUG='${PREPDEBUG}' "
+    " -DUSE64='${USE64}' "
     " -DGUI='${GUI}' "
+    " -DPREPDEBUG='${PREPDEBUG}' "
     " -DCUDA='${CUDA}' "
+    " -DMESHCODE='${MESHCODE}' "
     )
 MESSAGE("")
 
@@ -202,10 +204,12 @@ SET(INCLUDE_PATHS
    source
 )
 
-# 64 bit config
+# 64 bit config , not for windows
 if (USE64)
-    SET(F_LINKADD "${F_LINKADD} -m64 ")
-    ADD_DEFINITIONS( -m64 )
+	IF(NOT WIN32)
+		SET(F_LINKADD "${F_LINKADD} -m64 ")
+		ADD_DEFINITIONS( -m64 )
+	ENDIF()
 endif()
 
 # Multithreading
@@ -386,9 +390,6 @@ ELSE()
     add_definitions( /wd4244 /wd4305 )
     # disable warnings for unsecure functions 
     add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )
-    
-	# add helper define to disable/re-enable debug flags when including python
-    add_definitions( /D "MANTA_WIN32_DEBUG" )
 ENDIF()
 
 SET(EXECCMD manta)

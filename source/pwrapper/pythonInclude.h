@@ -18,26 +18,26 @@
 #include <Python.h>
 #else
 
-// special handling for windows
-// disable linking with debug version of python libs
-#ifndef MANTA_WIN32_DEBUG
-#include <Python.h>
-#else
+	// note - we have to include these first!
+	#include <string>
+	#include <vector>
+	#include <iostream>
 
-// note - we have to include these first!
-#include <string>
-#include <vector>
-#include <iostream>
+	#ifdef _DEBUG
 
-#undef _DEBUG
-#define NDEBUG
-#include <Python.h>
-#define _DEBUG
-#undef NDEBUG
+		// special handling for windows
+		// disable linking with debug version of python libs
+		#undef _DEBUG
+		#define NDEBUG
+		#include <Python.h>
+		#define _DEBUG
+		#undef NDEBUG
 
-#endif
+	#else
+		#include <Python.h>
+	#endif
 
 
-#endif
+	#endif
 
 #endif
