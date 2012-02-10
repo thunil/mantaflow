@@ -32,6 +32,13 @@
 #   undef max
 #endif
 
+// redefine usage of some windows functions
+#ifdef WIN32
+#	ifndef snprintf 
+#	define snprintf _snprintf
+#	endif
+#endif
+
 // use which fp-precision? 1=float, 2=double
 #ifndef FLOATINGPOINT_PRECISION
 #   define FLOATINGPOINT_PRECISION 1

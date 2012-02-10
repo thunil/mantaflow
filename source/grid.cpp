@@ -210,7 +210,7 @@ template<> Real Grid<int>::getMinValue() {
 }
 template<> Real Grid<int>::getMaxAbsValue() {
     CompMinmaxInt op (*this);
-    return max( fabs(op.minVal), fabs(op.maxVal));
+    return max( fabs((Real)op.minVal), fabs((Real)op.maxVal));
 }
 template<class T> void Grid<T>::add(const Grid<T>& a, const Grid<T>& b) {
     gridAdd2<T>(*this, a, b);

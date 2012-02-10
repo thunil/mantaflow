@@ -89,13 +89,25 @@ public:
     };
 };
 
+
+// helper constants for windows
+#ifdef WIN32
+#define InvalidTime -1000.0
+#define InvtOffset    500.0
+#endif
+
 //! fast marching algorithm wrapper class
 template<class COMP, int TDIR>
 class FastMarch {
 
 public:
+
+#   ifndef WIN32
+	// MSVC unfortunately doesnt understand this (yet)
     static const Real InvalidTime = -1000;
     static const Real InvtOffset = 500;
+#	endif
+
     enum SpecialValues { FlagInited = 1, FlagIsOnHeap = 2};
 
     FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, MACGrid* velTransport = NULL); 

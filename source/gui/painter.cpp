@@ -269,7 +269,7 @@ void getCellCoordinates(const Vec3i& pos, Vec3 box[4], int dim) {
     box[1] = p1; box[1][dim2] = p0[dim2];
     box[2] = p1;
 }
-inline void glVertex(const Vec3& v, const float dx) {
+static inline void glVertex(const Vec3& v, const float dx) {
     glVertex3f(v.x * dx, v.y * dx, v.z * dx);
 }
 void glBox(const Vec3& p0, const Vec3& p1, const float dx) {

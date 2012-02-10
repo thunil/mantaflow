@@ -11,11 +11,8 @@
  *
  ******************************************************************************/
 
-#include <Python.h>
-#include <string>
-#include <vector>
 #include <stdio.h>
-#include <iostream>
+#include "pythonInclude.h"
 #include "pclass.h"
 #include "pconvert.h"
 #include "general.h"

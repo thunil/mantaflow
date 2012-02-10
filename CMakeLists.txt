@@ -51,7 +51,6 @@ MESSAGE("Options - "
     " -DMT='${MT}' "
     " -DDEBUG='${DEBUG}' "
     " -DPREPDEBUG='${PREPDEBUG}' "
-    " -DUSE64='${USE64}' "
     " -DGUI='${GUI}' "
     " -DCUDA='${CUDA}' "
     )
@@ -71,6 +70,10 @@ SET(SOURCES
 add_executable(prep ${SOURCES})
 if (NOT WIN32)
 	set_target_properties(prep PROPERTIES COMPILE_FLAGS "-Wall -O2")
+else()
+	# make sure prep.exe is put into the source build directory for windows
+	set_target_properties(prep PROPERTIES DEBUG_OUTPUT_NAME "../prep")
+	set_target_properties(prep PROPERTIES RELEASE_OUTPUT_NAME "../prep")
 endif()
 
 #******************************************************************************
@@ -125,6 +128,7 @@ set(SOURCES
 )
  
 SET(HEADERS
+    source/pwrapper/pythonInclude.h
     source/pwrapper/pclass.h
     source/pwrapper/pconvert.h
     source/util/vectorbase.h
@@ -221,6 +225,9 @@ endif()
 #******************************************************************************
 # add a target to generate API documentation with Doxygen
 
+#SET(PREP_EXE ./prep)
+SET(PREP_EXE "${CMAKE_CURRENT_BINARY_DIR}/prep")
+
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
     set(DX_PATH "doxy")
@@ -230,7 +237,7 @@ if(DOXYGEN_FOUND)
         set(CURDX "${DX_PATH}/${it}")
         string(REPLACE "/" "_" TGT ${CURDX})
         add_custom_command(OUTPUT ${TGT} 
-                        COMMAND ./prep docgen "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURDX}"
+                        COMMAND "${PREP_EXE}" docgen "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURDX}"
                         DEPENDS prep
                         IMPLICIT_DEPENDS CXX ${it}
                         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -265,7 +272,9 @@ endif()
 # Z compression
 include(FindZLIB)
 LIST(APPEND F_LIBS "z")
-LIST(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
+if(ZLIB_INCLUDE_DIR)
+	LIST(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
+endif()
 
 # CUDA
 if(CUDA)
@@ -301,7 +310,7 @@ foreach(it ${PP_SOURCES} ${PP_HEADERS} ${QT_HEADERS})
     set(CURPP "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${it}")
     # preprocessor
     add_custom_command(OUTPUT ${CURPP}
-                       COMMAND ./prep generate ${PP_PREPD} ${PP_USEMT} "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURPP}"
+                       COMMAND "${PREP_EXE}" generate ${PP_PREPD} ${PP_USEMT} "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURPP}"
                        DEPENDS prep
                        IMPLICIT_DEPENDS CXX ${it}
                        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -339,9 +348,14 @@ if(GUI)
     list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})
     
     if (APPLE)
+		# mac opengl framework
         SET(F_LINKADD "${F_LINKADD} -framework OpenGL ")
     else()
-        list(APPEND F_LIBS "GL")
+		if(NOT WIN32)
+			# only unix
+			# not needed for windows
+        	list(APPEND F_LIBS "GL")
+		endif()
     endif()
 endif()
 
@@ -365,6 +379,16 @@ IF(NOT WIN32)
 ELSE()
     # get rid of some MSVC warnings
     add_definitions( /wd4018 /wd4146 /wd4800 )
+
+    # unsigned to signed conversions
+    add_definitions( /wd4267 )
+    # double <> single precision
+    add_definitions( /wd4244 /wd4305 )
+    # disable warnings for unsecure functions 
+    add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )
+    
+	# add helper define to disable/re-enable debug flags when including python
+    add_definitions( /D "MANTA_WIN32_DEBUG" )
 ENDIF()
 
 SET(EXECCMD manta)

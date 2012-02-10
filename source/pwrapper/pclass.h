@@ -39,7 +39,7 @@ typedef _object PyObject;
 #endif
 
 namespace Manta {
-class PbClassData;
+struct PbClassData;
 class FluidSolver;
 
 //! Base class for all classes exposed to Python

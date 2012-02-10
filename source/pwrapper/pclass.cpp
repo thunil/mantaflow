@@ -11,11 +11,10 @@
  *
  ******************************************************************************/
 
-#include <Python.h>
+#include "pythonInclude.h"
 #include "structmember.h"
 #include "pclass.h"
 #include "general.h"
-#include <iostream>
 
 using namespace std;
 namespace Manta {
