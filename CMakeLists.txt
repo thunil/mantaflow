@@ -121,7 +121,7 @@ SET(PP_HEADERS
 )
 
 # no pre-processing needed
-set(SOURCES
+set(NOPP_SOURCES
     source/pwrapper/pymain.cpp
     source/pwrapper/pclass.cpp
     source/pwrapper/pvec3.cpp
@@ -129,7 +129,7 @@ set(SOURCES
     source/util/vectorbase.cpp
 )
  
-SET(HEADERS
+SET(NOPP_HEADERS
     source/pwrapper/pythonInclude.h
     source/pwrapper/pclass.h
     source/pwrapper/pconvert.h
@@ -150,7 +150,7 @@ if (GUI)
         source/gui/customctrl.h
         source/gui/particlepainter.h
     )
-    list(APPEND PP_SOURCES
+    set(QT_SOURCES
         source/gui/customctrl.cpp
         source/gui/mainwindow.cpp
         source/gui/glwidget.cpp
@@ -160,6 +160,7 @@ if (GUI)
         source/gui/particlepainter.cpp
         source/gui/qtmain.cpp
     )
+	list(APPEND PP_SOURCES ${QT_SOURCES})
 endif()
 
 # CUDA sources
@@ -223,6 +224,8 @@ if(MT)
     endif()
 	if (WIN32)
 		find_package(TBB REQUIRED)
+		list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})    
+		list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
 	endif()
 endif()
 
@@ -275,7 +278,7 @@ endif()
 
 # Z compression
 include(FindZLIB)
-LIST(APPEND F_LIBS "z")
+LIST(APPEND F_LIBS ${ZLIB_LIBRARIES})
 if(ZLIB_INCLUDE_DIR)
 	LIST(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
 endif()
@@ -297,6 +300,8 @@ endif()
 #******************************************************************************
 # apply preprocessor
 
+set(SOURCES ${NOPP_SOURCES})
+set(HEADERS ${NOPP_HEADERS})
 set(PP_REGISTRY "${PP_PATH}/ppreg.cpp")
 set(PP_REGS)
 set(PP_PREPD "0")
@@ -355,11 +360,8 @@ if(GUI)
 		# mac opengl framework
         SET(F_LINKADD "${F_LINKADD} -framework OpenGL ")
     else()
-		if(NOT WIN32)
-			# only unix
-			# not needed for windows
-        	list(APPEND F_LIBS "GL")
-		endif()
+		find_package(OpenGL REQUIRED)
+		list(APPEND F_LIBS ${OPENGL_LIBRARIES})    
     endif()
 endif()
 
@@ -390,6 +392,12 @@ ELSE()
     add_definitions( /wd4244 /wd4305 )
     # disable warnings for unsecure functions 
     add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )
+
+	# add no-build target to create nice MSVC folder
+	#add_executable(Sources EXCLUDE_FROM_ALL ${PP_SOURCES} ${PP_HEADERS} ${QT_HEADERS} ${NOPP_HEADERS} ${NOPP_SOURCES})
+	#source_group(Headers FILES ${PP_HEADERS} ${NOPP_HEADERS})
+	#source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES})
+	
 ENDIF()
 
 SET(EXECCMD manta)
@@ -406,8 +414,17 @@ if(CUDA)
     target_link_libraries( ${EXECCMD} ${F_LIBS} )
     cuda_build_clean_target()
 else()
-    add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY})
-    target_link_libraries( ${EXECCMD} ${F_LIBS} )
+	if (WIN32)
+		# make nice folders for Visual Studio
+		set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE) 
+		source_group(Preprocessed FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})
+		source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES})
+		source_group(Headers FILES ${PP_HEADERS} ${NOPP_HEADERS})
+		add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${PP_SOURCES} ${PP_HEADERS})
+	else()
+    	add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY})
+	endif()
+	target_link_libraries( ${EXECCMD} ${F_LIBS} )
 endif()
 
 # debug

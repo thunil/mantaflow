@@ -84,7 +84,7 @@ protected:
     void updateText();
     void processKeyEvent(PainterEvent e, int param);
     void processSpecificKeyEvent(PainterEvent e, int param);
-    void paintGridLines(bool lines, bool box);
+    //void paintGridLines(bool lines, bool box);
     
     Real mMaxVal;
     int mDim, mPlane, mMax;

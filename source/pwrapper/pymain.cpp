@@ -47,7 +47,21 @@ void runScript(vector<string>& args) {
     
     // Run the python script file
     debMsg("Loading script '" << filename << "'", 0);
-    PyRun_SimpleFileEx(fp, filename.c_str(), 1);
+#ifdef WIN32
+    // known bug workaround: use simplestring
+    fseek(fp,0,SEEK_END);
+    long filelen=ftell(fp);
+    fseek(fp,0,SEEK_SET);
+    char* buf = new char[filelen+1];
+    fread(buf,filelen,1,fp);
+    buf[filelen] = '\0';
+    fclose(fp);
+    PyRun_SimpleString(buf);
+    delete[] buf;    
+#else
+    // for linux, use this as it produces nicer error messages
+    PyRun_SimpleFileEx(fp, filename.c_str(), 1);    
+#endif
     
     debMsg("Script finished.", 0);
 #ifdef GUI
@@ -61,7 +75,7 @@ void runScript(vector<string>& args) {
 
 int main(int argc,char* argv[]) {
     if (argc<=1) {
-        cerr << "Usage : Syntax is 'ddf <config.py>'" << endl;  
+        cerr << "Usage : Syntax is 'manta <config.py>'" << endl;  
         return 1;
     }
 

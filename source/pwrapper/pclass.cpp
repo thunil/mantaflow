@@ -24,16 +24,40 @@ const string gDefaultModuleName = "manta";
 //******************************************************************************
 // Custom object definition
 
+struct PbMethod {
+    PbMethod(const string& n, const string& d, PbGenericFunction f) : name(n), doc(d), func(f) {}
+    string name, doc;
+    PbGenericFunction func;
+    
+    PyMethodDef def() {
+        PyMethodDef def = {&name[0], (PyCFunction)func, METH_VARARGS | METH_KEYWORDS, &doc[0]};
+        return def;
+    }
+};
+struct PbGetSet {
+    PbGetSet() {}
+    PbGetSet(const string& n, const string& d, PbGetter g, PbSetter s) : name(n), doc(d), getter(g), setter(s) {}
+    string name, doc;
+    PbGetter getter;
+    PbSetter setter;
+
+    PyGetSetDef def() {
+        PyGetSetDef def = {&name[0], getter, setter, &doc[0], NULL};
+        return def;
+    }
+};
+
 struct PbClassData {
     string pythonName;
     PbInitFunc init;
     PyTypeObject typeInfo;
-    vector<PyMethodDef> methods;
-    vector<string> methodNames;
-    vector<PyGetSetDef> getset;
-    map<string,PyGetSetDef*> getsetLookup;
+    vector<PbMethod> methods;
+    map<string,PbGetSet> getset;
     PbClassData* baseclass;
     PbConstructor constructor;
+
+    vector<PyMethodDef> genMethods;
+    vector<PyGetSetDef> genGetSet;
 };
 
 struct PbObject {
@@ -102,8 +126,8 @@ void PbWrapperRegistry::addClass(const string& pythonName, const string& interna
     
     // register all methods of base classes
     if (data->baseclass) {
-        for (vector<PyMethodDef>::iterator it = data->baseclass->methods.begin(); it != data->baseclass->methods.end(); ++it) {
-            addMethod(internalName, it->ml_name, (PbGenericFunction)it->ml_meth);
+        for (vector<PbMethod>::iterator it = data->baseclass->methods.begin(); it != data->baseclass->methods.end(); ++it) {
+            addMethod(internalName, it->name, it->func);
         }
     }        
 }
@@ -125,16 +149,13 @@ void PbWrapperRegistry::addGetSet(const string& classname, const string& propert
         throw Error("Register class " + classname + " before registering get/setter " + property);
     
     PbClassData* classdef = mClasses[classname];
-    PyGetSetDef* def = classdef->getsetLookup[property];
-    if (!def) {
-        char* nameptr = (char*)classdef->getsetLookup.find(property)->first.c_str(); // reuse name pointer of map
-        PyGetSetDef gs = { nameptr, NULL, NULL, nameptr, NULL };
-        classdef->getset.push_back(gs);
-        def = &*classdef->getset.rbegin();
-        classdef->getsetLookup[property] = def;
+    PbGetSet& def = classdef->getset[property];
+    if (def.name.empty()) {
+        def.name = property;
+        def.doc = property;
     }
-    if (getfunc) def->get = getfunc;
-    if (setfunc) def->set = setfunc;
+    if (getfunc) def.getter = getfunc;
+    if (setfunc) def.setter = setfunc;
 }
 
 void PbWrapperRegistry::addGenericFunction(const string& funcname, PbGenericFunction func) {
@@ -152,10 +173,7 @@ void PbWrapperRegistry::addMethod(const string& classname, const string& methodn
         throw Error("Register class " + classname + " before registering methods.");
     
     PbClassData* classdef = mClasses[classname];
-    classdef->methodNames.push_back(methodname); // store name in array, to avoid dangling pointers
-    char* nameptr = (char*)classdef->methodNames.rbegin()->c_str();
-    PyMethodDef meth = { nameptr, (PyCFunction) func, METH_VARARGS | METH_KEYWORDS, nameptr };
-    classdef->methods.push_back(meth);    
+    classdef->methods.push_back(PbMethod(methodname,methodname,func));        
 }
 
 void PbWrapperRegistry::addConstructor(const string& classname, PbConstructor func) {
@@ -265,16 +283,23 @@ PyObject* PbWrapperRegistry::initModule() {
         NULL, NULL, NULL, NULL, NULL
     };
     
-    // terminate all method lists    
+    // generate and terminate all method lists    
     PyMethodDef sentinelFunc = { NULL, NULL, 0, NULL };
     PyGetSetDef sentinelGetSet = { NULL, NULL, NULL, NULL, NULL };
     for (map<string, PbClassData*>::iterator it = mClasses.begin(); it != mClasses.end(); ++it) {
-        it->second->methods.push_back(sentinelFunc);
-        it->second->getset.push_back(sentinelGetSet);
+        it->second->genMethods.clear();
+        it->second->genGetSet.clear();
+        for (vector<PbMethod>::iterator i2 = it->second->methods.begin(); i2 != it->second->methods.end(); ++i2)
+            it->second->genMethods.push_back(i2->def());
+        for (map<string,PbGetSet>::iterator i2 = it->second->getset.begin(); i2 != it->second->getset.end(); ++i2)
+            it->second->genGetSet.push_back(i2->second.def());
+        
+        it->second->genMethods.push_back(sentinelFunc);
+        it->second->genGetSet.push_back(sentinelGetSet);
     }
     
     // get generic methods (plugin functions)
-    MainModule.m_methods = &mClasses["__modclass__"]->methods[0];
+    MainModule.m_methods = &mClasses["__modclass__"]->genMethods[0];
     
     // create module
     PyObject* module = PyModule_Create(&MainModule);
@@ -316,9 +341,9 @@ PyObject* PbWrapperRegistry::initModule() {
             0,                         // tp_weaklistoffset 
             0,                         // tp_iter 
             0,                         // tp_iternext 
-            &data.methods[0],   // tp_methods 
+            &data.genMethods[0],   // tp_methods 
             0,                         // tp_members 
-            &data.getset[0],    // tp_getset 
+            &data.genGetSet[0],    // tp_getset 
             0,                         // tp_base 
             0,                         // tp_dict 
             0,                         // tp_descr_get 
