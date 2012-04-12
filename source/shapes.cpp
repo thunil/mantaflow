@@ -36,7 +36,7 @@ KERNEL template<class T> ApplyShapeToGrid (Grid<T>* grid, Shape* shape, T value)
         (*grid)(i,j,k) = value;
 }
 
-//! Kernel: Apply a shape to a grid, setting value inside
+//! Kernel: Apply a shape to a grid, setting value inside (scaling by SDF value)
 KERNEL template<class T> ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi, Real sigma, Real shift, T value) {
     const Real p = phi(i,j,k) - shift;
     if (p < -sigma)

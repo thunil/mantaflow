@@ -12,6 +12,7 @@
  ******************************************************************************/
 
 #include <string>
+#include <sstream>
 #include <fstream>
 #include <streambuf>
 #include <iostream>
@@ -24,7 +25,7 @@ using namespace std;
 
 string gFilename;
 string gRegText;
-bool gDebugMode;
+bool gDebugMode = true;
 bool gUseMT;
 bool gDocMode;
 
@@ -100,7 +101,14 @@ void doGenerate(int argc, char* argv[], bool docs) {
     gRegText = "";
     gParent = "";
     gDebugMode = false; if (!docs) gDebugMode = atoi(argv[2]) != 0;
-    gUseMT = false; if (!docs) gUseMT = atoi(argv[3]) != 0;
+    gUseMT     = false; if (!docs) gUseMT     = atoi(argv[3]) != 0;
+
+	bool addLineWarnings = false;
+#	ifdef _WIN32
+	addLineWarnings = true;
+	// NT_DEBUG ? debug on?
+	//gDebugMode = true;
+#	endif
     
     // load complete file into buffer    
     string text = readFile(infile);
@@ -132,11 +140,65 @@ void doGenerate(int argc, char* argv[], bool docs) {
             newText += "/*! \\file " + fn + " */\n";
         } else {
             newText += "\n\n\n\n\n// This file is generated using the MantaFlow preprocessor (prep generate). Do not edit.\n\n\n\n\n";
-            if (!gDebugMode)
-                newText += "#line 1 \"" + infile + "\"\n";
+            //if (!gDebugMode) 
+			// NT_DEBUG , always add?
+	        newText += "#line 1 \"" + infile + "\"\n";
         }
         newText += processText(text, 1);
-        
+
+
+		// windows special - mark generated files with warnings to prevent editing the wrong file in MSVC
+		if( (!docs) && addLineWarnings) 
+		{
+			// position counters
+			int lineCntOrg = 0;   // line count of original file
+			int lineCnt    = -32; // interval line counter, skip the first few lines...
+			int lastPos    = 0;   // get last string chunk
+			int lastLength = 1;   // string chunk length
+			// how often to add warning?
+			const int lineInterval = 10;
+
+			// construct output
+			std::ostringstream modifiedNew;
+			for(int c=0; c < newText.length(); c++,lastLength++) {
+				bool skip = false;
+				if(newText[c] == '\n') {
+					lineCntOrg++;
+
+					// check for define coming up...
+					if ( (c < newText.length()-1) &&  ( newText[c+1] == '#' ) ) {
+						skip = true;
+					} else {
+						// extended line?
+						if( (c > 0) && ( newText[c-1] == '\\' ) ) {
+							// dont increase
+							skip = true;
+						} else {
+							// "regular" newline
+							lineCnt++;
+						}
+					}
+
+					if(!skip) {
+						if( ( (lineCnt>0) && ((lineCnt%lineInterval) == (lineInterval-1)) )  ||
+							(c==newText.length()-1) ) 
+						{
+							modifiedNew << newText.substr( lastPos, lastLength );
+							// add warning
+							modifiedNew << "\n// AUTO-GENERATED FILE, DO NOT EDIT!!! \n\n";
+							// make sure we find the original file & line, subtract length of added header at top (10 lines)
+							modifiedNew << "#line " <<(lineCntOrg-10)<< " \"" + infile + "\" "; // no newline here! is in the file anyway...
+
+							// start over
+							lastPos = c;
+							lastLength = 0;
+						}
+					}
+				} // newline
+			}
+			newText = modifiedNew.str();
+		}        
+
         // write down complete file from buffer
         writeFile(outfile, newText);        
     }

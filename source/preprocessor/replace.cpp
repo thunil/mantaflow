@@ -171,6 +171,12 @@ string processKernel(int lb, const string& kname, const vector<Argument>& opts, 
     }
     string qualifier = reduce ? "" : "const";
     string tbbcall = reduce ? "tbb::parallel_reduce" : "tbb::parallel_for";
+
+	bool mtTbb    = false;
+	bool mtOpenMp = false; // testing... NT_DEBUG
+	if(mt) {
+		mtTbb = true;
+	}
     
     // point out illegal paramter combinations
     if (bnd != "0" && idxMode)
@@ -242,7 +248,7 @@ string processKernel(int lb, const string& kname, const vector<Argument>& opts, 
     if (reduce) kclass += tb2+ "setup();" + nl;
     kclass += tb2+ "run();" + nl;
     kclass += tb+ "}" + nl;    
-    if (mt) {
+    if (mtTbb) {
         // multithreading using intel tbb
         kclass += tb+ "void operator() (const tbb::blocked_range<size_t>& r) " + qualifier + "{" + nl;
         kclass += loader;
@@ -263,7 +269,8 @@ string processKernel(int lb, const string& kname, const vector<Argument>& opts, 
         kclass += tb+ "void run() {" + nl;
         kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>("+bnd+", " + (pts ? "size" : (idxMode ? "maxCells" : "maxZ")) + "), *this);"+ nl;
         kclass += tb+ "}" + nl;
-    } else {
+	} else if(mtOpenMp) {
+	} else {
         // simple loop
         kclass += tb+ "void run() {" + nl;
         kclass += loader;
@@ -284,7 +291,7 @@ string processKernel(int lb, const string& kname, const vector<Argument>& opts, 
         }
         kclass += nl + tb+"}" + nl;
     }
-    if (reduce && mt) {
+    if (reduce && mtTbb) {
         // split constructor
         kclass += tb+ kclassname + " (" + kclassname + "& o, tbb::split) : " + nl;
         if (!pts)

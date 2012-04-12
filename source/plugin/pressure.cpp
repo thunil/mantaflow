@@ -19,7 +19,7 @@ using namespace std;
 namespace Manta {
 
 //! Kernel: Construct the right-hand side of the poisson equation
-KERNEL(bnd=1, reduce) struct MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, Grid<Real>* dens, 
+KERNEL(bnd=1, reduce) struct MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, 
                                       Grid<Real>* perCellCorr, Real corr) 
 {
     double redSum;
@@ -37,9 +37,7 @@ KERNEL(bnd=1, reduce) struct MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid&
         set += vel(i,j,k).z - vel(i,j,k+1).z;
         set += corr;
         
-        // multiply RHS by density value, if given...
-        if(dens) 
-            set *= dens->get(i,j,k);    
+        // per cell divergence correction
         if(perCellCorr) 
             set += perCellCorr->get(i,j,k);
         
@@ -61,31 +59,27 @@ KERNEL(bnd=1, reduce) struct MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid&
 };
 
 //! Kernel: Apply velocity update from poisson equation
-KERNEL(bnd=1) VelocityCorr(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure, Grid<Real>* density) 
+KERNEL(bnd=1) CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
 {
-    if (!flags.isFluid(i,j,k))
+	// correct all faces between fluid-fluid and fluid-empty cells
+	// skip everything with obstacles...
+	if (flags.isObstacle(i,j,k))
         return;
-    
-    Real scale = 1.;
-    Real densCurr = density ? density->get(i,j,k) : 1.0;
 
-    if (flags.isFluid(i-1,j,k)) {
-        if (density)
-            scale = 1.0 / (0.5* (densCurr + density->get(i-1,j,k)) );
-        
-        vel(i,j,k).x -= scale * (pressure(i,j,k) - pressure(i-1,j,k) );
+	// skip faces between two empty cells
+	const bool myFlagIsEmpty = flags.isEmpty(i,j,k);
+
+	if(! ((flags.isEmpty(i-1,j,k)) && (myFlagIsEmpty)) )
+	{
+        vel(i,j,k).x -= (pressure(i,j,k) - pressure(i-1,j,k) );
     }
-    if (flags.isFluid(i,j-1,k)) {
-        if (density)
-            scale = 1.0 / (0.5* (densCurr + density->get(i,j-1,k)) );
-        
-        vel(i,j,k).y -= scale * (pressure(i,j,k) - pressure(i,j-1,k) );
+	if(! ((flags.isEmpty(i,j-1,k)) && (myFlagIsEmpty)) )
+	{
+        vel(i,j,k).y -= (pressure(i,j,k) - pressure(i,j-1,k) );
     }
-    if (flags.isFluid(i,j,k-1)) {
-        if (density)
-            scale = 1.0 / (0.5* (densCurr + density->get(i,j,k-1)) );
-        
-        vel(i,j,k).z -= scale * (pressure(i,j,k) - pressure(i,j,k-1) );
+	if(! ((flags.isEmpty(i,j,k-1)) && (myFlagIsEmpty)) )
+	{
+        vel(i,j,k).z -= (pressure(i,j,k) - pressure(i,j,k-1) );
     }    
 }
 
@@ -130,16 +124,22 @@ KERNEL SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<bool> up
 static const int LEVELSET_ISOSURFACE = 0.;
 
 static inline Real getGhostMatrixAddition(Real a, Real b, const Real accuracy) {
-    const Real divisor = b-a;
+	Real ret = 0.f;
 
-    if (divisor < 1e-10) {
-        return 0.;
-    }
-    const Real pos = max( (LEVELSET_ISOSURFACE - a)/divisor , accuracy );
-    if( pos > 1.)
-        return 0.;
+	if(a < 0 && b < 0)
+		ret = 1;
+	else if( (a >= 0) && (b < 0))
+		ret = b / (b - a);
+	else if ( (a < 0) && (b >= 0))
+		ret = a / (a - b);
+	else
+		ret = 0;
 
-    return (1-pos)/pos;
+	if(ret < accuracy)
+		ret = accuracy;
+
+	Real invret = 1./ret;
+	return invret;
 }
 
 //! Kernel: Adapt A0 for ghost fluid
@@ -166,7 +166,9 @@ KERNEL(bnd=1) CorrectVelGhostFluid (FlagGrid& flags, MACGrid& vel, Grid<Real>& p
         return;
     
     const Real curPress = pressure(i,j,k);
+
     //const Real curPhi = phi(i,j,k);
+	// TODO - include ghost fluid factor  NT_DEBUG
     
     // in contrast to old implementation:
     // make sure to add gradient for all fluid-empty or fluid-fluid combinations
@@ -196,7 +198,6 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 
 //! Perform pressure projection of the velocity grid
 PLUGIN void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
-                     Grid<Real>* density = 0, 
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0, 
                      Real divCorr = 0,
@@ -239,7 +240,7 @@ PLUGIN void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     }
     
     // compute divergence and init right hand side
-    MakeRhs kernMakeRhs (flags, rhs, vel, density, perCellCorr, divCorr);
+    MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, divCorr);
     
     if (!outflow.empty())
         SetOutflow (rhs, loOutflow, upOutflow, outflowHeight);
@@ -265,7 +266,7 @@ PLUGIN void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     
     if(ghostAccuracy<=0.) {
         // ghost fluid off, normal correction
-        VelocityCorr (flags, vel, pressure, density);        
+        CorrectVelocity (flags, vel, pressure );
     } else {        
         CorrectVelGhostFluid (flags, vel, pressure);
     }    
