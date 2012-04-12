@@ -169,6 +169,7 @@ PYTHON class FlagGrid : public Grid<int> {
 public:
     PYTHON FlagGrid(FluidSolver* parent, bool show=true) : Grid<int>(parent, show) { mType = (GridType)(TypeFlags | TypeInt); }
     
+	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
     enum CellType { 
         TypeNone = 0,
         TypeFluid = 1,
@@ -180,6 +181,7 @@ public:
     //! access for particles
     inline int getAt(const Vec3& pos) const { return mData[index((int)pos.x, (int)pos.y, (int)pos.z)]; }
             
+	//! check for different flag types
     inline bool isObstacle(int idx) { return get(idx) & TypeObstacle; }
     inline bool isObstacle(int i, int j, int k) { return get(i,j,k) & TypeObstacle; }
     inline bool isObstacle(const Vec3i& pos) { return get(pos) & TypeObstacle; }
@@ -194,7 +196,7 @@ public:
     inline bool isEmpty(const Vec3& pos) { return getAt(pos) & TypeEmpty; }
     
     // Python callables
-    PYTHON void initDomain();
+    PYTHON void initDomain(int boundaryWidth=1);
     PYTHON void fillGrid();
 };
 

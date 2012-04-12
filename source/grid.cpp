@@ -217,11 +217,12 @@ template<class T> void Grid<T>::add(const Grid<T>& a, const Grid<T>& b) {
 }
 
 //******************************************************************************
-// Specialixation classes
+// Specialization classes
 
-void FlagGrid::initDomain() {
+void FlagGrid::initDomain(int boundaryWidth) {
+	const int w = boundaryWidth;
     FOR_IJK(*this) {
-        bool bnd = (i<=1 || i>=mSize.x-2 || j<=1 || j>=mSize.y-2 || k<=1 || k>=mSize.z-2);
+        bool bnd = (i<=w || i>=mSize.x-1-w || j<=w || j>=mSize.y-1-w || k<=w || k>=mSize.z-1-w);
         mData[index(i,j,k)] = bnd ? TypeObstacle : TypeEmpty;
     }
 }

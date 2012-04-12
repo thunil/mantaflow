@@ -13,7 +13,11 @@
 
 #include "general.h"
 #ifdef WIN32
-#   include <windows.h>
+#  define WIN32_LEAN_AND_MEAN
+#  define NOMINMAX
+#  include <windows.h>
+#  undef WIN32_LEAN_AND_MEAN
+#  undef NOMINMAX
 #else
 #   include <sys/time.h>
 #endif
