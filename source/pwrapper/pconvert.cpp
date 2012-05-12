@@ -11,9 +11,9 @@
  *
  ******************************************************************************/
 
+#include "pythonInclude.h"
 #include <sstream>
 #include <algorithm>
-#include "pythonInclude.h"
 #include "vectorbase.h"
 #include "pconvert.h"
 #define _PCLASS_NOFLUIDSOLVER

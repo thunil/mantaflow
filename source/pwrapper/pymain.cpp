@@ -11,8 +11,8 @@
  *
  ******************************************************************************/
 
-#include <stdio.h>
 #include "pythonInclude.h"
+#include <stdio.h>
 #include "pclass.h"
 #include "pconvert.h"
 #include "general.h"

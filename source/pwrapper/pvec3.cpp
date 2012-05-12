@@ -11,11 +11,11 @@
  *
  ******************************************************************************/
 
+#include "pythonInclude.h"
 #include <math.h>
 #include <string>
 #include <sstream>
 #include <limits>
-#include "pythonInclude.h"
 #include "vectorbase.h"
 #include "structmember.h"
 #include "pclass.h"

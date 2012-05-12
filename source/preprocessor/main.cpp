@@ -100,13 +100,14 @@ void doGenerate(int argc, char* argv[], bool docs) {
     gFilename = infile;
     gRegText = "";
     gParent = "";
-    gDebugMode = false; if (!docs) gDebugMode = atoi(argv[2]) != 0;
+    // TP : only enable in cmake's PREP_DEBUG mode (passed via cmd line option dbg_mode)
+	gDebugMode = false; if (!docs) gDebugMode = atoi(argv[2]) != 0;
     gUseMT     = false; if (!docs) gUseMT     = atoi(argv[3]) != 0;
 
 	bool addLineWarnings = false;
 #	ifdef _WIN32
 	addLineWarnings = true;
-	// NT_DEBUG ? debug on?
+	// NT_DEBUG ? debug on? 
 	//gDebugMode = true;
 #	endif
     
@@ -140,9 +141,11 @@ void doGenerate(int argc, char* argv[], bool docs) {
             newText += "/*! \\file " + fn + " */\n";
         } else {
             newText += "\n\n\n\n\n// This file is generated using the MantaFlow preprocessor (prep generate). Do not edit.\n\n\n\n\n";
-            //if (!gDebugMode) 
-			// NT_DEBUG , always add?
-	        newText += "#line 1 \"" + infile + "\"\n";
+            
+			// NT_DEBUG , always add? 
+			// TP: No -- PREP_DEBUG mode is meant to debug problems in the generated files, so erros should not be redirected to the sources
+	        if (!gDebugMode) 
+				newText += "#line 1 \"" + infile + "\"\n";
         }
         newText += processText(text, 1);
 
@@ -160,13 +163,13 @@ void doGenerate(int argc, char* argv[], bool docs) {
 
 			// construct output
 			std::ostringstream modifiedNew;
-			for(int c=0; c < newText.length(); c++,lastLength++) {
+			for(int c=0; c < (int)newText.length(); c++,lastLength++) {
 				bool skip = false;
 				if(newText[c] == '\n') {
 					lineCntOrg++;
 
 					// check for define coming up...
-					if ( (c < newText.length()-1) &&  ( newText[c+1] == '#' ) ) {
+					if ( (c < (int)newText.length()-1) &&  ( newText[c+1] == '#' ) ) {
 						skip = true;
 					} else {
 						// extended line?
@@ -181,7 +184,7 @@ void doGenerate(int argc, char* argv[], bool docs) {
 
 					if(!skip) {
 						if( ( (lineCnt>0) && ((lineCnt%lineInterval) == (lineInterval-1)) )  ||
-							(c==newText.length()-1) ) 
+							(c==(int)newText.length()-1) ) 
 						{
 							modifiedNew << newText.substr( lastPos, lastLength );
 							// add warning

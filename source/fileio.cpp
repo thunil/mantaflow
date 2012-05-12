@@ -202,7 +202,10 @@ void writeGridUni(const string& name, Grid<T>* grid) {
     cout << "writing grid " << grid->getName() << " to uni file " << name << endl;
     
     UniHeader head;
-    strncpy(head.id,"MNT1",4);
+	head.id[0]='M';
+    head.id[1]='N';
+    head.id[2]='T';
+    head.id[3]='1';
     head.dimX = grid->getSizeX();
     head.dimY = grid->getSizeY();
     head.dimZ = grid->getSizeZ();

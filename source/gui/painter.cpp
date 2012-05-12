@@ -383,10 +383,10 @@ template<> void GridPainter<Vec3>::paint() {
                 if (p.z < mLocalGrid->getSizeZ()-1) 
                     vel.z = 0.5 * (vel.z + scaler * mLocalGrid->get(p.x,p.y,p.z+1).z);
             }
-            glColor3f(0,1,0);
+            glColor3f(1,1,1);
             glVertex(pos, dx);
             glColor3f(1,1,1);
-            glVertex(pos+vel, dx);
+            glVertex(pos+vel*1.2, dx);
         } else {
             for (int d=0; d<3; d++) {
                 if (fabs(vel[d]) < 1e-2) continue;
