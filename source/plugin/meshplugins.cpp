@@ -25,6 +25,7 @@
 #include "kernel.h"
 #include "edgecollapse.h"
 #include <mesh.h>
+#include <stack>
 
 using namespace std;
 
@@ -556,6 +557,65 @@ PLUGIN void subdivideMesh(Mesh& mesh, Real minAngle, Real minLength, Real maxLen
     //mesh.sanityCheck();
     
 }
+    
+PLUGIN void killSmallComponents(Mesh& mesh, int elements = 10) {
+    const int num = mesh.numTris();
+    vector<int> comp(num);
+    vector<int> numEl;
+    vector<int> deletedNodes;
+    vector<bool> isNodeDel(mesh.numNodes());
+    map<int,bool> taintedTris;
+    // enumerate components
+    int cur=0;
+    for (int i=0; i<num; i++) {
+        if (comp[i]==0) {
+            cur++;
+            comp[i] = cur;
+            
+            stack<int> stack;
+            stack.push(i);
+            int cnt = 1;
+            while(!stack.empty()) {
+                int tri = stack.top();
+                stack.pop();
+                for (int c=0; c<3; c++) {
+                    int op = mesh.corners(tri,c).opposite;
+                    if (op < 0) continue;
+                    int ntri = mesh.corners(op).tri;
+                    if (comp[ntri]==0) {
+                        comp[ntri] = cur;
+                        stack.push(ntri);
+                        cnt++;
+                    }
+                }
+            }
+            numEl.push_back(cnt);
+        }
+    }
+    // kill small components
+    for (int j=0; j<num; j++) {
+        if (numEl[comp[j]-1] < elements) {
+            taintedTris[j] = true;
+            for (int c=0; c<3; c++) {
+                int n=mesh.tris(j).c[c];
+                if (!isNodeDel[n]) {
+                    isNodeDel[n] = true;
+                    deletedNodes.push_back(n);
+                }
+            }
+        }
+    }
+    
+    std::map<int,bool>::reverse_iterator tti = taintedTris.rbegin();
+    for(;tti!=taintedTris.rend(); tti++)
+        mesh.removeTri(tti->first);
+    
+    mesh.removeNodes(deletedNodes);
+    
+    if (!taintedTris.empty())
+        cout << "Killed small components : " << deletedNodes.size() << " nodes, " << taintedTris.size() << " tris deleted." << endl;
+}
+   
     
 } //namespace
 

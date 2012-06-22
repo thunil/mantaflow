@@ -39,13 +39,5 @@ PLUGIN void densityInflow(FlagGrid& flags, Grid<Real>& density, WaveletNoiseFiel
     KnApplyNoise(flags, density, noise, sdf, scale, sigma);
 }
 
-//! hack test
-PLUGIN void getVortComponent(MACGrid& vel, Grid<Real>& vortc, int dim)
-{
-    Grid<Vec3> cvel(parent),vort(parent);
-    GetCentered(cvel, vel);
-    CurlOp(cvel,vort);
-    GetComponent(vort,vortc,dim);
-}
     
 } // namespace

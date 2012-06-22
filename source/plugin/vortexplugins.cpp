@@ -13,12 +13,13 @@
  
 #include <iostream>
 #include "vortexsheet.h"
+#include "vortexpart.h"
 #include "shapes.h"
 #include "noisefield.h"
 #include "commonkernels.h"
 #include "conjugategrad.h"
-#include "vortexpart.h"
 #include "randomstream.h"
+#include "levelset.h"
 
 using namespace std;
 
@@ -222,7 +223,7 @@ PLUGIN void VPseedK41(VortexParticleSystem& system, Shape* shape, Real strength=
     }    
 }
         
-//! Mark Stock style VIC
+//! Vortex-in-cell integration
 PLUGIN void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, FlagGrid& flags,
                       Grid<Vec3>* vorticity=NULL, Real cgMaxIterFac=1.5, Real cgAccuracy=1e-3, Real scale = 0.01, int precondition=0) {
     
@@ -281,8 +282,6 @@ PLUGIN void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, F
         }
     }
     
-    cout << "Projection time " << t0.update() << endl;
-    
     // Prepare grids for poisson solve
     Grid<Vec3> vortexCurl(parent);
     Grid<Real> rhs(parent);
@@ -302,8 +301,6 @@ PLUGIN void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, F
     MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak);    
     CurlOp(vort, vortexCurl);    
     
-    cout << "Setup time " << t0.update() << endl;
-        
     // Solve vector poisson equation
     for (int c=0; c<3; c++) {
         // construct rhs    
@@ -330,11 +327,21 @@ PLUGIN void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, F
         solution *= scale;
         SetComponent(vel, solution, c);
     }
-    
-    cout << "Poisson time " << t0.update() << endl;
-    
 }
 
-
+//! Obtain density field from levelset with linear gradient of size sigma over the interface
+PLUGIN void densityFromLevelset(LevelsetGrid& phi, Grid<Real>& density, Real value=1.0, Real sigma=1.0) {
+    FOR_IJK(phi) {
+        // remove boundary
+        if (i<2 || j<2 || k<2 || i>=phi.getSizeX()-2 || j>=phi.getSizeY()-2 || k>=phi.getSizeZ()-2)
+            density(i,j,k) = 0;
+        else if (phi(i,j,k) < -sigma)
+            density(i,j,k) = value;
+        else if (phi(i,j,k) > sigma)
+            density(i,j,k) = 0;
+        else
+            density(i,j,k) = clamp(0.5f*value/sigma*(1.0f-phi(i,j,k)), 0.0f, value);
+    }    
+}
 
 } // namespace

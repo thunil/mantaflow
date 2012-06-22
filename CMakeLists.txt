@@ -106,6 +106,7 @@ SET(PP_SOURCES
     source/plugin/initplugins.cpp
     source/plugin/advection.cpp
     source/plugin/extforces.cpp
+    source/plugin/turbulence.cpp
     source/plugin/meshplugins.cpp
     source/plugin/vortexplugins.cpp
     source/python/defines.py
@@ -177,6 +178,7 @@ endif()
 if (CUDA)
     list(APPEND PP_SOURCES 
         source/cuda/meshtools.cu
+        source/cuda/buoyancy.cu
         source/cuda/particle.cu
     )
 endif()

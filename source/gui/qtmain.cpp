@@ -100,17 +100,15 @@ void guiMain(int argc, char* argv[]) {
 
 void guiWaitFinish() {
     gMainThread->setFinished();    
-    if (!gGuiThread->getWindow()->isVisible()) {
-        gMainThread->send((int)MainWnd::EventInstantKill);
-        return;
-    }
+    gMainThread->send((int)MainWnd::EventInstantKill);
+    /*
     if (gGuiThread->getWindow()->closeRequest())
         return;
     
-    gMainThread->sendAndWait((int)MainWnd::EventFinalUpdate);
+    /*gMainThread->sendAndWait((int)MainWnd::EventFinalUpdate);
     gGuiThread->getWindow()->pause();
     while (gGuiThread->getWindow()->pauseRequest())
-        gMainThread->threadSleep(10);    
+        gMainThread->threadSleep(10);    */
 }
 
 //******************************************************************************

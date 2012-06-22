@@ -15,10 +15,8 @@
 #include <QtOpenGL>
 #include <sstream>
 #include <iomanip>
-#ifdef MESHCODE
-    #include "vortexpart.h"
-#endif
-#include "test.h"
+#include "vortexpart.h"
+//#include "test.h"
 
 using namespace std;
 
@@ -96,22 +94,18 @@ void ParticlePainter::paint() {
     if(mLocal->getType() == ParticleBase::VORTEX) {
         VortexParticleSystem* vp = (VortexParticleSystem*) mLocal;
         glColor3f(1,1,0);
-        glPointSize(3.0);
         for(int i=0; i<(int)mLocal->size(); i++) {
             Vec3 pos = (*vp)[i].pos;
             
-            if ((*vp)[i].vort > 0)
-                glColor3f(1,0.2,0);
-            else
-                glColor3f(0,0.2,1);
-        
+            glPointSize((*vp)[i].sigma);
+
             glBegin(GL_POINTS);
             glVertex(pos, dx);
             glEnd();
         }        
         glPointSize(1.0);
     }
-    if(mLocal->getType() == ParticleBase::TRACER) {
+    /*if(mLocal->getType() == ParticleBase::TRACER) {
         TracerParticleSystem* vp = (TracerParticleSystem*) mLocal;
         glPointSize(3.0);
         for(int i=0; i<(int)mLocal->size(); i++) {
@@ -123,7 +117,7 @@ void ParticlePainter::paint() {
             glEnd();
         }        
         glPointSize(1.0);
-    }
+    }*/
 //#endif
 }
 
