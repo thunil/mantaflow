@@ -33,7 +33,6 @@ OPTION(USE64 "Switch 64bit support" ON)
 OPTION(GUI "Compile with GUI (requires QT)" OFF)
 OPTION(PREPDEBUG "Debug generated files" OFF) # This will beautify generated files, and link to them for compiler errors instead of the original sources
 OPTION(CUDA "Compile with CUDA plugins" OFF)
-OPTION(MESHCODE "Compile with meshcode" OFF)
 
 # make sure debug settings match...
 IF(NOT DEBUG)
@@ -100,11 +99,18 @@ SET(PP_SOURCES
     source/fileio.cpp   
     source/noisefield.cpp
     source/kernel.cpp
+    source/vortexsheet.cpp
+    source/vortexpart.cpp
+    source/edgecollapse.cpp
     source/plugin/pressure.cpp
     source/plugin/initplugins.cpp
     source/plugin/advection.cpp
     source/plugin/extforces.cpp
+    source/plugin/meshplugins.cpp
+    source/plugin/vortexplugins.cpp
     source/python/defines.py
+    #source/test.cpp
+    
 )
 
 SET(PP_HEADERS
@@ -118,6 +124,13 @@ SET(PP_HEADERS
     source/levelset.h
     source/shapes.h
     source/noisefield.h
+    source/vortexsheet.h
+    source/general.h
+    source/kernel.h
+    source/fileio.h
+    source/edgecollapse.h
+    source/vortexpart.h
+    #source/test.h    
 )
 
 # no pre-processing needed
@@ -134,9 +147,6 @@ SET(NOPP_HEADERS
     source/pwrapper/pclass.h
     source/pwrapper/pconvert.h
     source/util/vectorbase.h
-    source/general.h
-    source/kernel.h
-    source/fileio.h
 )
 
 if (GUI)
@@ -202,7 +212,6 @@ SET(INCLUDE_PATHS
    source/util
    source/cuda
    ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
-   source
 )
 
 # 64 bit config , not for windows

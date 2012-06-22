@@ -15,6 +15,7 @@
 FlagFluid = 1
 FlagObstacle = 2
 FlagEmpty = 4
+FlagStick = 128
 
 # integration mode
 IntEuler = 0

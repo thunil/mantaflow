@@ -9,6 +9,9 @@
  *
  * Meshes
  *
+ * note: this is only a temporary solution, details are bound to change
+ *        long term goal is integration with Split&Merge code by Wojtan et al.
+ * 
  ******************************************************************************/
 
 #include "mesh.h"

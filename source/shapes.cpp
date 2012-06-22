@@ -120,7 +120,9 @@ Box::Box(FluidSolver* parent, Vec3 center, Vec3 p0, Vec3 p1, Vec3 size)
     } else if (p0.isValid() && p1.isValid()) {
         mP0 = p0;
         mP1 = p1;
-    }
+    } else 
+		throw Error("Box: specify either p0,p1 or size,center");
+	
 }
 
 bool Box::isInside(const Vec3& pos) const {

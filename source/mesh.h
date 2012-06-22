@@ -8,6 +8,9 @@
  * http://www.gnu.org/licenses
  *
  * Meshes
+ * 
+ *  note: this is only a temporary solution, details are bound to change
+ *        long term goal is integration with Split&Merge code by Wojtan et al.
  *
  ******************************************************************************/
 
@@ -113,7 +116,9 @@ struct OneRing {
     std::set<int> tris;
 };
 
-//! Triangle mesh
+//! Triangle mesh class
+/*! note: this is only a temporary solution, details are bound to change
+          long term goal is integration with Split&Merge code by Wojtan et al.*/
 PYTHON class Mesh : public PbClass {
 public:
     PYTHON Mesh(FluidSolver* parent);

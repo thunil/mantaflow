@@ -86,6 +86,15 @@ KERNEL KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
         vel(i,j,k).y = 0;
     if (k>0 && (flags.isObstacle(i,j,k-1) || (curObstacle && flags.isFluid(i,j,k-1))))
         vel(i,j,k).z = 0;
+		
+	if (curFluid) {
+		if ((i>0 && flags.isStick(i-1,j,k)) || (i<flags.getSizeX()-1 && flags.isStick(i+1,j,k)))
+			vel(i,j,k).y = vel(i,j,k).z = 0;
+		if ((j>0 && flags.isStick(i,j-1,k)) || (j<flags.getSizeY()-1 && flags.isStick(i,j+1,k)))
+			vel(i,j,k).x = vel(i,j,k).z = 0;
+		if ((k>0 && flags.isStick(i,j,k-1)) || (k<flags.getSizeZ()-1 && flags.isStick(i,j,k+1)))
+			vel(i,j,k).x = vel(i,j,k).y = 0;
+	}
 }
 
 //! set no-stick boundary condition on walls

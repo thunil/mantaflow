@@ -19,6 +19,8 @@
 #ifdef MESHCODE
     #include "vortexpart.h"
 #endif
+// TEST
+#include "test.h"
 
 using namespace std;
 namespace Manta {
@@ -59,7 +61,7 @@ KnAdvectInGrid(ParticleSystem<S>& p, MACGrid& vel, FlagGrid& flaggrid, Real dt) 
     p[i].pos += integrateMeshMAC<mode>(p[i].pos, vel, dt);
     
     // TODO: else if(flaggrid.isObstacle(pos)) reproject
-    if (!flaggrid.isInBounds(p[i].pos,1)) 
+    if ((!flaggrid.isInBounds(p[i].pos,1) || flaggrid.isObstacle(p[i].pos)) && p[i].pos.x > 5)
         p[i].flag |= ParticleBase::PDELETE;
 }
 
@@ -143,5 +145,7 @@ void ParticleSystem<S>::velocitiesToGrid(FlagGrid& flaggrid, MACGrid& grid, bool
     // explicit instantiation
     template class ParticleSystem<VortexParticleData>;
 #endif
+template class ParticleSystem<VortexParticleData>;
+template class ParticleSystem<TracerParticleData>;
 
 } // namespace

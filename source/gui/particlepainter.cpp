@@ -18,6 +18,7 @@
 #ifdef MESHCODE
     #include "vortexpart.h"
 #endif
+#include "test.h"
 
 using namespace std;
 
@@ -90,7 +91,7 @@ void ParticlePainter::paint() {
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);
     
-#ifdef MESHCODE
+//#ifdef MESHCODE
     // draw vertex points
     if(mLocal->getType() == ParticleBase::VORTEX) {
         VortexParticleSystem* vp = (VortexParticleSystem*) mLocal;
@@ -99,14 +100,31 @@ void ParticlePainter::paint() {
         for(int i=0; i<(int)mLocal->size(); i++) {
             Vec3 pos = (*vp)[i].pos;
             
-            glPointSize((*vp)[i].sigma*4.0f);
+            if ((*vp)[i].vort > 0)
+                glColor3f(1,0.2,0);
+            else
+                glColor3f(0,0.2,1);
+        
             glBegin(GL_POINTS);
             glVertex(pos, dx);
             glEnd();
         }        
         glPointSize(1.0);
     }
-#endif
+    if(mLocal->getType() == ParticleBase::TRACER) {
+        TracerParticleSystem* vp = (TracerParticleSystem*) mLocal;
+        glPointSize(3.0);
+        for(int i=0; i<(int)mLocal->size(); i++) {
+            Vec3 pos = (*vp)[i].pos;
+            
+            glColor3f((*vp)[i].color.x,(*vp)[i].color.y,(*vp)[i].color.z);
+            glBegin(GL_POINTS);
+            glVertex(pos, dx);
+            glEnd();
+        }        
+        glPointSize(1.0);
+    }
+//#endif
 }
 
 } // namespace

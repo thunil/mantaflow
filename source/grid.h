@@ -176,7 +176,9 @@ public:
         TypeObstacle = 2,
         TypeEmpty = 4,
         TypeInflow = 8,
-        TypeOutflow = 16 };
+        TypeOutflow = 16,
+		TypeStick = 128
+	};
         
     //! access for particles
     inline int getAt(const Vec3& pos) const { return mData[index((int)pos.x, (int)pos.y, (int)pos.z)]; }
@@ -194,6 +196,10 @@ public:
     inline bool isEmpty(int i, int j, int k) { return get(i,j,k) & TypeEmpty; }
     inline bool isEmpty(const Vec3i& pos) { return get(pos) & TypeEmpty; }
     inline bool isEmpty(const Vec3& pos) { return getAt(pos) & TypeEmpty; }
+    inline bool isStick(int idx) { return get(idx) & TypeStick; }
+    inline bool isStick(int i, int j, int k) { return get(i,j,k) & TypeStick; }
+    inline bool isStick(const Vec3i& pos) { return get(pos) & TypeStick; }
+    inline bool isStick(const Vec3& pos) { return getAt(pos) & TypeStick; }
     
     // Python callables
     PYTHON void initDomain(int boundaryWidth=1);

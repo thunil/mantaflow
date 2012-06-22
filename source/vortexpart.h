@@ -1,0 +1,45 @@
+/******************************************************************************
+ *
+ * MantaFlow fluid solver framework
+ * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ *
+ * This program is free software, distributed under the terms of the
+ * GNU General Public License (GPL) 
+ * http://www.gnu.org/licenses
+ *
+ * Vortex particles
+ *
+ ******************************************************************************/
+
+#ifndef _VORTEXPART_H
+#define _VORTEXPART_H
+
+#include "particle.h"
+
+namespace Manta {
+class Mesh;
+    
+struct VortexParticleData {
+    VortexParticleData() : pos(0.0f),vorticity(0.0f),sigma(0),flag(0) {}
+    VortexParticleData(const Vec3& p, const Vec3& v, Real sig) : pos(p),vorticity(v),sigma(sig),flag(0) {}
+    Vec3 pos, vorticity;
+    Real sigma;
+    int flag;    
+    static ParticleBase::SystemType getType() { return ParticleBase::VORTEX; }
+};
+
+//! instantiate base class in python
+PYTHON template class ParticleSystem<VortexParticleData>;
+
+//! Vortex particles
+PYTHON class VortexParticleSystem : public ParticleSystem<VortexParticleData> {
+public:
+    PYTHON VortexParticleSystem(FluidSolver* parent);
+  
+    PYTHON void applyToMesh(Mesh& mesh, Real scale, int integrationMode);
+};
+
+} // namespace
+
+
+#endif
