@@ -53,7 +53,6 @@ MESSAGE("Options - "
     " -DGUI='${GUI}' "
     " -DPREPDEBUG='${PREPDEBUG}' "
     " -DCUDA='${CUDA}' "
-    " -DMESHCODE='${MESHCODE}' "
     )
 MESSAGE("")
 
@@ -183,31 +182,6 @@ if (CUDA)
     )
 endif()
 
-if(MESHCODE)
-    add_definitions(-DMESHCODE)
-	list(APPEND PP_HEADERS
-		source/edgecollapse.h
-		source/vortexsheet.h
-		source/vortexpart.h
-    )
-    list(APPEND PP_SOURCES
-        source/test.cpp    
-        source/edgecollapse.cpp
-        source/plugin/vortexplugins.cpp
-		source/vortexsheet.cpp    
-		source/vortexpart.cpp    
-        source/plugin/meshplugins.cpp    
-    )
-    if (CUDA)
-        list(APPEND PP_SOURCES 
-            source/cuda/buoyancy.cu
-            source/cuda/turbulence.cu
-            source/cuda/curlnoise.cu        
-            source/plugin/turbulence.cpp        
-        )
-    endif()
-endif()
-
 # include dirs
 SET(INCLUDE_PATHS
    source/pwrapper
@@ -275,16 +249,16 @@ endif(DOXYGEN_FOUND)
 # Link libraries
 
 # Python 3.2
+# hack: cmake can't find python3 yet
 if(APPLE)
-    #hack: cmake/mac can't find python3 for some reason
     list(APPEND INCLUDE_PATHS /Library/Frameworks/Python.framework/Versions/3.2/include/python3.2m)
     list(APPEND F_LIB_PATHS /Library/Frameworks/Python.framework/Versions/3.2/lib)
     list(APPEND F_LIBS "python3.2")
 else()
-    set(Python_ADDITIONAL_VERSIONS 3.1 3.2)
+    set(Python_ADDITIONAL_VERSIONS 3.2)
     find_package(PythonLibs REQUIRED)
     list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
-    list(APPEND F_LIBS ${PYTHON_LIBRARIES})
+    list(APPEND F_LIBS "python3.2mu")
 endif()
 
 # Z compression
@@ -304,7 +278,8 @@ if(CUDA)
     if(DEBUG)
         set(CUDA_NVCC_FLAGS -g;-ccbin;gcc-4.5;-DDEBUG;-keep;-arch=sm_20;--maxrregcount=31;--compiler-options;-Wall)
     else()
-        set(CUDA_NVCC_FLAGS -ccbin;gcc-4.5;--use_fast_math;-arch=sm_20;-DNDEBUG;--compiler-options;-Wall;-O3)       
+        #set(CUDA_NVCC_FLAGS -ccbin;gcc-4.5;--use_fast_math;-arch=sm_20;-DNDEBUG;--compiler-options;-Wall;-O3)       
+        set(CUDA_NVCC_FLAGS -ccbin;gcc-4.5;--use_fast_math;-DNDEBUG;--compiler-options;-Wall;-O3)       
     endif()    
 endif()
 

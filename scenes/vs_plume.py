@@ -1,19 +1,17 @@
 from manta import *
 import os, shutil, math
 
-scene='plume'
 res = 64
 scale = 0.2
 
 # solver params
-vc = vec3(1, 1, 1) * 1.5 * res
 gs = vec3(1,1.5,1) * res
 dx = 1/(1.5*res)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 0.5
 
-gravity = vec3(0,-0.05,0)*3
-velInflow = vec3(0,0.26,0)*2
+gravity = vec3(0,-0.15,0)
+velInflow = vec3(0,0.52,0)
 
 # prepare grids
 flags = s.create(FlagGrid)
@@ -33,7 +31,6 @@ noise.valOffset = 0.75
 noise.timeAnim = 0.2
 
 mesh = s.create(VortexSheetMesh)
-backgr = s.create(Mesh)
 
 vp = s.create(VortexParticleSystem)
 
@@ -43,9 +40,8 @@ flags.fillGrid()
 if (GUI):
     gui = Gui()
     gui.show()
-    gui.setBackgroundMesh(backgr)
 
-source = s.create(Cylinder, center=gs*vec3(0.5,0.13,0.5), radius=res*0.1*1.4, z=gs*vec3(0, 0.03, 0))
+source = s.create(Cylinder, center=gs*vec3(0.5,0.13,0.5), radius=res*0.14, z=gs*vec3(0, 0.03, 0))
 mesh.fromShape(source)
 subdivideMesh(mesh=mesh, minAngle=0.01, minLength=scale, maxLength=2*scale)
 
@@ -83,7 +79,7 @@ for t in range(250):
     
     vorticitySource(mesh=mesh, gravity=gravity, scale=0.1, maxAmount=200)
     
-    mesh.save('/home/tpfaff/tmp/plume/e%04d.bobj.gz' % t)
+    mesh.save('d%04d.bobj.gz' % t)
     s.printTimings()
     s.step()
     

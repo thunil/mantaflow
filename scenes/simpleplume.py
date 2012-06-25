@@ -3,7 +3,7 @@ import os, shutil, math
 
 # solver params
 res = 64
-gs = vec3(res,res,res)
+gs = vec3(res,1.5*res,res)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 1.0
 
@@ -30,11 +30,12 @@ if (GUI):
     gui = Gui()
     gui.show()
 
-source = s.create(Cylinder, center=gs*vec3(0.5,0.13,0.5), radius=res*0.14, z=gs*vec3(0, 0.03, 0))
+source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))
     
 #main loop
-for t in range(250):
-    densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
+for t in range(200):
+    if t<100:
+        densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
         
     #source.applyToGrid(grid=vel, value=velInflow)
     advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
@@ -45,5 +46,6 @@ for t in range(250):
     
     solvePressure(flags=flags, vel=vel, pressure=pressure)
     setWallBcs(flags=flags, vel=vel)
+    density.save('den%04d.uni' % t)
     
     s.step()
