@@ -4,6 +4,5 @@ disconnectAttr time1.outTime {$fsh+".currentTime"};
 connectAttr -f time1.outTime {$fgo+".inTime"};
 connectAttr -f {$fgo+".outTime"} {$fsh+".currentTime"};
 setAttr -type "string" {$fgo+".inFileMask"} "/tmp/d%04d.uni";
-$fo=`listRelatives -p $fsh`;
-setAttr -type "string" {$fgo+".fluid"} $fo;
+setAttr -type "string" {$fgo+".fluid"} $fsh;
 select -r $fgo;
