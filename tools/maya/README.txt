@@ -1,10 +1,10 @@
-Maya 2011 plugins for loading mesh surfaces and density grids
+Maya plugins for loading mesh surfaces and density grids
 --------------------------------------------------------------
 
 These plugins provide Maya DAG objects which automatically load a 
 frame from .bobj.gz or .uni file sequence, corresponding to the current animation frame.
 This means that only the current frame has to be held in memory.
-The building process has been tested with Maya 2010, 2011 under Windows and Linux,
+The building process has been tested with Maya 2010-2012 under Windows and Linux,
 but should also work with different versions.
 
 Installation
@@ -16,22 +16,14 @@ Installation
 This should compile and install the modules in the user's local maya directory.
 If maya is installed in a nonstandard directory, you might need to set the MAYA_LOCATION
 environment variable or edit buildconfig.linux
+This will build the plugins and copy them in the user plugin directory
 
 2. Windows
 
-TODO
-
-* Download the binaries from the attachement.  Copy bobjFluidObject.mll to a
-* directory which is in MAYA_PLUG_IN_PATH (e.g. "My Documents\maya\plug-ins").
-* Copy AEbobjFluidObjectTemplate.mel to a directory which is in
-* MAYA_SCRIPT_PATH (e.g. "My Documents\maya\scripts").  If you start Maya now,
-* bobjFluidObject.mll should be listed in the Plug-in manager in Maya
-* ("Windows -> Settings/Preferences -> Plug-in Manager") 
-
-To compile the source code, you'll need zlib. Visual Studio 2008 project files
-are included, if you need something else, check the Maya help (under "Developer
-Resources -> API Guide -> Setting up your build environment") or use one
-of the samples from the Maya devkit as basis.
+For Maya2012 x64, you can use the prebuilt .mll files in this directory. For other setups,
+you will need to build them using the provided MSVC projects (you will need zlib to compile).
+Copy The .mll files to a plugin path (e.g. "My Documents\maya\plug-ins"), and the .mel files
+to a script path (e.g. "My Documents\maya\scripts"). 
 
 
 Usage
