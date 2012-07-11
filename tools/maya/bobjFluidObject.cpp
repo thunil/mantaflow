@@ -49,11 +49,11 @@ static const bool useNormals = false;
 MStatus returnStatus;
 
 // debugging manually on/off
-#ifndef DEBUG
-#define DEBUG 1
+#ifndef DODEBUG
+#define DODEBUG 1
 #endif // DEBUG
 
-#if defined(_DEBUG)||defined(DEBUG)
+#if defined(_DEBUG)||defined(DODEBUG)
 #define debMsg(x) std::cerr<<"bobjFluidObject: "<<x<<std::endl;
 #else
 #define debMsg(x)
