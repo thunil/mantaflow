@@ -1,5 +1,4 @@
 from manta import *
-import os, shutil, math
 
 # solver params
 res = 64
