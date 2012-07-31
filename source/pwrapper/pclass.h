@@ -148,8 +148,8 @@ struct PbRegisterExtInit {
 
 // Define plugin documentation group
 // all plugin functions and classes will automatically be added to this group
-//! \defgroup Plugins Plugin functions and classes
-//! \defgroup PyClasses Classes exposed to Python
+//! @defgroup Plugins Plugins
+//! @defgroup PyClasses Classes exposed to Python
        
 } // namespace        
 

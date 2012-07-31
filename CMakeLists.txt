@@ -18,12 +18,17 @@ SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 SET(VERBOSE 1) 
 
 #******************************************************************************
-# setup vars
+# setup default params
 
 IF(NOT CMAKE_BUILD_TYPE) 
-	SET(CMAKE_BUILD_TYPE "Release") 
+    SET(CMAKE_BUILD_TYPE "Release") 
 ELSE()
-	MESSAGE("Build-type: '${CMAKE_BUILD_TYPE}'")
+    MESSAGE("Build-type: '${CMAKE_BUILD_TYPE}'")
+ENDIF()
+IF(NOT CMAKE_PREFIX_PATH)
+    IF(WIN32)
+	    SET(CMAKE_PREFIX_PATH "c:/program files (x86)/gnuwin32")
+    ENDIF()
 ENDIF()
 
 # compilation versions
@@ -70,10 +75,6 @@ SET(SOURCES
 add_executable(prep ${SOURCES})
 if (NOT WIN32)
 	set_target_properties(prep PROPERTIES COMPILE_FLAGS "-Wall -O2")
-else()
-	# make sure prep.exe is put into the source build directory for windows
-	set_target_properties(prep PROPERTIES DEBUG_OUTPUT_NAME "../prep")
-	set_target_properties(prep PROPERTIES RELEASE_OUTPUT_NAME "../prep")
 endif()
 
 #******************************************************************************
@@ -217,19 +218,16 @@ endif()
 #******************************************************************************
 # add a target to generate API documentation with Doxygen
 
-#SET(PREP_EXE ./prep)
-SET(PREP_EXE "${CMAKE_CURRENT_BINARY_DIR}/prep")
-
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
     set(DX_PATH "doxy")
-    foreach(it ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${QT_HEADERS} ${PP_HEADERS})
+    foreach(it ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${QT_HEADERS} ${NOPP_HEADERS})
         get_filename_component(CURPATH ${it} PATH)
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${DX_PATH}/${CURPATH}")
         set(CURDX "${DX_PATH}/${it}")
         string(REPLACE "/" "_" TGT ${CURDX})
         add_custom_command(OUTPUT ${TGT} 
-                        COMMAND "${PREP_EXE}" docgen "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURDX}"
+                        COMMAND prep docgen "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURDX}"
                         DEPENDS prep
                         IMPLICIT_DEPENDS CXX ${it}
                         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -258,7 +256,8 @@ else()
     set(Python_ADDITIONAL_VERSIONS 3.2)
     find_package(PythonLibs REQUIRED)
     list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
-    list(APPEND F_LIBS "python3.2mu")
+    #list(APPEND F_LIBS "python3.2mu")
+	list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 endif()
 
 # Z compression
@@ -305,7 +304,7 @@ foreach(it ${PP_SOURCES} ${PP_HEADERS} ${QT_HEADERS})
     set(CURPP "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${it}")
     # preprocessor
     add_custom_command(OUTPUT ${CURPP}
-                       COMMAND "${PREP_EXE}" generate ${PP_PREPD} ${PP_USEMT} "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURPP}"
+                       COMMAND prep generate ${PP_PREPD} ${PP_USEMT} "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURPP}"
                        DEPENDS prep
                        IMPLICIT_DEPENDS CXX ${it}
                        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -315,7 +314,7 @@ endforeach(it)
 
 # merge reg files
 add_custom_command(OUTPUT ${PP_REGISTRY}
-                  COMMAND ./prep merge ${PP_REGISTRY} ${PP_REGS}
+                  COMMAND prep merge ${PP_REGISTRY} ${PP_REGS}
                   DEPENDS prep ${SOURCES}
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 set_source_files_properties(${PP_REGISTRY} PROPERTIES GENERATED 1)
@@ -377,13 +376,7 @@ ELSE()
     # double <> single precision
     add_definitions( /wd4244 /wd4305 )
     # disable warnings for unsecure functions 
-    add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )
-
-	# add no-build target to create nice MSVC folder
-	#add_executable(Sources EXCLUDE_FROM_ALL ${PP_SOURCES} ${PP_HEADERS} ${QT_HEADERS} ${NOPP_HEADERS} ${NOPP_SOURCES})
-	#source_group(Headers FILES ${PP_HEADERS} ${NOPP_HEADERS})
-	#source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES})
-	
+    add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )	
 ENDIF()
 
 SET(EXECCMD manta)
@@ -402,15 +395,20 @@ if(CUDA)
 else()
 	if (WIN32)
 		# make nice folders for Visual Studio
-		set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE) 
-		source_group(Preprocessed FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})
-		source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES})
-		source_group(Headers FILES ${PP_HEADERS} ${NOPP_HEADERS})
+		set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} ${NOPP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE) 
 		add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${PP_SOURCES} ${PP_HEADERS})
+		source_group(Generated FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})		
 	else()
     	add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY})
 	endif()
 	target_link_libraries( ${EXECCMD} ${F_LIBS} )
+endif()
+
+if(WIN32)
+	# add no-build target to create nice MSVC folder
+	add_custom_target(SourceFiles SOURCES ${PP_SOURCES} ${PP_HEADERS} ${QT_HEADERS} ${NOPP_HEADERS} ${NOPP_SOURCES})
+	source_group(Headers FILES ${PP_HEADERS} ${NOPP_HEADERS} ${QT_HEADERS})
+	source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES})	
 endif()
 
 # debug

@@ -79,9 +79,18 @@ void GuiThread::exitApp() {
 
 void guiMain(int argc, char* argv[]) {
     QApplication app(argc, argv);
-    GuiThread gui(app);
-    vector<string> args;
+    
+	// parse arguments
+	vector<string> args;
     for (int i=1;i<argc;i++) args.push_back(argv[i]);
+	
+	// Show file dialog if no argument is present
+	if (argc <= 1) {
+		QString filename = QFileDialog::getOpenFileName(0, "Open scene file", "", "Python scene files (*.py)");
+		args.push_back(filename.toAscii().data());
+	}
+	
+    GuiThread gui(app);
     MainThread worker(args);
     
     gGuiThread = &gui;
@@ -94,6 +103,7 @@ void guiMain(int argc, char* argv[]) {
     QObject::connect(gui.getWindow(), SIGNAL(exitApp()), &gui, SLOT(exitApp()));
     app.setQuitOnLastWindowClosed(true);
         
+	// Start main program threads
     worker.start();
     app.exec();
 }

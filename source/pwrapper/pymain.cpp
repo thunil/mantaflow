@@ -74,17 +74,19 @@ void runScript(vector<string>& args) {
 }
 
 int main(int argc,char* argv[]) {
+
+#ifdef GUI
+    guiMain(argc, argv);    
+#else
     if (argc<=1) {
         cerr << "Usage : Syntax is 'manta <config.py>'" << endl;  
         return 1;
     }
 
-#ifdef GUI
-    guiMain(argc, argv);    
-#else
     vector<string> args;
     for (int i=1; i<argc; i++) args.push_back(argv[i]);
     runScript(args);
 #endif        		
+
 	return 0;
 }

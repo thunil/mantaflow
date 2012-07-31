@@ -80,7 +80,7 @@ struct ParticleKernelBase {
 
 // Define plugin documentation group
 // all kernels will automatically be added to this group
-/*! @defgroup Kernels Grid data Kernels
+/*! @defgroup Kernels Computation Kernels
  */
 
 #endif
