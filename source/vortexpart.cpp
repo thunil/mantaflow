@@ -60,7 +60,7 @@ struct VortexKernel {
 };
     
 VortexParticleSystem::VortexParticleSystem(FluidSolver* parent) :
-    ParticleSystem(parent)
+    ParticleSystem<VortexParticleData>(parent)
 { 
 }
 
