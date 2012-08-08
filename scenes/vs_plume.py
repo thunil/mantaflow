@@ -1,8 +1,11 @@
 #
 # Example scene for mesh-based smoke simulations using Vortex Sheets
+# ( http://graphics.ethz.ch/publications/papers/paperPfa12.php )
 #
+# This example requires CUDA to run
 
 from manta import *
+assert(CUDA), 'Requires CUDA. Please compile with -DCUDA=ON'
 
 res = 64
 scale = 0.2
