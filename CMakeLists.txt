@@ -90,12 +90,12 @@ SET(PP_SOURCES
     source/fluidsolver.cpp
     source/conjugategrad.cpp
     source/grid.cpp
-    source/particle.cpp
     source/levelset.cpp
     source/fastmarch.cpp
     source/shapes.cpp
     source/mesh.cpp
     source/general.cpp
+    source/flip.cpp
     source/fileio.cpp   
     source/noisefield.cpp
     source/kernel.cpp
@@ -128,6 +128,7 @@ SET(PP_HEADERS
     source/vortexsheet.h
     source/general.h
     source/kernel.h
+    source/flip.h
     source/fileio.h
     source/edgecollapse.h
     source/vortexpart.h
