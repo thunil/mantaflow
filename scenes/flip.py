@@ -37,8 +37,9 @@ for t in range(200):
     
     # FLIP advect and writeback
     flip.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4)
-    flip.velocitiesToGrid(vel=vel)
+    flip.velocitiesToGrid(vel=vel, flags=flags)
     flip.adjustNumber(vel=vel, flags=flags, minParticles=6, maxParticles=12)
+    #advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
     
     addGravity(flags=flags, vel=vel, gravity=(0,-0.002,0))
     
