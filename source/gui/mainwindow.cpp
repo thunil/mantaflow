@@ -46,7 +46,7 @@ MainWnd::MainWnd() : mPaused(false), mRequestPause(false), mRequestClose(false),
     mPainter.push_back(new GridPainter<Vec3>(NULL, this));    
     mPainter.push_back(intPainter);
     MeshPainter* ptr = new MeshPainter(this);
-    mPainter.push_back(new ParticlePainter(this));
+    mPainter.push_back(new ParticlePainter(intPainter, this));
     mPainter.push_back(ptr);    
     connect(this, SIGNAL(setBackgroundMesh(Mesh*)), ptr, SLOT(setBackgroundMesh(Mesh*)));
     for (int i=0; i<(int)mPainter.size(); i++) {

@@ -104,8 +104,6 @@ void doGenerate(int argc, char* argv[], bool docs) {
 	gDebugMode = false; if (!docs) gDebugMode = atoi(argv[2]) != 0;
     gUseMT     = false; if (!docs) gUseMT     = atoi(argv[3]) != 0;
 
-	bool addLineWarnings = false;
-    
     // load complete file into buffer    
     string text = readFile(infile);
     if (text.empty()) {

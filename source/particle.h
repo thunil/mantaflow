@@ -136,7 +136,7 @@ void ParticleSystem<S>::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integ
 }
 
 template<class S>
-void ParticleSystem<S>::compress() {
+void ParticleSystem<S>::compress() { return;
     int nextRead = mData.size();
     for (size_t i=0; i<mData.size(); i++) {
         while ((mData[i].flag & PDELETE) != 0) {
@@ -148,7 +148,7 @@ void ParticleSystem<S>::compress() {
     mData.resize(nextRead);
     mDeletes = 0;
     mDeleteChunk = mData.size() / DELETE_PART;
-    mSize = mData.size();
+    mSize = mData.size();    
 }
 
 template<class S>

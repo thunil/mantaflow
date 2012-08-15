@@ -126,6 +126,9 @@ KERNEL(bnd=1) KnSetLiquidBcs(FlagGrid& flags, MACGrid& vel) {
 
 //! set boundary conditions at empty cells
 PLUGIN void setLiquidBcs(FlagGrid& flags, MACGrid& vel) {
+    FOR_IDX(flags) {
+        if (flags.isEmpty(idx)) vel[idx]=0.0f;
+    }
     KnSetLiquidBcs(flags, vel);
 } 
 

@@ -1,6 +1,6 @@
 #
-# Simple example scene (hello world)
-# Simulation of a buoyant smoke density plume
+# Simple example for free-surface simulation
+# with FLIP advection
 
 from manta import *
 
@@ -8,13 +8,14 @@ from manta import *
 res = 64
 gs = vec3(res,res,res)
 s = Solver(name='main', gridSize = gs)
-s.timestep = 1.0
+s.timestep = 0.3
 
-# prepare grids
+# prepare grids and particles
 flags = s.create(FlagGrid)
 vel = s.create(MACGrid)
 phi = s.create(LevelsetGrid)
 pressure = s.create(RealGrid)
+flip = s.create(FlipSystem)
 
 # scene setup
 flags.initDomain()
@@ -25,22 +26,30 @@ flags.updateFromLevelset(phi)
 if (GUI):
     gui = Gui()
     gui.show()
-    #bgr = s.create(Mesh)
-    #bgr.fromShape(fluidbox)
     
 #main loop
 for t in range(200):
     
+    # update and advect levelset
     phi.reinitMarching(flags)
     advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
     flags.updateFromLevelset(phi)
-    advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+    
+    # FLIP advect and writeback
+    flip.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4)
+    flip.velocitiesToGrid(vel=vel)
+    flip.adjustNumber(vel=vel, flags=flags, minParticles=6, maxParticles=12)
+    
     addGravity(flags=flags, vel=vel, gravity=(0,-0.002,0))
     
+    # pressure solve
     setWallBcs(flags=flags, vel=vel)    
-    setLiquidBcs(flags=flags, vel=vel)    
+    setLiquidBcs(flags=flags, vel=vel)
     solvePressure(flags=flags, vel=vel, pressure=pressure)
     setLiquidBcs(flags=flags, vel=vel)    
     setWallBcs(flags=flags, vel=vel)
     
+    # FLIP load
+    flip.velocitiesFromGrid(vel=vel, flags=flags, flipRatio=0)
+        
     s.step()

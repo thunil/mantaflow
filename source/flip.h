@@ -37,10 +37,10 @@ public:
     PYTHON FlipSystem(FluidSolver* parent) : ParticleSystem<FlipData>(parent), mOldVel(parent), mRand(1238943) {}
   
     //! Copy velocities from grid with given PIC/FLIP ratio
-    PYTHON void velocitiesFromGrid(MACGrid& vel, Real flipRatio=0.95);
+    PYTHON void velocitiesFromGrid(FlagGrid& flags, MACGrid& vel, Real flipRatio=0.95);
 	//! Write back velocities to grid
     PYTHON void velocitiesToGrid(MACGrid& vel);
-	PYTHON void adjustNumber(MACGrid& vel);
+	PYTHON void adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles=8, int maxParticles=12);
     
 private:
 	MACGrid mOldVel;

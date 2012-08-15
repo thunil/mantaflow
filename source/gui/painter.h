@@ -77,6 +77,9 @@ public:
     void paint();
     void attachWidget(QLayout* layout);
     Grid<T>** getGridPtr() { return &mLocalGrid; }
+    int getPlane() { return mPlane; }
+    int getDim() { return mDim; }
+    int getMax() { return mMax; }
 protected:
     std::string getID();
     Real getScale();
