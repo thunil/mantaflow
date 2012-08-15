@@ -24,6 +24,8 @@ public:
     PYTHON LevelsetGrid(FluidSolver* parent, bool show = true);
     
     PYTHON void reinitMarching(FlagGrid& flags, Real maxTime=4.0, MACGrid* velTransport=NULL, bool ignoreWalls=false, bool correctOuterLayer=true);
+    
+    static Real invalidTimeValue();
 };
 
 } //namespace
