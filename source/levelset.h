@@ -17,13 +17,19 @@
 #include "grid.h"
 
 namespace Manta {
+class Mesh;
 
 //! Special function for levelsets
 PYTHON class LevelsetGrid : public Grid<Real> {
 public:
     PYTHON LevelsetGrid(FluidSolver* parent, bool show = true);
     
+    //! reconstruct the levelset using fast marching
     PYTHON void reinitMarching(FlagGrid& flags, Real maxTime=4.0, MACGrid* velTransport=NULL, bool ignoreWalls=false, bool correctOuterLayer=true);
+    //! create a triangle mesh from the levelset isosurface
+    PYTHON void createMesh(Mesh& mesh);
+    
+    static Real invalidTimeValue();
 };
 
 } //namespace

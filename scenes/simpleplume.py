@@ -1,3 +1,7 @@
+#
+# Simple example scene (hello world)
+# Simulation of a buoyant smoke density plume
+
 from manta import *
 
 # solver params

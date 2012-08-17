@@ -370,7 +370,7 @@ PLUGIN void subdivideMesh(Mesh& mesh, Real minAngle, Real minLength, Real maxLen
             const int nt = haveB ? 4 : 2;
             int triA1 = mesh.numTris()-nt;
             int triA2 = mesh.numTris()-nt+1;            
-            int triB1, triB2;
+            int triB1=0, triB2=0;
             if (haveB) {
                 triB1 = mesh.numTris()-nt+2;
                 triB2 = mesh.numTris()-nt+3;
@@ -445,7 +445,7 @@ PLUGIN void subdivideMesh(Mesh& mesh, Real minAngle, Real minLength, Real maxLen
             }
             
             Real areaA1 = mesh.getFaceArea(triA1), areaA2 = mesh.getFaceArea(triA2);
-            Real areaB1, areaB2;
+            Real areaB1=0, areaB2=0;
             if (haveB) {
                 areaB1 = mesh.getFaceArea(triB1);
                 areaB2 = mesh.getFaceArea(triB2);                

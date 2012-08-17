@@ -16,14 +16,14 @@
 #include <sstream>
 #include <iomanip>
 #include "vortexpart.h"
-//#include "test.h"
+#include "flip.h"
 
 using namespace std;
 
 namespace Manta {
 
-ParticlePainter::ParticlePainter(QWidget* par) 
-    : LockedObjPainter(par), mHide(false), mLocal(0)
+ParticlePainter::ParticlePainter(GridPainter<int>* gridRef, QWidget* par) 
+    : LockedObjPainter(par), mHide(false), mLocal(0), mGridRef(gridRef)
 {    
     mInfo = new QLabel();
 }
@@ -85,24 +85,51 @@ void ParticlePainter::paint() {
     if (!mObject || mHide) return;
     float dx = mLocal->getParent()->getDx();
     
+    Real scale = 0.4;
+    
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);
     
-//#ifdef MESHCODE
-    // draw vertex points
+    // obtain current plane
+    int dim = mGridRef->getDim();
+    Real factor = mGridRef->getMax() / mLocal->getParent()->getGridSize()[dim];
+    int plane = factor * mGridRef->getPlane();
+    
+    // draw points
     if(mLocal->getType() == ParticleBase::VORTEX) {
         VortexParticleSystem* vp = (VortexParticleSystem*) mLocal;
         glColor3f(1,1,0);
         for(int i=0; i<(int)mLocal->size(); i++) {
-            Vec3 pos = (*vp)[i].pos;
+            if (vp->isActive(i)) {
+                Vec3 pos = (*vp)[i].pos;
             
-            glPointSize((*vp)[i].sigma);
+                glPointSize((*vp)[i].sigma);
 
-            glBegin(GL_POINTS);
-            glVertex(pos, dx);
-            glEnd();
+                glBegin(GL_POINTS);
+                glVertex(pos, dx);
+                glEnd();
+            }
         }        
+        glPointSize(1.0);
+    } else if (mLocal->getType() == ParticleBase::FLIP) {
+        FlipSystem* fp = (FlipSystem*) mLocal;
+        glColor3f(0,1,1);
+        glPointSize(1.0);
+        glBegin(GL_LINES);
+            
+        for(int i=0; i<(int)mLocal->size(); i++) {
+            if (fp->isActive(i)) {
+                Vec3 pos = (*fp)[i].pos;
+                Vec3 vel = (*fp)[i].vel;
+            
+                if (pos[dim] >= plane && pos[dim] <= plane + 1.0f) {
+                    glVertex(pos, dx);
+                    glVertex(pos + vel * scale, dx);                    
+                }
+            }
+        }   
+        glEnd();
         glPointSize(1.0);
     }
     /*if(mLocal->getType() == ParticleBase::TRACER) {

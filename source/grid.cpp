@@ -12,6 +12,7 @@
  ******************************************************************************/
 
 #include "grid.h"
+#include "levelset.h"
 #include "kernel.h"
 #include <limits>
 #include <sstream>
@@ -220,12 +221,30 @@ template<class T> void Grid<T>::add(const Grid<T>& a, const Grid<T>& b) {
 // Specialization classes
 
 void FlagGrid::initDomain(int boundaryWidth) {
-	const int w = boundaryWidth;
+    memset(mData, TypeEmpty, sizeof(int) * mSize.x * mSize.y * mSize.z);    
+    initBoundaries(boundaryWidth);
+}
+
+void FlagGrid::initBoundaries(int boundaryWidth) {
+    const int w = boundaryWidth;
     FOR_IJK(*this) {
         bool bnd = (i<=w || i>=mSize.x-1-w || j<=w || j>=mSize.y-1-w || k<=w || k>=mSize.z-1-w);
-        mData[index(i,j,k)] = bnd ? TypeObstacle : TypeEmpty;
+        if (bnd) 
+            mData[index(i,j,k)] = TypeObstacle;
     }
 }
+
+void FlagGrid::updateFromLevelset(LevelsetGrid& levelset) {
+    FOR_IDX(*this) {
+        if (!isObstacle(idx)) {
+            const Real phi = levelset[idx];
+            if (phi <= levelset.invalidTimeValue()) continue;
+            
+            mData[idx] &= ~(TypeEmpty | TypeFluid); // clear empty/fluid flags
+            mData[idx] |= (phi <= 0) ? TypeFluid : TypeEmpty; // set resepctive flag
+        }
+    }
+}   
 
 void FlagGrid::fillGrid() {
     FOR_IDX(*this) {

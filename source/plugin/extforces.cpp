@@ -102,6 +102,36 @@ PLUGIN void setWallBcs(FlagGrid& flags, MACGrid& vel) {
     KnSetWallBcs(flags, vel);
 } 
 
+//! set boundary conditions at empty cells
+KERNEL(bnd=1) KnSetLiquidBcs(FlagGrid& flags, MACGrid& vel) {
+    if (!flags.isFluid(i,j,k)) return;
+    
+    // init empty cells from fluid
+    if (flags.isEmpty(i+1,j,k)) 
+        vel(i+1,j,k).x = vel(i,j,k).x;
+    if (flags.isEmpty(i,j+1,k)) 
+        vel(i,j+1,k).y = vel(i,j,k).y;
+    if (flags.isEmpty(i,j,k+1)) 
+        vel(i,j,k+1).z = vel(i,j,k).z;
+    
+    // "left" sides of fluid - fluid cells neighboring
+    // empty cells along neg. dir, get velocities from fluid 
+    if (flags.isEmpty(i-1,j,k) && flags.isFluid(i+1,j,k)) 
+        vel(i,j,k).x = vel(i+1,j,k).x;
+    if (flags.isEmpty(i,j-1,k) && flags.isFluid(i,j+1,k)) 
+        vel(i,j,k).y = vel(i,j+1,k).y;
+    if (flags.isEmpty(i,j,k-1) && flags.isFluid(i,j,k+1)) 
+        vel(i,j,k).z = vel(i,j,k+1).z;
+}
+
+//! set boundary conditions at empty cells
+PLUGIN void setLiquidBcs(FlagGrid& flags, MACGrid& vel) {
+    FOR_IDX(flags) {
+        if (flags.isEmpty(idx)) vel[idx]=0.0f;
+    }
+    KnSetLiquidBcs(flags, vel);
+} 
+
 //! Kernel: gradient norm operator
 KERNEL(bnd=1) KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
     Vec3 grad = 0.5 * Vec3( grid(i+1,j,k)-grid(i-1,j,k), grid(i,j+1,k)-grid(i,j-1,k), grid(i,j,k+1)-grid(i,j,k-1));

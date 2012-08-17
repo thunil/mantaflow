@@ -20,6 +20,7 @@
 #include "kernel.h"
 
 namespace Manta {
+class LevelsetGrid;
     
 //! Base class for all grids
 PYTHON class GridBase : public PbClass {
@@ -203,6 +204,8 @@ public:
     
     // Python callables
     PYTHON void initDomain(int boundaryWidth=1);
+    PYTHON void initBoundaries(int boundaryWidth=1);
+    PYTHON void updateFromLevelset(LevelsetGrid& levelset);    
     PYTHON void fillGrid();
 };
 

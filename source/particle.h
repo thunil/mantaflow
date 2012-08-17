@@ -67,14 +67,6 @@ public:
     //! Advect particle in grid velocity field
     PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
     
-    /*
-     * for FLIP
-    //! Sample velocity from grid. Requires vel field
-    void velocitiesToGrid(FlagGrid& flaggrid, MACGrid& grid, bool setFlags);
-    //! Reproject velocity to grid. Requires vel field
-    void velocitiesFromGrid(MACGrid& grid, bool differential);
-    */
-    
     virtual ParticleBase* clone();
     
     protected:  
@@ -156,7 +148,7 @@ void ParticleSystem<S>::compress() {
     mData.resize(nextRead);
     mDeletes = 0;
     mDeleteChunk = mData.size() / DELETE_PART;
-    mSize = mData.size();
+    mSize = mData.size();    
 }
 
 template<class S>
@@ -170,42 +162,6 @@ ParticleBase* ParticleSystem<S>::clone() {
     return nm;
 }
 
-/* for FLIP 
- * 
-//! Set velocities on a particle system from grid
-KERNEL(pts) template<class S>
-CopyVelocitiesFromGrid(ParticleSystem<S>& p, MACGrid& vel, bool differential) {
-    if (!p.isActive(i)) return;
-    
-    Vec3 v = vel.getInterpolated(p[i].pos);
-    if (differential)
-        p[i].vel += v;
-    else
-        p[i].vel = v;
-}
-
-template<class S>
-void ParticleSystem<S>::velocitiesFromGrid(MACGrid& grid, bool differential) {
-    CopyVelocitiesFromGrid<S>(*this, grid, differential);
-}
-
-//! Set velocities on the grid from the particle system
-KERNEL(pts) template<class S> 
-CopyVelocitiesToGrid(ParticleSystem<S>& p, MACGrid& vel, Grid<Vec3>& tmp, FlagGrid& flaggrid, bool setFlags) {
-    if (!p.isActive(i)) return;
-    
-    vel.setInterpolated(p[i].pos, p[i].vel, &tmp[0]);
-    if (setFlags) 
-        flaggrid(toVec3i(p[i].pos)) = FlagGrid::TypeFluid;        
-}
-
-template<class S>
-void ParticleSystem<S>::velocitiesToGrid(FlagGrid& flaggrid, MACGrid& grid, bool setFlags) {
-    Grid<Vec3> tmp(mParent);
-    CopyVelocitiesToGrid<S>(*this, grid, tmp, flaggrid, setFlags);
-    grid.safeDivide(tmp);
-}
-*/
 } // namespace
 
 

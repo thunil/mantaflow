@@ -60,6 +60,11 @@ void Mesh::clear() {
     mNodes.clear();
     mTris.clear();
     mCorners.clear();    
+    m1RingLookup.clear();
+    for(size_t i=0; i<mNodeChannels.size(); i++)
+        mNodeChannels[i]->resize(0);
+    for(size_t i=0; i<mTriChannels.size(); i++)
+        mTriChannels[i]->resize(0);
 }
 
 Mesh& Mesh::operator=(const Mesh& o) {

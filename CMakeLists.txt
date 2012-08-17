@@ -90,12 +90,12 @@ SET(PP_SOURCES
     source/fluidsolver.cpp
     source/conjugategrad.cpp
     source/grid.cpp
-    source/particle.cpp
     source/levelset.cpp
     source/fastmarch.cpp
     source/shapes.cpp
     source/mesh.cpp
     source/general.cpp
+    source/flip.cpp
     source/fileio.cpp   
     source/noisefield.cpp
     source/kernel.cpp
@@ -128,6 +128,7 @@ SET(PP_HEADERS
     source/vortexsheet.h
     source/general.h
     source/kernel.h
+    source/flip.h
     source/fileio.h
     source/edgecollapse.h
     source/vortexpart.h
@@ -365,7 +366,7 @@ IF(NOT WIN32)
         #SET(CMAKE_CXX_FLAGS_DEBUG " -O0 -fno-inline ${CMAKE_CXX_FLAGS_DEBUG}   ")              
     ELSE()
         # non-debug, optimized version
-        add_definitions( -O3 )
+        add_definitions( -O3 -Wall -Wno-reorder)
     ENDIF()
 ELSE()
     # get rid of some MSVC warnings

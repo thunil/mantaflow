@@ -352,9 +352,11 @@ template<> void GridPainter<Real>::paint() {
             }
         }
         
-        getCellCoordinates(p, box, mDim);
-        for (int n=0;n<4;n++) 
-            glVertex(box[n], dx);
+        if ((flag & FlagGrid::TypeEmpty) == 0) {
+            getCellCoordinates(p, box, mDim);
+            for (int n=0;n<4;n++) 
+                glVertex(box[n], dx);
+        }
     }
     glEnd();    
     //glDepthFunc(GL_ALWAYS);    
