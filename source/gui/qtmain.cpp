@@ -115,7 +115,7 @@ void guiWaitFinish() {
     if (gGuiThread->getWindow()->closeRequest())
         return;
     
-    /*gMainThread->sendAndWait((int)MainWnd::EventFinalUpdate);
+    gMainThread->sendAndWait((int)MainWnd::EventFinalUpdate);
     gGuiThread->getWindow()->pause();
     while (gGuiThread->getWindow()->pauseRequest())
         gMainThread->threadSleep(10);    */

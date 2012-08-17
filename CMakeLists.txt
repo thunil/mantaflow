@@ -366,7 +366,7 @@ IF(NOT WIN32)
         #SET(CMAKE_CXX_FLAGS_DEBUG " -O0 -fno-inline ${CMAKE_CXX_FLAGS_DEBUG}   ")              
     ELSE()
         # non-debug, optimized version
-        add_definitions( -O3 )
+        add_definitions( -O3 -Wall -Wno-reorder)
     ENDIF()
 ELSE()
     # get rid of some MSVC warnings

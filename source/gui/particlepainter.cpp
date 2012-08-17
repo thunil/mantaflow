@@ -85,6 +85,8 @@ void ParticlePainter::paint() {
     if (!mObject || mHide) return;
     float dx = mLocal->getParent()->getDx();
     
+    Real scale = 0.4;
+    
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);
@@ -123,7 +125,7 @@ void ParticlePainter::paint() {
             
                 if (pos[dim] >= plane && pos[dim] <= plane + 1.0f) {
                     glVertex(pos, dx);
-                    glVertex(pos + vel, dx);                    
+                    glVertex(pos + vel * scale, dx);                    
                 }
             }
         }   
