@@ -111,7 +111,6 @@ SET(PP_SOURCES
     source/plugin/vortexplugins.cpp
     source/python/defines.py
     #source/test.cpp
-    
 )
 
 SET(PP_HEADERS
