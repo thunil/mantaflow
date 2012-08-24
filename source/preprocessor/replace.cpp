@@ -533,7 +533,7 @@ string processPythonClass(int lb, const string& name, const vector<Argument>& op
     if (templArgs.empty())
         registry = "PbWrapperRegistry::instance().addClass(\"" + pname + "\", \"" + name + "\", \"" + baseclass + "\");";
     else
-        registry = "@template " + name + " PbWrapperRegistry::instance().addClass(\"$" + name + "\", \"" + name + "<$>\", \"" + baseclass + "\");";
+        registry = "@template " + name + " PbWrapperRegistry::instance().addClass(\"@\", \"" + name + "<$>\", \"" + baseclass + "\");";
     
     // register class
     if (isHeader) {
@@ -586,7 +586,7 @@ string processPythonClass(int lb, const string& name, const vector<Argument>& op
 
 set<string> gAliasRegister;
 string processPythonInstantiation(int lb, const string& name, const std::vector<Argument>& templArgs, const string& aliasname, int) {
-    gRegText += "@instance " + name + " " + listArgs(templArgs) + "\n";
+    gRegText += "@instance " + name + " " + listArgs(templArgs) + " " + aliasname + "\n";
     gRegText += createConverters(name + "<" + listArgs(templArgs) + ">", "", " ", "\n");
     
     if (gAliasRegister.find(aliasname) == gAliasRegister.end()) {

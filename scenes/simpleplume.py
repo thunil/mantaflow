@@ -11,10 +11,10 @@ s = Solver(name='main', gridSize = gs)
 s.timestep = 1.0
 
 # prepare grids
-flags = s.create(FlagGrid)
-vel = s.create(MACGrid)
-density = s.create(RealGrid)
-pressure = s.create(RealGrid)
+flags = s.create(FlagGrid3)
+vel = s.create(MACGrid3)
+density = s.create(RealGrid3)
+pressure = s.create(RealGrid3)
 
 # noise field
 noise = s.create(NoiseField)

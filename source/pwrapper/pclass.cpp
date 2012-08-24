@@ -112,6 +112,7 @@ static PyObject* zeroGetter(PyObject* self, void* closure) {
 }
 
 void PbWrapperRegistry::addClass(const string& pythonName, const string& internalName, const string& baseclass) {
+    cout << pythonName << " [" << internalName << " : " << baseclass << "]" << endl;
     // store class info
     PbClassData* data = new PbClassData;
     data->pythonName = pythonName;
