@@ -15,7 +15,6 @@
 #include "vortexsheet.h"
 #include "vortexpart.h"
 #include "shapes.h"
-#include "noisefield.h"
 #include "commonkernels.h"
 #include "conjugategrad.h"
 #include "randomstream.h"
@@ -117,41 +116,6 @@ PLUGIN void vorticitySource(VortexSheetMesh& mesh, Vec3 gravity,
     }
     
     cout << "vorticity: max " << maxV << " / mean " << meanV/mesh.numTris() << endl;
-}
-
-//! Apply noise to grid
-KERNEL KnApplyNoise(FlagGrid& flags, Grid<Real>& dens, WaveletNoiseField& noise, Grid<Real>& sdf, Real scale, Real sigma) 
-{
-    if (!flags.isFluid(i,j,k) || sdf(i,j,k) > sigma) return;
-    Real factor = clamp(1.0f-0.5f/sigma * (sdf(i,j,k)+sigma), 0.0f, 1.0f);
-    
-    Real target = noise.evaluate(Vec3(i,j,k)) * scale * factor;
-    if (dens(i,j,k) < target)
-        dens(i,j,k) = target;
-}
-
-//! Init noise-moduled density inside shape
-PLUGIN void densityNoiseInflow(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Shape* shape, Real scale=1.0, Real sigma=0)
-{
-    Grid<Real> sdf(parent);
-    shape->computeLevelset(sdf);
-    KnApplyNoise(flags, density, noise, sdf, scale, sigma);
-}
-
-
-Real inline cotan(const Vec3& a, const Vec3& b) {
-    Vec3 na = getNormalized(a);
-    Vec3 nb = getNormalized(b);
-    Real c = dot(na,nb);
-    Real s = norm(cross(na,nb));
-    return c/s;
-}
-Vec3 inline circumcenter(const Vec3& p1, const Vec3& p2, const Vec3& p3) {
-    Real d = 0.5f/normSquare(cross(p1-p2,p2-p3));
-    Real w1 = normSquare(p2-p3)*dot(p1-p2,p1-p3);
-    Real w2 = normSquare(p1-p3)*dot(p2-p1,p2-p3);
-    Real w3 = normSquare(p1-p2)*dot(p3-p1,p3-p2);
-    return d*(w1*p1 + w2*p2 + w3*p3);
 }
 
 PLUGIN void smoothVorticity(VortexSheetMesh& mesh, int iter=1, Real sigma=0.2, Real alpha=0.8)
