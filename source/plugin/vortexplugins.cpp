@@ -38,7 +38,7 @@ PLUGIN void markAsFixed(Mesh& mesh, Shape* shape, bool exclusive=true)
 
 //! Adapt texture coordinates of mesh inside shape
 //! to obtain an effective inflow effect
-PLUGIN void texcoordInflow(VortexSheetMesh& mesh, Shape* shape, MACGrid& vel) 
+PLUGIN void texcoordInflow(VortexSheetMesh& mesh, Shape* shape, MACGrid3& vel) 
 {
     static Vec3 t0 = Vec3::Zero;
     
@@ -74,18 +74,18 @@ PLUGIN void meshSmokeInflow(VortexSheetMesh& mesh, Shape* shape, Real amount)
     }    
 }
 
-KERNEL(idx) KnAcceleration(MACGrid& a, const MACGrid& v1, const MACGrid& v0, const Real idt) { 
+KERNEL(idx) KnAcceleration(MACGrid3& a, const MACGrid3& v1, const MACGrid3& v0, const Real idt) { 
     a[idx] = (v1[idx]-v0[idx])*idt; 
 }
 
 //! Add vorticity to vortex sheets based on buoyancy
 PLUGIN void vorticitySource(VortexSheetMesh& mesh, Vec3 gravity, 
-                            MACGrid* vel=NULL, MACGrid* velOld=NULL,
+                            MACGrid3* vel=NULL, MACGrid3* velOld=NULL,
                             Real scale = 0.1, Real maxAmount = 0, Real mult = 1.0)
 {
     Real dt = parent->getDt();
     Real dx = parent->getDx();
-    MACGrid acceleration(parent);
+    MACGrid3 acceleration(parent);
     if (vel)
         KnAcceleration(acceleration, *vel, *velOld, 1.0/dt);
     const Real A= -1.0;
@@ -166,7 +166,7 @@ PLUGIN void smoothVorticity(VortexSheetMesh& mesh, int iter=1, Real sigma=0.2, R
 
 //! Seed Vortex Particles inside shape with K41 characteristics
 PLUGIN void VPseedK41(VortexParticleSystem& system, Shape* shape, Real strength=0, Real sigma0=0.2, Real sigma1=1.0, Real probability=1.0, Real N=3.0) {
-    Grid<Real> temp(parent);
+    Grid3<Real> temp(parent);
     const Real dt = parent->getDt();
     static RandomStream rand(3489572);
     Real s0 = pow( (Real)sigma0, (Real)(-N+1.0) );
@@ -188,15 +188,15 @@ PLUGIN void VPseedK41(VortexParticleSystem& system, Shape* shape, Real strength=
 }
         
 //! Vortex-in-cell integration
-PLUGIN void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, FlagGrid& flags,
-                      Grid<Vec3>* vorticity=NULL, Real cgMaxIterFac=1.5, Real cgAccuracy=1e-3, Real scale = 0.01, int precondition=0) {
+PLUGIN void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid3<Vec3>& vel, FlagGrid3& flags,
+                      Grid3<Vec3>* vorticity=NULL, Real cgMaxIterFac=1.5, Real cgAccuracy=1e-3, Real scale = 0.01, int precondition=0) {
     
     MuTime t0;
     const Real fac = 16.0; // experimental factor to balance out regularization
     
     // if no vort grid is given, use a temporary one
-    Grid<Vec3> vortTemp(parent);    
-    Grid<Vec3>& vort = (vorticity) ? (*vorticity) : (vortTemp);
+    Grid3<Vec3> vortTemp(parent);    
+    Grid3<Vec3>& vort = (vorticity) ? (*vorticity) : (vortTemp);
     vort.clear();
     
     // map vorticity to grid using Peskin kernel
@@ -247,20 +247,20 @@ PLUGIN void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, F
     }
     
     // Prepare grids for poisson solve
-    Grid<Vec3> vortexCurl(parent);
-    Grid<Real> rhs(parent);
-    Grid<Real> solution(parent);
-    Grid<Real> residual(parent);
-    Grid<Real> search(parent);
-    Grid<Real> temp1(parent);
-    Grid<Real> A0(parent);
-    Grid<Real> Ai(parent);
-    Grid<Real> Aj(parent);
-    Grid<Real> Ak(parent);
-    Grid<Real> pca0(parent);
-    Grid<Real> pca1(parent);
-    Grid<Real> pca2(parent);
-    Grid<Real> pca3(parent);
+    Grid3<Vec3> vortexCurl(parent);
+    Grid3<Real> rhs(parent);
+    Grid3<Real> solution(parent);
+    Grid3<Real> residual(parent);
+    Grid3<Real> search(parent);
+    Grid3<Real> temp1(parent);
+    Grid3<Real> A0(parent);
+    Grid3<Real> Ai(parent);
+    Grid3<Real> Aj(parent);
+    Grid3<Real> Ak(parent);
+    Grid3<Real> pca0(parent);
+    Grid3<Real> pca1(parent);
+    Grid3<Real> pca2(parent);
+    Grid3<Real> pca3(parent);
     
     MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak);    
     CurlOp(vort, vortexCurl);    
@@ -294,7 +294,7 @@ PLUGIN void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, F
 }
 
 //! Obtain density field from levelset with linear gradient of size sigma over the interface
-PLUGIN void densityFromLevelset(LevelsetGrid& phi, Grid<Real>& density, Real value=1.0, Real sigma=1.0) {
+PLUGIN void densityFromLevelset(LevelsetGrid3& phi, Grid3<Real>& density, Real value=1.0, Real sigma=1.0) {
     FOR_IJK(phi) {
         // remove boundary
         if (i<2 || j<2 || k<2 || i>=phi.getSizeX()-2 || j>=phi.getSizeY()-2 || k>=phi.getSizeZ()-2)

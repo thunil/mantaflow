@@ -186,10 +186,10 @@ void Mesh::rebuildChannels() {
         mNodeChannels[i]->resize(mNodes.size());   
 }
 
-DefineIntegrator(integratePosition, MACGrid, getInterpolated);
+DefineIntegrator(integratePosition, MACGrid3, getInterpolated);
 
 KERNEL(pts) template<IntegrationMode mode>
-KnAdvectMeshInGrid(vector<Node>& p, MACGrid& vel, FlagGrid& flaggrid, Real dt) {
+KnAdvectMeshInGrid(vector<Node>& p, MACGrid3& vel, FlagGrid3& flaggrid, Real dt) {
     if (p[i].flags & Mesh::NfFixed) return;
     
     // from integrator.h
@@ -200,10 +200,10 @@ KnAdvectMeshInGrid(vector<Node>& p, MACGrid& vel, FlagGrid& flaggrid, Real dt) {
         p[i].pos = clamp(p[i].pos, Vec3(1,1,1), toVec3(flaggrid.getSize()-1));    
 }
 
-DefineIntegrator(integrateCenteredVel, Grid<Vec3>, getInterpolated);
+DefineIntegrator(integrateCenteredVel, Grid3<Vec3>, getInterpolated);
 
 KERNEL(pts) template<IntegrationMode mode>
-KnAdvectMeshInCenterGrid(vector<Node>& p, Grid<Vec3>& vel, FlagGrid& flaggrid, Real dt) {
+KnAdvectMeshInCenterGrid(vector<Node>& p, Grid3<Vec3>& vel, FlagGrid3& flaggrid, Real dt) {
     if (p[i].flags & Mesh::NfFixed) return;
     
     // from integrator.h
@@ -215,13 +215,13 @@ KnAdvectMeshInCenterGrid(vector<Node>& p, Grid<Vec3>& vel, FlagGrid& flaggrid, R
 }
 
 // advection plugin
-void Mesh::advectInGrid(FlagGrid& flaggrid, Grid<Vec3>& vel, int integrationMode) {
+void Mesh::advectInGrid(FlagGrid3& flaggrid, Grid3<Vec3>& vel, int integrationMode) {
     const Real dt = mParent->getDt();
     if (vel.getType() & GridBase::TypeMAC) {        
         switch((IntegrationMode)integrationMode) {
-            case EULER: KnAdvectMeshInGrid<EULER>(mNodes, *((MACGrid*) &vel), flaggrid, dt); break;
-            case RK2: KnAdvectMeshInGrid<RK2>(mNodes, *((MACGrid*) &vel), flaggrid, dt); break;
-            case RK4: KnAdvectMeshInGrid<RK4>(mNodes, *((MACGrid*) &vel), flaggrid, dt); break;
+            case EULER: KnAdvectMeshInGrid<EULER>(mNodes, *((MACGrid3*) &vel), flaggrid, dt); break;
+            case RK2: KnAdvectMeshInGrid<RK2>(mNodes, *((MACGrid3*) &vel), flaggrid, dt); break;
+            case RK4: KnAdvectMeshInGrid<RK4>(mNodes, *((MACGrid3*) &vel), flaggrid, dt); break;
             default: throw Error("invalid integration mode");
         }
     } else {

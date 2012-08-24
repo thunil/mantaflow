@@ -354,10 +354,20 @@ endif()
 # setup executable
 
 # compiler flags
-IF(NOT WIN32)
+IF(WIN32)
+    # get rid of some MSVC warnings
+    add_definitions( /wd4018 /wd4146 /wd4800 )
+
+    # unsigned to signed conversions
+    add_definitions( /wd4267 )
+    # double <> single precision
+    add_definitions( /wd4244 /wd4305 )
+    # disable warnings for unsecure functions 
+    add_definitions( /D "_CRT_SECURE_NO_WARNINGS" ) 
+ELSE()
     IF(DEBUG)
         add_definitions( -DDEBUG )
-        add_definitions( -O0 -fno-inline )
+        add_definitions( -O0 -fno-inline)
         # additional c++ warning
         SET(CMAKE_CXX_FLAGS_DEBUG " -ggdb  -Wall -Wno-reorder")
         
@@ -367,16 +377,7 @@ IF(NOT WIN32)
         # non-debug, optimized version
         add_definitions( -O3 -Wall -Wno-reorder)
     ENDIF()
-ELSE()
-    # get rid of some MSVC warnings
-    add_definitions( /wd4018 /wd4146 /wd4800 )
-
-    # unsigned to signed conversions
-    add_definitions( /wd4267 )
-    # double <> single precision
-    add_definitions( /wd4244 /wd4305 )
-    # disable warnings for unsecure functions 
-    add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )	
+    #add_definitions( -std=c++0x)        
 ENDIF()
 
 SET(EXECCMD manta)
@@ -411,6 +412,7 @@ if(WIN32)
 	source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES})	
 endif()
 
+message ("${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
 # debug
 MESSAGE("DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")
 

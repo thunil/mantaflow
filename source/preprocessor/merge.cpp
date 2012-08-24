@@ -46,10 +46,13 @@ string generateMerge(const string& text) {
             size_t p = it->find(' ', 10);
             string tclass = it->substr(10, p-10);
             string targ = it->substr(p+1);
+            string targNorm = targ;
+            replaceAll(targNorm, ",", "_");
             vector<string>& exprs = templates[tclass];
             for(vector<string>::iterator ie = exprs.begin(); ie != exprs.end(); ie++) {
                 string ex = *ie;
                 replaceAll(ex, "$", targ);
+                replaceAll(ex, "@", targNorm);
                 replLines.push_back(ex);
             }
         } else if ((*it)[0] != '@') {

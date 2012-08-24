@@ -18,15 +18,14 @@
 
 namespace Manta {
 // forward decl.
-template<class T> class Grid;
+template<int DIM, class T> class Grid;
 class Mesh;
-class FlagGrid;
 
 void writeObjFile(const std::string& name, Mesh* mesh);
 void writeBobjFile(const std::string& name, Mesh* mesh);
 void readObjFile(const std::string& name, Mesh* mesh, bool append);
-template<class T> void writeGridRaw(const std::string& name, Grid<T>* grid);
-template<class T> void writeGridUni(const std::string& name, Grid<T>* grid);
+template<int DIM, class T> void writeGridRaw(const std::string& name, Grid<DIM,T>* grid);
+template<int DIM, class T> void writeGridUni(const std::string& name, Grid<DIM,T>* grid);
 
 } // namespace
 

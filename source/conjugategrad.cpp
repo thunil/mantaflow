@@ -23,9 +23,9 @@ const int CG_DEBUGLEVEL = 4;
 //  Precondition helpers
 
 //! Preconditioning a la Wavelet Turbulence (needs 4 add. grids)
-void InitPreconditionIncompCholesky(FlagGrid& flags,
-				Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak,
-				Grid<Real>& orgA0, Grid<Real>& orgAi, Grid<Real>& orgAj, Grid<Real>& orgAk) 
+void InitPreconditionIncompCholesky(FlagGrid3& flags,
+				Grid3<Real>& A0, Grid3<Real>& Ai, Grid3<Real>& Aj, Grid3<Real>& Ak,
+				Grid3<Real>& orgA0, Grid3<Real>& orgAi, Grid3<Real>& orgAj, Grid3<Real>& orgAk) 
 {
 	// compute IC according to Golub and Van Loan
 	A0 = orgA0;
@@ -63,9 +63,9 @@ void InitPreconditionIncompCholesky(FlagGrid& flags,
 };
 
 //! Preconditioning using modified IC ala Bridson (needs 1 add. grid)
-void InitPreconditionModifiedIncompCholesky2(FlagGrid& flags,
-				Grid<Real>&Aprecond, 
-				Grid<Real>&A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) 
+void InitPreconditionModifiedIncompCholesky2(FlagGrid3& flags,
+				Grid3<Real>&Aprecond, 
+				Grid3<Real>&A0, Grid3<Real>& Ai, Grid3<Real>& Aj, Grid3<Real>& Ak) 
 {
 	// compute IC according to Golub and Van Loan
 	Aprecond.clear();
@@ -97,9 +97,9 @@ void InitPreconditionModifiedIncompCholesky2(FlagGrid& flags,
 };
 
 //! Apply WT-style ICP
-void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid& flags,
-				Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak,
-				Grid<Real>& orgA0, Grid<Real>& orgAi, Grid<Real>& orgAj, Grid<Real>& orgAk)
+void ApplyPreconditionIncompCholesky(Grid3<Real>& dst, Grid3<Real>& Var1, FlagGrid3& flags,
+				Grid3<Real>& A0, Grid3<Real>& Ai, Grid3<Real>& Aj, Grid3<Real>& Ak,
+				Grid3<Real>& orgA0, Grid3<Real>& orgAi, Grid3<Real>& orgAj, Grid3<Real>& orgAk)
 {
 	
     // forward substitution        
@@ -123,9 +123,9 @@ void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid
 }
 
 //! Apply Bridson-style mICP
-void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid& flags,
-				Grid<Real>& Aprecond, 
-				Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) 
+void ApplyPreconditionModifiedIncompCholesky2(Grid3<Real>& dst, Grid3<Real>& Var1, FlagGrid3& flags,
+				Grid3<Real>& Aprecond, 
+				Grid3<Real>& A0, Grid3<Real>& Ai, Grid3<Real>& Aj, Grid3<Real>& Ak) 
 {
     // forward substitution        
     FOR_IJK(dst) {
@@ -155,7 +155,7 @@ void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1,
 
 //! Kernel: Compute the dot product between two Real grids
 /*! Uses double precision internally */
-KERNEL(idx, reduce) struct GridDotProduct (const Grid<Real>& a, const Grid<Real>& b)
+KERNEL(idx, reduce) struct GridDotProduct (const Grid3<Real>& a, const Grid3<Real>& b)
 {
     double result;
     
@@ -166,13 +166,13 @@ KERNEL(idx, reduce) struct GridDotProduct (const Grid<Real>& a, const Grid<Real>
     void join(const GridDotProduct& other) { result += other.result; }
 };
 
-Real dotProduct(const Grid<Real>& a, const Grid<Real>& b) {
+Real dotProduct(const Grid3<Real>& a, const Grid3<Real>& b) {
     return (Real) GridDotProduct(a, b).result;
 }
    
 
 //! Kernel: compute residual (init) and add to sigma
-KERNEL(idx, reduce) struct InitSigma (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp) 
+KERNEL(idx, reduce) struct InitSigma (FlagGrid3& flags, Grid3<Real>& dst, Grid3<Real>& rhs, Grid3<Real>& temp) 
 {
     double sigma;
     
@@ -189,7 +189,7 @@ KERNEL(idx, reduce) struct InitSigma (FlagGrid& flags, Grid<Real>& dst, Grid<Rea
 };
 
 //! Kernel: update search vector
-KERNEL(idx) UpdateSearchVec (Grid<Real>& dst, Grid<Real>& src, Real factor)
+KERNEL(idx) UpdateSearchVec (Grid3<Real>& dst, Grid3<Real>& src, Real factor)
 {
     dst[idx] = src[idx] + factor * dst[idx];
 }
@@ -198,8 +198,8 @@ KERNEL(idx) UpdateSearchVec (Grid<Real>& dst, Grid<Real>& src, Real factor)
 //  CG class
 
 template<class APPLYMAT>
-GridCg<APPLYMAT>::GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual, Grid<Real>& search, FlagGrid& flags, Grid<Real>& tmp, 
-               Grid<Real>* pA0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk) :
+GridCg<APPLYMAT>::GridCg(Grid3<Real>& dst, Grid3<Real>& rhs, Grid3<Real>& residual, Grid3<Real>& search, FlagGrid3& flags, Grid3<Real>& tmp, 
+               Grid3<Real>* pA0, Grid3<Real>* pAi, Grid3<Real>* pAj, Grid3<Real>* pAk) :
     GridCgInterface(), mInited(false), mIterations(0), mDst(dst), mRhs(rhs), mResidual(residual),
     mSearch(search), mFlags(flags), mTmp(tmp), mpA0(pA0), mpAi(pAi), mpAj(pAj), mpAk(pAk),
     mPcMethod(PC_None), mpPCA0(pA0), mpPCAi(pAi), mpPCAj(pAj), mpPCAk(pAk), mSigma(0.), mAccuracy(VECTOR_EPSILON), mResNorm(1e20) 
@@ -296,7 +296,7 @@ void GridCg<APPLYMAT>::solve(int maxIter) {
 }
 
 template<class APPLYMAT>
-void GridCg<APPLYMAT>::setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak) {
+void GridCg<APPLYMAT>::setPreconditioner(PreconditionType method, Grid3<Real> *A0, Grid3<Real> *Ai, Grid3<Real> *Aj, Grid3<Real> *Ak) {
     mPcMethod = method;
     mpPCA0 = A0;
     mpPCAi = Ai;

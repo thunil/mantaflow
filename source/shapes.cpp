@@ -31,13 +31,13 @@ bool Shape::isInside(const Vec3& pos) const {
 }
 
 //! Kernel: Apply a shape to a grid, setting value inside
-KERNEL template<class T> ApplyShapeToGrid (Grid<T>* grid, Shape* shape, T value) {
+KERNEL template<class T> ApplyShapeToGrid (Grid3<T>* grid, Shape* shape, T value) {
     if (shape->isInsideGrid(i,j,k))
         (*grid)(i,j,k) = value;
 }
 
 //! Kernel: Apply a shape to a grid, setting value inside (scaling by SDF value)
-KERNEL template<class T> ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi, Real sigma, Real shift, T value) {
+KERNEL template<class T> ApplyShapeToGridSmooth (Grid3<T>* grid, Grid3<Real>& phi, Real sigma, Real shift, T value) {
     const Real p = phi(i,j,k) - shift;
     if (p < -sigma)
         (*grid)(i,j,k) = value;
@@ -46,7 +46,7 @@ KERNEL template<class T> ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi,
 }
 
 //! Kernel: Apply a shape to a MAC grid, setting value inside
-KERNEL ApplyShapeToMACGrid (MACGrid* grid, Shape* shape, Vec3 value) 
+KERNEL ApplyShapeToMACGrid (MACGrid3* grid, Shape* shape, Vec3 value) 
 {
     if (shape->isInside(Vec3(i,j+0.5,k+0.5))) (*grid)(i,j,k).x = value.x;
     if (shape->isInside(Vec3(i+0.5,j,k+0.5))) (*grid)(i,j,k).y = value.y;
@@ -55,27 +55,27 @@ KERNEL ApplyShapeToMACGrid (MACGrid* grid, Shape* shape, Vec3 value)
 
 void Shape::applyToGrid(GridBase* grid) {
     if (grid->getType() & GridBase::TypeInt)
-        ApplyShapeToGrid<int> ((Grid<int>*)grid, this, _args.get<int>("value"));
+        ApplyShapeToGrid<int> ((Grid3<int>*)grid, this, _args.get<int>("value"));
     else if (grid->getType() & GridBase::TypeReal)
-        ApplyShapeToGrid<Real> ((Grid<Real>*)grid, this, _args.get<Real>("value"));
+        ApplyShapeToGrid<Real> ((Grid3<Real>*)grid, this, _args.get<Real>("value"));
     else if (grid->getType() & GridBase::TypeMAC)
-        ApplyShapeToMACGrid ((MACGrid*)grid, this, _args.get<Vec3>("value"));
+        ApplyShapeToMACGrid ((MACGrid3*)grid, this, _args.get<Vec3>("value"));
     else if (grid->getType() & GridBase::TypeVec3)
-        ApplyShapeToGrid<Vec3> ((Grid<Vec3>*)grid, this, _args.get<Vec3>("value"));
+        ApplyShapeToGrid<Vec3> ((Grid3<Vec3>*)grid, this, _args.get<Vec3>("value"));
     else
         throw Error("Shape::applyToGrid(): unknown grid type");
 }
 
 void Shape::applyToGridSmooth(GridBase* grid, Real sigma, Real shift) {
-    Grid<Real> phi(grid->getParent());
+    Grid3<Real> phi(grid->getParent());
     generateLevelset(phi);
 
     if (grid->getType() & GridBase::TypeInt)
-        ApplyShapeToGridSmooth<int> ((Grid<int>*)grid, phi, sigma, shift, _args.get<int>("value"));
+        ApplyShapeToGridSmooth<int> ((Grid3<int>*)grid, phi, sigma, shift, _args.get<int>("value"));
     else if (grid->getType() & GridBase::TypeReal)
-        ApplyShapeToGridSmooth<Real> ((Grid<Real>*)grid, phi, sigma, shift, _args.get<Real>("value"));
+        ApplyShapeToGridSmooth<Real> ((Grid3<Real>*)grid, phi, sigma, shift, _args.get<Real>("value"));
     else if (grid->getType() & GridBase::TypeVec3)
-        ApplyShapeToGridSmooth<Vec3> ((Grid<Vec3>*)grid, phi, sigma, shift, _args.get<Vec3>("value"));
+        ApplyShapeToGridSmooth<Vec3> ((Grid3<Vec3>*)grid, phi, sigma, shift, _args.get<Vec3>("value"));
     else
         throw Error("Shape::applyToGridSmooth(): unknown grid type");
 }
@@ -83,8 +83,8 @@ void Shape::applyToGridSmooth(GridBase* grid, Real sigma, Real shift) {
 void Shape::collideMesh(Mesh& mesh) {
     const Real margin = 0.2;
     
-    Grid<Real> phi(getParent());
-    Grid<Vec3> grad(getParent());
+    Grid3<Real> phi(getParent());
+    Grid3<Vec3> grad(getParent());
     generateLevelset(phi);
     GradientOp(grad, phi);
     
@@ -152,7 +152,7 @@ void Box::generateMesh(Mesh* mesh) {
 }
 
 //! Kernel: Analytic SDF for box shape
-KERNEL BoxSDF(Grid<Real>& phi, const Vec3& p1, const Vec3& p2) {
+KERNEL BoxSDF(Grid3<Real>& phi, const Vec3& p1, const Vec3& p2) {
     const Vec3 p(i+0.5, j+0.5, k+0.5);
     if (p.x <= p2.x && p.x >= p1.x && p.y <= p2.y && p.y >= p1.y && p.z <= p2.z && p.z >= p1.z) {
         // inside: minimal surface distance
@@ -203,7 +203,7 @@ KERNEL BoxSDF(Grid<Real>& phi, const Vec3& p1, const Vec3& p2) {
         phi(i,j,k) = m;
     }
 }
-void Box::generateLevelset(Grid<Real>& phi) {
+void Box::generateLevelset(Grid3<Real>& phi) {
     BoxSDF(phi, mP0, mP1);
 }
 
@@ -282,10 +282,10 @@ void Sphere::generateMesh(Mesh* mesh) {
     mesh->rebuildLookup(oldtri,-1);
 }
     
-KERNEL SphereSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 scale) {
+KERNEL SphereSDF(Grid3<Real>& phi, Vec3 center, Real radius, Vec3 scale) {
     phi(i,j,k) = norm((Vec3(i+0.5,j+0.5,k+0.5)-center)/scale)-radius;
 }
-void Sphere::generateLevelset(Grid<Real>& phi) {
+void Sphere::generateLevelset(Grid3<Real>& phi) {
     SphereSDF(phi, mCenter, mRadius, mScale);
 } 
 
@@ -340,7 +340,7 @@ void Cylinder::generateMesh(Mesh* mesh) {
     mesh->rebuildLookup(oldtri,-1);
 }
     
-KERNEL CylinderSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 zaxis, Real maxz) {
+KERNEL CylinderSDF(Grid3<Real>& phi, Vec3 center, Real radius, Vec3 zaxis, Real maxz) {
     Vec3 p=Vec3(i+0.5,j+0.5,k+0.5)-center;
     Real z = fabs(dot(p, zaxis));
     Real r = sqrt(normSquare(p)-z*z);
@@ -358,7 +358,7 @@ KERNEL CylinderSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 zaxis, Real m
         phi(i,j,k) = sqrt(square(z-maxz)+square(r-radius));
     }
 }
-void Cylinder::generateLevelset(Grid<Real>& phi) {
+void Cylinder::generateLevelset(Grid3<Real>& phi) {
     CylinderSDF(phi, mCenter, mRadius, mZDir, mZ);
 }
 

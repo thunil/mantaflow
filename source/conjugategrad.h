@@ -35,7 +35,7 @@ class GridCgInterface {
 		virtual void solve(int maxIter) = 0;
 
 		// precond
-		virtual void setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak) = 0;
+		virtual void setPreconditioner(PreconditionType method, Grid3<Real> *A0, Grid3<Real> *Ai, Grid3<Real> *Aj, Grid3<Real> *Ak) = 0;
 
 		// access
 		virtual Real getSigma() const = 0;
@@ -61,15 +61,15 @@ template<class APPLYMAT>
 class GridCg : public GridCgInterface {
 	public:
         //! constructor
-		GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual, Grid<Real>& search, FlagGrid& flags, Grid<Real>& tmp, 
-				Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk);
+		GridCg(Grid3<Real>& dst, Grid3<Real>& rhs, Grid3<Real>& residual, Grid3<Real>& search, FlagGrid3& flags, Grid3<Real>& tmp, 
+				Grid3<Real>* A0, Grid3<Real>* pAi, Grid3<Real>* pAj, Grid3<Real>* pAk);
         ~GridCg() {}
         
         void doInit();
         bool iterate();
         void solve(int maxIter);
         //! init pointers, and copy values from "normal" matrix
-        void setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak);
+        void setPreconditioner(PreconditionType method, Grid3<Real> *A0, Grid3<Real> *Ai, Grid3<Real> *Aj, Grid3<Real> *Ak);
         
         // Accessors        
         Real getSigma() const { return mSigma; }
@@ -84,18 +84,18 @@ class GridCg : public GridCgInterface {
 		bool mInited;
 		int mIterations;
 		// grids
-		Grid<Real>& mDst;
-		Grid<Real>& mRhs;
-		Grid<Real>& mResidual;
-		Grid<Real>& mSearch;
-		FlagGrid& mFlags;
-		Grid<Real>& mTmp;
+		Grid3<Real>& mDst;
+		Grid3<Real>& mRhs;
+		Grid3<Real>& mResidual;
+		Grid3<Real>& mSearch;
+		FlagGrid3& mFlags;
+		Grid3<Real>& mTmp;
 
-		Grid<Real> *mpA0, *mpAi, *mpAj, *mpAk;
+		Grid3<Real> *mpA0, *mpAi, *mpAj, *mpAk;
 
 		PreconditionType mPcMethod;
 		//! preconditioning grids
-		Grid<Real> *mpPCA0, *mpPCAi, *mpPCAj, *mpPCAk;
+		Grid3<Real> *mpPCA0, *mpPCAi, *mpPCAj, *mpPCAk;
 
 		//! sigma / residual
 		Real mSigma;
@@ -108,8 +108,8 @@ class GridCg : public GridCgInterface {
 
 //! Kernel: Apply symmetric stored Matrix
 KERNEL(idx) 
-ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
-             Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
+ApplyMatrix (FlagGrid3& flags, Grid3<Real>& dst, Grid3<Real>& src, 
+             Grid3<Real>& A0, Grid3<Real>& Ai, Grid3<Real>& Aj, Grid3<Real>& Ak)
 {
     if (!flags.isFluid(idx)) {
         dst[idx] = src[idx];
@@ -125,7 +125,7 @@ ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src,
 }
 
 //! Kernel: Construct the matrix for the poisson equation
-KERNEL (bnd=1) MakeLaplaceMatrix(FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) {
+KERNEL (bnd=1) MakeLaplaceMatrix(FlagGrid3& flags, Grid3<Real>& A0, Grid3<Real>& Ai, Grid3<Real>& Aj, Grid3<Real>& Ak) {
     if (!flags.isFluid(i,j,k))
         return;
     

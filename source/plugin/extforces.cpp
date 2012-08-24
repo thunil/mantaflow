@@ -20,7 +20,7 @@ using namespace std;
 namespace Manta { 
 
 //! add Forces between fl/fl and fl/em cells
-KERNEL(bnd=1) KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
+KERNEL(bnd=1) KnAddForceField(FlagGrid3& flags, MACGrid3& vel, Grid3<Vec3>& force) {
     bool curFluid = flags.isFluid(i,j,k);
     bool curEmpty = flags.isEmpty(i,j,k);
     if (!curFluid && !curEmpty) return;
@@ -34,7 +34,7 @@ KERNEL(bnd=1) KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) 
 }
 
 //! add Forces between fl/fl and fl/em cells
-KERNEL(bnd=1) KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
+KERNEL(bnd=1) KnAddForce(FlagGrid3& flags, MACGrid3& vel, Vec3 force) {
     bool curFluid = flags.isFluid(i,j,k);
     bool curEmpty = flags.isEmpty(i,j,k);
     if (!curFluid && !curEmpty) return;
@@ -48,13 +48,13 @@ KERNEL(bnd=1) KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
 }
 
 //! add gravity forces to all fluid cells
-PLUGIN void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {    
+PLUGIN void addGravity(FlagGrid3& flags, MACGrid3& vel, Vec3 gravity) {    
     Vec3 f = gravity * parent->getDt() / flags.getDx();
     KnAddForce(flags, vel, f);
 }
 
 //! add Buoyancy force based on smoke density
-KERNEL(bnd=1) KnAddBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 strength) {    
+KERNEL(bnd=1) KnAddBuoyancy(FlagGrid3& flags, Grid3<Real>& density, MACGrid3& vel, Vec3 strength) {    
     if (!flags.isFluid(i,j,k)) return;
     if (flags.isFluid(i-1,j,k))
         vel(i,j,k).x += (0.5 * strength.x) * (density(i,j,k)+density(i-1,j,k));
@@ -65,7 +65,7 @@ KERNEL(bnd=1) KnAddBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, 
 }
 
 //! add Buoyancy force based on smoke density
-PLUGIN void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravity) {
+PLUGIN void addBuoyancy(FlagGrid3& flags, Grid3<Real>& density, MACGrid3& vel, Vec3 gravity) {
     Vec3 f = - gravity * parent->getDt() / parent->getDx();
     KnAddBuoyancy(flags,density, vel, f);
 }
@@ -74,7 +74,7 @@ PLUGIN void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3
 // noslip in DDF is actually no-stick, DDF freeselip does something weird ?!
 
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
-KERNEL KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
+KERNEL KnSetWallBcs(FlagGrid3& flags, MACGrid3& vel) {
     bool curFluid = flags.isFluid(i,j,k);
     bool curObstacle = flags.isObstacle(i,j,k);
     if (!curFluid && !curObstacle) return;
@@ -98,12 +98,12 @@ KERNEL KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 }
 
 //! set no-stick boundary condition on walls
-PLUGIN void setWallBcs(FlagGrid& flags, MACGrid& vel) {
+PLUGIN void setWallBcs(FlagGrid3& flags, MACGrid3& vel) {
     KnSetWallBcs(flags, vel);
 } 
 
 //! set boundary conditions at empty cells
-KERNEL(bnd=1) KnSetLiquidBcs(FlagGrid& flags, MACGrid& vel) {
+KERNEL(bnd=1) KnSetLiquidBcs(FlagGrid3& flags, MACGrid3& vel) {
     if (!flags.isFluid(i,j,k)) return;
     
     // init empty cells from fluid
@@ -125,7 +125,7 @@ KERNEL(bnd=1) KnSetLiquidBcs(FlagGrid& flags, MACGrid& vel) {
 }
 
 //! set boundary conditions at empty cells
-PLUGIN void setLiquidBcs(FlagGrid& flags, MACGrid& vel) {
+PLUGIN void setLiquidBcs(FlagGrid3& flags, MACGrid3& vel) {
     FOR_IDX(flags) {
         if (flags.isEmpty(idx)) vel[idx]=0.0f;
     }
@@ -133,15 +133,15 @@ PLUGIN void setLiquidBcs(FlagGrid& flags, MACGrid& vel) {
 } 
 
 //! Kernel: gradient norm operator
-KERNEL(bnd=1) KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
+KERNEL(bnd=1) KnConfForce(Grid3<Vec3>& force, const Grid3<Real>& grid, const Grid3<Vec3>& curl, Real str) {
     Vec3 grad = 0.5 * Vec3( grid(i+1,j,k)-grid(i-1,j,k), grid(i,j+1,k)-grid(i,j-1,k), grid(i,j,k+1)-grid(i,j,k-1));
     normalize(grad);
     force(i,j,k) = str*cross(grad, curl(i,j,k));
 }
 
-PLUGIN void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
-    Grid<Vec3> velCenter(parent), curl(parent), force(parent);
-    Grid<Real> norm(parent);
+PLUGIN void vorticityConfinement(MACGrid3& vel, FlagGrid3& flags, Real strength) {
+    Grid3<Vec3> velCenter(parent), curl(parent), force(parent);
+    Grid3<Real> norm(parent);
     
     GetCentered(velCenter, vel);
     CurlOp(velCenter, curl);
@@ -150,7 +150,7 @@ PLUGIN void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
     KnAddForceField(flags, vel, force);
 }
 
-PLUGIN void ensureConsistentObstacleVelocities(FlagGrid& flags, MACGrid& vel) {
+PLUGIN void ensureConsistentObstacleVelocities(FlagGrid3& flags, MACGrid3& vel) {
     FOR_IJK_BND(vel,1) {
         if (!flags.isObstacle(i,j,k)) {
             if (flags.isObstacle(i-1,j,k)) vel(i,j,k).x = vel(i-1,j,k).x;

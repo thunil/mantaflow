@@ -19,8 +19,8 @@ using namespace std;
 namespace Manta {
 
 //! Kernel: Construct the right-hand side of the poisson equation
-KERNEL(bnd=1, reduce) struct MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, 
-                                      Grid<Real>* perCellCorr, Real corr) 
+KERNEL(bnd=1, reduce) struct MakeRhs (FlagGrid3& flags, Grid3<Real>& rhs, MACGrid3& vel, 
+                                      Grid3<Real>* perCellCorr, Real corr) 
 {
     double redSum;
     int redCnt;
@@ -59,7 +59,7 @@ KERNEL(bnd=1, reduce) struct MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid&
 };
 
 //! Kernel: Apply velocity update from poisson equation
-KERNEL(bnd=1) CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
+KERNEL(bnd=1) CorrectVelocity(FlagGrid3& flags, MACGrid3& vel, Grid3<Real>& pressure) 
 {
 	// correct all faces between fluid-fluid and fluid-empty cells
 	// skip everything with obstacles...
@@ -84,7 +84,7 @@ KERNEL(bnd=1) CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressur
 }
 
 //! Kernel: Set matrix stencils and velocities to enable open boundaries
-KERNEL SetOpenBound(Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, MACGrid& vel,
+KERNEL SetOpenBound(Grid3<Real>& A0, Grid3<Real>& Ai, Grid3<Real>& Aj, Grid3<Real>& Ak, MACGrid3& vel,
                     Vector3D<bool> lowerBound, Vector3D<bool> upperBound)
 {    
     // set velocity boundary conditions
@@ -107,7 +107,7 @@ KERNEL SetOpenBound(Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& 
 }
 
 //! Kernel: Set matrix rhs for outflow
-KERNEL SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<bool> upperBound, int height)
+KERNEL SetOutflow (Grid3<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<bool> upperBound, int height)
 {
     if ((lowerBound.x && i < height) || (upperBound.x && i >= maxX-1-height) ||
         (lowerBound.y && j < height) || (upperBound.y && j >= maxY-1-height) ||
@@ -143,7 +143,7 @@ static inline Real getGhostMatrixAddition(Real a, Real b, const Real accuracy) {
 }
 
 //! Kernel: Adapt A0 for ghost fluid
-KERNEL(bnd=1) ApplyGhostFluid (FlagGrid& flags, Grid<Real>& phi, Grid<Real>& A0, Real accuracy) 
+KERNEL(bnd=1) ApplyGhostFluid (FlagGrid3& flags, Grid3<Real>& phi, Grid3<Real>& A0, Real accuracy) 
 {
     if (!flags.isFluid(i,j,k))
         return;
@@ -159,7 +159,7 @@ KERNEL(bnd=1) ApplyGhostFluid (FlagGrid& flags, Grid<Real>& phi, Grid<Real>& A0,
 }
 
 //! Kernel: Correct velocities for ghost fluids
-KERNEL(bnd=1) CorrectVelGhostFluid (FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) //, Grid<Real>& phi)
+KERNEL(bnd=1) CorrectVelGhostFluid (FlagGrid3& flags, MACGrid3& vel, Grid3<Real>& pressure) //, Grid3<Real>& phi)
 {
     bool curFluid = flags.isFluid(i,j,k);
     if (!curFluid && !flags.isEmpty(i,j,k))
@@ -197,9 +197,9 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 }
 
 //! Perform pressure projection of the velocity grid
-PLUGIN void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
-                     Grid<Real>* phi = 0, 
-                     Grid<Real>* perCellCorr = 0, 
+PLUGIN void solvePressure(MACGrid3& vel, Grid3<Real>& pressure, FlagGrid3& flags,
+                     Grid3<Real>* phi = 0, 
+                     Grid3<Real>* perCellCorr = 0, 
                      Real divCorr = 0,
                      Real ghostAccuracy = 0, 
                      Real cgMaxIterFac = 1.5,
@@ -217,18 +217,18 @@ PLUGIN void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     convertDescToVec(outflow, loOutflow, upOutflow);
     
     // reserve temp grids
-    Grid<Real> rhs(parent);
-    Grid<Real> residual(parent);
-    Grid<Real> search(parent);
-    Grid<Real> A0(parent);
-    Grid<Real> Ai(parent);
-    Grid<Real> Aj(parent);
-    Grid<Real> Ak(parent);
-    Grid<Real> tmp(parent);
-    Grid<Real> pca0(parent);
-    Grid<Real> pca1(parent);
-    Grid<Real> pca2(parent);
-    Grid<Real> pca3(parent);
+    Grid3<Real> rhs(parent);
+    Grid3<Real> residual(parent);
+    Grid3<Real> search(parent);
+    Grid3<Real> A0(parent);
+    Grid3<Real> Ai(parent);
+    Grid3<Real> Aj(parent);
+    Grid3<Real> Ak(parent);
+    Grid3<Real> tmp(parent);
+    Grid3<Real> pca0(parent);
+    Grid3<Real> pca1(parent);
+    Grid3<Real> pca2(parent);
+    Grid3<Real> pca3(parent);
         
     // setup matrix and boundaries
     MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak);

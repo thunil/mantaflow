@@ -31,13 +31,16 @@ int consumeWS(const vector<Token>& tokens, size_t& index) {
 }
 
 // parse argument list tokens of the form (int a = 12, bool* b, Grid<float>& grid)
-vector<Argument> parseArgs(const vector<Token>& tokens, size_t& index, bool expectType, int &lb) {    
+// or <class T, int A> if isTemplate is specified
+vector<Argument> parseArgs(const vector<Token>& tokens, size_t& index, bool expectType, int &lb, bool isTemplate) {    
     vector<Argument> args;
     const int firstStage = expectType ? 0 : 4;
+    TokenType openBracket = isTemplate ? TkTBracketL : TkBracketL;
+    TokenType closeBracket = isTemplate ? TkTBracketR : TkBracketR;
     
     // ignore trailing whitespaces, remove first bracket
     lb += consumeWS(tokens, index);
-    if (tokens[index].type != TkBracketL) return args;
+    if (tokens[index].type != openBracket) return args;
     
     // tokenizer already established that open brackets are closed eventually, so no need to check that
     Argument cur = Argument();    
@@ -49,8 +52,8 @@ vector<Argument> parseArgs(const vector<Token>& tokens, size_t& index, bool expe
         string text = tokens[index].text;
         int line = tokens[index].line;
         
-        if (t==TkBracketL) opened++;
-        if (t==TkBracketR) opened--;
+        if (t==openBracket) opened++;
+        if (t==closeBracket) opened--;
         //cout << index << ":" << stage << "," << t << "," << text << " " << opened << endl;
         
         if (t == TkWhitespace || t == TkComment) {
@@ -58,7 +61,7 @@ vector<Argument> parseArgs(const vector<Token>& tokens, size_t& index, bool expe
             else if (text[0]!='\r') cur.complete += text;            
             continue;
         }
-        if ((opened <1 && t == TkBracketR) || (opened<=1 && t == TkComma)) { 
+        if ((opened <1 && t == closeBracket) || (opened<=1 && t == TkComma && (stage<2 || stage>3))) { 
             // argument complete, add to list
             if (stage == 5 || stage > 6) {
                 args.push_back(cur);
@@ -67,7 +70,7 @@ vector<Argument> parseArgs(const vector<Token>& tokens, size_t& index, bool expe
                 cur.number = number;
             }
             else if (stage != firstStage)
-                errMsg(line, "incomplete argument! expect argument of the form '[type] name [= default]'");            
+                errMsg(line, "incomplete argument! Bracket mismatch in '" + listArgs(args) + "'");            
             
             stage = firstStage; 
             continue;
@@ -76,8 +79,7 @@ vector<Argument> parseArgs(const vector<Token>& tokens, size_t& index, bool expe
         switch (stage) {
             case 0:
                 // type name
-                if (t != TkDescriptor)
-                    errMsg(line, "incomplete argument! expect argument of the form '[type] name [= default]'");
+                assert(t==TkDescriptor, "incomplete argument! expect argument of the form '[type] name [= default]'");
                 if (text == "const") {
                     cur.isConst = true;                    
                 } 
@@ -112,21 +114,24 @@ vector<Argument> parseArgs(const vector<Token>& tokens, size_t& index, bool expe
                 break;
             case 2:
                 // template
-                if (t != TkDescriptor)
-                    errMsg(line, "incomplete argument type! expect type<Template> [*|&]");
-                cur.templ = text;
+                assert(t == TkDescriptor, "incomplete argument type! expect type<Template> [*|&]");
+                cur.templ += text;
                 stage++;
                 break;
             case 3:
                 // template close
-                if (t != TkTBracketR)
+                if (t == TkTBracketR)
+                    stage++;
+                else if (t == TkComma) {
+                    cur.templ += ",";
+                    stage = 2;
+                }
+                else 
                     errMsg(line, "incomplete argument type! expect type<Template> [*|&]");
-                stage++;
                 break;
             case 5:
                 // assign op
-                if (t != TkAssign)
-                    errMsg(line, "incomplete argument! expect argument of the form '[type] name [= default]'");
+                assert(t == TkAssign, "incomplete argument! expect argument of the form '[type] name [= default]'");
                 stage++;
                 break;
             default:
@@ -138,7 +143,7 @@ vector<Argument> parseArgs(const vector<Token>& tokens, size_t& index, bool expe
                 stage++;
             break;
         }        
-    } while(tokens[index].type != TkBracketR || opened>0);
+    } while(tokens[index].type != closeBracket || opened>0);
     
     index++; // consume closing bracket
     
@@ -155,10 +160,9 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
     size_t index = 0;
     int lb = 0;
     
-    vector<Argument> options = parseArgs(tokens, index, false, lb);
+    vector<Argument> options = parseArgs(tokens, index, false, lb, false);
     
-    if (tokens[index].type != TkDescriptor)
-        errMsg(line, "malformed preprocessor keyword block. Expected '" + kw + "(opt1, opt2, ...) STATEMENTS [{}|;]'");
+    assert(tokens[index].type == TkDescriptor, "malformed preprocessor keyword block. Expected '" + kw + "(opt1, opt2, ...) STATEMENTS [{}|;]'");
     
     // keyword dependent processing. 
     // No need to check for index overflow, as long as test each type, since sequence will end in ; or {}
@@ -166,14 +170,12 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
         string type = tokens[index++].text;        
             
         lb += consumeWS(tokens, index);
-        if (tokens[index].type != TkDescriptor)
-            errMsg(line, "Malformed PLUGIN, expected: PLUGIN [type|class] name(args...) { code }");
+        assert(tokens[index].type == TkDescriptor, "Malformed PLUGIN, expected: PLUGIN [type|class] name(args...) { code }");
         string name = tokens[index++].text;        
         
-        vector<Argument> args = parseArgs(tokens, index, true, lb);
+        vector<Argument> args = parseArgs(tokens, index, true, lb, false);
         
-        if (tokens[index].type != TkCodeBlock || index+1 != tokens.size())
-            errMsg(line, "Malformed PLUGIN, expected: PLUGIN [class] name(args...) { code }");
+        assert(tokens[index].type == TkCodeBlock && index+1 == tokens.size(), "Malformed PLUGIN, expected: PLUGIN [class] name(args...) { code }");
         
         return processPlugin(lb, name, options, args, tokens[index].text, line, type);
     }
@@ -184,6 +186,7 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
         // resolve template class or instantiation
         if (name == "template") {
             // template kernel
+            
             if (tokens[index].type != TkTBracketL)
                 errMsg(line, "syntax error. expected KERNEL(...) template<class T> [class] ...");            
             do {
@@ -216,7 +219,7 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
             
             name = tokens[index++].text;
         } 
-        vector<Argument> args = parseArgs(tokens, index, true, lb);
+        vector<Argument> args = parseArgs(tokens, index, true, lb, false);
         
         if (tokens[index].type != TkCodeBlock || index+1 != tokens.size())
             errMsg(line, "Malformed KERNEL, expected: KERNEL(opts...) name(args...) { code }");
@@ -224,54 +227,36 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
         return processKernel(lb, name, options, templ, args, tokens[index].text, line, isClass);
     }
     else if (key == KwPython) {
-        string templ = "";
+        vector<Argument> templArgs;
         string type = tokens[index++].text; 
         lb += consumeWS(tokens, index);
         
-        // resolve template class or instantiation
-        if (type == "template") {
+        // resolve template alias
+        if (type == "alias") {
+            // template instantiation
+            assert (tokens[index].type == TkDescriptor, "syntax error. expected PYTHON alias type<T> name;");
+            string classname = tokens[index++].text;
+            
+            templArgs = parseArgs(tokens, index, false, lb, true);
+            
+            assert (tokens[index].type == TkDescriptor, "syntax error. expected PYTHON alias type<T> name;");
+            string aliasname = tokens[index++].text;
+            lb += consumeWS(tokens, index);
+            
+            if (tokens[index].type != TkSemicolon || index+1 != tokens.size())
+                errMsg(line, "syntax error. expected PYTHON alias type<T> name;");            
+            return processPythonInstantiation(lb, classname, templArgs, aliasname, line);
+        }
+        // resolve template class
+        else if (type == "template") {
             if (tokens[index].type == TkTBracketL) {
-                // template class
-                index++;
-                lb += consumeWS(tokens, index); 
-                if (tokens[index].type != TkDescriptor || (tokens[index].text != "class" && tokens[index].text != "typename"))
-                    errMsg(line, "syntax error. expected PYTHON template<class T> class ...");
-                index++;
-                lb += consumeWS(tokens, index);
-                if (tokens[index].type != TkDescriptor)
-                    errMsg(line, "syntax error. expected PYTHON template<class T> class ...");
-                templ = tokens[index++].text;
-                lb += consumeWS(tokens, index);
-                if (tokens[index++].type != TkTBracketR)
-                    errMsg(line, "syntax error. expected PYTHON template<class T> class ...");
-                lb += consumeWS(tokens, index);
+                // class template                
+                templArgs = parseArgs(tokens, index, true, lb, true);
+                
                 if (tokens[index].type != TkDescriptor)
                     errMsg(line, "syntax error. expected PYTHON template<class T> class ...");
                 type = tokens[index++].text;
                 lb += consumeWS(tokens, index);
-            }
-            else if (tokens[index].type == TkDescriptor && tokens[index].text == "class") {
-                // template instantiation
-                index++;
-                lb += consumeWS(tokens, index);
-                if (tokens[index].type != TkDescriptor)
-                    errMsg(line, "syntax error. expected PYTHON class name<T>;");
-                string classname = tokens[index++].text;
-                lb += consumeWS(tokens, index);
-                if (tokens[index++].type != TkTBracketL)
-                    errMsg(line, "syntax error. expected PYTHON class name<T>;");
-                lb += consumeWS(tokens, index);
-                if (tokens[index].type != TkDescriptor)
-                    errMsg(line, "syntax error. expected PYTHON class name<T>;");
-                templ = tokens[index++].text;
-                lb += consumeWS(tokens, index);
-                if (tokens[index++].type != TkTBracketR)
-                    errMsg(line, "syntax error. expected PYTHON class name<T>;");
-                lb += consumeWS(tokens, index);
-                if (tokens[index].type != TkSemicolon || index+1 != tokens.size())
-                    errMsg(line, "syntax error. expected PYTHON class name<T>;");
-                processPythonInstantiation(lb, classname, templ, line);
-                return "";
             }
             else 
                 errMsg(line, "syntax error. expected PYTHON class name<T>; or PYTHON template<class T> class name...");                
@@ -279,8 +264,7 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
         
         // resolve extended function return type
         if (type == "const") {
-            if (tokens[index].type != TkDescriptor)
-                errMsg(line, "malformed preprocessor keyword block.");
+            assert (tokens[index].type == TkDescriptor, "malformed preprocessor keyword block.");
             type += " " + tokens[index++].text;
         }
         while (tokens[index].type == TkPointer || tokens[index].type == TkRef) {
@@ -290,12 +274,10 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
         if (tokens[index].type == TkTBracketL) {
             index++;
             lb += consumeWS(tokens, index);
-            if (tokens[index].type != TkDescriptor)
-                errMsg(line, "PYTHON return type template malformed");
+            assert (tokens[index].type == TkDescriptor, "PYTHON return type template malformed");
             type += "<"+tokens[index++].text+">";
             lb += consumeWS(tokens, index);
-            if (tokens[index++].type != TkBracketR)
-                errMsg(line, "PYTHON return type template malformed");            
+            assert (tokens[index++].type == TkBracketR, "PYTHON return type template malformed");            
             lb += consumeWS(tokens, index);            
         }
         while (tokens[index].type == TkPointer || tokens[index].type == TkRef) {
@@ -304,48 +286,36 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
         }
                 
         if (type == "class") {
-            if (tokens[index].type != TkDescriptor)
-                errMsg(line, "malformed preprocessor keyword block. Expected 'PYTHON class name : public X {}'");
+            assert(tokens[index].type == TkDescriptor, "malformed preprocessor keyword block. Expected 'PYTHON class name : public X {}'");
             string name = tokens[index++].text;
             
             lb += consumeWS(tokens, index);
-            if (tokens[index++].type != TkColon)
-                errMsg(line, "PYTHON class '" + name + "' must publicly derive from PbClass (or a subclass)");
+            assert(tokens[index++].type == TkColon, "PYTHON class '" + name + "' must publicly derive from PbClass (or a subclass)");
             
             lb += consumeWS(tokens, index);
-            if (tokens[index].type != TkDescriptor || tokens[index++].text != "public")
-                errMsg(line, "PYTHON class '" + name + "' must publicly derive from PbClass (or a subclass)");
+            assert(tokens[index].type == TkDescriptor && tokens[index++].text == "public", "PYTHON class '" + name + "' must publicly derive from PbClass (or a subclass)");
             
             lb += consumeWS(tokens, index);
-            if (tokens[index].type != TkDescriptor)
-                errMsg(line, "PYTHON class '" + name + "' must publicly derive from PbClass (or a subclass)");
+            assert(tokens[index].type == TkDescriptor, "PYTHON class '" + name + "' must publicly derive from PbClass (or a subclass)");
             string baseclass = tokens[index++].text;
             
             lb += consumeWS(tokens, index);
             if (tokens[index].type == TkTBracketL) {
-                index++;
-                lb += consumeWS(tokens, index);
-                if (tokens[index].type != TkDescriptor)
-                    errMsg(line, "malformed template argument, expected baseclass<T>");
-                baseclass += "<" + tokens[index++].text + ">";
-                
-                lb += consumeWS(tokens, index);
-                if (tokens[index++].type != TkTBracketR)
-                    errMsg(line, "malformed template argument, expected baseclass<T>");            
+                baseclass += "<" + listArgs(parseArgs(tokens, index, false, lb, true)) + ">";
             }
             
             lb += consumeWS(tokens, index);
             if (tokens[index].type != TkCodeBlock || index+1 != tokens.size())
                 errMsg(line, "malformed preprocessor keyword block. Expected 'PYTHON class name : public baseclass { code }'");
             
-            return processPythonClass(lb, name, options, templ, baseclass, tokens[index].text, line);
+            return processPythonClass(lb, name, options, templArgs, baseclass, tokens[index].text, line);
         } 
         else if (type == gParent){
             // constructor
             string name = type;
             type = "";
             
-            vector<Argument> args = parseArgs(tokens, index, true, lb);
+            vector<Argument> args = parseArgs(tokens, index, true, lb, false);
             
             // if constructor list, collect until codeblock
             string cb = "";
@@ -353,8 +323,7 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
                 while(tokens[index].type != TkSemicolon && tokens[index].type != TkCodeBlock) {
                     cb += tokens[index].text;
                     index++;
-                    if (index == tokens.size())
-                        errMsg(line, "malformed constructor.");
+                    assert(index != tokens.size(), "malformed constructor.");
                 }
             }
             
@@ -363,8 +332,7 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
             return processPythonFunction(lb, name, type, args, cb, tokens[index].text, line);
         } else {
             // member (function)
-            if (tokens[index].type != TkDescriptor)
-                errMsg(line, "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]'");
+            assert(tokens[index].type == TkDescriptor, "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]'");
             string name = tokens[index++].text;
             
             lb += consumeWS(tokens, index);
@@ -372,7 +340,7 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
                 // member variable
                 return processPythonVariable(lb, name, options, type, line);
             }
-            vector<Argument> args = parseArgs(tokens, index, true, lb);
+            vector<Argument> args = parseArgs(tokens, index, true, lb, false);
             
             if ( (tokens[index].type != TkCodeBlock && tokens[index].type != TkSemicolon) || index+1 != tokens.size())
                 errMsg(line, "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]");
@@ -401,12 +369,10 @@ string replaceFunctionHeader(const string& text, const string& funcname, const s
             if (tokens[i].type == TkDescriptor && tokens[i].text == funcname) {            
                 i++;
                 consumeWS(tokens, i);
-                if (tokens[i++].type != TkBracketL) 
-                    errMsg(line, "malformed member function. Expected void " + funcname + "(...) {...}");
+                assert(tokens[i++].type == TkBracketL, "malformed member function. Expected void " + funcname + "(...) {...}");
                 while (tokens[i++].type != TkBracketR) {};
                 consumeWS(tokens, i);
-                if (tokens[i].type != TkCodeBlock)
-                    errMsg(line, "malformed member function. Expected void " + funcname + "(...) {...}");
+                assert(tokens[i].type == TkCodeBlock, "malformed member function. Expected void " + funcname + "(...) {...}");
                 
                 // ok, replace
                 newText += header;
@@ -421,8 +387,7 @@ string replaceFunctionHeader(const string& text, const string& funcname, const s
         newText += tokens[i].text;
     }
     
-    if (!found)
-        errMsg(line, "preprocessing custom class: can't find member function void " + funcname + "(...)");
+    assert(found, "preprocessing custom class: can't find member function void " + funcname + "(...)");
     
     return newText;
 }

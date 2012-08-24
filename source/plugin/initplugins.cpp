@@ -21,7 +21,7 @@ using namespace std;
 namespace Manta {
     
 //! Apply noise to grid
-KERNEL KnApplyNoise(FlagGrid& flags, Grid<Real>& dens, WaveletNoiseField& noise, Grid<Real>& sdf, Real scale, Real sigma) 
+KERNEL KnApplyNoise(FlagGrid3& flags, Grid3<Real>& dens, WaveletNoiseField& noise, Grid3<Real>& sdf, Real scale, Real sigma) 
 {
     if (!flags.isFluid(i,j,k) || sdf(i,j,k) > sigma) return;
     Real factor = clamp(1.0f-0.5f/sigma * (sdf(i,j,k)+sigma), 0.0f, 1.0f);
@@ -32,9 +32,9 @@ KERNEL KnApplyNoise(FlagGrid& flags, Grid<Real>& dens, WaveletNoiseField& noise,
 }
 
 //! Init noise-moduled density inside shape
-PLUGIN void densityInflow(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Shape* shape, Real scale=1.0, Real sigma=0)
+PLUGIN void densityInflow(FlagGrid3& flags, Grid3<Real>& density, WaveletNoiseField& noise, Shape* shape, Real scale=1.0, Real sigma=0)
 {
-    Grid<Real> sdf(parent);
+    Grid3<Real> sdf(parent);
     shape->computeLevelset(sdf);
     KnApplyNoise(flags, density, noise, sdf, scale, sigma);
 }
