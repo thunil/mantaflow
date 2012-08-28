@@ -48,22 +48,22 @@ public:
     inline Real getDx() { return mDx; }
     
     //! Check if indices are within bounds, otherwise error
-    void checkIndex(int i, int j, int k) const;
+    inline void checkIndex(int i, int j, int k) const;
     //! Check if indices are within bounds, otherwise error
-    void checkIndex(int idx) const;
+    inline void checkIndex(int idx) const;
     //! Check if index is within given boundaries
-    bool isInBounds(const Vec3i& p, int bnd) { return (p.x >= bnd && p.y >= bnd && p.z >= bnd && p.x < mSize.x-bnd && p.y < mSize.y-bnd && p.z < mSize.z-bnd); }
+    inline bool isInBounds(const Vec3i& p, int bnd) { return (p.x >= bnd && p.y >= bnd && p.z >= bnd && p.x < mSize.x-bnd && p.y < mSize.y-bnd && p.z < mSize.z-bnd); }
     //! Check if index is within given boundaries
-    bool isInBounds(const Vec3i& p) { return (p.x >= 0 && p.y >= 0 && p.z >= 0 && p.x < mSize.x && p.y < mSize.y && p.z < mSize.z); }
+    inline bool isInBounds(const Vec3i& p) { return (p.x >= 0 && p.y >= 0 && p.z >= 0 && p.x < mSize.x && p.y < mSize.y && p.z < mSize.z); }
     //! Check if index is within given boundaries
-    bool isInBounds(const Vec3& p, int bnd = 0) { return isInBounds(toVec3i(p), bnd); }
+    inline bool isInBounds(const Vec3& p, int bnd = 0) { return isInBounds(toVec3i(p), bnd); }
     
     //! Get the type of grid
     inline GridType getType() const { return mType; }
     //! Check dimensionality
-    inline bool is2D() const { return mDim==2; }
+    inline bool is2D() const { return !m3D; }
     //! Check dimensionality
-    inline bool is3D() const { return mDim==3; }
+    inline bool is3D() const { return m3D; }
     
     //! Get index into the data
     inline int index(int i, int j, int k) const { DEBUG_ONLY(checkIndex(i,j,k)); return i + mSize.x * j + mStrideZ * k; }
@@ -74,7 +74,7 @@ protected:
     GridType mType;
     Vec3i mSize;
     Real mDx;
-    int mDim;
+    bool m3D;
     // precomputed Z shift: to ensure 2D compatibility, always use this instead of sx*sy !
     int mStrideZ; 
 };
@@ -219,6 +219,21 @@ public:
 //******************************************************************************
 // Implementation of inline functions
 
+inline void GridBase::checkIndex(int i, int j, int k) const {
+    if (i<0 || j<0  || i>=mSize.x || j>=mSize.y || (is3D() && (k<0|| k>= mSize.z))) {
+        std::ostringstream s;
+        s << "Grid " << mName << " dim " << mSize << " : index " << i << "," << j << "," << k << " out of bound ";
+        errMsg(s.str());
+    }
+}
+
+inline void GridBase::checkIndex(int idx) const {
+    if (idx<0 || idx > mSize.x * mSize.y * mSize.z) {
+        std::ostringstream s;
+        s << "Grid " << mName << " dim " << mSize << " : index " << idx << " out of bound ";
+        errMsg(s.str());
+    }
+}
 
 inline Vec3 MACGrid::getCentered(int i, int j, int k) {
     DEBUG_ONLY(checkIndex(i+1,j+1,k+1));

@@ -70,7 +70,7 @@ vector<Argument> parseArgs(const vector<Token>& tokens, size_t& index, bool expe
                 cur.number = number;
             }
             else if (stage != firstStage)
-                errMsg(line, "incomplete argument! Bracket mismatch in '" + listArgs(args) + "'");            
+                errMsg(line, "incomplete argument or bracket mismatch in '" + listArgs(args) + "'");            
             
             stage = firstStage; 
             continue;

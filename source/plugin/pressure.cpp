@@ -77,7 +77,7 @@ KERNEL(bnd=1) CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressur
 	{
         vel(i,j,k).y -= (pressure(i,j,k) - pressure(i,j-1,k) );
     }
-	if(! ((flags.isEmpty(i,j,k-1)) && (myFlagIsEmpty)) )
+	if(flags.is3D() && (! ((flags.isEmpty(i,j,k-1)) && (myFlagIsEmpty)) ))
 	{
         vel(i,j,k).z -= (pressure(i,j,k) - pressure(i,j,k-1) );
     }    
@@ -99,10 +99,10 @@ KERNEL SetOpenBound(Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& 
     if ((lowerBound.x && i<=1) || (upperBound.x && i>=maxX-2) ||
         (lowerBound.y && j<=1) || (upperBound.y && j>=maxY-2) ||
         (lowerBound.z && k<=1) || (upperBound.z && k>=maxZ-2)) {
-        A0(i,j,k) = 6.0;
+        A0(i,j,k) = vel.is3D() ? 6.0 : 4.0;
         Ai(i,j,k) = -1.0;
         Aj(i,j,k) = -1.0;
-        Ak(i,j,k) = -1.0;
+        if (vel.is3D()) Ak(i,j,k) = -1.0;
     }
 }
 
@@ -151,11 +151,11 @@ KERNEL(bnd=1) ApplyGhostFluid (FlagGrid& flags, Grid<Real>& phi, Grid<Real>& A0,
     const Real curPhi = phi(i,j,k);
     
     if (flags.isEmpty(i-1,j,k)) A0(i,j,k) += getGhostMatrixAddition( phi(i-1,j,k), curPhi, accuracy);
-    if (flags.isEmpty(i,j-1,k)) A0(i,j,k) += getGhostMatrixAddition( phi(i,j-1,k), curPhi, accuracy);
-    if (flags.isEmpty(i,j,k-1)) A0(i,j,k) += getGhostMatrixAddition( phi(i,j,k-1), curPhi, accuracy);
     if (flags.isEmpty(i+1,j,k)) A0(i,j,k) += getGhostMatrixAddition( curPhi, phi(i+1,j,k), accuracy);
+    if (flags.isEmpty(i,j-1,k)) A0(i,j,k) += getGhostMatrixAddition( phi(i,j-1,k), curPhi, accuracy);
     if (flags.isEmpty(i,j+1,k)) A0(i,j,k) += getGhostMatrixAddition( curPhi, phi(i,j+1,k), accuracy);
-    if (flags.isEmpty(i,j,k+1)) A0(i,j,k) += getGhostMatrixAddition( curPhi, phi(i,j,k+1), accuracy);
+    if (flags.is3D() && flags.isEmpty(i,j,k-1)) A0(i,j,k) += getGhostMatrixAddition( phi(i,j,k-1), curPhi, accuracy);
+    if (flags.is3D() && flags.isEmpty(i,j,k+1)) A0(i,j,k) += getGhostMatrixAddition( curPhi, phi(i,j,k+1), accuracy);
 }
 
 //! Kernel: Correct velocities for ghost fluids
@@ -180,7 +180,7 @@ KERNEL(bnd=1) CorrectVelGhostFluid (FlagGrid& flags, MACGrid& vel, Grid<Real>& p
     if (!flags.isObstacle(i,j-1,k) && (curFluid || flags.isFluid(i,j-1,k)))
         vel(i,j,k).y -= curPress - pressure(i,j-1,k);
     
-    if (!flags.isObstacle(i,j,k-1) && (curFluid || flags.isFluid(i,j,k-1)))
+    if (flags.is3D() && (!flags.isObstacle(i,j,k-1) && (curFluid || flags.isFluid(i,j,k-1))))
         vel(i,j,k).z -= curPress - pressure(i,j,k-1);
 }
 
@@ -211,12 +211,14 @@ PLUGIN void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      bool enforceCompatibility = false,
                      bool useResNorm = true )
 {
-    assertMsg(vel.is3D(), "Only 3D grids supported so far");
+    //assertMsg(vel.is3D(), "Only 3D grids supported so far");
     
     // parse strings
     Vector3D<bool> loOpenBound, upOpenBound, loOutflow, upOutflow;
     convertDescToVec(openBound, loOpenBound, upOpenBound);
     convertDescToVec(outflow, loOutflow, upOutflow);
+    if (vel.is2D() && (loOpenBound.z || upOpenBound.z))
+        errMsg("open boundaries for z specified for 2D grid");
     
     // reserve temp grids
     Grid<Real> rhs(parent);
@@ -252,7 +254,11 @@ PLUGIN void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     
     // CG
     const int maxIter = (int)(cgMaxIterFac * flags.getSize().max());
-    GridCgInterface *gcg = new GridCg<ApplyMatrix>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
+    GridCgInterface *gcg;
+    if (vel.is3D())
+        gcg = new GridCg<ApplyMatrix>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
+    else
+        gcg = new GridCg<ApplyMatrix2D>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
     
     gcg->setAccuracy( cgAccuracy ); 
     gcg->setUseResNorm( useResNorm );

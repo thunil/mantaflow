@@ -31,6 +31,9 @@ private:
    std::string mS;   
 };
 
+// mark unused parameter variables
+#define unusedParameter(x) ((void)x)
+
 // Debug output functions and macros
 extern int gDebugLevel;
 
@@ -44,7 +47,7 @@ inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 #else
 #   define DEBUG_ONLY(a)
 #endif
-#define throwError(msg) { std::ostringstream s; s << msg << std::endl << "Error raised in " << __FILE__ << ":" << __LINE__; throw Error(s.str()); }
+#define throwError(msg) { std::ostringstream __s; __s << msg << std::endl << "Error raised in " << __FILE__ << ":" << __LINE__; throw Error(__s.str()); }
 #define errMsg(a) throwError(a)
 #define assertMsg(a,b) if(!(a)) throwError(b)
 #define assertDeb(a,b) DEBUG_ONLY(assertMsg(a,b))

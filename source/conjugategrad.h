@@ -124,6 +124,24 @@ ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src,
                 + src[idx+Z] * Ak[idx];
 }
 
+//! Kernel: Apply symmetric stored Matrix. 2D version
+KERNEL(idx) 
+ApplyMatrix2D (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
+               Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
+{
+    unusedParameter(Ak); // only there for parameter compatibility with ApplyMatrix
+    
+    if (!flags.isFluid(idx)) {
+        dst[idx] = src[idx];
+        return;
+    }    
+    dst[idx] =  src[idx] * A0[idx]
+                + src[idx-X] * Ai[idx-X]
+                + src[idx+X] * Ai[idx]
+                + src[idx-Y] * Aj[idx-Y]
+                + src[idx+Y] * Aj[idx];
+}
+
 //! Kernel: Construct the matrix for the poisson equation
 KERNEL (bnd=1) MakeLaplaceMatrix(FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) {
     if (!flags.isFluid(i,j,k))
@@ -134,12 +152,12 @@ KERNEL (bnd=1) MakeLaplaceMatrix(FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai
     if (!flags.isObstacle(i+1,j,k)) A0(i,j,k) += 1.;
     if (!flags.isObstacle(i,j-1,k)) A0(i,j,k) += 1.;
     if (!flags.isObstacle(i,j+1,k)) A0(i,j,k) += 1.;
-    if (!flags.isObstacle(i,j,k-1)) A0(i,j,k) += 1.;
-    if (!flags.isObstacle(i,j,k+1)) A0(i,j,k) += 1.;
+    if (flags.is3D() && !flags.isObstacle(i,j,k-1)) A0(i,j,k) += 1.;
+    if (flags.is3D() && !flags.isObstacle(i,j,k+1)) A0(i,j,k) += 1.;
     
     if (flags.isFluid(i+1,j,k)) Ai(i,j,k) = -1.;
     if (flags.isFluid(i,j+1,k)) Aj(i,j,k) = -1.;
-    if (flags.isFluid(i,j,k+1)) Ak(i,j,k) = -1.;    
+    if (flags.is3D() && flags.isFluid(i,j,k+1)) Ak(i,j,k) = -1.;    
 }
 
 

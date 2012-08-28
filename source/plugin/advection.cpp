@@ -19,7 +19,7 @@
 using namespace std;
 
 // safety boundary for semi lagrange advection step
-#define SLADVBOUND 2
+#define SLADVBOUND 1
 
 namespace Manta { 
 

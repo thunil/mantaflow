@@ -29,25 +29,8 @@ GridBase::GridBase (FluidSolver* parent)
     : PbClass(parent), mType(TypeNone)
 {
     checkParent();
-    mDim = getParent()->is2D() ? 2:3;
+    m3D = getParent()->is3D();
 }
-
-void GridBase::checkIndex(int i, int j, int k) const {
-    if (i<0 || j<0 || k<0 || i>=mSize.x || j>=mSize.y || k>= mSize.z) {
-        std::stringstream s;
-        s << "Grid " << mName << " dim " << mSize << " : index " << i << "," << j << "," << k << " out of bound ";
-        errMsg(s.str());
-    }
-}
-
-void GridBase::checkIndex(int idx) const {
-    if (idx<0 || idx > mSize.x * mSize.y * mSize.z) {
-        std::stringstream s;
-        s << "Grid " << mName << " dim " << mSize << " : index " << idx << " out of bound ";
-        errMsg(s.str());
-    }
-}
-
 
 //******************************************************************************
 // Grid<T> members

@@ -217,9 +217,11 @@ void GridCg<APPLYMAT>::doInit() {
     mResidual = mRhs; // p=0, residual = b
     
     if (mPcMethod == PC_ICP) {
+        assertMsg(mDst.is3D(), "ICP only supports 3D grids so far");
         InitPreconditionIncompCholesky(mFlags, *mpPCA0, *mpPCAi, *mpPCAj, *mpPCAk, *mpA0, *mpAi, *mpAj, *mpAk);
         ApplyPreconditionIncompCholesky(mTmp, mResidual, mFlags, *mpPCA0, *mpPCAi, *mpPCAj, *mpPCAk, *mpA0, *mpAi, *mpAj, *mpAk);
     } else if (mPcMethod == PC_mICP) {
+        assertMsg(mDst.is3D(), "mICP only supports 3D grids so far");
         InitPreconditionModifiedIncompCholesky2(mFlags, *mpPCA0, *mpA0, *mpAi, *mpAj, *mpAk);
         ApplyPreconditionModifiedIncompCholesky2(mTmp, mResidual, mFlags, *mpPCA0, *mpA0, *mpAi, *mpAj, *mpAk);
     } else {
@@ -228,7 +230,6 @@ void GridCg<APPLYMAT>::doInit() {
     
     mSearch = mTmp;
     
-    // sigma = dot(tmp, residual)
     mSigma = dotProduct(mTmp, mResidual);    
 }
 
@@ -306,5 +307,6 @@ void GridCg<APPLYMAT>::setPreconditioner(PreconditionType method, Grid<Real> *A0
 
 // explicit instantiation
 template class GridCg<ApplyMatrix>;
+template class GridCg<ApplyMatrix2D>;
 
 }; // DDF
