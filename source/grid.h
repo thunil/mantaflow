@@ -146,9 +146,9 @@ protected:
 };
 
 // explicit instantiation
-PYTHON template class Grid<int>;
-PYTHON template class Grid<Real>;
-PYTHON template class Grid<Vec3>;
+PYTHON alias Grid<int> IntGrid;
+PYTHON alias Grid<Real> RealGrid;
+PYTHON alias Grid<Vec3> VecGrid;
 
 //! Special function for staggered grids
 PYTHON class MACGrid : public Grid<Vec3> {

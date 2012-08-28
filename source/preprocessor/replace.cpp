@@ -13,6 +13,7 @@
 
 #include "prep.h"
 #include <cstdlib>
+#include <set>
 #include <sstream>
 #include <iostream>
 using namespace std;
@@ -90,7 +91,7 @@ void createPythonWrapper(const vector<Argument>& args, const string& fname, cons
         header += tb2+ "pbPreparePlugin(parent, \""+totalname+"\");" + nl;
         header += tb2+ "PyObject *_retval = NULL;" + nl;
     } else if (ftype == FtMember)
-        header += tb2+ "pbPreparePlugin(mParent, \""+totalname+"\");" + nl;        
+        header += tb2+ "pbPreparePlugin(this->mParent, \""+totalname+"\");" + nl;        
     else 
         header += tb2+ "pbPreparePlugin(0, \""+totalname+"\");" + nl;    
     header += tb2+ "{ ArgLocker _lock;" + nl;
@@ -107,7 +108,7 @@ void createPythonWrapper(const vector<Argument>& args, const string& fname, cons
         footer += tb2+ "return 0;" + nl;
     } else if (ftype == FtMember) {
         footer =  tb2+ "this->_args.check(); }" + nl;
-        footer += tb2+ "pbFinalizePlugin(mParent,\"" +totalname+"\");" + nl;
+        footer += tb2+ "pbFinalizePlugin(this->mParent,\"" +totalname+"\");" + nl;
         footer += tb2+ "return _retval;" + nl;    
     } else if (ftype == FtPlugin) {
         footer =  tb2+ "_args.check(); }" + nl;
@@ -381,8 +382,8 @@ string processPlugin(int lb, const string& fname, const vector<Argument>& opts, 
 }
 
 // globals for tracking state between python class and python function registrations
-string gLocalReg, gParent, gTemplate;
-bool gFoundConstructor = false;
+string gLocalReg, gParent;
+bool gFoundConstructor = false, gIsTemplated=false;
 
 string processPythonFunction(int lb, const string& name, const string& type, const vector<Argument>& args, const string& initlist, const string& code, int) {
     // beautify code
@@ -395,7 +396,7 @@ string processPythonFunction(int lb, const string& name, const string& type, con
     if (isConstructor) gFoundConstructor = true;
         
     // generate caller
-    string clname = "_" + gParent + (gTemplate.empty() ? "" : "$");
+    string clname = "_" + gParent + (gIsTemplated ? "@" : "");
     string fname = "_" + name;
     string codeInline = code;
     if (code[0] != ';') {
@@ -428,20 +429,20 @@ string processPythonFunction(int lb, const string& name, const string& type, con
     string regDecl = "", regCall = "";
     if (isConstructor) {
         caller = "";
-        if (gTemplate.empty()) {
-            regDecl = header + "obj = new " + gParent + "(" + callList + ");" + footer;
-            regCall = "PbWrapperRegistry::instance().addConstructor(\"" + gParent + "\", " + regname + ");";
-        } else {
+        if (gIsTemplated) {
             regDecl = "@template " + gParent + " " + header + "obj = new " + gParent + "<$> (" + callList + ");" + footer;
             regCall = "@template " + gParent + " PbWrapperRegistry::instance().addConstructor(\"" + gParent + "<$>\", " + regname + ");";        
+        } else {
+            regDecl = header + "obj = new " + gParent + "(" + callList + ");" + footer;
+            regCall = "PbWrapperRegistry::instance().addConstructor(\"" + gParent + "\", " + regname + ");";
         }
     } else {
-        if (gTemplate.empty()) {
-            regDecl = regHeader + " { return fromPy<" + gParent +"*>(_self)->_" + name + "(_self, _linargs, _kwds); }";
-            regCall = "PbWrapperRegistry::instance().addMethod(\"" + gParent + "\", \"" + name + "\", " + regname + ");";
-        } else {
+        if (gIsTemplated) {
             regDecl = "@template " + gParent + " " + regHeader + " { return dynamic_cast<" + gParent +"<$>*>(PbClass::fromPyObject(_self))->_" + name + "(_self, _linargs, _kwds); }";
             regCall = "@template " + gParent + " PbWrapperRegistry::instance().addMethod(\"" + gParent + "<$>\", \"" + name + "\", " + regname + ");";
+        } else {
+            regDecl = regHeader + " { return fromPy<" + gParent +"*>(_self)->_" + name + "(_self, _linargs, _kwds); }";
+            regCall = "PbWrapperRegistry::instance().addMethod(\"" + gParent + "\", \"" + name + "\", " + regname + ");";
         }
     }
     if (isHeader) {
@@ -506,7 +507,7 @@ string processPythonVariable(int lb, const string& name, const vector<Argument>&
     return buildline(lb) + code;
 }
 
-string processPythonClass(int lb, const string& name, const vector<Argument>& opts, const string& templ, const string& baseclass, const string& code, int line) {
+string processPythonClass(int lb, const string& name, const vector<Argument>& opts, const std::vector<Argument>& templArgs, const string& baseclass, const string& code, int line) {
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = gDebugMode ? "\t" : "";
@@ -514,7 +515,7 @@ string processPythonClass(int lb, const string& name, const vector<Argument>& op
     // is header file ?
     bool isHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
     
-    if (!isHeader && !templ.empty())
+    if (!isHeader && !templArgs.empty())
         errMsg(line, "PYTHON template classes can only be defined in header files.");
     
     string pname = name; // for now
@@ -529,10 +530,10 @@ string processPythonClass(int lb, const string& name, const vector<Argument>& op
     
     // class registry
     string registry = "";
-    if (templ.empty())
+    if (templArgs.empty())
         registry = "PbWrapperRegistry::instance().addClass(\"" + pname + "\", \"" + name + "\", \"" + baseclass + "\");";
     else
-        registry = "@template " + name + " PbWrapperRegistry::instance().addClass(\"$" + name + "\", \"" + name + "<$>\", \"" + baseclass + "\");";
+        registry = "@template " + name + " PbWrapperRegistry::instance().addClass(\"@\", \"" + name + "<$>\", \"" + baseclass + "\");";
     
     // register class
     if (isHeader) {
@@ -546,7 +547,7 @@ string processPythonClass(int lb, const string& name, const vector<Argument>& op
     
     // register converters
     gLocalReg = ""; 
-    if (templ.empty()) {
+    if (templArgs.empty()) {
         if (isHeader)
             gRegText += createConverters(name, "", " ", "\n");
         else
@@ -555,13 +556,13 @@ string processPythonClass(int lb, const string& name, const vector<Argument>& op
     
     // tokenize and parse contained python functions
     gParent = name;
-    gTemplate = templ;
+    gIsTemplated = !templArgs.empty();
     gFoundConstructor = false;
     string newText = processText(code.substr(1), line);
     gParent = "";    
     if (!gFoundConstructor)
         errMsg(line, "no PYTHON constructor found in class '" + name + "'");
-    if (!isHeader && !templ.empty())
+    if (!isHeader && gIsTemplated)
         errMsg(line, "PYTHON class template can only be used in header files.");
     
     // create class
@@ -569,8 +570,8 @@ string processPythonClass(int lb, const string& name, const vector<Argument>& op
     if (gDocMode) {
         pclass += "//! \\ingroup PyClasses\nPYTHON ";
     }
-    if (!templ.empty())
-        pclass += "template<class " + templ + "> " + nl;
+    if (gIsTemplated)
+        pclass += "template<" + listArgs(templArgs) + "> " + nl;
     pclass += "class " + name + " : public " + baseclass + " {" + nl;
     pclass += newText + nl;
     if (!gDocMode) {
@@ -583,8 +584,14 @@ string processPythonClass(int lb, const string& name, const vector<Argument>& op
     return buildline(lb) + pclass + gLocalReg;
 }
 
-string processPythonInstantiation(int lb, const string& name, const string& templ, int) {
-    gRegText += "@instance " + name + " " + templ + "\n";
-    gRegText += createConverters(name + "<" + templ + ">", "", " ", "\n");
+set<string> gAliasRegister;
+string processPythonInstantiation(int lb, const string& name, const std::vector<Argument>& templArgs, const string& aliasname, int) {
+    gRegText += "@instance " + name + " " + listArgs(templArgs) + " " + aliasname + "\n";
+    gRegText += createConverters(name + "<" + listArgs(templArgs) + ">", "", " ", "\n");
+    
+    if (gAliasRegister.find(aliasname) == gAliasRegister.end()) {
+        gAliasRegister.insert(aliasname);
+        return buildline(lb) + "typedef " + name + "<" + listArgs(templArgs) + "> " + aliasname + "; ";
+    }
     return buildline(lb);
 }
