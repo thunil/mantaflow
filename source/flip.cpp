@@ -18,7 +18,7 @@ namespace Manta {
 
 //! Set velocities from grid with given PIC/FLIP mixture
 KERNEL(pts) 
-CopyVelocitiesFromGrid(FlipSystem& p, FlagGrid3& flags, MACGrid3& vel, MACGrid3& oldVel, Real flipRatio) {
+CopyVelocitiesFromGrid(FlipSystem& p, FlagGrid& flags, MACGrid& vel, MACGrid& oldVel, Real flipRatio) {
     if (!p.isActive(i)) return;
     
     /*if (!flags.isFluid(p[i].pos)) {
@@ -34,19 +34,19 @@ CopyVelocitiesFromGrid(FlipSystem& p, FlagGrid3& flags, MACGrid3& vel, MACGrid3&
 
 //! Set velocities on the grid from the particle system
 KERNEL(pts, single) 
-CopyVelocitiesToGrid(FlipSystem& p, FlagGrid3& flags, MACGrid3& vel, Grid3<Vec3>& tmp) {
+CopyVelocitiesToGrid(FlipSystem& p, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& tmp) {
     if (!p.isActive(i)) return;
     
     vel.setInterpolated(p[i].pos, p[i].vel, &tmp[0]);
 }
 
-void FlipSystem::velocitiesFromGrid(FlagGrid3& flags, MACGrid3& vel, Real flipRatio) {
+void FlipSystem::velocitiesFromGrid(FlagGrid& flags, MACGrid& vel, Real flipRatio) {
     CopyVelocitiesFromGrid(*this, flags, vel, mOldVel, flipRatio);
 }
 
-void FlipSystem::velocitiesToGrid(FlagGrid3& flags, MACGrid3& vel) {
+void FlipSystem::velocitiesToGrid(FlagGrid& flags, MACGrid& vel) {
     // interpol -> grid. tmpgrid for counting
-    Grid3<Vec3> tmp(mParent);
+    Grid<Vec3> tmp(mParent);
     vel.clear();
     CopyVelocitiesToGrid(*this, flags, vel, tmp);
     vel.safeDivide(tmp);
@@ -55,8 +55,8 @@ void FlipSystem::velocitiesToGrid(FlagGrid3& flags, MACGrid3& vel) {
     mOldVel = vel;
 }
 
-void FlipSystem::adjustNumber(MACGrid3& vel, FlagGrid3& flags, int minParticles, int maxParticles) {
-    Grid3<int> tmp(mParent);
+void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, int maxParticles) {
+    Grid<int> tmp(mParent);
     
     // count particles in cells, and delete excess particles
     for (int i=0; i<mSize; i++) {
