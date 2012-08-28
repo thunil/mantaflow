@@ -25,7 +25,7 @@ namespace Manta {
 PYTHON(name=Solver) 
 class FluidSolver : public PbClass {
 public:
-    PYTHON FluidSolver(Vec3i gridSize);
+    PYTHON FluidSolver(Vec3i gridSize, int dim=3);
     virtual ~FluidSolver();
     
     // accessors
@@ -34,6 +34,10 @@ public:
     inline Real getTime() { return mTimeTotal; }
     inline Real getDx() { return 1.0 / mGridSize.max(); }
     inline Real getScale() { return mScale; }
+    //! Check dimensionality
+    inline bool is2D() { return mDim==2; }
+    //! Check dimensionality
+    inline bool is3D() { return mDim==3; }
     
     // Python callable methods    
     //! output performace statistics
@@ -65,6 +69,7 @@ protected:
     };
     
     Vec3i mGridSize;
+    const int mDim;
     PYTHON(name=timestep) Real mDt;
     Real mTimeTotal, mScale;
     int mFrame;

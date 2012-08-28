@@ -73,8 +73,8 @@ inline bool isAtInterface(Grid<int>& fmFlags, LevelsetGrid& phi, const Vec3i& p)
 //************************************************************************
 // Levelset class def
 
-LevelsetGrid::LevelsetGrid(FluidSolver* parent, int dim, bool show) 
-    : Grid<Real>(parent, dim, show) 
+LevelsetGrid::LevelsetGrid(FluidSolver* parent, bool show) 
+    : Grid<Real>(parent, show) 
 { 
     mType = (GridType)(TypeLevelset | TypeReal);    
 }    

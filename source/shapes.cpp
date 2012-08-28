@@ -54,6 +54,7 @@ KERNEL ApplyShapeToMACGrid (MACGrid* grid, Shape* shape, Vec3 value)
 }
 
 void Shape::applyToGrid(GridBase* grid) {
+    assertMsg(grid->is3D(), "Only 3D Grids supported so far");
     if (grid->getType() & GridBase::TypeInt)
         ApplyShapeToGrid<int> ((Grid<int>*)grid, this, _args.get<int>("value"));
     else if (grid->getType() & GridBase::TypeReal)
@@ -67,6 +68,7 @@ void Shape::applyToGrid(GridBase* grid) {
 }
 
 void Shape::applyToGridSmooth(GridBase* grid, Real sigma, Real shift) {
+    assertMsg(grid->is3D(), "Only 3D Grids supported so far");
     Grid<Real> phi(grid->getParent());
     generateLevelset(phi);
 

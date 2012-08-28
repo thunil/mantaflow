@@ -27,7 +27,7 @@ PYTHON class GridBase : public PbClass {
 public:
     enum GridType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4, TypeMAC = 8, TypeLevelset = 16, TypeFlags = 32 };
         
-    PYTHON GridBase(FluidSolver* parent, int dim=3);
+    PYTHON GridBase(FluidSolver* parent);
     
     //! Get the grids X dimension
     inline int getSizeX() const { return mSize.x; }
@@ -62,6 +62,8 @@ public:
     inline GridType getType() { return mType; }
     //! Check dimensionality
     inline bool is2D() { return mDim==2; }
+    //! Check dimensionality
+    inline bool is3D() { return mDim==3; }
     
     //! Get index into the data
     inline int index(int i, int j, int k) const { DEBUG_ONLY(checkIndex(i,j,k)); return i + mSize.x * j + mStrideZ * k; }
@@ -72,15 +74,16 @@ protected:
     GridType mType;
     Vec3i mSize;
     Real mDx;
-    int mStrideZ; // precomputed for speed and 2D compatibility
     int mDim;
+    // precomputed Z shift: to ensure 2D compatibility, always use this instead of sx*sy !
+    int mStrideZ; 
 };
 
 //! Grid class
 PYTHON template<class T>
 class Grid : public GridBase {
 public:
-    PYTHON Grid(FluidSolver* parent, int dim=3, bool show = true);
+    PYTHON Grid(FluidSolver* parent, bool show = true);
     virtual ~Grid();
     
     typedef T BASETYPE;
@@ -145,7 +148,7 @@ protected:
     T* mData;
 };
 
-// explicit instantiation
+// Python doesn't know about templates: explicit aliases needed
 PYTHON alias Grid<int> IntGrid;
 PYTHON alias Grid<Real> RealGrid;
 PYTHON alias Grid<Vec3> VecGrid;
@@ -153,7 +156,7 @@ PYTHON alias Grid<Vec3> VecGrid;
 //! Special function for staggered grids
 PYTHON class MACGrid : public Grid<Vec3> {
 public:
-    PYTHON MACGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<Vec3>(parent, dim, show) { mType = (GridType)(TypeMAC | TypeVec3); }
+    PYTHON MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { mType = (GridType)(TypeMAC | TypeVec3); }
     
     // specialized functions for interpolating MAC information
     inline Vec3 getCentered(int i, int j, int k);
@@ -171,7 +174,7 @@ protected:
 //! Special functions for FlagGrid
 PYTHON class FlagGrid : public Grid<int> {
 public:
-    PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, dim, show) { mType = (GridType)(TypeFlags | TypeInt); }
+    PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show) { mType = (GridType)(TypeFlags | TypeInt); }
     
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
     enum CellType { 

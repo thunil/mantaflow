@@ -89,9 +89,11 @@ void FluidSolver::pluginStop(const string& name) {
 //******************************************************************************
 // FluidSolver members
 
-FluidSolver::FluidSolver(Vec3i gridsize)
-    : PbClass(this), mDt(1.0), mScale(1.0), mFrame(0), mGridSize(gridsize)
+FluidSolver::FluidSolver(Vec3i gridsize, int dim)
+    : PbClass(this), mDt(1.0), mScale(1.0), mFrame(0), mGridSize(gridsize), mDim(dim)
 {    
+    assertMsg(dim==2 || dim==3, "Can only create 2D and 3D solvers");
+    assertMsg(dim!=2 || gridsize.z == 1, "Trying to create 2D solver with size.z != 1");
 }
 
 FluidSolver::~FluidSolver() {
