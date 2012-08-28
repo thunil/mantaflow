@@ -20,7 +20,7 @@
 #include "integrator.h"
 namespace Manta {
 // fwd decl
-template<int DIM, class T> class Grid;
+template<class T> class Grid;
 
 //! Baseclass for particle systems. Does not implement any data
 PYTHON class ParticleBase : public PbClass {
@@ -65,7 +65,7 @@ public:
     // plugins
     
     //! Advect particle in grid velocity field
-    PYTHON void advectInGrid(FlagGrid3& flaggrid, MACGrid3& vel, int integrationMode);
+    PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
     
     virtual ParticleBase* clone();
     
@@ -109,10 +109,10 @@ int ParticleSystem<S>::add(const S& data) {
     return mData.size()-1;
 }
 
-DefineIntegrator(integrateMeshMAC, MACGrid3, getInterpolated);
+DefineIntegrator(integrateMeshMAC, MACGrid, getInterpolated);
 
 KERNEL(pts) template<class S, IntegrationMode mode>
-KnAdvectInGrid(ParticleSystem<S>& p, MACGrid3& vel, FlagGrid3& flaggrid, Real dt) {
+KnAdvectInGrid(ParticleSystem<S>& p, MACGrid& vel, FlagGrid& flaggrid, Real dt) {
     if (!p.isActive(i)) return;
     
     // from integrator.h
@@ -125,7 +125,7 @@ KnAdvectInGrid(ParticleSystem<S>& p, MACGrid3& vel, FlagGrid3& flaggrid, Real dt
 
 // advection plugin
 template<class S>
-void ParticleSystem<S>::advectInGrid(FlagGrid3& flaggrid, MACGrid3& vel, int integrationMode) {
+void ParticleSystem<S>::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode) {
     const Real dt = mParent->getDt();
     switch((IntegrationMode)integrationMode) {
         case EULER: KnAdvectInGrid<S, EULER>(*this, vel, flaggrid, dt); break;

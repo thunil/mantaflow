@@ -30,7 +30,7 @@ typedef _object PyObject;
 #endif
 
 namespace Manta { 
-template<int DIM, class T> class Grid; 
+template<class T> class Grid; 
 class PbClass;
 class FluidSolver;
 
@@ -97,11 +97,11 @@ public:
         PyObject* o = getItem(key, false);
         return (o) ? fromPy<T>(o) : defarg;
     }
-    template<int DIM,class T> Grid<DIM,T>* getGrid(const std::string& key) { 
-        return get<Grid<DIM,T>*>(key);         
+    template<class T> Grid<T>* getGrid(const std::string& key) { 
+        return get<Grid<T>*>(key);         
     }
-    template<int DIM,class T> Grid<DIM,T>* getGridOpt(const std::string& key, Grid<DIM,T>* defGrid) { 
-        return getOpt<Grid<DIM,T>*>(key, defGrid);         
+    template<class T> Grid<T>* getGridOpt(const std::string& key, Grid<T>* defGrid) { 
+        return getOpt<Grid<T>*>(key, defGrid);         
     }
     
     PbArgs& operator=(const PbArgs& a); // dummy

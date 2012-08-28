@@ -49,7 +49,7 @@ void GridBase::checkIndex(int idx) const {
 
 
 //******************************************************************************
-// Grid<DIM,T> members
+// Grid<T> members
 
 // helpers to set type
 template<class T> inline GridBase::GridType typeList() { return GridBase::TypeNone; }
@@ -57,8 +57,8 @@ template<> inline GridBase::GridType typeList<Real>() { return GridBase::TypeRea
 template<> inline GridBase::GridType typeList<int>() { return GridBase::TypeInt; }
 template<> inline GridBase::GridType typeList<Vec3>() { return GridBase::TypeVec3; }
 
-template<int DIM,class T>
-Grid<DIM,T>::Grid(FluidSolver* parent, bool show)
+template<class T>
+Grid<T>::Grid(FluidSolver* parent, bool show)
     : GridBase(parent)
 {     
     mType = typeList<T>();
@@ -71,18 +71,18 @@ Grid<DIM,T>::Grid(FluidSolver* parent, bool show)
     setHidden(!show);
 }
 
-template<int DIM,class T>
-Grid<DIM,T>::~Grid() {
+template<class T>
+Grid<T>::~Grid() {
     mParent->freeGridPointer<T>(mData);    
 }
 
-template<int DIM,class T>
-void Grid<DIM,T>::clear() {
+template<class T>
+void Grid<T>::clear() {
     memset(mData, 0, sizeof(T) * mSize.x * mSize.y * mSize.z);    
 }
 
-template<int DIM,class T>
-void Grid<DIM,T>::swap(Grid<DIM,T>& other) {
+template<class T>
+void Grid<T>::swap(Grid<T>& other) {
     if (other.getSizeX() != getSizeX() || other.getSizeY() != getSizeY() || other.getSizeZ() != getSizeZ())
         throw Error("Grid::swap(): Grid dimensions mismatch.");
     
@@ -91,8 +91,8 @@ void Grid<DIM,T>::swap(Grid<DIM,T>& other) {
     mData = dswap;
 }
 
-template<int DIM,class T>
-void Grid<DIM,T>::save(string name) {
+template<class T>
+void Grid<T>::save(string name) {
     if (name.find_last_of('.') == string::npos)
         throw Error("file '" + name + "' does not have an extension");
     string ext = name.substr(name.find_last_of('.'));
@@ -105,11 +105,10 @@ void Grid<DIM,T>::save(string name) {
 }
 
 //******************************************************************************
-// Grid<DIM,T> operators
+// Grid<T> operators
 
 //! Kernel: Compute minmax value of Real grid
-KERNEL(idx, reduce) template<int DIM> 
-struct CompMinmaxReal (Grid<DIM, Real>& val) {
+KERNEL(idx, reduce) struct CompMinmaxReal (Grid<Real>& val) {
     Real minVal, maxVal;
     
     void operator()(int idx) {
@@ -129,8 +128,7 @@ struct CompMinmaxReal (Grid<DIM, Real>& val) {
 };
 
 //! Kernel: Compute minmax value of int grid
-KERNEL(idx, reduce) template<int DIM> 
-struct CompMinmaxInt (Grid<DIM,int>& val) {
+KERNEL(idx, reduce) struct CompMinmaxInt (Grid<int>& val) {
     int minVal, maxVal;
     
     void operator()(int idx) {
@@ -150,8 +148,7 @@ struct CompMinmaxInt (Grid<DIM,int>& val) {
 };
 
 //! Kernel: Compute minmax squared norm of Vec3 grid
-template<int DIM> KERNEL(idx, reduce)
-struct CompMinmaxVec3 (Grid<DIM,Vec3>& val) {
+KERNEL(idx, reduce) struct CompMinmaxVec3 (Grid<Vec3>& val) {
     Real minVal2, maxVal2;
     
     void operator()(int idx) {
@@ -171,94 +168,94 @@ struct CompMinmaxVec3 (Grid<DIM,Vec3>& val) {
     }
 };
 
-template<int DIM,class T> Grid<DIM,T>& Grid<DIM,T>::safeDivide (const Grid<DIM,T>& a) {
-    gridSafeDiv<DIM,T> (*this, a);
+template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
+    gridSafeDiv<T> (*this, a);
     return *this;
 }
-template<int DIM,class T> Grid<DIM,T>& Grid<DIM,T>::operator= (const Grid<DIM,T>& a) {
+template<class T> Grid<T>& Grid<T>::operator= (const Grid<T>& a) {
     memcpy(mData, a.mData, sizeof(T) * mSize.x * mSize.y * mSize.z);
     mType = a.mType; // copy type marker
     return *this;
 }
-template<int DIM,class T> Grid<DIM,T>& Grid<DIM,T>::operator= (const T& a) {
+template<class T> Grid<T>& Grid<T>::operator= (const T& a) {
     FOR_IDX(*this) { mData[idx] = a; }
     return *this;
 }
-template<int DIM,class T> void Grid<DIM,T>::scaledAdd(const Grid<DIM,T>& a, const T& factor) {
-    gridScaleAdd<DIM,T> (*this, a, factor);
+template<class T> void Grid<T>::scaledAdd(const Grid<T>& a, const T& factor) {
+    gridScaleAdd<T> (*this, a, factor);
 }
-template<int DIM, class T> void Grid<DIM,T>::add(const Grid<DIM,T>& a, const Grid<DIM,T>& b) {
-    gridAdd2<DIM,T>(*this, a, b);
+template<> Real Grid<Real>::getMaxValue() {
+    return CompMinmaxReal (*this).maxVal;
 }
-
-template<> Real Grid<3,Real>::getMaxValue() { return CompMinmaxReal<3> (*this).maxVal; }
-template<> Real Grid<2,Real>::getMaxValue() { return CompMinmaxReal<2> (*this).maxVal; }
-template<> Real Grid<3,Real>::getMinValue() { return CompMinmaxReal<3> (*this).minVal; }
-template<> Real Grid<2,Real>::getMinValue() { return CompMinmaxReal<2> (*this).minVal; }
-template<> Real Grid<3,int>::getMaxValue() { return (Real) CompMinmaxInt<3> (*this).maxVal; }
-template<> Real Grid<2,int>::getMaxValue() { return (Real) CompMinmaxInt<2> (*this).maxVal; }
-template<> Real Grid<3,int>::getMinValue() { return (Real) CompMinmaxInt<3> (*this).minVal; }
-template<> Real Grid<2,int>::getMinValue() { return (Real) CompMinmaxInt<2> (*this).minVal; }
-template<> Real Grid<3,Vec3>::getMaxValue() { return sqrt(CompMinmaxVec3<3> (*this).maxVal2); }
-template<> Real Grid<2,Vec3>::getMaxValue() { return sqrt(CompMinmaxVec3<2> (*this).maxVal2); }
-template<> Real Grid<3,Vec3>::getMinValue() { return sqrt(CompMinmaxVec3<3> (*this).minVal2); }
-template<> Real Grid<2,Vec3>::getMinValue() { return sqrt(CompMinmaxVec3<2> (*this).minVal2); }
-template<> Real Grid<3,Vec3>::getMaxAbsValue() { return sqrt(CompMinmaxVec3<3> (*this).maxVal2); }
-template<> Real Grid<2,Vec3>::getMaxAbsValue() { return sqrt(CompMinmaxVec3<2> (*this).maxVal2); }
-template<> Real Grid<3,Real>::getMaxAbsValue() { CompMinmaxReal<3> op (*this); return max( fabs(op.minVal), fabs(op.maxVal)); }
-template<> Real Grid<2,Real>::getMaxAbsValue() { CompMinmaxReal<2> op (*this); return max( fabs(op.minVal), fabs(op.maxVal)); }
-template<> Real Grid<3,int>::getMaxAbsValue() { CompMinmaxInt<3> op (*this); return max( fabs((Real)op.minVal), fabs((Real)op.maxVal)); }
-template<> Real Grid<2,int>::getMaxAbsValue() { CompMinmaxInt<2> op (*this); return max( fabs((Real)op.minVal), fabs((Real)op.maxVal)); }
+template<> Real Grid<Real>::getMinValue() {
+    return CompMinmaxReal (*this).minVal;
+}
+template<> Real Grid<Real>::getMaxAbsValue() {
+    CompMinmaxReal op (*this);
+    return max( fabs(op.minVal), fabs(op.maxVal));
+}
+template<> Real Grid<Vec3>::getMaxValue() {
+    return sqrt(CompMinmaxVec3 (*this).maxVal2);
+}
+template<> Real Grid<Vec3>::getMinValue() { 
+    return sqrt(CompMinmaxVec3 (*this).minVal2);
+}
+template<> Real Grid<Vec3>::getMaxAbsValue() {
+    return sqrt(CompMinmaxVec3 (*this).maxVal2);
+}
+template<> Real Grid<int>::getMaxValue() {
+    return (Real) CompMinmaxInt (*this).maxVal;
+}
+template<> Real Grid<int>::getMinValue() {
+    return (Real) CompMinmaxInt (*this).minVal;
+}
+template<> Real Grid<int>::getMaxAbsValue() {
+    CompMinmaxInt op (*this);
+    return max( fabs((Real)op.minVal), fabs((Real)op.maxVal));
+}
+template<class T> void Grid<T>::add(const Grid<T>& a, const Grid<T>& b) {
+    gridAdd2<T>(*this, a, b);
+}
 
 //******************************************************************************
 // Specialization classes
 
-template<int DIM>
-void FlagGrid<DIM>::initDomain(int boundaryWidth) {
-    memset(this->mData, TypeEmpty, sizeof(int) * this->mSize.x * this->mSize.y * this->mSize.z);    
+void FlagGrid::initDomain(int boundaryWidth) {
+    memset(mData, TypeEmpty, sizeof(int) * mSize.x * mSize.y * mSize.z);    
     initBoundaries(boundaryWidth);
 }
 
-template<int DIM>
-void FlagGrid<DIM>::initBoundaries(int boundaryWidth) {
+void FlagGrid::initBoundaries(int boundaryWidth) {
+    const int w = boundaryWidth;
     FOR_IJK(*this) {
-        if (!this->isInBounds(Vec3i(i,j,k),boundaryWidth))
-            (*this)(i,j,k) = TypeObstacle;
+        bool bnd = (i<=w || i>=mSize.x-1-w || j<=w || j>=mSize.y-1-w || k<=w || k>=mSize.z-1-w);
+        if (bnd) 
+            mData[index(i,j,k)] = TypeObstacle;
     }
 }
 
-KERNEL(idx) template<int DIM>
-KnUpdateFromLevelset(FlagGrid<DIM>& flags, LevelsetGrid<DIM>& levelset) {
-    if (!flags.isObstacle(idx)) {
-        const Real phi = levelset[idx];
-        if (phi <= levelset.invalidTimeValue()) continue;
-        
-        flags[idx] &= ~(flags.TypeEmpty | flags.TypeFluid); // clear empty/fluid flags
-        flags[idx] |= (phi <= 0) ? flags.TypeFluid : flags.TypeEmpty; // set resepctive flag
+void FlagGrid::updateFromLevelset(LevelsetGrid& levelset) {
+    FOR_IDX(*this) {
+        if (!isObstacle(idx)) {
+            const Real phi = levelset[idx];
+            if (phi <= levelset.invalidTimeValue()) continue;
+            
+            mData[idx] &= ~(TypeEmpty | TypeFluid); // clear empty/fluid flags
+            mData[idx] |= (phi <= 0) ? TypeFluid : TypeEmpty; // set resepctive flag
+        }
     }
-}
-
-template<int DIM>
-void FlagGrid<DIM>::updateFromLevelset(LevelsetGrid<DIM>& levelset) {
-    KnUpdateFromLevelset<DIM>(*this,levelset);
 }   
 
-template<int DIM>
-void FlagGrid<DIM>::fillGrid() {
+void FlagGrid::fillGrid() {
     FOR_IDX(*this) {
-        if (((*this)[idx] & TypeObstacle)==0)
-            (*this)[idx] = ((*this)[idx] & ~TypeEmpty) | TypeFluid;
+        if ((mData[idx] & TypeObstacle)==0)
+            mData[idx] = (mData[idx] & ~TypeEmpty) | TypeFluid;
     }
 }
 
 // explicit instantiation
-template class Grid<3,int>;
-template class Grid<3,Real>;
-template class Grid<3,Vec3>;
-template class Grid<2,int>;
-template class Grid<2,Real>;
-template class Grid<2,Vec3>;
-template class FlagGrid<2>;
-template class FlagGrid<3>;
+template class Grid<int>;
+template class Grid<Real>;
+template class Grid<Vec3>;
 
 } //namespace

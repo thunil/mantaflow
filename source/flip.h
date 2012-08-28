@@ -29,7 +29,7 @@ struct FlipData {
 };
 
 //! instantiate base class in python
-//PYTHON alias ParticleSystem<FlipData> ;
+PYTHON template class ParticleSystem<FlipData>;
 
 //! FLIP particle system
 PYTHON class FlipSystem : public ParticleSystem<FlipData> {
@@ -37,13 +37,13 @@ public:
     PYTHON FlipSystem(FluidSolver* parent) : ParticleSystem<FlipData>(parent), mOldVel(parent), mRand(1238943) {}
   
     //! Copy velocities from grid with given PIC/FLIP ratio
-    PYTHON void velocitiesFromGrid(FlagGrid3& flags, MACGrid3& vel, Real flipRatio=0.95);
+    PYTHON void velocitiesFromGrid(FlagGrid& flags, MACGrid& vel, Real flipRatio=0.95);
 	//! Write back velocities to grid
-    PYTHON void velocitiesToGrid(FlagGrid3& flags, MACGrid3& vel);
-	PYTHON void adjustNumber(MACGrid3& vel, FlagGrid3& flags, int minParticles=8, int maxParticles=12);
+    PYTHON void velocitiesToGrid(FlagGrid& flags, MACGrid& vel);
+	PYTHON void adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles=8, int maxParticles=12);
     
 private:
-	MACGrid3 mOldVel;
+	MACGrid mOldVel;
     RandomStream mRand;
 };
 

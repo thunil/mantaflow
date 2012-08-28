@@ -142,8 +142,7 @@ PyObject* PbVec3Negative(PyObject* a) {
     return PbNew(-va);
 }
 
-// numbers are defined subtely different in Py3 (WTF?)
-#if PY_MAJOR_VERSION >= 3
+
 static PyNumberMethods PbVec3NumberMethods = {
      (binaryfunc)PbVec3Add,          // binaryfunc nb_add;
      (binaryfunc)PbVec3Sub,          // binaryfunc nb_sub;
@@ -164,6 +163,7 @@ static PyNumberMethods PbVec3NumberMethods = {
      0,          // unaryfunc nb_int;
      0,          // void *nb_reserved;
      0,          // unaryfunc nb_float;
+
      0,          // binaryfunc nb_inplace_add;
      0,          // binaryfunc nb_inplace_subtract;
      0,          // binaryfunc nb_inplace_multiply;
@@ -182,49 +182,6 @@ static PyNumberMethods PbVec3NumberMethods = {
 
      0           // unaryfunc nb_index;
 };
-#else
-static PyNumberMethods PbVec3NumberMethods = {
-     (binaryfunc)PbVec3Add,          // binaryfunc nb_add;
-     (binaryfunc)PbVec3Sub,          // binaryfunc nb_sub;
-     (binaryfunc)PbVec3Mult,         // binaryfunc nb_mult;
-    0,                               // binaryfunc nb_divide;
-    0,                               // binaryfunc nb_remainder;
-    0,                               // binaryfunc nb_divmod;
-    0,                               // ternaryfunc nb_power;
-    (unaryfunc)PbVec3Negative,       // unaryfunc nb_negative;
-    0,                               // unaryfunc nb_positive;
-    0,                               // unaryfunc nb_absolute;
-    0,                               // inquiry nb_nonzero;
-    0,                               // unaryfunc nb_invert;
-    0,                               // binaryfunc nb_lshift;
-    0,                               // binaryfunc nb_rshift;
-    0,                               // binaryfunc nb_and;
-    0,                               // binaryfunc nb_xor;
-    0,                               // binaryfunc nb_or;
-    0,                               // coercion nb_coerce;
-    0,                               // unaryfunc nb_int;
-    0,                               // unaryfunc nb_long;
-    0,                               // unaryfunc nb_float;
-    0,                               // unaryfunc nb_oct;
-    0,                               // unaryfunc nb_hex;
-    0,                               // binaryfunc nb_inplace_add;
-    0,                               // binaryfunc nb_inplace_subtract;
-    0,                               // binaryfunc nb_inplace_multiply;
-    0,                               // binaryfunc nb_inplace_divide;
-    0,                               // binaryfunc nb_inplace_remainder;
-    0,                               // ternaryfunc nb_inplace_power;
-    0,                               // binaryfunc nb_inplace_lshift;
-    0,                               // binaryfunc nb_inplace_rshift;
-    0,                               // binaryfunc nb_inplace_and;
-    0,                               // binaryfunc nb_inplace_xor;
-    0,                               // binaryfunc nb_inplace_or;
-    0,                               // binaryfunc nb_floor_divide;
-    (binaryfunc)PbVec3Div,           // binaryfunc nb_true_divide;
-    0,                               // binaryfunc nb_inplace_floor_divide;
-    0,                               // binaryfunc nb_inplace_true_divide;
-    0,                               // unaryfunc nb_index;
-};
-#endif
 
 PyTypeObject PbVec3Type = {
     PyVarObject_HEAD_INIT(NULL, 0)

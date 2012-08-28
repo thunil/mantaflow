@@ -20,13 +20,13 @@
 namespace Manta {
     
 //! Fast marching. Transport certain values
-template<int DIM, class T>
+template<class T>
 class FmValueTransport {
 public:
     FmValueTransport() : mpFlags(0), mpVel(0) { };
     ~FmValueTransport() { };
 
-    void initMarching(MACGrid<DIM>* vel, FlagGrid<DIM>* flags) {
+    void initMarching(MACGrid* vel, FlagGrid* flags) {
         mpVel = vel;
         mpFlags = flags;
     }
@@ -44,18 +44,18 @@ public:
         if(weights[1]>0.0) val += mpVel->get(x-1, y+0, z+0) * weights[1];
         if(weights[2]>0.0) val += mpVel->get(x+0, y+1, z+0) * weights[2];
         if(weights[3]>0.0) val += mpVel->get(x+0, y-1, z+0) * weights[3];
-        if(DIM==3 && weights[4]>0.0) val += mpVel->get(x+0, y+0, z+1) * weights[4];
-        if(DIM==3 && weights[5]>0.0) val += mpVel->get(x+0, y+0, z-1) * weights[5];
+        if(weights[4]>0.0) val += mpVel->get(x+0, y+0, z+1) * weights[4];
+        if(weights[5]>0.0) val += mpVel->get(x+0, y+0, z-1) * weights[5];
         
         // set velocity components if adjacent is empty
         if (mpFlags->isEmpty(x-1,y,z)) (*mpVel)(x,y,z).x = val.x;
         if (mpFlags->isEmpty(x,y-1,z)) (*mpVel)(x,y,z).y = val.y;
-        if (DIM==3 && mpFlags->isEmpty(x,y,z-1)) (*mpVel)(x,y,z).z = val.z;            
+        if (mpFlags->isEmpty(x,y,z-1)) (*mpVel)(x,y,z).z = val.z;            
     }; 
 
 protected:
-    MACGrid<DIM>* mpVel;
-    FlagGrid<DIM>* mpFlags;
+    MACGrid* mpVel;
+    FlagGrid* mpFlags;
 };
 
 class FmHeapEntry {
@@ -90,19 +90,27 @@ public:
 };
 
 
-// MSVC doesn't support static const 
+// helper constants for windows
+#ifdef WIN32
 #define InvalidTime -1000.0
 #define InvtOffset    500.0
+#endif
 
 //! fast marching algorithm wrapper class
-template<int DIM, class COMP, int TDIR>
+template<class COMP, int TDIR>
 class FastMarch {
 
 public:
 
+#   ifndef WIN32
+	// MSVC unfortunately doesnt understand this (yet)
+    static const Real InvalidTime = -1000;
+    static const Real InvtOffset = 500;
+#	endif
+
     enum SpecialValues { FlagInited = 1, FlagIsOnHeap = 2};
 
-    FastMarch(FlagGrid<DIM>& flags, Grid<DIM,int>& fmFlags, LevelsetGrid<DIM>& levelset, Real maxTime, MACGrid<DIM>* velTransport = NULL); 
+    FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, MACGrid* velTransport = NULL); 
     ~FastMarch() {}
     
     //! advect level set function with given velocity */
@@ -120,12 +128,11 @@ public:
     inline Real time2phi(Real tval) { return (InvalidTime - InvtOffset - tval); }
 
 protected:   
-
-    LevelsetGrid<DIM>& mLevelset;
-    Grid<DIM,int>& mFmFlags;
-    FlagGrid<DIM>& mFlags;
+    LevelsetGrid& mLevelset;
+    Grid<int>& mFmFlags;
+    FlagGrid& mFlags;
     
-    FmValueTransport<DIM, Vec3> mVelTransport;
+    FmValueTransport<Vec3> mVelTransport;
     
     //! maximal time to march for
     Real mMaxTime;

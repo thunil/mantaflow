@@ -12,10 +12,10 @@ s = Solver(name='main', gridSize = gs)
 s.timestep = 0.5
 
 # prepare grids and particles
-flags = s.create(FlagGrid3)
-vel = s.create(MACGrid3)
-phi = s.create(LevelsetGrid3)
-pressure = s.create(RealGrid3)
+flags = s.create(FlagGrid)
+vel = s.create(MACGrid)
+phi = s.create(LevelsetGrid)
+pressure = s.create(RealGrid)
 flip = s.create(FlipSystem)
 mesh = s.create(Mesh)
 

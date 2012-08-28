@@ -246,11 +246,19 @@ endif(DOXYGEN_FOUND)
 #******************************************************************************
 # Link libraries
 
-# Python: prefer 3.x, but can also use 2.x now
-set(Python_ADDITIONAL_VERSIONS 3.2)
-find_package(PythonLibs REQUIRED)
-list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
-list(APPEND F_LIBS ${PYTHON_LIBRARIES})
+# Python 3.2
+# hack: cmake can't find python3 yet
+if(APPLE)
+    list(APPEND INCLUDE_PATHS /Library/Frameworks/Python.framework/Versions/3.2/include/python3.2m)
+    list(APPEND F_LIB_PATHS /Library/Frameworks/Python.framework/Versions/3.2/lib)
+    list(APPEND F_LIBS "python3.2")
+else()
+    set(Python_ADDITIONAL_VERSIONS 3.2)
+    find_package(PythonLibs REQUIRED)
+    list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
+    #list(APPEND F_LIBS "python3.2mu")
+	list(APPEND F_LIBS ${PYTHON_LIBRARIES})
+endif()
 
 # Z compression
 include(FindZLIB)
@@ -346,20 +354,10 @@ endif()
 # setup executable
 
 # compiler flags
-IF(WIN32)
-    # get rid of some MSVC warnings
-    add_definitions( /wd4018 /wd4146 /wd4800 )
-
-    # unsigned to signed conversions
-    add_definitions( /wd4267 )
-    # double <> single precision
-    add_definitions( /wd4244 /wd4305 )
-    # disable warnings for unsecure functions 
-    add_definitions( /D "_CRT_SECURE_NO_WARNINGS" ) 
-ELSE()
+IF(NOT WIN32)
     IF(DEBUG)
         add_definitions( -DDEBUG )
-        add_definitions( -O0 -fno-inline)
+        add_definitions( -O0 -fno-inline )
         # additional c++ warning
         SET(CMAKE_CXX_FLAGS_DEBUG " -ggdb  -Wall -Wno-reorder")
         
@@ -369,7 +367,16 @@ ELSE()
         # non-debug, optimized version
         add_definitions( -O3 -Wall -Wno-reorder)
     ENDIF()
-    #add_definitions( -std=c++0x)        
+ELSE()
+    # get rid of some MSVC warnings
+    add_definitions( /wd4018 /wd4146 /wd4800 )
+
+    # unsigned to signed conversions
+    add_definitions( /wd4267 )
+    # double <> single precision
+    add_definitions( /wd4244 /wd4305 )
+    # disable warnings for unsecure functions 
+    add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )	
 ENDIF()
 
 SET(EXECCMD manta)
@@ -404,7 +411,6 @@ if(WIN32)
 	source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES})	
 endif()
 
-message ("${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
 # debug
 MESSAGE("DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")
 

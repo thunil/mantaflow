@@ -177,8 +177,8 @@ void readObjFile(const std::string& name, Mesh* mesh, bool append) {
     ifs.close();    
 }
 
-template<int DIM, class T>
-void writeGridRaw(const string& name, Grid<DIM,T>* grid) {
+template<class T>
+void writeGridRaw(const string& name, Grid<T>* grid) {
     cout << "writing grid " << grid->getName() << " to raw file " << name << endl;
     
     gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
@@ -193,8 +193,8 @@ typedef struct {
     int gridType, elementType, bytesPerElement;
 } UniHeader;
 
-template <int DIM, class T>
-void writeGridUni(const string& name, Grid<DIM,T>* grid) {
+template <class T>
+void writeGridUni(const string& name, Grid<T>* grid) {
     cout << "writing grid " << grid->getName() << " to uni file " << name << endl;
     
     UniHeader head;
@@ -225,18 +225,12 @@ void writeGridUni(const string& name, Grid<DIM,T>* grid) {
     gzclose(gzf);
 };
 
-template void writeGridRaw<2,int>(const string& name, Grid<2,int>* grid);
-template void writeGridRaw<2,Real>(const string& name, Grid<2,Real>* grid);
-template void writeGridRaw<2,Vec3>(const string& name, Grid<2,Vec3>* grid);
-template void writeGridUni<2,int>(const string& name, Grid<2,int>* grid);
-template void writeGridUni<2,Real>(const string& name, Grid<2,Real>* grid);
-template void writeGridUni<2,Vec3>(const string& name, Grid<2,Vec3>* grid);
-template void writeGridRaw<3,int>(const string& name, Grid<3,int>* grid);
-template void writeGridRaw<3,Real>(const string& name, Grid<3,Real>* grid);
-template void writeGridRaw<3,Vec3>(const string& name, Grid<3,Vec3>* grid);
-template void writeGridUni<3,int>(const string& name, Grid<3,int>* grid);
-template void writeGridUni<3,Real>(const string& name, Grid<3,Real>* grid);
-template void writeGridUni<3,Vec3>(const string& name, Grid<3,Vec3>* grid);
+template void writeGridRaw<int>(const string& name, Grid<int>* grid);
+template void writeGridRaw<Real>(const string& name, Grid<Real>* grid);
+template void writeGridRaw<Vec3>(const string& name, Grid<Vec3>* grid);
+template void writeGridUni<int>(const string& name, Grid<int>* grid);
+template void writeGridUni<Real>(const string& name, Grid<Real>* grid);
+template void writeGridUni<Vec3>(const string& name, Grid<Vec3>* grid);
 
 
 } //namespace

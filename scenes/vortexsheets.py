@@ -20,11 +20,11 @@ gravity = vec3(0,-0.15,0)
 velInflow = vec3(0,0.52,0)
 
 # prepare grids
-flags = s.create(FlagGrid3)
-pressure = s.create(RealGrid3, show=False)
-vel = s.create(MACGrid3)
-density = s.create(RealGrid3)
-densityInflow = s.create(RealGrid3, show=False)
+flags = s.create(FlagGrid)
+pressure = s.create(RealGrid, show=False)
+vel = s.create(MACGrid)
+density = s.create(RealGrid)
+densityInflow = s.create(RealGrid, show=False)
 
 # noise field
 noise = s.create(NoiseField)

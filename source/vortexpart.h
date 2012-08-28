@@ -29,7 +29,7 @@ struct VortexParticleData {
 };
 
 //! instantiate base class in python
-//PYTHON template class ParticleSystem<VortexParticleData>;
+PYTHON template class ParticleSystem<VortexParticleData>;
 
 //! Vortex particles
 PYTHON class VortexParticleSystem : public ParticleSystem<VortexParticleData> {

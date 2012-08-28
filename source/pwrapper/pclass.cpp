@@ -112,7 +112,6 @@ static PyObject* zeroGetter(PyObject* self, void* closure) {
 }
 
 void PbWrapperRegistry::addClass(const string& pythonName, const string& internalName, const string& baseclass) {
-    cout << pythonName << " [" << internalName << " : " << baseclass << "]" << endl;
     // store class info
     PbClassData* data = new PbClassData;
     data->pythonName = pythonName;
@@ -249,14 +248,8 @@ void PbWrapperRegistry::renameObjects() {
 //******************************************************************************
 // Callback functions
 
-
-
 PyMODINIT_FUNC PyInit_Main(void) {
-#if PY_MAJOR_VERSION >= 3
     return PbWrapperRegistry::instance().initModule();   
-#else
-    PbWrapperRegistry::instance().initModule();   
-#endif
 }
 
 void cbDealloc(PbObject* self) {
@@ -281,6 +274,15 @@ PyObject* cbNew(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 PyObject* PbWrapperRegistry::initModule() {    
     
+    // prepare module info
+    static PyModuleDef MainModule = {
+        PyModuleDef_HEAD_INIT,
+        gDefaultModuleName.c_str(),
+        "Bridge module to the C++ solver",
+        -1,
+        NULL, NULL, NULL, NULL, NULL
+    };
+    
     // generate and terminate all method lists    
     PyMethodDef sentinelFunc = { NULL, NULL, 0, NULL };
     PyGetSetDef sentinelGetSet = { NULL, NULL, NULL, NULL, NULL };
@@ -296,27 +298,13 @@ PyObject* PbWrapperRegistry::initModule() {
         it->second->genGetSet.push_back(sentinelGetSet);
     }
     
-    // prepare module info
-#if PY_MAJOR_VERSION >= 3
-    static PyModuleDef MainModule = {
-        PyModuleDef_HEAD_INIT,
-        gDefaultModuleName.c_str(),
-        "Bridge module to the C++ solver",
-        -1,
-        NULL, NULL, NULL, NULL, NULL
-    };
     // get generic methods (plugin functions)
     MainModule.m_methods = &mClasses["__modclass__"]->genMethods[0];
     
     // create module
     PyObject* module = PyModule_Create(&MainModule);
-#else
-    PyObject* module = Py_InitModule(gDefaultModuleName.c_str(), &mClasses["__modclass__"]->genMethods[0]);
-#endif
-    
     if (module == NULL)
         return NULL;
-    
 
     // load classes
     for(map<string, PbClassData*>::iterator it = mClasses.begin(); it != mClasses.end(); ++it) {        
@@ -425,7 +413,7 @@ void PbWrapperRegistry::construct(const string& scriptname) {
 
 void PbWrapperRegistry::runPreInit(vector<string>& args) {
     // add python directories to path
-    PyObject *sys_path = PySys_GetObject((char*)"path");
+    PyObject *sys_path = PySys_GetObject("path");
     for (size_t i=0; i<mPaths.size(); i++) {
         PyObject *path = toPy(mPaths[i]);
         if (sys_path == NULL || path == NULL || PyList_Append(sys_path, path) < 0) {

@@ -20,8 +20,8 @@ using namespace std;
 
 namespace Manta {
     
-template<int DIM, class COMP, int TDIR>
-FastMarch<DIM,COMP,TDIR>::FastMarch(FlagGrid<DIM>& flags, Grid<DIM,int>& fmFlags, LevelsetGrid<DIM>& levelset, Real maxTime, MACGrid<DIM>* velTransport)
+template<class COMP, int TDIR>
+FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, MACGrid* velTransport)
     : mLevelset(levelset), mFlags(flags), mFmFlags(fmFlags)
 {
     if (velTransport)
@@ -31,8 +31,8 @@ FastMarch<DIM,COMP,TDIR>::FastMarch(FlagGrid<DIM>& flags, Grid<DIM,int>& fmFlags
 }
 
 // helper for individual components to calculateDistance
-template<int DIM, class COMP, int TDIR> template<int C>
-Real FastMarch<DIM,COMP,TDIR>::calcWeights(int& okcnt, int& invcnt, Real* v, const Vec3i& idx) {
+template<class COMP, int TDIR> template<int C>
+Real FastMarch<COMP,TDIR>::calcWeights(int& okcnt, int& invcnt, Real* v, const Vec3i& idx) {
     Real val = 0.;
     Vec3i idxPlus(idx), idxMinus(idx);
     idxPlus[C]++;
@@ -55,16 +55,16 @@ Real FastMarch<DIM,COMP,TDIR>::calcWeights(int& okcnt, int& invcnt, Real* v, con
     return val;
 }
 
-template<int DIM, class COMP, int TDIR>
-inline Real FastMarch<DIM,COMP,TDIR>::calculateDistance(const Vec3i& idx) {
+template<class COMP, int TDIR>
+inline Real FastMarch<COMP,TDIR>::calculateDistance(const Vec3i& idx) {
     //int invflag = 0;
     int invcnt = 0;
-    Real v[3]={0,0,0};
+    Real v[3];
     int okcnt = 0;
     
     Real aVal = calcWeights<0>(okcnt, invcnt, v, idx);
     Real bVal = calcWeights<1>(okcnt, invcnt, v, idx);
-    Real cVal = (DIM==3) ? calcWeights<2>(okcnt, invcnt, v, idx) : 0;
+    Real cVal = calcWeights<2>(okcnt, invcnt, v, idx);
 
     Real ret = InvalidTime;
     switch(invcnt) {
@@ -128,8 +128,8 @@ inline Real FastMarch<DIM,COMP,TDIR>::calculateDistance(const Vec3i& idx) {
     return ret;
 }
 
-template<int DIM, class COMP, int TDIR>
-void FastMarch<DIM,COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
+template<class COMP, int TDIR>
+void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
     if (!mFlags.isInBounds(p,1)) return;
     const int idx = mFlags.index(p);
     
@@ -173,20 +173,19 @@ void FastMarch<DIM,COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
 }
 
 //! Enforce delta_phi = 0 on boundaries
-KERNEL template<int DIM>
-SetLevelsetBoundaries (LevelsetGrid<DIM>& phi) {
+KERNEL SetLevelsetBoundaries (LevelsetGrid& phi) {
     if (i==0) phi(i,j,k) = phi(1,j,k);
     if (j==0) phi(i,j,k) = phi(i,1,k);
-    if (DIM==3 && k==0) phi(i,j,k) = phi(i,j,1);
+    if (k==0) phi(i,j,k) = phi(i,j,1);
     if (i==maxX-1) phi(i,j,k) = phi(i-1,j,k);
     if (j==maxY-1) phi(i,j,k) = phi(i,j-1,k);
-    if (DIM==3 && k==maxZ-1) phi(i,j,k) = phi(i,j,k-1);
+    if (k==maxZ-1) phi(i,j,k) = phi(i,j,k-1);
 }
 
 /*****************************************************************************/
 //! Walk...
-template<int DIM, class COMP, int TDIR>
-void FastMarch<DIM,COMP,TDIR>::performMarching() {
+template<class COMP, int TDIR>
+void FastMarch<COMP,TDIR>::performMarching() {
     
     make_heap(mHeap.begin(), mHeap.end(), mHeapComp ); 
     
@@ -207,20 +206,16 @@ void FastMarch<DIM,COMP,TDIR>::performMarching() {
         addToList(Vec3i(p.x+1,p.y,p.z), p);
         addToList(Vec3i(p.x,p.y-1,p.z), p);
         addToList(Vec3i(p.x,p.y+1,p.z), p);
-        if (DIM==3) {
-            addToList(Vec3i(p.x,p.y,p.z-1), p);
-            addToList(Vec3i(p.x,p.y,p.z+1), p);        
-        }
+        addToList(Vec3i(p.x,p.y,p.z-1), p);
+        addToList(Vec3i(p.x,p.y,p.z+1), p);        
     }
 
     // set boundary for plain array
-    SetLevelsetBoundaries<DIM> setls(mLevelset);
+    SetLevelsetBoundaries setls(mLevelset);
 }
 
 // explicit instantiation
-template class FastMarch<3,FmHeapComparatorIn, -1>;
-template class FastMarch<3,FmHeapComparatorOut, +1>;
-template class FastMarch<2,FmHeapComparatorIn, -1>;
-template class FastMarch<2,FmHeapComparatorOut, +1>;
+template class FastMarch<FmHeapComparatorIn, -1>;
+template class FastMarch<FmHeapComparatorOut, +1>;
 
 } // namespace

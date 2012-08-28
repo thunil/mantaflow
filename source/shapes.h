@@ -26,17 +26,17 @@ class Mesh;
 //! Base class for all shapes
 PYTHON class Shape : public PbClass {
 public:
-    enum ShapeType { TypeNone = 0, TypeBox = 1, TypeSphere = 2, TypeCylinder };
+    enum GridType { TypeNone = 0, TypeBox = 1, TypeSphere = 2, TypeCylinder };
     
     PYTHON Shape(FluidSolver* parent);
     
     //! Get the type of grid
-    inline ShapeType getType() const { return mType; }
+    inline GridType getType() const { return mType; }
     
     //! Apply shape to flag grid, set inside cells to <value>
     PYTHON void applyToGrid(GridBase* grid);
     PYTHON void applyToGridSmooth(GridBase* grid, Real sigma=1.0, Real shift=0);
-    PYTHON void computeLevelset(Grid3<Real>& phi) { generateLevelset(phi); }
+    PYTHON void computeLevelset(Grid<Real>& phi) { generateLevelset(phi); }
     PYTHON void collideMesh(Mesh& mesh);
     
     //! Inside test of the shape
@@ -45,9 +45,9 @@ public:
     
     virtual void generateMesh(Mesh* mesh) {} ;    
 protected:
-    virtual void generateLevelset(Grid3<Real>& phi) {};    
+    virtual void generateLevelset(Grid<Real>& phi) {};    
     
-    ShapeType mType;
+    GridType mType;
 };
 
 //! Cylindrical shape
@@ -59,7 +59,7 @@ public:
     virtual void generateMesh(Mesh* mesh) {}
        
 protected:
-    virtual void generateLevelset(Grid<3,Real>& phi) { phi = 1000.0f; }
+    virtual void generateLevelset(Grid<Real>& phi) { phi = 1000.0f; }
 };
 
 //! Box shape
@@ -75,7 +75,7 @@ public:
     virtual void generateMesh(Mesh* mesh);
         
 protected:
-    virtual void generateLevelset(Grid3<Real>& phi);
+    virtual void generateLevelset(Grid<Real>& phi);
     
     Vec3 mP0, mP1;
 };
@@ -91,7 +91,7 @@ public:
     virtual void generateMesh(Mesh* mesh);
        
 protected:
-    virtual void generateLevelset(Grid3<Real>& phi);
+    virtual void generateLevelset(Grid<Real>& phi);
     
     Vec3 mCenter, mScale;
     Real mRadius;
@@ -113,7 +113,7 @@ public:
     virtual void generateMesh(Mesh* mesh);
         
 protected:
-    virtual void generateLevelset(Grid3<Real>& phi);
+    virtual void generateLevelset(Grid<Real>& phi);
     
     Vec3 mCenter, mZDir;
     Real mRadius, mZ;

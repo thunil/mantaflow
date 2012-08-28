@@ -23,13 +23,12 @@ namespace Manta {
 //************************************************************************
 // Helper functions and kernels for marching
 
-static const int FlagInited = FastMarch<3,FmHeapComparatorOut, +1>::FlagInited;
+static const int FlagInited = FastMarch<FmHeapComparatorOut, +1>::FlagInited;
 
 // neighbor lookup vectors
 static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), Vec3i(0,1,0), Vec3i(0,0,-1), Vec3i(0,0,1) };
-
-KERNEL(bnd=1) template<int DIM>
-InitFmIn (FlagGrid<DIM>& flags, Grid<DIM,int>& fmFlags, LevelsetGrid<DIM>& phi, bool ignoreWalls) {
+    
+KERNEL(bnd=1) InitFmIn (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls) {
     const int idx = flags.index(i,j,k);
     const Real v = phi[idx];
     if (v>=0 && (!ignoreWalls || !flags.isObstacle(idx)))
@@ -38,8 +37,7 @@ InitFmIn (FlagGrid<DIM>& flags, Grid<DIM,int>& fmFlags, LevelsetGrid<DIM>& phi, 
         fmFlags[idx] = 0;
 }
 
-KERNEL(bnd=1) template<int DIM>
-InitFmOut (FlagGrid<DIM>& flags, Grid<DIM,int>& fmFlags, LevelsetGrid<DIM>& phi, bool ignoreWalls) {
+KERNEL(bnd=1) InitFmOut (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls) {
     const int idx = flags.index(i,j,k);
     const Real v = phi[idx];
     if (ignoreWalls) {
@@ -53,16 +51,15 @@ InitFmOut (FlagGrid<DIM>& flags, Grid<DIM,int>& fmFlags, LevelsetGrid<DIM>& phi,
         fmFlags[idx] = (v<0) ? FlagInited : 0;
 }
 
-KERNEL(bnd=1) template<int DIM>
-SetUninitialized (Grid<DIM,int>& fmFlags, LevelsetGrid<DIM>& phi, const Real val) {
+KERNEL(bnd=1) SetUninitialized (Grid<int>& fmFlags, LevelsetGrid& phi, const Real val) {
     if (fmFlags(i,j,k) != FlagInited)
         phi(i,j,k) = val;
 }
 
-template<int DIM, bool inward>
-inline bool isAtInterface(Grid<DIM,int>& fmFlags, LevelsetGrid<DIM>& phi, const Vec3i& p) {
+template<bool inward>
+inline bool isAtInterface(Grid<int>& fmFlags, LevelsetGrid& phi, const Vec3i& p) {
     // check for interface
-    for (int nb=0; nb<4+2*DIM; nb++) {
+    for (int nb=0; nb<6; nb++) {
         const Vec3i pn(p + neighbors[nb]);
         if (!fmFlags.isInBounds(pn)) continue;
         
@@ -76,38 +73,35 @@ inline bool isAtInterface(Grid<DIM,int>& fmFlags, LevelsetGrid<DIM>& phi, const 
 //************************************************************************
 // Levelset class def
 
-template <int DIM>
-LevelsetGrid<DIM>::LevelsetGrid(FluidSolver* parent, bool show) 
-    : Grid<DIM,Real>(parent, show) 
+LevelsetGrid::LevelsetGrid(FluidSolver* parent, bool show) 
+    : Grid<Real>(parent, show) 
 { 
-    this->mType = (GridBase::GridType)(this->TypeLevelset | this->TypeReal | ((DIM==2) ? this->Type2D : 0));
+    mType = (GridType)(TypeLevelset | TypeReal);    
 }    
 
-//extern void updateQtGui(bool full, int frame); // HACK
+extern void updateQtGui(bool full, int frame); // HACK
 
-template<int DIM>
-Real LevelsetGrid<DIM>::invalidTimeValue() {
-    return InvalidTime;
+Real LevelsetGrid::invalidTimeValue() {
+    return FastMarch<FmHeapComparatorOut, 1>::InvalidTime;
 }
 
-template<int DIM>
-void LevelsetGrid<DIM>::reinitMarching(FlagGrid<DIM>& flags, Real maxTime, MACGrid<DIM>* velTransport, bool ignoreWalls, bool correctOuterLayer)
+void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTransport, bool ignoreWalls, bool correctOuterLayer)
 {
-    Grid<DIM,int> fmFlags(this->getParent());
-    LevelsetGrid<DIM>& phi = *this;
+    Grid<int> fmFlags(mParent);
+    LevelsetGrid& phi = *this;
     
-    FastMarch<DIM, FmHeapComparatorOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport);
-    FastMarch<DIM, FmHeapComparatorIn, -1> marchIn(flags, fmFlags, phi, maxTime, NULL);
+    FastMarch<FmHeapComparatorOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport);
+    FastMarch<FmHeapComparatorIn, -1> marchIn(flags, fmFlags, phi, maxTime, NULL);
     
     // march inside
-    InitFmIn<DIM> (flags, fmFlags, phi, ignoreWalls);
+    InitFmIn (flags, fmFlags, phi, ignoreWalls);
     
     FOR_IJK_BND(flags, 1) {
         if (fmFlags(i,j,k) == FlagInited) continue;
         if (flags.isObstacle(i,j,k)) continue;
         const Vec3i p(i,j,k);
                 
-        if(isAtInterface<DIM,true>(fmFlags, phi, p)) {
+        if(isAtInterface<true>(fmFlags, phi, p)) {
             // set value
             fmFlags(p) = FlagInited;
             
@@ -117,7 +111,7 @@ void LevelsetGrid<DIM>::reinitMarching(FlagGrid<DIM>& flags, Real maxTime, MACGr
                 if (flags.isObstacle(pn)) continue;
                 
                 // check neighbors of neighbor
-                if (phi(pn) < 0 && !isAtInterface<DIM,true>(fmFlags, phi, pn)) {
+                if (phi(pn) < 0 && !isAtInterface<true>(fmFlags, phi, pn)) {
                     marchIn.addToList(pn, p);
                 }
             }            
@@ -126,10 +120,10 @@ void LevelsetGrid<DIM>::reinitMarching(FlagGrid<DIM>& flags, Real maxTime, MACGr
     marchIn.performMarching(); 
         
     // set un initialized regions
-    SetUninitialized<DIM> (fmFlags, phi, -maxTime); 
+    SetUninitialized (fmFlags, phi, -maxTime); 
     
     // done with inwards marching, now march out...    
-    InitFmOut<DIM> (flags, fmFlags, phi, ignoreWalls);
+    InitFmOut (flags, fmFlags, phi, ignoreWalls);
     
     // by default, correctOuterLayer is on
     if (correctOuterLayer) {    
@@ -163,7 +157,7 @@ void LevelsetGrid<DIM>::reinitMarching(FlagGrid<DIM>& flags, Real maxTime, MACGr
             const Vec3i p(i,j,k);
             if (phi(p) < 0) continue;
             
-            if (isAtInterface<DIM,false>(fmFlags, phi, p)) {
+            if (isAtInterface<false>(fmFlags, phi, p)) {
                 // now add all non, interface neighbors
                 fmFlags(p) = FlagInited;
                 
@@ -173,7 +167,7 @@ void LevelsetGrid<DIM>::reinitMarching(FlagGrid<DIM>& flags, Real maxTime, MACGr
                     if (flags.isObstacle(pn)) continue;
                 
                     // check neighbors of neighbor
-                    if (phi(pn) > 0 && !isAtInterface<DIM,false>(fmFlags, phi, pn))
+                    if (phi(pn) > 0 && !isAtInterface<false>(fmFlags, phi, pn))
                         marchOut.addToList(pn, p);
                 }            
             }
@@ -182,11 +176,11 @@ void LevelsetGrid<DIM>::reinitMarching(FlagGrid<DIM>& flags, Real maxTime, MACGr
     marchOut.performMarching();
     
     // set un initialized regions
-    SetUninitialized<DIM> (fmFlags, phi, +maxTime);    
+    SetUninitialized (fmFlags, phi, +maxTime);    
 }
 
 // helper function
-inline Vec3 getNormal(const Grid<3,Real>& data, int i, int j, int k) {
+inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
     if (i > data.getSizeX()-2) i= data.getSizeX()-2;
     if (j > data.getSizeY()-2) j= data.getSizeY()-2;
     if (k > data.getSizeZ()-2) k= data.getSizeZ()-2;
@@ -195,24 +189,23 @@ inline Vec3 getNormal(const Grid<3,Real>& data, int i, int j, int k) {
                  data(i  ,j  ,k-1) - data(i  ,j  ,k+1));
 }
 
-template<> void LevelsetGrid<2>::createMesh(Mesh& mesh) {
-    throw Error("createMesh only defined for 3D Levelset grids.");
-}
 
-template<> void LevelsetGrid<3>::createMesh(Mesh& mesh) {
+void LevelsetGrid::createMesh(Mesh& mesh) {
     mesh.clear();
         
-    const Real invalidTime = InvalidTime;
+    const Real invalidTime = FastMarch<FmHeapComparatorOut,1>::InvalidTime;
     const Real isoValue = 1e-4;
     
     // create some temp grids
-    Grid3<int> edgeVX(this->getParent());
-    Grid3<int> edgeVY(this->getParent());
-    Grid3<int> edgeVZ(this->getParent());
+    Grid<int> edgeVX(mParent);
+    Grid<int> edgeVY(mParent);
+    Grid<int> edgeVZ(mParent);
     
-    FOR_IJK_BND(*this,1) {
+    for(int i=1; i<mSize.x-1; i++)
+    for(int j=1; j<mSize.y-1; j++)
+    for(int k=1; k<mSize.z-1; k++) {
          Real value[8] = { get(i,j,k),   get(i+1,j,k),   get(i+1,j+1,k),   get(i,j+1,k),
-                           get(i,j,k+1), get(i+1,j,k+1), get(i+1,j+1,k+1), get(i,j+1,k+1) };
+                                get(i,j,k+1), get(i+1,j,k+1), get(i+1,j+1,k+1), get(i,j+1,k+1) };
         
         // build lookup index, check for invalid times
         bool skip = false;
@@ -278,7 +271,5 @@ template<> void LevelsetGrid<3>::createMesh(Mesh& mesh) {
     //mesh.rebuildLookup();
 }
 
-template class LevelsetGrid<2>;
-template class LevelsetGrid<3>;
 
 } //namespace
