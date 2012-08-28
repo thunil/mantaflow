@@ -85,11 +85,12 @@ std::string parseBlock(const std::string& kw, const std::vector<Token>& tokens, 
 std::string replaceFunctionHeader(const std::string& text, const std::string& funcname, const std::string& header, const std::string& finalizer, int line);
 
 // functions from replace.cpp
+std::string createConverters(const std::string& name, const std::string& tb, const std::string& nl, const std::string& nlr);
 std::string processPlugin(int lb, const std::string& name, const std::vector<Argument>& opts, const std::vector<Argument>& args, const std::string& code, int line, const std::string& type); 
 std::string processKernel(int lb, const std::string& name, const std::vector<Argument>& opts, const std::string& templ, const std::vector<Argument>& args, const std::string& code, int line, bool isClass); 
 std::string processPythonFunction(int lb, const std::string& name, const std::string& type, const std::vector<Argument>& args, const std::string& initlist, const std::string& code, int line); 
 std::string processPythonVariable(int lb, const std::string& name, const std::vector<Argument>& opts, const std::string& type, int line); 
-std::string processPythonClass(int lb, const std::string& name, const std::vector<Argument>& opts, const std::vector<Argument>& templArgs, const std::string& baseclass, const std::string& code, int line); 
+std::string processPythonClass(int lb, const std::string& name, const std::vector<Argument>& opts, const std::vector<Argument>& templArgs, const std::string& baseclassName, const std::vector<Argument>& baseclassTempl, const std::string& code, int line); 
 std::string processPythonInstantiation(int lb, const std::string& name, const std::vector<Argument>& templArgs, const std::string& aliasname, int line); 
 std::string buildline(int lb);
 

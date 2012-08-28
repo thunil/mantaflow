@@ -28,27 +28,60 @@ string generateMerge(const string& text) {
             *lines.rbegin() += text[i];
     }
     
-    // collect templates
+    // collect and instantiate templates (two-pass)
     map<string,vector<string> > templates;
-    for(vector<string>::iterator it = lines.begin(); it != lines.end(); it++) {
-        if (!it->compare(0,10,"@template ")) {
-            size_t p = it->find(' ', 10);
-            string tclass = it->substr(10, p-10);
-            string expr = it->substr(p+1);
-            templates[tclass].push_back(expr);
-        }        
-    }
-    
-    // instantiate templates
+    map<string, string> instances;
     for(vector<string>::iterator it = lines.begin(); it != lines.end(); it++) {
         if (it->empty()) continue;
         if (!it->compare(0,10,"@instance ")) {
+            // extract args
             size_t p = it->find(' ', 10);
             string tclass = it->substr(10, p-10);
             string targ = it->substr(p+1);
             p = targ.find(' ');
             string aliasn = targ.substr(p+1);
             targ = targ.substr(0,p);
+            
+            // is instance already registered ?
+            string id = tclass + "@" + targ;
+            if (instances.find(id) == instances.end())
+                instances.insert(pair<string,string>(id,aliasn));
+            else {
+                // update alias name ?
+                if (aliasn[0] != '_' && instances[id][0] == '_')
+                    instances[id] == aliasn;                
+            }
+        } else if (!it->compare(0,10,"@template ")) {
+            size_t p = it->find(' ', 10);
+            string tclass = it->substr(10, p-10);
+            string expr = it->substr(p+1);
+            templates[tclass].push_back(expr);
+        }                
+    }
+    map<string, bool> didInstance;
+    for(vector<string>::iterator it = lines.begin(); it != lines.end(); it++) {
+        if (it->empty()) continue;
+        if (!it->compare(0,10,"@instance ")) {
+            // extract args
+            size_t p = it->find(' ', 10);
+            string tclass = it->substr(10, p-10);
+            string targ = it->substr(p+1);
+            targ = targ.substr(0,targ.find(' '));
+            string id = tclass + "@" + targ;
+            string aliasn = instances[id];
+            if (didInstance.find(id) == didInstance.end()) 
+                didInstance[id] = true;
+            else
+                continue;
+            
+            // apply instance
+            if (templates.find(tclass) == templates.end()) 
+                errMsg(0, "template instancing of '" + tclass + "<"+ targ + ">' failed: class '" + tclass + "' not found");
+            
+            // generate converters
+            replLines.push_back(createConverters(tclass + "<" + targ + ">", "", " ", "\n"));
+    
+            // generate template register calls
             vector<string>& exprs = templates[tclass];
             for(vector<string>::iterator ie = exprs.begin(); ie != exprs.end(); ie++) {
                 string ex = *ie;
@@ -56,6 +89,8 @@ string generateMerge(const string& text) {
                 replaceAll(ex, "@", aliasn);
                 replLines.push_back(ex);
             }
+        } else if (!it->compare(0,10,"@filename ")) {
+            gFilename = it->substr(10);
         } else if ((*it)[0] != '@') {
             replLines.push_back(*it);
         }

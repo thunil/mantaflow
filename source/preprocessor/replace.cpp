@@ -507,11 +507,11 @@ string processPythonVariable(int lb, const string& name, const vector<Argument>&
     return buildline(lb) + code;
 }
 
-string processPythonClass(int lb, const string& name, const vector<Argument>& opts, const std::vector<Argument>& templArgs, const string& baseclass, const string& code, int line) {
+string processPythonClass(int lb, const string& name, const vector<Argument>& opts, const std::vector<Argument>& templArgs, const string& baseclassName, const vector<Argument>& baseclassTempl, const string& code, int line) {
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = gDebugMode ? "\t" : "";
-    
+        
     // is header file ?
     bool isHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
     
@@ -529,11 +529,19 @@ string processPythonClass(int lb, const string& name, const vector<Argument>& op
     }
     
     // class registry
-    string registry = "";
+    string baseclass = baseclassName, registry = "", implInst = "";
+    if (!baseclassTempl.empty()) {
+        // try to implicitly instantiate base class
+        string aliasn = "_" + baseclassName + "_" + listArgs(baseclassTempl);
+        replaceAll(aliasn,",","_");
+        implInst = processPythonInstantiation(0,baseclassName,baseclassTempl,aliasn,0);
+        baseclass += "<" + listArgs(baseclassTempl) + ">";
+    }
     if (templArgs.empty())
         registry = "PbWrapperRegistry::instance().addClass(\"" + pname + "\", \"" + name + "\", \"" + baseclass + "\");";
-    else
+    else {
         registry = "@template " + name + " PbWrapperRegistry::instance().addClass(\"@\", \"" + name + "<$>\", \"" + baseclass + "\");";
+    }
     
     // register class
     if (isHeader) {
@@ -580,14 +588,12 @@ string processPythonClass(int lb, const string& name, const vector<Argument>& op
     }
     pclass += "};" + nl;
     
-    
-    return buildline(lb) + pclass + gLocalReg;
+    return buildline(lb) + implInst + pclass + gLocalReg;
 }
 
 set<string> gAliasRegister;
 string processPythonInstantiation(int lb, const string& name, const std::vector<Argument>& templArgs, const string& aliasname, int) {
     gRegText += "@instance " + name + " " + listArgs(templArgs) + " " + aliasname + "\n";
-    gRegText += createConverters(name + "<" + listArgs(templArgs) + ">", "", " ", "\n");
     
     if (gAliasRegister.find(aliasname) == gAliasRegister.end()) {
         gAliasRegister.insert(aliasname);

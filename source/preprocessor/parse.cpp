@@ -297,18 +297,19 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
             
             lb += consumeWS(tokens, index);
             assert(tokens[index].type == TkDescriptor, "PYTHON class '" + name + "' must publicly derive from PbClass (or a subclass)");
-            string baseclass = tokens[index++].text;
+            string baseclassName = tokens[index++].text;
             
             lb += consumeWS(tokens, index);
+            vector<Argument> baseclassTempl;
             if (tokens[index].type == TkTBracketL) {
-                baseclass += "<" + listArgs(parseArgs(tokens, index, false, lb, true)) + ">";
+                baseclassTempl = parseArgs(tokens, index, false, lb, true);
             }
             
             lb += consumeWS(tokens, index);
             if (tokens[index].type != TkCodeBlock || index+1 != tokens.size())
                 errMsg(line, "malformed preprocessor keyword block. Expected 'PYTHON class name : public baseclass { code }'");
             
-            return processPythonClass(lb, name, options, templArgs, baseclass, tokens[index].text, line);
+            return processPythonClass(lb, name, options, templArgs, baseclassName, baseclassTempl, tokens[index].text, line);
         } 
         else if (type == gParent){
             // constructor
