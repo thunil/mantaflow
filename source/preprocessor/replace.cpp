@@ -268,7 +268,12 @@ string processKernel(int lb, const string& kname, const vector<Argument>& opts, 
         }            
         kclass += nl + tb+"}" + nl;
         kclass += tb+ "void run() {" + nl;
-        kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>("+bnd+", " + (pts ? "size" : (idxMode ? "maxCells" : "maxZ")) + "), *this);"+ nl;
+        if (pts)
+            kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>(0, size), *this);"+ nl;
+        else if (idxMode)
+            kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>(0, maxCells), *this);"+ nl;
+        else
+            kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>(minZ, maxZ), *this);"+ nl;
         kclass += tb+ "}" + nl;
 	} else if(mtOpenMp) {
 	} else {
@@ -285,7 +290,7 @@ string processKernel(int lb, const string& kname, const vector<Argument>& opts, 
             kclass += isClass ? (tb3+"(*this)(idx);") : code;
         } else {
             kclass += tb2+ "const int _maxX = maxX, _maxY=maxY, _maxZ = maxZ;" + nl;
-            kclass += tb2+ "for (int k="+bnd+"; k < _maxZ; k++)" + nl;
+            kclass += tb2+ "for (int k=minZ; k < _maxZ; k++)" + nl;
             kclass += tb3+ "for (int j="+bnd+"; j < _maxY; j++)" + nl;
             kclass += tb4+ "for (int i="+bnd+"; i < _maxX; i++)" + nl;
             kclass += isClass ? (tb5+"(*this)(i,j,k);") : code;
@@ -296,7 +301,7 @@ string processKernel(int lb, const string& kname, const vector<Argument>& opts, 
         // split constructor
         kclass += tb+ kclassname + " (" + kclassname + "& o, tbb::split) : " + nl;
         if (!pts)
-            kclass += tb2+ "KernelBase(o.maxX, o.maxY, o.maxZ, o.maxCells, o.X, o.Y, o.Z)," + nl;
+            kclass += tb2+ "KernelBase(o.maxX, o.maxY, o.maxZ, o.maxCells, o.minZ, o.X, o.Y, o.Z)," + nl;
         else
             kclass += tb2+ "KernelBase(o.size)," + nl;
         kclass += tb2+ copier + nl;

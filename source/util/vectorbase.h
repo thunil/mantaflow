@@ -557,7 +557,7 @@ template<class T> inline Vec3i toVec3iChecked ( T v ) {
     for (size_t i=0; i<3; i++) {
         Real a = v[i];
         if (fabs(a-floor(a+0.5)) > 1e-5)
-            throw Error("argument is not an int, cannot convert");    
+            errMsg("argument is not an int, cannot convert");    
         ret[i] = (int) (a+0.5);
     }
     return ret;

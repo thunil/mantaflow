@@ -35,9 +35,9 @@ public:
     inline Real getDx() { return 1.0 / mGridSize.max(); }
     inline Real getScale() { return mScale; }
     //! Check dimensionality
-    inline bool is2D() { return mDim==2; }
+    inline bool is2D() const { return mDim==2; }
     //! Check dimensionality
-    inline bool is3D() { return mDim==3; }
+    inline bool is3D() const { return mDim==3; }
     
     // Python callable methods    
     //! output performace statistics

@@ -59,11 +59,11 @@ public:
     bool isInBounds(const Vec3& p, int bnd = 0) { return isInBounds(toVec3i(p), bnd); }
     
     //! Get the type of grid
-    inline GridType getType() { return mType; }
+    inline GridType getType() const { return mType; }
     //! Check dimensionality
-    inline bool is2D() { return mDim==2; }
+    inline bool is2D() const { return mDim==2; }
     //! Check dimensionality
-    inline bool is3D() { return mDim==3; }
+    inline bool is3D() const { return mDim==3; }
     
     //! Get index into the data
     inline int index(int i, int j, int k) const { DEBUG_ONLY(checkIndex(i,j,k)); return i + mSize.x * j + mStrideZ * k; }

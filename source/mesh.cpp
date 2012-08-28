@@ -72,7 +72,7 @@ Mesh& Mesh::operator=(const Mesh& o) {
     clear();
     if (mNodeChannels.size() != o.mNodeChannels.size() ||
         mTriChannels.size() != o.mTriChannels.size())
-        throw Error("can't copy mesh, channels not identical");
+        errMsg("can't copy mesh, channels not identical");
     mNodeChannels.clear();
     mTriChannels.clear();
     
@@ -93,12 +93,12 @@ Mesh& Mesh::operator=(const Mesh& o) {
 
 void Mesh::load(string name, bool append) {
     if (name.find_last_of('.') == string::npos)
-        throw Error("file '" + name + "' does not have an extension");
+        errMsg("file '" + name + "' does not have an extension");
     string ext = name.substr(name.find_last_of('.'));
     if (ext == ".obj")
         readObjFile(name, this, append);
     else
-        throw Error("file '" + name +"' filetype not supported");
+        errMsg("file '" + name +"' filetype not supported");
     
     rebuildCorners();
     rebuildLookup();
@@ -106,14 +106,14 @@ void Mesh::load(string name, bool append) {
 
 void Mesh::save(string name) {
     if (name.find_last_of('.') == string::npos)
-        throw Error("file '" + name + "' does not have an extension");
+        errMsg("file '" + name + "' does not have an extension");
     string ext = name.substr(name.find_last_of('.'));
     if (ext == ".obj")
         writeObjFile(name, this);
     else if (ext == ".gz")
         writeBobjFile(name, this);
     else
-        throw Error("file '" + name +"' filetype not supported");
+        errMsg("file '" + name +"' filetype not supported");
 }
 
 void Mesh::fromShape(Shape& shape, bool append) {
@@ -159,7 +159,7 @@ void Mesh::rebuildCorners(int from, int to) {
         }
         if (mCorners[c].opposite < 0) {
             // didn't find opposite
-            throw Error("can't rebuild corners, index without an opposite");
+            errMsg("can't rebuild corners, index without an opposite");
         }
     }    
     
@@ -222,14 +222,14 @@ void Mesh::advectInGrid(FlagGrid& flaggrid, Grid<Vec3>& vel, int integrationMode
             case EULER: KnAdvectMeshInGrid<EULER>(mNodes, *((MACGrid*) &vel), flaggrid, dt); break;
             case RK2: KnAdvectMeshInGrid<RK2>(mNodes, *((MACGrid*) &vel), flaggrid, dt); break;
             case RK4: KnAdvectMeshInGrid<RK4>(mNodes, *((MACGrid*) &vel), flaggrid, dt); break;
-            default: throw Error("invalid integration mode");
+            default: errMsg("invalid integration mode");
         }
     } else {
         switch((IntegrationMode)integrationMode) {
             case EULER: KnAdvectMeshInCenterGrid<EULER>(mNodes, vel, flaggrid, dt); break;
             case RK2: KnAdvectMeshInCenterGrid<RK2>(mNodes, vel, flaggrid, dt); break;
             case RK4: KnAdvectMeshInCenterGrid<RK4>(mNodes, vel, flaggrid, dt); break;
-            default: throw Error("invalid integration mode");
+            default: errMsg("invalid integration mode");
         }
     }    
 }
@@ -378,7 +378,7 @@ void Mesh::removeNodes(const vector<int>& deletedNodes) {
                 cs.insert(new_index[reStack[j]-newsize]);
 #ifdef DEBUG
                  if (new_index[reStack[j]-newsize] == -1)
-                    throw Error("invalid node present in 1-ring set");
+                    errMsg("invalid node present in 1-ring set");
 #endif
             }
         }
@@ -474,7 +474,7 @@ void Mesh::fastNodeLookupRebuild(int corner) {
         m1RingLookup[node].tris.insert(mCorners[current].tri);
         current = mCorners[mCorners[current].opposite].next;
         if (current < 0) 
-            throw Error("Can't use fastNodeLookupRebuild on incomplete surfaces");
+            errMsg("Can't use fastNodeLookupRebuild on incomplete surfaces");
     } while (current != start);
 }
 
@@ -482,14 +482,14 @@ void Mesh::sanityCheck(bool strict, vector<int>* deletedNodes, map<int,bool>* ta
     const int nodes = numNodes(), tris = numTris(), corners = 3*tris;
     for(size_t i=0; i<mNodeChannels.size(); i++) {
         if (mNodeChannels[i]->size() != nodes)
-            throw Error("Node channel size mismatch");
+            errMsg("Node channel size mismatch");
     }
     for(size_t i=0; i<mTriChannels.size(); i++) {
         if (mTriChannels[i]->size() != tris)
-            throw Error("Tri channel size mismatch");
+            errMsg("Tri channel size mismatch");
     }
     if ((int)m1RingLookup.size() != nodes)
-        throw Error("1Ring size wrong");
+        errMsg("1Ring size wrong");
     for(size_t t=0; t<mTris.size(); t++) { 
         if (taintedTris && taintedTris->find(t) != taintedTris->end()) continue;
         for (int c=0; c<3; c++) {
@@ -501,28 +501,28 @@ void Mesh::sanityCheck(bool strict, vector<int>* deletedNodes, map<int,bool>* ta
             int rprev = mCorners[corner].prev;
             int ro = mCorners[corner].opposite;
             if (node < 0 || node >= nodes || next < 0 || next >= nodes || prev < 0 || prev >= nodes)
-                throw Error("invalid node entry");
+                errMsg("invalid node entry");
             if (mCorners[corner].node != node || mCorners[corner].tri != (int)t)
-                throw Error("invalid basic corner entry");
+                errMsg("invalid basic corner entry");
             if (rnext < 0 || rnext >= corners || rprev < 0 || rprev >= corners || ro >= corners)
-                throw Error("invalid corner links");
+                errMsg("invalid corner links");
             if (mCorners[rnext].node != next || mCorners[rprev].node != prev)
-                throw Error("invalid corner next/prev");
+                errMsg("invalid corner next/prev");
             if (strict && ro < 0)
-                throw Error("opposite missing");
+                errMsg("opposite missing");
             if (mCorners[ro].opposite != corner)
-                throw Error("invalid opposite ref");
+                errMsg("invalid opposite ref");
             set<int>& rnodes = m1RingLookup[node].nodes;
             set<int>& rtris = m1RingLookup[node].tris;
             if (rnodes.find(next) == rnodes.end() || rnodes.find(prev) == rnodes.end()) {
                 cout << t << " " << node << " " << next << " " << prev << endl;
                 for(set<int>::iterator it= rnodes.begin(); it != rnodes.end(); ++it)
                     cout << *it << endl;
-                throw Error("node missing in 1ring");                            
+                errMsg("node missing in 1ring");                            
             }
             if (rtris.find(t) == rtris.end()) {
                cout << t << " " << node << endl;               
-               throw Error("tri missing in 1ring");            
+               errMsg("tri missing in 1ring");            
             }
         }
     }
@@ -548,19 +548,19 @@ void Mesh::sanityCheck(bool strict, vector<int>* deletedNodes, map<int,bool>* ta
                 if (!found) {
                     cout << *it << " " << n << endl;
                     for (int c=0; c<3; c++) cout << mTris[*it].c[c] << endl;
-                    throw Error("invalid triangle in 1ring");
+                    errMsg("invalid triangle in 1ring");
                 }
                 if (taintedTris && taintedTris->find(*it) != taintedTris->end()) {
                     cout << *it << endl;
-                    throw Error("tainted tri still is use");
+                    errMsg("tainted tri still is use");
                 }
             }
             if (sn.size() != sn2.size())
-                throw Error("invalid nodes in 1ring");
+                errMsg("invalid nodes in 1ring");
             for (set<int>::iterator it=sn.begin(), it2=sn2.begin(); it != sn.end(); ++it,++it2) {
                 if (*it != *it2) {
                     cout << "Node " << n << ": " << *it << " vs " << *it2 << endl;
-                    throw Error("node ring mismatch");
+                    errMsg("node ring mismatch");
                 }
             }
         }        

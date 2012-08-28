@@ -32,7 +32,7 @@ namespace Manta {
 template<class T>
 void FluidSolver::GridStorage<T>::free() {
     if (used != 0)
-        throw Error("can't clean grid cache, some grids are still in use");
+        errMsg("can't clean grid cache, some grids are still in use");
     for(size_t i = 0; i<grids.size(); i++)
         delete[] grids[i];
     grids.clear();
@@ -43,7 +43,7 @@ T* FluidSolver::GridStorage<T>::get(Vec3i size) {
         grids.push_back(new T[size.x * size.y * size.z]);
     }
     if (used > 200)
-        throw Error("too many temp grids used -- are they released properly ?");
+        errMsg("too many temp grids used -- are they released properly ?");
     return grids[used++];
 }
 template<class T>
@@ -51,7 +51,7 @@ void FluidSolver::GridStorage<T>::release(T* ptr) {
     // rewrite pointer, as it may have changed due to swap operations
     used--;
     if (used < 0)
-        throw Error("temp grid inconsistency");
+        errMsg("temp grid inconsistency");
     grids[used] = ptr;
 }
 
@@ -105,7 +105,7 @@ FluidSolver::~FluidSolver() {
 PbClass* FluidSolver::create(PbType t, const string& name) {        
     _args.add("nocheck",true);
     if (t.str == "")
-        throw Error("Need to specify object type. Use e.g. Solver.create(FlagGrid, ...) or Solver.create(type=FlagGrid, ...)");
+        errMsg("Need to specify object type. Use e.g. Solver.create(FlagGrid, ...) or Solver.create(type=FlagGrid, ...)");
     
     return PbClass::createPyObject(t.str, name, _args, this);
 }
@@ -142,7 +142,7 @@ void FluidSolver::printTimings() {
 void FluidSolver::saveMeanTimings(string filename) {
     ofstream ofs(filename.c_str());
     if (!ofs.good())
-        throw Error("can't open " + filename + " as timing log");
+        errMsg("can't open " + filename + " as timing log");
     ofs << "Mean timings of " << mFrame << " steps :" <<endl <<endl;
     MuTime total;
     total.clear();

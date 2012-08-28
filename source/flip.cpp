@@ -41,10 +41,13 @@ CopyVelocitiesToGrid(FlipSystem& p, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& t
 }
 
 void FlipSystem::velocitiesFromGrid(FlagGrid& flags, MACGrid& vel, Real flipRatio) {
+    assertMsg(vel.is3D(), "Only 3D grids supported so far");
     CopyVelocitiesFromGrid(*this, flags, vel, mOldVel, flipRatio);
 }
 
 void FlipSystem::velocitiesToGrid(FlagGrid& flags, MACGrid& vel) {
+    assertMsg(vel.is3D(), "Only 3D grids supported so far");
+    
     // interpol -> grid. tmpgrid for counting
     Grid<Vec3> tmp(mParent);
     vel.clear();

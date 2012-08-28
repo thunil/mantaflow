@@ -192,7 +192,7 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
         else if (desc[i] == 'X') up.x = true;
         else if (desc[i] == 'Y') up.y = true;
         else if (desc[i] == 'Z') up.z = true;
-        else throw Error("invalid character in boundary description string. Only [xyzXYZ] allowed.");
+        else errMsg("invalid character in boundary description string. Only [xyzXYZ] allowed.");
     }
 }
 
@@ -211,6 +211,8 @@ PLUGIN void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      bool enforceCompatibility = false,
                      bool useResNorm = true )
 {
+    assertMsg(vel.is3D(), "Only 3D grids supported so far");
+    
     // parse strings
     Vector3D<bool> loOpenBound, upOpenBound, loOutflow, upOutflow;
     convertDescToVec(openBound, loOpenBound, upOpenBound);
@@ -235,7 +237,7 @@ PLUGIN void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     SetOpenBound (A0, Ai, Aj, Ak, vel, loOpenBound, upOpenBound);
     
     if (ghostAccuracy > 0) {
-        if (!phi) throw("solve_pressure: if ghostAccuracy>0, need to specify levelset phi=xxx");
+        if (!phi) errMsg("solve_pressure: if ghostAccuracy>0, need to specify levelset phi=xxx");
         ApplyGhostFluid (flags, A0, *phi, ghostAccuracy);
     }
     

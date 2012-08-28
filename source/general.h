@@ -44,7 +44,9 @@ inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 #else
 #   define DEBUG_ONLY(a)
 #endif
-inline void assertMsg(bool check, const std::string& msg) { if (!check) throw Error(msg); }
+#define throwError(msg) { std::ostringstream s; s << msg << std::endl << "Error raised in " << __FILE__ << ":" << __LINE__; throw Error(s.str()); }
+#define errMsg(a) throwError(a)
+#define assertMsg(a,b) if(!(a)) throwError(b)
 #define assertDeb(a,b) DEBUG_ONLY(assertMsg(a,b))
 
 // Commonly used enums and types
