@@ -25,8 +25,8 @@ namespace Manta {
 //******************************************************************************
 // GridBase members
 
-GridBase::GridBase (FluidSolver* parent) 
-    : PbClass(parent), mType(TypeNone)
+GridBase::GridBase (FluidSolver* parent, int dim) 
+    : PbClass(parent), mType(TypeNone), mDim(dim)
 {
     checkParent();
 }
@@ -58,14 +58,16 @@ template<> inline GridBase::GridType typeList<int>() { return GridBase::TypeInt;
 template<> inline GridBase::GridType typeList<Vec3>() { return GridBase::TypeVec3; }
 
 template<class T>
-Grid<T>::Grid(FluidSolver* parent, bool show)
-    : GridBase(parent)
-{     
+Grid<T>::Grid(FluidSolver* parent, int dim, bool show)
+    : GridBase(parent, dim)
+{
+    assertMsg(dim==2 || dim==3, "Can only create 2D and 3D grids");
+    
     mType = typeList<T>();
     mSize = parent->getGridSize();
     mData = parent->getGridPointer<T>();
     
-    mStrideZ = mSize.x * mSize.y;
+    mStrideZ = (dim==2) ? 0 : (mSize.x * mSize.y);
     mDx = 1.0 / mSize.max();
     clear();
     setHidden(!show);

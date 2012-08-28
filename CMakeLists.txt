@@ -246,19 +246,11 @@ endif(DOXYGEN_FOUND)
 #******************************************************************************
 # Link libraries
 
-# Python 3.2
-# hack: cmake can't find python3 yet
-if(APPLE)
-    list(APPEND INCLUDE_PATHS /Library/Frameworks/Python.framework/Versions/3.2/include/python3.2m)
-    list(APPEND F_LIB_PATHS /Library/Frameworks/Python.framework/Versions/3.2/lib)
-    list(APPEND F_LIBS "python3.2")
-else()
-    set(Python_ADDITIONAL_VERSIONS 3.2)
-    find_package(PythonLibs REQUIRED)
-    list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
-    #list(APPEND F_LIBS "python3.2mu")
-	list(APPEND F_LIBS ${PYTHON_LIBRARIES})
-endif()
+# Python: prefer 3.x, but can also use 2.x now
+set(Python_ADDITIONAL_VERSIONS 3.2)
+find_package(PythonLibs REQUIRED)
+list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
+list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 
 # Z compression
 include(FindZLIB)

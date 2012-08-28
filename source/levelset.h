@@ -22,7 +22,7 @@ class Mesh;
 //! Special function for levelsets
 PYTHON class LevelsetGrid : public Grid<Real> {
 public:
-    PYTHON LevelsetGrid(FluidSolver* parent, bool show = true);
+    PYTHON LevelsetGrid(FluidSolver* parent, int dim=3, bool show = true);
     
     //! reconstruct the levelset using fast marching
     PYTHON void reinitMarching(FlagGrid& flags, Real maxTime=4.0, MACGrid* velTransport=NULL, bool ignoreWalls=false, bool correctOuterLayer=true);

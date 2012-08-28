@@ -25,9 +25,9 @@ class LevelsetGrid;
 //! Base class for all grids
 PYTHON class GridBase : public PbClass {
 public:
-    enum GridType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4, TypeMAC = 8, TypeLevelset = 16, TypeFlags = 32};
+    enum GridType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4, TypeMAC = 8, TypeLevelset = 16, TypeFlags = 32 };
         
-    PYTHON GridBase(FluidSolver* parent);
+    PYTHON GridBase(FluidSolver* parent, int dim=3);
     
     //! Get the grids X dimension
     inline int getSizeX() const { return mSize.x; }
@@ -52,32 +52,35 @@ public:
     //! Check if indices are within bounds, otherwise error
     void checkIndex(int idx) const;
     //! Check if index is within given boundaries
-    bool isInBounds(const Vec3i& pos, int bnd);
+    bool isInBounds(const Vec3i& p, int bnd) { return (p.x >= bnd && p.y >= bnd && p.z >= bnd && p.x < mSize.x-bnd && p.y < mSize.y-bnd && p.z < mSize.z-bnd); }
     //! Check if index is within given boundaries
-    bool isInBounds(const Vec3i& pos);
+    bool isInBounds(const Vec3i& p) { return (p.x >= 0 && p.y >= 0 && p.z >= 0 && p.x < mSize.x && p.y < mSize.y && p.z < mSize.z); }
     //! Check if index is within given boundaries
-    bool isInBounds(const Vec3& pos, int bnd = 0);
+    bool isInBounds(const Vec3& p, int bnd = 0) { return isInBounds(toVec3i(p), bnd); }
     
     //! Get the type of grid
     inline GridType getType() { return mType; }
+    //! Check dimensionality
+    inline bool is2D() { return mDim==2; }
     
     //! Get index into the data
-    inline int index(int i, int j, int k) const;
+    inline int index(int i, int j, int k) const { DEBUG_ONLY(checkIndex(i,j,k)); return i + mSize.x * j + mStrideZ * k; }
     //! Get index into the data
-    inline int index(const Vec3i& pos) const;
+    inline int index(const Vec3i& pos) const { DEBUG_ONLY(checkIndex(pos.x,pos.y,pos.z)); return pos.x + mSize.x * pos.y + mStrideZ * pos.z; }
 protected:
     
     GridType mType;
     Vec3i mSize;
     Real mDx;
-    int mStrideZ; // precomputed for speed
+    int mStrideZ; // precomputed for speed and 2D compatibility
+    int mDim;
 };
 
 //! Grid class
 PYTHON template<class T>
 class Grid : public GridBase {
 public:
-    PYTHON Grid(FluidSolver* parent, bool show = true);
+    PYTHON Grid(FluidSolver* parent, int dim=3, bool show = true);
     virtual ~Grid();
     
     typedef T BASETYPE;
@@ -90,7 +93,7 @@ public:
     //! access data
     inline T& get(int i,int j, int k) { return mData[index(i,j,k)]; }
     //! access data
-    inline T get(int idx) const;
+    inline T get(int idx) const { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
     //! access data
     inline T get(const Vec3i& pos) const { return mData[index(pos)]; }
     //! access data
@@ -102,9 +105,9 @@ public:
     //! access data
     inline T operator()(const Vec3i& pos) const { return mData[index(pos)]; }
     //! access data
-    inline T& operator[](int idx);
+    inline T& operator[](int idx) { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
     //! access data
-    inline const T operator[](int idx) const;
+    inline const T operator[](int idx) const { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
     
     // interpolated access
     inline T getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
@@ -150,7 +153,7 @@ PYTHON template class Grid<Vec3>;
 //! Special function for staggered grids
 PYTHON class MACGrid : public Grid<Vec3> {
 public:
-    PYTHON MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { mType = (GridType)(TypeMAC | TypeVec3); }
+    PYTHON MACGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<Vec3>(parent, dim, show) { mType = (GridType)(TypeMAC | TypeVec3); }
     
     // specialized functions for interpolating MAC information
     inline Vec3 getCentered(int i, int j, int k);
@@ -168,7 +171,7 @@ protected:
 //! Special functions for FlagGrid
 PYTHON class FlagGrid : public Grid<int> {
 public:
-    PYTHON FlagGrid(FluidSolver* parent, bool show=true) : Grid<int>(parent, show) { mType = (GridType)(TypeFlags | TypeInt); }
+    PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, dim, show) { mType = (GridType)(TypeFlags | TypeInt); }
     
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
     enum CellType { 
@@ -213,59 +216,9 @@ public:
 //******************************************************************************
 // Implementation of inline functions
 
-inline int GridBase::index(int i, int j, int k) const { 
-#ifdef DEBUG
-    checkIndex(i, j, k);
-#endif
-    return i + mSize.x * (j + mSize.y * k);
-}
-
-inline int GridBase::index(const Vec3i& pos) const { 
-#ifdef DEBUG
-    checkIndex(pos.x, pos.y, pos.z);
-#endif
-    return pos.x + mSize.x * (pos.y + mSize.y * pos.z);
-}
-
-inline bool GridBase::isInBounds(const Vec3i& p, int bnd) {
-    return (p.x >= bnd && p.y >= bnd && p.z >= bnd &&
-            p.x < mSize.x-bnd && p.y < mSize.y-bnd && p.z < mSize.z-bnd);
-}
-
-inline bool GridBase::isInBounds(const Vec3i& p) {
-    return (p.x >= 0 && p.y >= 0 && p.z >= 0 &&
-            p.x < mSize.x && p.y < mSize.y && p.z < mSize.z);
-}
-
-inline bool GridBase::isInBounds(const Vec3& p, int bnd) {
-    return isInBounds(toVec3i(p), bnd);
-}
-
-template<class T> inline T Grid<T>::get(int idx) const { 
-#ifdef DEBUG
-    checkIndex(idx); 
-#endif
-    return mData[idx];         
-}   
-
-template<class T> inline T& Grid<T>::operator[](int idx) { 
-#ifdef DEBUG
-    checkIndex(idx); 
-#endif
-    return mData[idx];         
-}
-
-template<class T> inline const T Grid<T>::operator[](int idx) const { 
-#ifdef DEBUG
-    checkIndex(idx); 
-#endif
-    return mData[idx];         
-}
 
 inline Vec3 MACGrid::getCentered(int i, int j, int k) {
-#ifdef DEBUG
-    checkIndex(i+1,j+1,k+1);
-#endif
+    DEBUG_ONLY(checkIndex(i+1,j+1,k+1));
     const int idx = index(i,j,k);
     return Vec3(0.5* (mData[idx].x + mData[idx+1].x),
                 0.5* (mData[idx].y + mData[idx+mSize.x].y),
@@ -273,9 +226,7 @@ inline Vec3 MACGrid::getCentered(int i, int j, int k) {
 }
 
 inline Vec3 MACGrid::getAtMACX(int i, int j, int k) {
-#ifdef DEBUG
-    checkIndex(i-1,j+1,k+1);
-#endif
+    DEBUG_ONLY(checkIndex(i-1,j+1,k+1));
     const int idx = index(i,j,k);
     return Vec3(      (mData[idx].x),
                 0.25* (mData[idx].y + mData[idx-1].y + mData[idx+mSize.x].y + mData[idx+mSize.x-1].y),
@@ -283,9 +234,7 @@ inline Vec3 MACGrid::getAtMACX(int i, int j, int k) {
 }
 
 inline Vec3 MACGrid::getAtMACY(int i, int j, int k) {
-#ifdef DEBUG
-    checkIndex(i+1,j-1,k+1);
-#endif
+    DEBUG_ONLY(checkIndex(i+1,j-1,k+1));
     const int idx = index(i,j,k);
     return Vec3(0.25* (mData[idx].x + mData[idx-mSize.x].x + mData[idx+1].x + mData[idx+1-mSize.x].x),
                       (mData[idx].y),
@@ -293,15 +242,12 @@ inline Vec3 MACGrid::getAtMACY(int i, int j, int k) {
 }
 
 inline Vec3 MACGrid::getAtMACZ(int i, int j, int k) {
-#ifdef DEBUG
-    checkIndex(i+1,j+1,k-1);
-#endif
+    DEBUG_ONLY(checkIndex(i+1,j+1,k-1));
     const int idx = index(i,j,k);
     return Vec3(0.25* (mData[idx].x + mData[idx-mStrideZ].x + mData[idx+1].x + mData[idx+1-mStrideZ].x),
                 0.25* (mData[idx].y + mData[idx-mStrideZ].y + mData[idx+mSize.x].y + mData[idx+mSize.x-mStrideZ].y),
                       (mData[idx].z) );
 }
-
 
 KERNEL(idx) template<class T> gridAdd2 (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] + b[idx]; }
 KERNEL(idx) template<class T, class S> gridAdd (Grid<T>& me, const Grid<S>& other) { me[idx] += other[idx]; }

@@ -31,7 +31,6 @@ private:
    std::string mS;   
 };
 
-
 // Debug output functions and macros
 extern int gDebugLevel;
 
@@ -39,6 +38,14 @@ extern int gDebugLevel;
 #define debMsg(mStr, level)     if (_chklevel(level)) { MSGSTREAM; msg << mStr << std::endl; std::cout << msg.str(); }
 inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 
+// error and assertation macros
+#ifdef DEBUG
+#   define DEBUG_ONLY(a) a
+#else
+#   define DEBUG_ONLY(a)
+#endif
+inline void assertMsg(bool check, const std::string& msg) { if (!check) throw Error(msg); }
+#define assertDeb(a,b) DEBUG_ONLY(assertMsg(a,b))
 
 // Commonly used enums and types
 //! Timing class for preformance measuring
