@@ -212,7 +212,12 @@ if(MT)
 		find_package(TBB REQUIRED)
 		list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})    
 		list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
-	endif()
+	elseif(APPLE)
+        find_package(TBB REQUIRED)
+		list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})    
+		list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
+        message(${TBB_INCLUDE_DIRS})
+    endif()
 endif()
 
 #******************************************************************************
