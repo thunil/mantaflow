@@ -53,11 +53,10 @@ WaveletNoiseField::WaveletNoiseField(FluidSolver* parent) :
     PbClass(parent), mPosOffset(0.), mPosScale(1.), mValOffset(0.), mValScale(1.), mClamp(false), 
     mClampNeg(0), mClampPos(1), mTimeAnim(0), mGsInvX(0), mGsInvY(0), mGsInvZ(0)
 {
-    if (parent) {
-        mGsInvX = 1.0/(parent->getGridSize().x);
-        mGsInvY = 1.0/(parent->getGridSize().y);
-        mGsInvZ = 1.0/(parent->getGridSize().z);
-    }
+    assertMsg(parent->is3D(), "Only works for 3D solvers for now");
+    mGsInvX = 1.0/(parent->getGridSize().x);
+    mGsInvY = 1.0/(parent->getGridSize().y);
+    mGsInvZ = 1.0/(parent->getGridSize().z);
     generateTile();
 };
 
@@ -126,7 +125,7 @@ void WaveletNoiseField::generateTile() {
     int offset = n / 2;
     if (offset % 2 == 0) offset++;
 
-    if (n != 128) throw Error("WaveletNoise::Fast 128 mod used, change for non-128 resolution");
+    if (n != 128) errMsg("WaveletNoise::Fast 128 mod used, change for non-128 resolution");
     
     int icnt=0;
     for (int ix = 0; ix < n; ix++)

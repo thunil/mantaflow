@@ -28,7 +28,7 @@ class ParticleBase;
     
 // simple iteration
 #define FOR_IJK_BND(grid, bnd) \
-    for(int k=bnd; k<(grid).getSizeZ()-bnd; k++) \
+    for(int k=bnd,__kmax=((grid).is3D() ? ((grid).getSizeZ()-bnd) : 1); k<__kmax; k++) \
         for(int j=bnd; j<(grid).getSizeY()-bnd; j++) \
             for(int i=bnd; i<(grid).getSizeX()-bnd; i++)
 
@@ -44,11 +44,11 @@ class ParticleBase;
                
     
 struct KernelBase {
-    int maxX, maxY, maxZ, maxCells;
+    int maxX, maxY, maxZ, maxCells, minZ;
     int X, Y, Z;
     
     KernelBase(const GridBase* base, int bnd);
-    KernelBase(int _maxX, int _maxY, int _maxZ, int _maxC, int _X, int _Y, int _Z);
+    KernelBase(int _maxX, int _maxY, int _maxZ, int _maxC, int _minZ, int _X, int _Y, int _Z);
     
     // specify in your derived classes:
     

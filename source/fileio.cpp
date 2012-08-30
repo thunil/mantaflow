@@ -32,7 +32,7 @@ void trim(string& s) {
 }*/
 
 void writeObjFile(const string& name, Mesh* mesh) {
-    throw Error("obj exporter not yet implemented");
+    errMsg("obj exporter not yet implemented");
 }
 
 void writeBobjFile(const string& name, Mesh* mesh) {
@@ -42,7 +42,7 @@ void writeBobjFile(const string& name, Mesh* mesh) {
     
     gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
     if (!gzf)
-        throw Error("writeBobj: unable to open file");
+        errMsg("writeBobj: unable to open file");
     
     // write vertices
     int numVerts = mesh->numNodes();
@@ -126,7 +126,7 @@ void readObjFile(const std::string& name, Mesh* mesh, bool append) {
     ifstream ifs (name.c_str());
     
     if (!ifs.good())
-        throw Error("can't open file '" + name + "'");
+        errMsg("can't open file '" + name + "'");
     
     if (!append)
         mesh->clear();
@@ -163,7 +163,7 @@ void readObjFile(const std::string& name, Mesh* mesh, bool append) {
                     face = face.substr(0, face.find('/')); // ignore other indices
                 int idx = atoi(face.c_str()) - 1;
                 if (idx < 0)
-                    throw Error("invalid face encountered");
+                    errMsg("invalid face encountered");
                 idx += nodebase;
                 t.c[i] = idx;
             }
@@ -182,7 +182,7 @@ void writeGridRaw(const string& name, Grid<T>* grid) {
     cout << "writing grid " << grid->getName() << " to raw file " << name << endl;
     
     gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-    if (!gzf) throw Error("can't open file");
+    if (!gzf) errMsg("can't open file");
     gzwrite(gzf, &((*grid)[0]), sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ());
     gzclose(gzf);
 }
@@ -215,10 +215,10 @@ void writeGridUni(const string& name, Grid<T>* grid) {
     else if (grid->getType() & GridBase::TypeVec3)
         head.elementType = 2;
     else 
-        throw Error("unknown element type");
+        errMsg("unknown element type");
     
     gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-    if (!gzf) throw Error("can't open file");
+    if (!gzf) errMsg("can't open file");
     
     gzwrite(gzf, &head, sizeof(UniHeader));
     gzwrite(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);

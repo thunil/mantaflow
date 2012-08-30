@@ -63,7 +63,7 @@ void Shape::applyToGrid(GridBase* grid) {
     else if (grid->getType() & GridBase::TypeVec3)
         ApplyShapeToGrid<Vec3> ((Grid<Vec3>*)grid, this, _args.get<Vec3>("value"));
     else
-        throw Error("Shape::applyToGrid(): unknown grid type");
+        errMsg("Shape::applyToGrid(): unknown grid type");
 }
 
 void Shape::applyToGridSmooth(GridBase* grid, Real sigma, Real shift) {
@@ -77,7 +77,7 @@ void Shape::applyToGridSmooth(GridBase* grid, Real sigma, Real shift) {
     else if (grid->getType() & GridBase::TypeVec3)
         ApplyShapeToGridSmooth<Vec3> ((Grid<Vec3>*)grid, phi, sigma, shift, _args.get<Vec3>("value"));
     else
-        throw Error("Shape::applyToGridSmooth(): unknown grid type");
+        errMsg("Shape::applyToGridSmooth(): unknown grid type");
 }
 
 void Shape::collideMesh(Mesh& mesh) {
@@ -121,7 +121,7 @@ Box::Box(FluidSolver* parent, Vec3 center, Vec3 p0, Vec3 p1, Vec3 size)
         mP0 = p0;
         mP1 = p1;
     } else 
-		throw Error("Box: specify either p0,p1 or size,center");
+		errMsg("Box: specify either p0,p1 or size,center");
 	
 }
 

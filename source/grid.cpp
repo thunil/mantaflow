@@ -29,24 +29,8 @@ GridBase::GridBase (FluidSolver* parent)
     : PbClass(parent), mType(TypeNone)
 {
     checkParent();
+    m3D = getParent()->is3D();
 }
-
-void GridBase::checkIndex(int i, int j, int k) const {
-    if (i<0 || j<0 || k<0 || i>=mSize.x || j>=mSize.y || k>= mSize.z) {
-        std::stringstream s;
-        s << "Grid " << mName << " dim " << mSize << " : index " << i << "," << j << "," << k << " out of bound ";
-        throw Error(s.str());
-    }
-}
-
-void GridBase::checkIndex(int idx) const {
-    if (idx<0 || idx > mSize.x * mSize.y * mSize.z) {
-        std::stringstream s;
-        s << "Grid " << mName << " dim " << mSize << " : index " << idx << " out of bound ";
-        throw Error(s.str());
-    }
-}
-
 
 //******************************************************************************
 // Grid<T> members
@@ -60,12 +44,12 @@ template<> inline GridBase::GridType typeList<Vec3>() { return GridBase::TypeVec
 template<class T>
 Grid<T>::Grid(FluidSolver* parent, bool show)
     : GridBase(parent)
-{     
+{
     mType = typeList<T>();
     mSize = parent->getGridSize();
     mData = parent->getGridPointer<T>();
     
-    mStrideZ = mSize.x * mSize.y;
+    mStrideZ = parent->is2D() ? 0 : (mSize.x * mSize.y);
     mDx = 1.0 / mSize.max();
     clear();
     setHidden(!show);
@@ -84,7 +68,7 @@ void Grid<T>::clear() {
 template<class T>
 void Grid<T>::swap(Grid<T>& other) {
     if (other.getSizeX() != getSizeX() || other.getSizeY() != getSizeY() || other.getSizeZ() != getSizeZ())
-        throw Error("Grid::swap(): Grid dimensions mismatch.");
+        errMsg("Grid::swap(): Grid dimensions mismatch.");
     
     T* dswap = other.mData;
     other.mData = mData;
@@ -94,14 +78,14 @@ void Grid<T>::swap(Grid<T>& other) {
 template<class T>
 void Grid<T>::save(string name) {
     if (name.find_last_of('.') == string::npos)
-        throw Error("file '" + name + "' does not have an extension");
+        errMsg("file '" + name + "' does not have an extension");
     string ext = name.substr(name.find_last_of('.'));
     if (ext == ".raw")
         writeGridRaw(name, this);
     else if (ext == ".uni")
         writeGridUni(name, this);
     else
-        throw Error("file '" + name +"' filetype not supported");
+        errMsg("file '" + name +"' filetype not supported");
 }
 
 //******************************************************************************
@@ -228,7 +212,7 @@ void FlagGrid::initDomain(int boundaryWidth) {
 void FlagGrid::initBoundaries(int boundaryWidth) {
     const int w = boundaryWidth;
     FOR_IJK(*this) {
-        bool bnd = (i<=w || i>=mSize.x-1-w || j<=w || j>=mSize.y-1-w || k<=w || k>=mSize.z-1-w);
+        bool bnd = (i<=w || i>=mSize.x-1-w || j<=w || j>=mSize.y-1-w || (is3D() && (k<=w || k>=mSize.z-1-w)));
         if (bnd) 
             mData[index(i,j,k)] = TypeObstacle;
     }

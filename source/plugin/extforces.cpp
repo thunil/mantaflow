@@ -29,7 +29,7 @@ KERNEL(bnd=1) KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) 
         vel(i,j,k).x += 0.5*(force(i-1,j,k).x + force(i,j,k).x);
     if (flags.isFluid(i,j-1,k) || (curFluid && flags.isEmpty(i,j-1,k))) 
         vel(i,j,k).y += 0.5*(force(i,j-1,k).y + force(i,j,k).y);
-    if (flags.isFluid(i,j,k-1) || (curFluid && flags.isEmpty(i,j,k-1))) 
+    if (vel.is3D() && (flags.isFluid(i,j,k-1) || (curFluid && flags.isEmpty(i,j,k-1))))
         vel(i,j,k).z += 0.5*(force(i,j,k-1).z + force(i,j,k).z);
 }
 
@@ -43,7 +43,7 @@ KERNEL(bnd=1) KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
         vel(i,j,k).x += force.x;
     if (flags.isFluid(i,j-1,k) || (curFluid && flags.isEmpty(i,j-1,k))) 
         vel(i,j,k).y += force.y;
-    if (flags.isFluid(i,j,k-1) || (curFluid && flags.isEmpty(i,j,k-1))) 
+    if (vel.is3D() && (flags.isFluid(i,j,k-1) || (curFluid && flags.isEmpty(i,j,k-1))))
         vel(i,j,k).z += force.z;
 }
 
@@ -60,7 +60,7 @@ KERNEL(bnd=1) KnAddBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, 
         vel(i,j,k).x += (0.5 * strength.x) * (density(i,j,k)+density(i-1,j,k));
     if (flags.isFluid(i,j-1,k))
         vel(i,j,k).y += (0.5 * strength.y) * (density(i,j,k)+density(i,j-1,k));
-    if (flags.isFluid(i,j,k-1))
+    if (vel.is3D() && flags.isFluid(i,j,k-1))
         vel(i,j,k).z += (0.5 * strength.z) * (density(i,j,k)+density(i,j,k-1));    
 }
 
@@ -84,7 +84,7 @@ KERNEL KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
         vel(i,j,k).x = 0;
     if (j>0 && (flags.isObstacle(i,j-1,k) || (curObstacle && flags.isFluid(i,j-1,k))))
         vel(i,j,k).y = 0;
-    if (k>0 && (flags.isObstacle(i,j,k-1) || (curObstacle && flags.isFluid(i,j,k-1))))
+    if (vel.is2D() || (k>0 && (flags.isObstacle(i,j,k-1) || (curObstacle && flags.isFluid(i,j,k-1)))))
         vel(i,j,k).z = 0;
 		
 	if (curFluid) {
@@ -92,7 +92,7 @@ KERNEL KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 			vel(i,j,k).y = vel(i,j,k).z = 0;
 		if ((j>0 && flags.isStick(i,j-1,k)) || (j<flags.getSizeY()-1 && flags.isStick(i,j+1,k)))
 			vel(i,j,k).x = vel(i,j,k).z = 0;
-		if ((k>0 && flags.isStick(i,j,k-1)) || (k<flags.getSizeZ()-1 && flags.isStick(i,j,k+1)))
+		if (vel.is3D() && ((k>0 && flags.isStick(i,j,k-1)) || (k<flags.getSizeZ()-1 && flags.isStick(i,j,k+1))))
 			vel(i,j,k).x = vel(i,j,k).y = 0;
 	}
 }
@@ -140,6 +140,7 @@ KERNEL(bnd=1) KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<
 }
 
 PLUGIN void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
+    assertMsg(vel.is3D(), "Only 3D grids supported so far");
     Grid<Vec3> velCenter(parent), curl(parent), force(parent);
     Grid<Real> norm(parent);
     
@@ -149,17 +150,6 @@ PLUGIN void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
     KnConfForce(force, norm, curl, strength);
     KnAddForceField(flags, vel, force);
 }
-
-PLUGIN void ensureConsistentObstacleVelocities(FlagGrid& flags, MACGrid& vel) {
-    FOR_IJK_BND(vel,1) {
-        if (!flags.isObstacle(i,j,k)) {
-            if (flags.isObstacle(i-1,j,k)) vel(i,j,k).x = vel(i-1,j,k).x;
-            if (flags.isObstacle(i,j-1,k)) vel(i,j,k).y = vel(i,j-1,k).y;
-            if (flags.isObstacle(i,j,k-1)) vel(i,j,k).z = vel(i,j,k-1).z;
-        }
-    }
-}
-
 
 
 } // namespace

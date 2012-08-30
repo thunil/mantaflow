@@ -72,7 +72,7 @@ template<> PyObject* toPy<PbClass*>(PbClass* v) {
 template<> Real fromPy<Real>(PyObject* obj) {
     if (PyFloat_Check(obj)) return PyFloat_AsDouble(obj);
     if (PyLong_Check(obj)) return PyLong_AsDouble(obj);
-    throw Error("argument is not a float");    
+    errMsg("argument is not a float");    
 }
 template<> PyObject* fromPy<PyObject*>(PyObject *obj) {
     return obj;
@@ -82,21 +82,21 @@ template<> int fromPy<int>(PyObject *obj) {
     if (PyFloat_Check(obj)) {
         double a = PyFloat_AsDouble(obj);
         if (fabs(a-floor(a+0.5)) > 1e-5)
-            throw Error("argument is not an int");    
+            errMsg("argument is not an int");    
         return (int) (a+0.5);
     }
-    throw Error("argument is not an int");       
+    errMsg("argument is not an int");       
 }
 template<> string fromPy<string>(PyObject *obj) { 
-    if (!PyUnicode_Check(obj)) throw Error("argument is not a string");
+    if (!PyUnicode_Check(obj)) errMsg("argument is not a string");
     return PyBytes_AsString(PyUnicode_AsLatin1String(obj)); 
 }
 template<> const char* fromPy<const char*>(PyObject *obj) { 
-    if (!PyUnicode_Check(obj)) throw Error("argument is not a string");
+    if (!PyUnicode_Check(obj)) errMsg("argument is not a string");
     return PyBytes_AsString(PyUnicode_AsLatin1String(obj)); 
 }
 template<> bool fromPy<bool>(PyObject *obj) { 
-    if (!PyBool_Check(obj)) throw Error("argument is not a boolean");
+    if (!PyBool_Check(obj)) errMsg("argument is not a boolean");
     return PyLong_AsLong(obj) != 0;
 }
 template<> Vec3 fromPy<Vec3>(PyObject* obj) {
@@ -108,7 +108,7 @@ template<> Vec3 fromPy<Vec3>(PyObject* obj) {
                          fromPy<Real>(PyTuple_GetItem(obj,1)),
                          fromPy<Real>(PyTuple_GetItem(obj,2)));
     }
-    throw Error("argument is not a Vec3");
+    errMsg("argument is not a Vec3");
 }
 template<> Vec3i fromPy<Vec3i>(PyObject* obj) {
     if (PyObject_IsInstance(obj, (PyObject*)&PbVec3Type)) {
@@ -119,7 +119,7 @@ template<> Vec3i fromPy<Vec3i>(PyObject* obj) {
                          fromPy<int>(PyTuple_GetItem(obj,1)),
                          fromPy<int>(PyTuple_GetItem(obj,2)));
     }
-    throw Error("argument is not a Vec3i");
+    errMsg("argument is not a Vec3i");
 }
 template<> PbType fromPy<PbType>(PyObject* obj) {
     PbType pb = {""};
@@ -189,13 +189,13 @@ void PbArgs::check() {
     
     for(map<string, DataElement>::iterator it = mData.begin(); it != mData.end(); it++) {
         if (!it->second.visited)
-            throw Error("Argument '" + it->first + "' given, which is not defined");
+            errMsg("Argument '" + it->first + "' given, which is not defined");
     }
     for(size_t i=0; i<mLinData.size(); i++) {
         if (!mLinData[i].visited) {
             stringstream s;
             s << "Function does not read argument number #" << i;
-            throw Error(s.str());
+            errMsg(s.str());
         }
     }
 }
@@ -226,7 +226,7 @@ FluidSolver* PbArgs::obtainParent() {
     }
     
     if (!solver)
-        throw Error("Solver cannot be deduced from arguments, specify using argument 'solver=xxx'");
+        errMsg("Solver cannot be deduced from arguments, specify using argument 'solver=xxx'");
     return solver;    
 }
 
@@ -234,7 +234,7 @@ PyObject* PbArgs::getItem(const std::string& key, bool strict, ArgLocker* lk) {
     map<string, DataElement>::iterator lu = mData.find(key);
     if (lu == mData.end()) {
         if (strict)
-            throw Error ("Argument '" + key + "' is not defined.");
+            errMsg ("Argument '" + key + "' is not defined.");
         return NULL;
     }
     lu->second.visited = true;
@@ -250,7 +250,7 @@ PyObject* PbArgs::getItem(size_t number, bool strict, ArgLocker* lk) {
             return NULL;
         stringstream s;
         s << "Argument number #" << number << " not specified.";
-        throw Error(s.str());
+        errMsg(s.str());
     }
     mLinData[number].visited = true;
     PbClass* pbo = PbClass::fromPyObject(mLinData[number].obj);

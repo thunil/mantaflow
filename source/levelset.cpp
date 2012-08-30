@@ -87,6 +87,8 @@ Real LevelsetGrid::invalidTimeValue() {
 
 void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTransport, bool ignoreWalls, bool correctOuterLayer)
 {
+    assertMsg(is3D(), "Only 3D grids supported so far");
+    
     Grid<int> fmFlags(mParent);
     LevelsetGrid& phi = *this;
     
@@ -191,6 +193,8 @@ inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
 
 
 void LevelsetGrid::createMesh(Mesh& mesh) {
+    assertMsg(is3D(), "Only 3D grids supported so far");
+    
     mesh.clear();
         
     const Real invalidTime = FastMarch<FmHeapComparatorOut,1>::InvalidTime;

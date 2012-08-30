@@ -84,7 +84,7 @@ public:
         if (o) return fromPy<T>(o);
         o = getItem(number, false, lk);
         if (o) return fromPy<T>(o);
-        throw Error ("Argument '" + key + "' is not defined.");        
+        errMsg ("Argument '" + key + "' is not defined.");        
     }
     template<class T> inline T getOpt(size_t number, const std::string& key, T defarg, ArgLocker *lk=NULL) { 
         PyObject* o = getItem(key, false, lk);
