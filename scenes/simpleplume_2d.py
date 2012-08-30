@@ -16,7 +16,7 @@ vel = s.create(MACGrid)
 density = s.create(RealGrid)
 pressure = s.create(RealGrid)
 
-flags.initDomain(boundaryWidth=0)
+flags.initDomain()
 flags.fillGrid()
 
 if (GUI):

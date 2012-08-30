@@ -19,6 +19,7 @@
 using namespace std;
 
 // safety boundary for semi lagrange advection step
+// is 1 enough here ?
 #define SLADVBOUND 1
 
 namespace Manta { 
