@@ -268,7 +268,7 @@ PyTypeObject PbVec3Type = {
 };
 
 void PbVecInitialize(PyObject* module) {
-    if (PyType_Ready(&PbVec3Type) < 0) throw Manta::Error("can't initialize Vec3 type");
+    if (PyType_Ready(&PbVec3Type) < 0) errMsg("can't initialize Vec3 type");
     
     Py_INCREF(&PbVec3Type);
     PyModule_AddObject(module, "vec3", (PyObject *)&PbVec3Type);

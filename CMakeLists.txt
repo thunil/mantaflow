@@ -17,6 +17,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/source/cmake/")
 SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 SET(VERBOSE 1) 
 
+SET(MANTAVERSION "0.3")
+
 #******************************************************************************
 # setup default params
 
@@ -212,7 +214,12 @@ if(MT)
 		find_package(TBB REQUIRED)
 		list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})    
 		list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
-	endif()
+	elseif(APPLE)
+        find_package(TBB REQUIRED)
+		list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})    
+		list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
+        message(${TBB_INCLUDE_DIRS})
+    endif()
 endif()
 
 #******************************************************************************

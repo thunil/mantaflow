@@ -66,7 +66,7 @@ inline Real FastMarch<COMP,TDIR>::calculateDistance(const Vec3i& idx) {
     Real bVal = calcWeights<1>(okcnt, invcnt, v, idx);
     Real cVal = calcWeights<2>(okcnt, invcnt, v, idx);
 
-    Real ret = InvalidTime;
+    Real ret = InvalidTime();
     switch(invcnt) {
     case 0: {
         // take all values

@@ -19,7 +19,8 @@
 using namespace std;
 
 // safety boundary for semi lagrange advection step
-#define SLADVBOUND 2
+// is 1 enough here ?
+#define SLADVBOUND 1
 
 namespace Manta { 
 
@@ -273,8 +274,7 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 PLUGIN void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid, 
                            int order = 1, Real strength = 0.5)
 {    
-    if (order <1 || order>2)
-        throw Error("AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");
+    assertMsg(order==1 || order==2, "AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");
     
     // determine type of grid    
     if (grid->getType() & GridBase::TypeReal) {
@@ -287,7 +287,7 @@ PLUGIN void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid,
         fnAdvectSemiLagrange< Grid<Vec3> >(parent, *flags, *vel, *((Grid<Vec3>*) grid), order, strength);
     }
     else
-        throw Error("AdvectSemiLagrange: Grid Type is not supported (only Real, Vec3, MAC, Levelset)");    
+        errMsg("AdvectSemiLagrange: Grid Type is not supported (only Real, Vec3, MAC, Levelset)");    
 }
 
 } // end namespace DDF 

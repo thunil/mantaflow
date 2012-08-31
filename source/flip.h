@@ -28,9 +28,6 @@ struct FlipData {
     static ParticleBase::SystemType getType() { return ParticleBase::FLIP; }
 };
 
-//! instantiate base class in python
-PYTHON template class ParticleSystem<FlipData>;
-
 //! FLIP particle system
 PYTHON class FlipSystem : public ParticleSystem<FlipData> {
 public:

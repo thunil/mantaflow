@@ -82,11 +82,13 @@ LevelsetGrid::LevelsetGrid(FluidSolver* parent, bool show)
 extern void updateQtGui(bool full, int frame); // HACK
 
 Real LevelsetGrid::invalidTimeValue() {
-    return FastMarch<FmHeapComparatorOut, 1>::InvalidTime;
+    return FastMarch<FmHeapComparatorOut, 1>::InvalidTime();
 }
 
 void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTransport, bool ignoreWalls, bool correctOuterLayer)
 {
+    assertMsg(is3D(), "Only 3D grids supported so far");
+    
     Grid<int> fmFlags(mParent);
     LevelsetGrid& phi = *this;
     
@@ -191,9 +193,11 @@ inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
 
 
 void LevelsetGrid::createMesh(Mesh& mesh) {
+    assertMsg(is3D(), "Only 3D grids supported so far");
+    
     mesh.clear();
         
-    const Real invalidTime = FastMarch<FmHeapComparatorOut,1>::InvalidTime;
+    const Real invalidTime = invalidTimeValue();
     const Real isoValue = 1e-4;
     
     // create some temp grids

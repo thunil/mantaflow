@@ -88,7 +88,7 @@ template<class T>
 GridPainter<T>::GridPainter(FlagGrid** flags, QWidget* par) 
     : LockedObjPainter(par), mHide(false), mHideLocal(false), mCentered(true), mLocalGrid(NULL), mFlags(flags), mMaxVal(0), mMax(0)
 {
-    mDim = 2; // Y plane
+    mDim = 2; // Z plane
     mPlane = 0;
     mInfo = new QLabel();
     
@@ -141,9 +141,10 @@ template<> string GridPainter<Real>::getID() { return "Grid<Real>"; }
 template<class T>
 void GridPainter<T>::processKeyEvent(PainterEvent e, int param)
 {
-    if (e == EventSetDim) 
+    if (e == EventSetDim) {
         mDim = param;
-    else if (e == EventSetMax) {
+        if (mLocalGrid->is2D()) mDim = 2;
+    } else if (e == EventSetMax) {
         mMax = param;
     } else if (e == EventSetPlane) {
         mPlane = param;

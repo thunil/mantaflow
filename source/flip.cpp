@@ -19,6 +19,8 @@ namespace Manta {
 //! Set velocities from grid with given PIC/FLIP mixture
 KERNEL(pts) 
 CopyVelocitiesFromGrid(FlipSystem& p, FlagGrid& flags, MACGrid& vel, MACGrid& oldVel, Real flipRatio) {
+    unusedParameter(flags);
+    
     if (!p.isActive(i)) return;
     
     /*if (!flags.isFluid(p[i].pos)) {
@@ -35,16 +37,21 @@ CopyVelocitiesFromGrid(FlipSystem& p, FlagGrid& flags, MACGrid& vel, MACGrid& ol
 //! Set velocities on the grid from the particle system
 KERNEL(pts, single) 
 CopyVelocitiesToGrid(FlipSystem& p, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& tmp) {
+    unusedParameter(flags);
+    
     if (!p.isActive(i)) return;
     
     vel.setInterpolated(p[i].pos, p[i].vel, &tmp[0]);
 }
 
 void FlipSystem::velocitiesFromGrid(FlagGrid& flags, MACGrid& vel, Real flipRatio) {
+    assertMsg(vel.is3D(), "Only 3D grids supported so far");
     CopyVelocitiesFromGrid(*this, flags, vel, mOldVel, flipRatio);
 }
 
 void FlipSystem::velocitiesToGrid(FlagGrid& flags, MACGrid& vel) {
+    assertMsg(vel.is3D(), "Only 3D grids supported so far");
+    
     // interpol -> grid. tmpgrid for counting
     Grid<Vec3> tmp(mParent);
     vel.clear();

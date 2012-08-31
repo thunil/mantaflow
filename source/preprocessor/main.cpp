@@ -85,6 +85,7 @@ void doMerge(int argc, char* argv[]) {
     const string outfile(argv[2]);
     
     for (int i=3; i<argc; i++) {
+        merged += "@filename " + string(argv[i]) + "\n";        
         merged += readFile(argv[i]) + "\n";
     }
     writeFile(outfile, generateMerge(merged));    

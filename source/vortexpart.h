@@ -28,9 +28,6 @@ struct VortexParticleData {
     static ParticleBase::SystemType getType() { return ParticleBase::VORTEX; }
 };
 
-//! instantiate base class in python
-PYTHON template class ParticleSystem<VortexParticleData>;
-
 //! Vortex particles
 PYTHON class VortexParticleSystem : public ParticleSystem<VortexParticleData> {
 public:
