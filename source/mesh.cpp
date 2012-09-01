@@ -189,7 +189,7 @@ void Mesh::rebuildChannels() {
 DefineIntegrator(integratePosition, MACGrid, getInterpolated);
 
 KERNEL(pts) template<IntegrationMode mode>
-KnAdvectMeshInGrid(vector<Node>& p, MACGrid& vel, FlagGrid& flaggrid, Real dt) {
+void KnAdvectMeshInGrid(vector<Node>& p, MACGrid& vel, FlagGrid& flaggrid, Real dt) {
     if (p[i].flags & Mesh::NfFixed) return;
     
     // from integrator.h
@@ -203,7 +203,7 @@ KnAdvectMeshInGrid(vector<Node>& p, MACGrid& vel, FlagGrid& flaggrid, Real dt) {
 DefineIntegrator(integrateCenteredVel, Grid<Vec3>, getInterpolated);
 
 KERNEL(pts) template<IntegrationMode mode>
-KnAdvectMeshInCenterGrid(vector<Node>& p, Grid<Vec3>& vel, FlagGrid& flaggrid, Real dt) {
+void KnAdvectMeshInCenterGrid(vector<Node>& p, Grid<Vec3>& vel, FlagGrid& flaggrid, Real dt) {
     if (p[i].flags & Mesh::NfFixed) return;
     
     // from integrator.h

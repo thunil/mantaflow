@@ -189,7 +189,7 @@ KERNEL(idx, reduce) struct InitSigma (FlagGrid& flags, Grid<Real>& dst, Grid<Rea
 };
 
 //! Kernel: update search vector
-KERNEL(idx) UpdateSearchVec (Grid<Real>& dst, Grid<Real>& src, Real factor)
+KERNEL(idx) void UpdateSearchVec (Grid<Real>& dst, Grid<Real>& src, Real factor)
 {
     dst[idx] = src[idx] + factor * dst[idx];
 }

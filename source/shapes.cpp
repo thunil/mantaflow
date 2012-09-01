@@ -31,13 +31,15 @@ bool Shape::isInside(const Vec3& pos) const {
 }
 
 //! Kernel: Apply a shape to a grid, setting value inside
-KERNEL template<class T> ApplyShapeToGrid (Grid<T>* grid, Shape* shape, T value) {
+KERNEL template<class T> 
+void ApplyShapeToGrid (Grid<T>* grid, Shape* shape, T value) {
     if (shape->isInsideGrid(i,j,k))
         (*grid)(i,j,k) = value;
 }
 
 //! Kernel: Apply a shape to a grid, setting value inside (scaling by SDF value)
-KERNEL template<class T> ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi, Real sigma, Real shift, T value) {
+KERNEL template<class T> 
+void ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi, Real sigma, Real shift, T value) {
     const Real p = phi(i,j,k) - shift;
     if (p < -sigma)
         (*grid)(i,j,k) = value;
@@ -46,7 +48,7 @@ KERNEL template<class T> ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi,
 }
 
 //! Kernel: Apply a shape to a MAC grid, setting value inside
-KERNEL ApplyShapeToMACGrid (MACGrid* grid, Shape* shape, Vec3 value) 
+KERNEL void ApplyShapeToMACGrid (MACGrid* grid, Shape* shape, Vec3 value) 
 {
     if (shape->isInside(Vec3(i,j+0.5,k+0.5))) (*grid)(i,j,k).x = value.x;
     if (shape->isInside(Vec3(i+0.5,j,k+0.5))) (*grid)(i,j,k).y = value.y;
@@ -152,7 +154,7 @@ void Box::generateMesh(Mesh* mesh) {
 }
 
 //! Kernel: Analytic SDF for box shape
-KERNEL BoxSDF(Grid<Real>& phi, const Vec3& p1, const Vec3& p2) {
+KERNEL void BoxSDF(Grid<Real>& phi, const Vec3& p1, const Vec3& p2) {
     const Vec3 p(i+0.5, j+0.5, k+0.5);
     if (p.x <= p2.x && p.x >= p1.x && p.y <= p2.y && p.y >= p1.y && p.z <= p2.z && p.z >= p1.z) {
         // inside: minimal surface distance
@@ -282,7 +284,7 @@ void Sphere::generateMesh(Mesh* mesh) {
     mesh->rebuildLookup(oldtri,-1);
 }
     
-KERNEL SphereSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 scale) {
+KERNEL void SphereSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 scale) {
     phi(i,j,k) = norm((Vec3(i+0.5,j+0.5,k+0.5)-center)/scale)-radius;
 }
 void Sphere::generateLevelset(Grid<Real>& phi) {
@@ -340,7 +342,8 @@ void Cylinder::generateMesh(Mesh* mesh) {
     mesh->rebuildLookup(oldtri,-1);
 }
     
-KERNEL CylinderSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 zaxis, Real maxz) {
+KERNEL void 
+CylinderSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 zaxis, Real maxz) {
     Vec3 p=Vec3(i+0.5,j+0.5,k+0.5)-center;
     Real z = fabs(dot(p, zaxis));
     Real r = sqrt(normSquare(p)-z*z);

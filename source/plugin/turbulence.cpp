@@ -34,7 +34,8 @@ const Real keNuMin = 1e-3;
 const Real keNuMax = 4.0;
 
 //! clamp k and epsilon to limits    
-KERNEL(idx) KnTurbulenceClamp(Grid<Real>& kgrid, Grid<Real>& egrid, Real minK, Real maxK, Real minNu, Real maxNu) {
+KERNEL(idx) 
+void KnTurbulenceClamp(Grid<Real>& kgrid, Grid<Real>& egrid, Real minK, Real maxK, Real minNu, Real maxNu) {
     Real eps = egrid[idx];
     Real ke = clamp(kgrid[idx],minK,maxK);
     Real nu = keCmu*square(ke)/eps;
@@ -64,8 +65,9 @@ void TurbulenceClampMesh(VortexSheetMesh& mesh, Real minK, Real maxK, Real minNu
 }
 
 //! Compute k-epsilon production term P = 2*nu_T*sum_ij(Sij^2) and the turbulent viscosity nu_T=C_mu*k^2/eps
-KERNEL(bnd=1) KnComputeProductionStrain(const MACGrid& vel, const Grid<Vec3>& velCenter, const Grid<Real>& ke, const Grid<Real>& eps, 
-                                  Grid<Real>& prod, Grid<Real>& nuT, Real pscale = 1.0f) 
+KERNEL(bnd=1) 
+void KnComputeProductionStrain(const MACGrid& vel, const Grid<Vec3>& velCenter, const Grid<Real>& ke, const Grid<Real>& eps, 
+                               Grid<Real>& prod, Grid<Real>& nuT, Real pscale = 1.0f) 
 {
     Real curEps = eps(i,j,k);
     if (curEps > 0) {
@@ -94,8 +96,9 @@ KERNEL(bnd=1) KnComputeProductionStrain(const MACGrid& vel, const Grid<Vec3>& ve
 }
 
 //! Compute k-epsilon production term P = 2*nu_T*sum_ij(Omegaij^2) and the turbulent viscosity nu_T=C_mu*k^2/eps
-KERNEL(bnd=1) KnComputeProductionCurl(const Grid<Vec3>& curl, const Grid<Vec3>& bcurl, const Grid<Real>& ke, const Grid<Real>& eps, 
-                                  Grid<Real>& prod, Grid<Real>& nuT, Real pscale =1.0f, Grid<Vec3>* debug=NULL) 
+KERNEL(bnd=1) 
+void KnComputeProductionCurl(const Grid<Vec3>& curl, const Grid<Vec3>& bcurl, const Grid<Real>& ke, const Grid<Real>& eps, 
+                                   Grid<Real>& prod, Grid<Real>& nuT, Real pscale =1.0f, Grid<Vec3>* debug=NULL) 
 {
     Real curEps = eps(i,j,k);
     if (curEps > 0) {
@@ -126,7 +129,7 @@ KERNEL(bnd=1) KnComputeProductionCurl(const Grid<Vec3>& curl, const Grid<Vec3>& 
 }
     
 //! Compute k-epsilon production term P = 2*nu_T*sum_ij(Sij^2) and the turbulent viscosity nu_T=C_mu*k^2/eps
-PLUGIN void KEpsilonComputeProduction(MACGrid& vel, Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod, Grid<Real>& nuT, Real pscale = 1.0f, Grid<Vec3>* bcurl=NULL, Grid<Vec3>* debug=NULL) 
+PYTHON void KEpsilonComputeProduction(MACGrid& vel, Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod, Grid<Real>& nuT, Real pscale = 1.0f, Grid<Vec3>* bcurl=NULL, Grid<Vec3>* debug=NULL) 
 {
     // get centered velocity grid
     Grid<Vec3> vcenter(parent);
@@ -149,7 +152,8 @@ PLUGIN void KEpsilonComputeProduction(MACGrid& vel, Grid<Real>& k, Grid<Real>& e
 }
 
 //! Integrate source terms of k-epsilon equation
-KERNEL(idx) KnAddTurbulenceSource(Grid<Real>& kgrid, Grid<Real>& egrid, const Grid<Real>& pgrid, Real dt) {
+KERNEL(idx) 
+void KnAddTurbulenceSource(Grid<Real>& kgrid, Grid<Real>& egrid, const Grid<Real>& pgrid, Real dt) {
     Real eps = egrid[idx], prod = pgrid[idx], ke = kgrid[idx];
     if (ke <= 0) ke = 1e-3; // pre-clamp to avoid nan
     
@@ -163,7 +167,7 @@ KERNEL(idx) KnAddTurbulenceSource(Grid<Real>& kgrid, Grid<Real>& egrid, const Gr
 
 
 //! Integrate source terms of k-epsilon equation
-PLUGIN void KEpsilonSources(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod) {
+PYTHON void KEpsilonSources(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod) {
     Real dt = parent->getDt();
         
     KnAddTurbulenceSource(k, eps, prod, dt);
@@ -207,7 +211,7 @@ void AddTurbulenceSourceMesh(VortexSheetMesh& mesh, Grid<Vec3>& curl, Grid<Vec3>
 }
 
 //! Integrate source terms of k-epsilon equation
-PLUGIN void KEpsilonSourcesMesh(VortexSheetMesh& mesh, MACGrid& vel, Grid<Vec3>& bcurl, Grid<Real>& kgrid, Grid<Real>& epsGrid) {
+PYTHON void KEpsilonSourcesMesh(VortexSheetMesh& mesh, MACGrid& vel, Grid<Vec3>& bcurl, Grid<Real>& kgrid, Grid<Real>& epsGrid) {
     Real dt = parent->getDt();
     
     // get centered velocity grid
@@ -238,7 +242,7 @@ PLUGIN void KEpsilonSourcesMesh(VortexSheetMesh& mesh, MACGrid& vel, Grid<Vec3>&
     epsGrid.safeDivide(sum);
 }
 
-PLUGIN void KEpsilonInit(Grid<Real>& k, Grid<Real>& eps, Real intensity, Real nu) {
+PYTHON void KEpsilonInit(Grid<Real>& k, Grid<Real>& eps, Real intensity, Real nu) {
     // compute limits
     const Real vk = 1.5*square(keU0)*square(intensity);
     const Real ve = keCmu*square(vk) / nu;
@@ -249,7 +253,7 @@ PLUGIN void KEpsilonInit(Grid<Real>& k, Grid<Real>& eps, Real intensity, Real nu
     }
 }
 
-PLUGIN void KEpsilonInitMesh(VortexSheetMesh& mesh, Real intensity, Real nu) {
+PYTHON void KEpsilonInitMesh(VortexSheetMesh& mesh, Real intensity, Real nu) {
     // compute limits
     const Real vk = 1.5*square(keU0)*square(intensity);
     const Real ve = keCmu*square(vk) / nu;
@@ -261,7 +265,7 @@ PLUGIN void KEpsilonInitMesh(VortexSheetMesh& mesh, Real intensity, Real nu) {
 }
 
 //! Compute k-epsilon turbulent viscosity
-PLUGIN void KEpsilonGradientDiffusion(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& nuT) {
+PYTHON void KEpsilonGradientDiffusion(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& nuT) {
     Real dt = parent->getDt();
     MACGrid grad(parent);
     Grid<Real> div(parent);

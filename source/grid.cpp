@@ -56,6 +56,17 @@ Grid<T>::Grid(FluidSolver* parent, bool show)
 }
 
 template<class T>
+Grid<T>::Grid(const Grid<T>& a) : GridBase(a.getParent()) {
+    mSize = a.mSize;
+    mType = a.mType;
+    mStrideZ = a.mStrideZ;
+    mDx = a.mDx;
+    FluidSolver *gp = a.getParent();
+    mData = gp->getGridPointer<T>();
+    memcpy(mData, a.mData, sizeof(T) * a.mSize.x * a.mSize.y * a.mSize.z);
+}
+
+template<class T>
 Grid<T>::~Grid() {
     mParent->freeGridPointer<T>(mData);    
 }
@@ -157,6 +168,7 @@ template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
     return *this;
 }
 template<class T> Grid<T>& Grid<T>::operator= (const Grid<T>& a) {
+    assertMsg (a.mSize.x == mSize.x && a.mSize.y == mSize.y && a.mSize.z == mSize.z, "different grid resolutions");
     memcpy(mData, a.mData, sizeof(T) * mSize.x * mSize.y * mSize.z);
     mType = a.mType; // copy type marker
     return *this;

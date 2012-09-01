@@ -67,14 +67,14 @@ VortexParticleSystem::VortexParticleSystem(FluidSolver* parent) :
 DefineIntegrator(integrateVortexKernel, VortexKernel, evaluate);
 
 KERNEL(particle) template<IntegrationMode mode> 
-advectNodes(vector<Vec3>& nodesNew, const vector<Vec3>& nodesOld, const VortexKernel& kernel, Real dt) {
+void advectNodes(vector<Vec3>& nodesNew, const vector<Vec3>& nodesOld, const VortexKernel& kernel, Real dt) {
     const Vec3 p = nodesOld[i];
     if (kernel.isValid(p))
         nodesNew[i] += integrateVortexKernel<mode>(p, kernel, dt);    
 }
 
 KERNEL(particle) template<IntegrationMode mode>
-advectVortices(vector<VortexParticleData>& nodesNew, const vector<VortexKernel>& nodesOld, const VortexKernel& kernel, Real dt) {
+void advectVortices(vector<VortexParticleData>& nodesNew, const vector<VortexKernel>& nodesOld, const VortexKernel& kernel, Real dt) {
     const Vec3 p = nodesOld[i].pos;
     if (kernel.isValid(p))
         nodesNew[i].pos += integrateVortexKernel<mode>(p, kernel, dt);    

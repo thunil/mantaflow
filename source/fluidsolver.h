@@ -19,7 +19,7 @@
 #include <vector>
 #include <map>
 
-namespace Manta {
+namespace Manta { 
     
 //! Encodes grid size, timstep etc.
 PYTHON(name=Solver) 

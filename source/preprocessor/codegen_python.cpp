@@ -7,7 +7,7 @@
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Preprocessor: Process replacement text of individual keywords
+ * Preprocessor: Process replacement text of PYTHON keywords
  *
  ******************************************************************************/
 
@@ -25,7 +25,7 @@ string buildline(int lb) {
 }
 
 enum FunctionType { FtPlugin, FtMember, FtConstructor };
-void createPythonWrapper(const vector<Argument>& args, const string& fname, const string& totalname, FunctionType ftype, string& header, string& footer, string& callList, bool isClass) {
+void createPythonWrapper(const ArgList& args, const string& fname, const string& totalname, FunctionType ftype, string& header, string& footer, string& callList, bool isClass) {
     // beautify code for debug mode
     string nl = (gDebugMode && ftype != FtConstructor) ? "\n" : " ";
     string tb = (gDebugMode && ftype != FtConstructor) ? (isClass ? "\t\t" : "\t") : "";
@@ -135,284 +135,49 @@ string createConverters(const string& name, const string& tb, const string& nl, 
            "}" + nlr;
 }
 
-string processKernel(int lb, const string& kname, const vector<Argument>& opts, const string& templ, const vector<Argument>& args, const string& codebase, int line, bool isClass) {    
-    // beautify code
-    string nl = gDebugMode ? "\n" : "";
-    string tb = gDebugMode ? "\t" : "";    
-    string tb2 = tb+tb, tb3=tb2+tb, tb4=tb3+tb, tb5=tb4+tb;
-    
-    if (gDocMode) {
-        string ds = "//! \\ingroup Kernels\nKERNEL<";
-        for(size_t i=0; i<opts.size(); i++) { if (i!=0) ds+=", "; ds+=opts[i].complete; }
-        ds += "> " + kname + " (";
-        for(size_t i=0; i<args.size(); i++) { if (i!=0) ds+=", "; ds+=args[i].complete;}
-        return ds + " ) {}\n";
-    }
-    
-    // process options
-    bool idxMode = false, reduce = false, mt = gUseMT, pts = false;
-    string bnd = "0";
-    for (size_t i=0; i<opts.size(); i++) {
-        if (opts[i].name == "ijk") 
-            idxMode = false;
-        else if (opts[i].name == "index" || opts[i].name == "idx")
-            idxMode = true;
-        else if (opts[i].name == "st" || opts[i].name == "single")
-            mt = false;
-        else if (opts[i].name == "pts" || opts[i].name == "particle" || opts[i].name == "points")
-            pts = true;
-        else if (opts[i].name == "bnd")
-            bnd = opts[i].value;
-        else if (opts[i].name == "bnd")
-            bnd = opts[i].value;
-        else if (opts[i].name == "reduce")
-            reduce = true;
-        else
-            errMsg(line, "KERNEL(opt): illegal kernel option. Supported options are: 'ijk', 'idx', 'bnd=x', 'reduce', 'st', 'pts'");
-    }
-    string qualifier = reduce ? "" : "const";
-    string tbbcall = reduce ? "tbb::parallel_reduce" : "tbb::parallel_for";
-
-	bool mtTbb    = false;
-	bool mtOpenMp = false; // testing... NT_DEBUG
-	if(mt) {
-		mtTbb = true;
-	}
-    
-    // point out illegal paramter combinations
-    if (bnd != "0" && idxMode)
-        errMsg(line, "KERNEL(opt): can't combine index mode with bounds iteration.");    
-    if (reduce && !isClass)
-        errMsg(line, "KERNEL(opt): reduce can only be used in kernel classes.");
-    if (pts && (idxMode || bnd != "0" ))
-        errMsg(line, "KERNEL(opt): Modes 'ijk', 'idx' and 'bnd' can't be applied to particle kernels.");
-
-    // depnding on loop/function, adapt return statement
-    string code = codebase;
-    if (!isClass) {
-        replaceAll(code, "return;", "continue;");
-        replaceAll(code, "return ", "continue ");
-    }
-
-    // parse arguments
-    string loader = "", initList = "", argList = "", copier = "", members = "", basegrid="";
-    for (size_t i=0; i<args.size(); i++) {
-        string type = args[i].type;
-        string name = args[i].name;
-        if (!args[i].templ.empty()) type+= "<" + args[i].templ + ">";                
-        if (args[i].isPointer) type += "*";                
-        if (args[i].isRef) type += "&";
-        if (args[i].isConst) type = "const "+type;
-        
-        initList += (i==0) ? "" : ", ";
-        argList += (i==0) ? "" : ", ";
-        copier += (i==0) ? "" : ", ";
-        
-        string aname = "_" + name;
-        string sname = (isClass ? "" : "m_" )+ name;
-        loader += tb2+ type + " " + name + " = " + sname + ";" + nl;
-        copier += sname + "(o." + sname + ")";
-        members += tb+ type + " " + sname + ";" + nl;
-        initList += sname + "(" + aname + ")";
-        argList += type + " " + aname;
-        if (!args[i].value.empty())
-            argList += " = " + args[i].value;
-        
-        // figure out basegrid
-        if (basegrid.empty()) {
-            if (!pts && !type.find("Grid") != string::npos) {
-                if (!args[i].isPointer) basegrid += "&";
-                basegrid += "_" + name;
-            } else if (pts) {
-                if (args[i].isPointer) basegrid += "*";
-                basegrid += "_" + name;
-            }
-        }
-    }
-    if (basegrid.empty()) 
-        errMsg(line, "KERNEL: use at least one grid to call the kernel.");
-    if (isClass)
-        loader = "";
-    
-    // create kernel class
-    string kclass = "", kclassname = kname;
-    if (!templ.empty()) kclass += "template <" + templ + ">" + nl;
-    kclass += "struct " + kclassname + " : public " + (pts ? "Particle" : "") + "KernelBase { " + nl;
-    kclass += "public:" + nl;
-    // init constructor
-    kclass += tb+ kclassname + " (" + argList + ") :" + nl;
-    if (pts)
-        kclass += tb2+ "ParticleKernelBase((" + basegrid + ").size()), " + initList + nl;
-    else
-        kclass += tb2+ "KernelBase(" + basegrid + ", " + bnd + "), " + initList + nl;
-    kclass += tb + "{" + nl;
-    if (reduce) kclass += tb2+ "setup();" + nl;
-    kclass += tb2+ "run();" + nl;
-    kclass += tb+ "}" + nl;    
-    if (mtTbb) {
-        // multithreading using intel tbb
-        kclass += tb+ "void operator() (const tbb::blocked_range<size_t>& r) " + qualifier + "{" + nl;
-        kclass += loader;
-        if (pts) {
-            kclass += tb2+ "for (int i=r.begin(); i!=(int)r.end(); i++)" + nl;
-            kclass += isClass ? (tb3+"(*this)(i);") : code;                    
-        } else if (idxMode) {
-            kclass += tb2+ "for (int idx=r.begin(); idx!=(int)r.end(); idx++)" + nl;
-            kclass += isClass ? (tb3+"(*this)(idx);") : code;
-        } else {
-            kclass += tb2+ "const int _maxX = maxX, _maxY=maxY;" + nl;            
-            kclass += tb2+ "for (int k=r.begin(); k!=(int)r.end(); k++)" + nl;
-            kclass += tb3+ "for (int j=" + bnd + "; j<_maxY; j++)" + nl;
-            kclass += tb4+ "for (int i=" + bnd + "; i<_maxX; i++)" + nl;
-            kclass += isClass ? (tb5+"(*this)(i,j,k);") : code;
-        }            
-        kclass += nl + tb+"}" + nl;
-        kclass += tb+ "void run() {" + nl;
-        if (pts)
-            kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>(0, size), *this);"+ nl;
-        else if (idxMode)
-            kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>(0, maxCells), *this);"+ nl;
-        else
-            kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>(minZ, maxZ), *this);"+ nl;
-        kclass += tb+ "}" + nl;
-	} else if(mtOpenMp) {
-	} else {
-        // simple loop
-        kclass += tb+ "void run() {" + nl;
-        kclass += loader;
-        if (pts) {
-            kclass += tb2+ "const int _sz = size;"+ nl;
-            kclass += tb2+ "for (int i=0; i < _sz; i++)" + nl;
-            kclass += isClass ? (tb3+"(*this)(i);") : code;
-        } else if (idxMode) {
-            kclass += tb2+ "const int _maxCells = maxCells;"+ nl;
-            kclass += tb2+ "for (int idx=0; idx < _maxCells; idx++)" + nl;
-            kclass += isClass ? (tb3+"(*this)(idx);") : code;
-        } else {
-            kclass += tb2+ "const int _maxX = maxX, _maxY=maxY, _maxZ = maxZ;" + nl;
-            kclass += tb2+ "for (int k=minZ; k < _maxZ; k++)" + nl;
-            kclass += tb3+ "for (int j="+bnd+"; j < _maxY; j++)" + nl;
-            kclass += tb4+ "for (int i="+bnd+"; i < _maxX; i++)" + nl;
-            kclass += isClass ? (tb5+"(*this)(i,j,k);") : code;
-        }
-        kclass += nl + tb+"}" + nl;
-    }
-    if (reduce && mtTbb) {
-        // split constructor
-        kclass += tb+ kclassname + " (" + kclassname + "& o, tbb::split) : " + nl;
-        if (!pts)
-            kclass += tb2+ "KernelBase(o.maxX, o.maxY, o.maxZ, o.maxCells, o.minZ, o.X, o.Y, o.Z)," + nl;
-        else
-            kclass += tb2+ "KernelBase(o.size)," + nl;
-        kclass += tb2+ copier + nl;
-        kclass += tb + "{" + nl; 
-        kclass += tb2+ "setup();" + nl;
-        kclass += tb+ "}" + nl;        
-    }    
-    kclass += nl + members;
-    kclass += isClass ? code.substr(1) : "}";
-    kclass += ";" + nl;
-   
-    return buildline(lb) + kclass;
-}
-
-string processPlugin(int lb, const string& fname, const vector<Argument>& opts, const vector<Argument>& args, const string& code, int line, const string& type) {    
-    // beautify code for debug mode
-    string nl = gDebugMode ? "\n" : " ";
-    string tb1 = gDebugMode ? "\t" : "";
-    bool isClass = (type=="class") || (type=="struct");
-    
-    if (!opts.empty())
-        errMsg(line,"Keyword PLUGIN does not support options");
-    
-    if (gDocMode) {
-        string ds = "//! \\ingroup Plugins\nPLUGIN " + fname + "( ";
-        for(size_t i=0; i<args.size(); i++) {  if (i!=0) ds+=", "; ds+=args[i].complete;}
-        return ds + " ) {}\n";
-    }
-    
-    string wrapperName = "plugin_" + fname;
-    
-    // register function
-    gRegText += "extern PyObject* " + wrapperName + " (PyObject* _self, PyObject* _linargs, PyObject* _kwds);\n" + // declare
-                "PbWrapperRegistry::instance().addGenericFunction(\"" + fname + "\", " + wrapperName + ");\n"; // register                    
-    
-    // generate wrapper
-    string codeInline = "";
-    codeInline += code.substr(1,code.size()-2);    
-    string header, footer, callList;
-    createPythonWrapper(args, isClass ? "step" : wrapperName, fname, FtPlugin, header, footer, callList, isClass);
-        
-    if (isClass) {        
-        string caller = "", classcode="";
-        // create caller
-        caller += "PyObject* " + wrapperName + " (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {" + nl;
-        caller += tb1+"static " + fname + " inst;" + nl;
-        caller += tb1+"return inst.step(_self, _linargs, _kwds);" + nl;
-        caller += "}" + nl;
-        
-        // create class
-        classcode += "class " + fname + " {" + nl;
-        classcode += "public:" + nl;
-        classcode += replaceFunctionHeader(codeInline, "step", header, footer, line) + nl;
-        classcode += "};" + nl;        
-        return buildline(lb) + classcode + nl + caller;
-    }
-    else {
-        // replicate original function
-        string callstr = "";
-        string func = type + " " + fname + "(";
-        for (size_t i=0; i<args.size(); i++) {
-            if (i!=0) { func += ", "; callstr += ","; }
-            func += args[i].complete;
-            callstr += args[i].name;
-        }
-        // add args, parent arguments
-        if (args.size()>0) func += ",";
-        func += " FluidSolver* parent = NULL, PbArgs& _args = PbArgs::EMPTY";
-        func += ") {" + nl + codeInline + nl + "}" + nl;
-        if (args.size()>0) callstr += ",";
-        callstr += " parent, _args";
-        
-        string caller = header;
-        if (type=="void")
-            caller += tb1+"_retval = getPyNone(); " + fname + "(" + callstr + ");" + nl;
-        else
-            caller += tb1+"_retval = toPy<" + type + ">(" + fname + "(" + callstr + ") );" + nl;
-        caller += footer;
-        
-        // inject code directly into caller function        
-        return buildline(lb) + func + caller;
-    }
-}
-
 // globals for tracking state between python class and python function registrations
 string gLocalReg, gParent;
 bool gFoundConstructor = false, gIsTemplated=false;
 
-string processPythonFunction(int lb, const string& name, const string& type, const vector<Argument>& args, const string& initlist, const string& code, int) {
+string processPythonFunction(int lb, const string& name, const string& type, const ArgList& args, const string& initlist, const string& code, int) {
     // beautify code
     string nl = gDebugMode ? "\n" : "";
-    string tb = gDebugMode ? "\t" : "";
+    string tb = (gDebugMode) ? "\t" : "";
     
     // is header file ?
     bool isHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
     bool isConstructor = type.empty();
+    bool isPlugin = gParent.empty();
     if (isConstructor) gFoundConstructor = true;
         
     // generate caller
     string clname = "_" + gParent + (gIsTemplated ? "@" : "");
     string fname = "_" + name;
+    if (isPlugin) {
+        clname = ""; fname = "_plugin_" + name;
+    }
     string codeInline = code;
     if (code[0] != ';') {
         codeInline = "{" + nl;
         codeInline += code.substr(1,code.size()-1) + nl;        
     }
         
-    string header, footer, callList;
-    createPythonWrapper(args, isConstructor ? (clname+clname) : fname, gParent+"::"+name, isConstructor ? FtConstructor : FtMember, header, footer, callList, true);    
+    // document free plugins
+    if (isPlugin && gDocMode) {
+        string ds = "//! \\ingroup Plugins\nPYTHON " + fname + "( ";
+        for(size_t i=0; i<args.size(); i++) {  if (i!=0) ds+=", "; ds+=args[i].complete;}
+        return ds + " ) {}\n";
+    }
     
-    string caller = tb + header + nl;
+    string header, footer, callList;
+    FunctionType funcType = isConstructor ? FtConstructor : FtMember;
+    if (isPlugin) funcType = FtPlugin;
+    createPythonWrapper(args, isConstructor ? (clname+clname) : fname, gParent+"::"+name, funcType, header, footer, callList, !isPlugin);    
+
+    string caller = (isPlugin ? "" : tb ) + header + nl;
+    if (isPlugin) {
+        callList += ", parent";
+    }
     if (type == "void") {
         caller += tb+tb+tb+ "_retval = getPyNone();" + nl;
         caller += tb+tb+tb+ name + "(" + callList + ");" + nl + nl;
@@ -421,13 +186,14 @@ string processPythonFunction(int lb, const string& name, const string& type, con
     caller += footer;
     
     // replicate original function
-    string func = type + " " + name + "(";
-    for (size_t i=0; i<args.size(); i++) {
-        if (i!=0) func += ", ";
-        func += args[i].complete;
+    string func = type + " " + name + "(" + listArgs(args);
+    if (isPlugin) {
+        // add parent as argument
+        if (args.size()>0) func += ",";
+        func += " FluidSolver* parent = NULL, PbArgs& _args = PbArgs::EMPTY";
     }
     func += ") " + initlist + codeInline + nl;
-    
+        
     // register
     string regname = clname + (isConstructor ? clname : fname);
     string regHeader = (isConstructor ? "int " : "PyObject* ") + regname + " (PyObject* _self, PyObject* _linargs, PyObject* _kwds)";
@@ -464,7 +230,7 @@ string processPythonFunction(int lb, const string& name, const string& type, con
     return buildline(lb) + func + nl + caller;
 }
 
-string processPythonVariable(int lb, const string& name, const vector<Argument>& opts, const string& type, int line) {
+string processPythonVariable(int lb, const string& name, const ArgList& opts, const string& type, int line) {
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = gDebugMode ? "\t" : "";
@@ -512,7 +278,7 @@ string processPythonVariable(int lb, const string& name, const vector<Argument>&
     return buildline(lb) + code;
 }
 
-string processPythonClass(int lb, const string& name, const vector<Argument>& opts, const std::vector<Argument>& templArgs, const string& baseclassName, const vector<Argument>& baseclassTempl, const string& code, int line) {
+string processPythonClass(int lb, const string& name, const ArgList& opts, const ArgList& templArgs, const string& baseclassName, const ArgList& baseclassTempl, const string& code, int line) {
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = gDebugMode ? "\t" : "";
@@ -597,7 +363,7 @@ string processPythonClass(int lb, const string& name, const vector<Argument>& op
 }
 
 set<string> gAliasRegister;
-string processPythonInstantiation(int lb, const string& name, const std::vector<Argument>& templArgs, const string& aliasname, int) {
+string processPythonInstantiation(int lb, const string& name, const ArgList& templArgs, const string& aliasname, int) {
     gRegText += "@instance " + name + " " + listArgs(templArgs) + " " + aliasname + "\n";
     
     if (gAliasRegister.find(aliasname) == gAliasRegister.end()) {

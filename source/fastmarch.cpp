@@ -173,7 +173,8 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
 }
 
 //! Enforce delta_phi = 0 on boundaries
-KERNEL SetLevelsetBoundaries (LevelsetGrid& phi) {
+KERNEL 
+void SetLevelsetBoundaries (LevelsetGrid& phi) {
     if (i==0) phi(i,j,k) = phi(1,j,k);
     if (j==0) phi(i,j,k) = phi(i,1,k);
     if (k==0) phi(i,j,k) = phi(i,j,1);

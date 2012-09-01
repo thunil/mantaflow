@@ -34,12 +34,26 @@ IF(NOT CMAKE_PREFIX_PATH)
 ENDIF()
 
 # compilation versions
-OPTION(MT "Use multi-threaded kernels (TBB)" OFF)
 OPTION(DEBUG "Enable debug compilation" OFF)
 OPTION(USE64 "Switch 64bit support" ON)
 OPTION(GUI "Compile with GUI (requires QT)" OFF)
-OPTION(PREPDEBUG "Debug generated files" OFF) # This will beautify generated files, and link to them for compiler errors instead of the original sources
+OPTION(TBB "Use multi-thread kernels using Intels TBB" OFF)
+OPTION(OPENMP "Use multi-thread kernels using OpenMP" OFF)
 OPTION(CUDA "Compile with CUDA plugins" OFF)
+OPTION(PREPDEBUG "Debug generated files" OFF) # This will beautify generated files, and link to them for compiler errors instead of the original sources
+
+#check consistency of MT options
+set(MT TBB OR OPENMP)
+set(MT_TYPE "NONE")
+if (TBB)
+    set (MT_TYPE "TBB")
+endif()
+if (OPENMP)
+    set (MT_TYPE "OPENMP")
+endif()
+if (TBB AND OPENMP)
+    message(FATAL_ERROR "Cannot activate both OPENMP and TBB")
+endif()
 
 # make sure debug settings match...
 IF(NOT DEBUG)
@@ -52,16 +66,18 @@ IF(DEBUG)
     add_definitions ( -DDEBUG )
 ENDIF()
 
-MESSAGE("")
-MESSAGE("Options - "
-    " -DMT='${MT}' "
+MESSAGE(STATUS "")
+MESSAGE(STATUS "Options - "
     " -DDEBUG='${DEBUG}' "
     " -DUSE64='${USE64}' "
     " -DGUI='${GUI}' "
+    " -DTBB='${TBB}' "
+    " -DOPENMP='${OPENMP}' "
     " -DPREPDEBUG='${PREPDEBUG}' "
     " -DCUDA='${CUDA}' "
     )
-MESSAGE("")
+MESSAGE(STATUS "Multithreading type : ${MT_TYPE}")
+MESSAGE(STATUS "")
 
 #******************************************************************************
 # Pre-processor
@@ -71,7 +87,8 @@ SET(SOURCES
     source/preprocessor/main.cpp
     source/preprocessor/parse.cpp
     source/preprocessor/merge.cpp
-    source/preprocessor/replace.cpp
+    source/preprocessor/codegen_python.cpp
+    source/preprocessor/codegen_kernel.cpp
     source/preprocessor/tokenize.cpp
 )
 add_executable(prep ${SOURCES})
@@ -112,7 +129,7 @@ SET(PP_SOURCES
     source/plugin/meshplugins.cpp
     source/plugin/vortexplugins.cpp
     source/python/defines.py
-    #source/test.cpp
+    source/test.cpp
 )
 
 SET(PP_HEADERS
@@ -203,22 +220,23 @@ endif()
 
 # Multithreading
 if(MT)
-    add_definitions( -DMT)
-    if (DEBUG)
-        add_definitions( -DTBB_USE_DEBUG=1 )
-        list(APPEND F_LIBS tbb)
-    else()
-        list(APPEND F_LIBS tbb)
-    endif()
-	if (WIN32)
-		find_package(TBB REQUIRED)
-		list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})    
-		list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
-	elseif(APPLE)
-        find_package(TBB REQUIRED)
-		list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})    
-		list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
-        message(${TBB_INCLUDE_DIRS})
+    add_definitions( -DMT)    
+    if(TBB)
+        if (DEBUG)
+            add_definitions( -DTBB_USE_DEBUG=1 )
+            list(APPEND F_LIBS tbb)
+        else()
+            list(APPEND F_LIBS tbb)
+        endif()
+        if (WIN32)
+            find_package(TBB REQUIRED)
+            list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})    
+            list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
+        elseif(APPLE)
+            find_package(TBB REQUIRED)
+            list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})    
+            list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
+        endif()
     endif()
 endif()
 
@@ -292,10 +310,6 @@ set(PP_PREPD "0")
 if (PREPDEBUG)
     set(PP_PREPD "1")
 endif()
-set(PP_USEMT "0")
-if (MT)
-    set(PP_USEMT "1")
-endif()
 foreach(it ${PP_SOURCES} ${PP_HEADERS} ${QT_HEADERS})
     get_filename_component(CURPATH ${it} PATH)
     #get_filename_component(CUREXT ${it} EXT)
@@ -303,7 +317,7 @@ foreach(it ${PP_SOURCES} ${PP_HEADERS} ${QT_HEADERS})
     set(CURPP "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${it}")
     # preprocessor
     add_custom_command(OUTPUT ${CURPP}
-                       COMMAND prep generate ${PP_PREPD} ${PP_USEMT} "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURPP}"
+                       COMMAND prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURPP}"
                        DEPENDS prep
                        IMPLICIT_DEPENDS CXX ${it}
                        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -411,6 +425,6 @@ if(WIN32)
 endif()
 
 # debug
-MESSAGE("DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")
+MESSAGE(STATUS "DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")
 
 
