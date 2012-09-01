@@ -35,8 +35,7 @@ void KnApplyNoise(FlagGrid& flags, Grid<Real>& dens, WaveletNoiseField& noise, G
 //! Init noise-moduled density inside shape
 PYTHON void densityInflow(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Shape* shape, Real scale=1.0, Real sigma=0)
 {
-    Grid<Real> sdf(parent);
-    shape->computeLevelset(sdf);
+    Grid<Real> sdf = shape->computeLevelset();    
     KnApplyNoise(flags, density, noise, sdf, scale, sigma);
 }
 

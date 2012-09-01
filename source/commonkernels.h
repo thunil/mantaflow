@@ -77,12 +77,7 @@ KERNEL(bnd=1) void GetShiftedComponent(const Grid<Vec3>& grid, Grid<Real>& comp,
 KERNEL(idx) void GetComponent(const Grid<Vec3>& grid, Grid<Real>& comp, int dim) {
     comp[idx] = grid[idx][dim];
 };
-/*
-//! Kernel: get component (not shifted)
-KERNEL(idx) Grid<Real> GetComponent2(const Grid<Vec3>& grid, int dim) {
-    _ret[idx] = grid[idx][dim];
-};
-*/
+
 //! Kernel: get norm of centered grid
 KERNEL(idx) void GridNorm(Grid<Real>& n, const Grid<Vec3>& grid) {
     n[idx] = norm(grid[idx]);

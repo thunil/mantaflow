@@ -26,6 +26,13 @@ Shape::Shape (FluidSolver* parent)
 {
 }
 
+Grid<Real> Shape::computeLevelset() {
+    assertMsg(getParent()->is3D(), "Only 3D Grids supported so far"); 
+    Grid<Real> phi(getParent());
+    generateLevelset(phi); 
+    return phi;
+}
+
 bool Shape::isInside(const Vec3& pos) const {
     return false;
 }

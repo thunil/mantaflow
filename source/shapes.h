@@ -36,7 +36,7 @@ public:
     //! Apply shape to flag grid, set inside cells to <value>
     PYTHON void applyToGrid(GridBase* grid);
     PYTHON void applyToGridSmooth(GridBase* grid, Real sigma=1.0, Real shift=0);
-    PYTHON void computeLevelset(Grid<Real>& phi) { assertMsg(phi.is3D(), "Only 3D Grids supported so far"); generateLevelset(phi); }
+    PYTHON Grid<Real> computeLevelset();
     PYTHON void collideMesh(Mesh& mesh);
     
     //! Inside test of the shape

@@ -130,8 +130,11 @@ string createConverters(const string& name, const string& tb, const string& nl, 
            tb+tb+ "throw Error(\"can't convert argument to type '" + name + "'\");" + nl +
            tb+ "return dynamic_cast<" + name + "*>(pbo);" + nl +
            "}" + nlr +
-           "template<> PyObject* toPy<" + name + "*>(" + name + "* v) {" + nl +
-           tb+ "return v->getPyObject();" + nl +
+           "template<> PyObject* toPy<" + name + " &>(" + name + "& v) {" + nl +
+           tb+ "if (v.getPyObject()) return v.getPyObject();" + nl +
+           tb+ name + "* co = (" + name +"*) PbClass::createPyObject(\"" + name + "\",\"unnamed\",PbArgs::EMPTY,v.getParent());" +
+           tb+ "*co = v;" + nl +
+           tb+ "return co->getPyObject();" + nl +
            "}" + nlr;
 }
 

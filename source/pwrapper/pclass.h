@@ -76,9 +76,6 @@ public:
     static PbClass* createPyObject(const std::string& classname, const std::string& name, PbArgs& args, PbClass *parent);
     bool canConvertTo(const std::string& classname);
     
-private:
-    PbClass& operator=(const PbClass&); // disable copy constructor
-    
 protected:
     QMutex mMutex;
     FluidSolver* mParent;
