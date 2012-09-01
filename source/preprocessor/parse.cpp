@@ -107,7 +107,7 @@ Argument parseSingleArg(const vector<Token>& tokens, size_t& index, bool expectT
                         stage = 4;
                         if (expectName) endPossible = false;
                     } else if (t == TkDescriptor) {
-                        errMsg(expectName, "Argument '"+ cur.complete +"': only type expected");
+                        assert(expectName, "Argument '"+ cur.complete +"': only type expected");
                         cur.name = text;
                         stage = 5;
                     } else 
@@ -154,7 +154,7 @@ Argument parseSingleArg(const vector<Token>& tokens, size_t& index, bool expectT
         if (index >= tokens.size())
             errMsg(-1, "Preprocessor ran out of tokens. This shouldn't happen.");
         endToken = (!isList && tokens[index].type == TkDescriptor) ||
-                   (isList && (tokens[index].type == TkBracketR || tokens[index].type == TkComma));
+                   (isList && (tokens[index].type == TkBracketR || tokens[index].type == TkComma || tokens[index].type == TkTBracketR));
     } while(!endPossible || !endToken);
     
     //cout << "Complete Type : " << cur.complete << endl;
@@ -167,115 +167,29 @@ Argument parseSingleArg(const vector<Token>& tokens, size_t& index, bool expectT
 // or <class T, int A> if isTemplate is specified
 ArgList parseArgs(const vector<Token>& tokens, size_t& index, bool expectType, int &lb, bool isTemplate) {    
     ArgList args;
-    const int firstStage = expectType ? 0 : 4;
     TokenType openBracket = isTemplate ? TkTBracketL : TkBracketL;
     TokenType closeBracket = isTemplate ? TkTBracketR : TkBracketR;
     
     // ignore trailing whitespaces, remove first bracket
     lb += consumeWS(tokens, index);
     if (tokens[index].type != openBracket) return args;
+    index++;
+    lb += consumeWS(tokens, index);
     
-    // tokenizer already established that open brackets are closed eventually, so no need to check that
-    Argument cur = Argument();    
-    int stage = firstStage; // 0: type, 1: template open / modifiers / name 2: template, 3: template close 4: name / modifiers, 5: assignOp 6+: defaults
-    int number = 0, opened=1;
-    do {
-        index++;    
-        TokenType t = tokens[index].type;
-        string text = tokens[index].text;
-        int line = tokens[index].line;
-        
-        if (t==openBracket) opened++;
-        if (t==closeBracket) opened--;
-        
-        if (t == TkWhitespace || t == TkComment) {
-            if (text[0]=='\n') lb++;
-            else if (text[0]!='\r') cur.complete += text;            
-            continue;
-        }
-        if ((opened <1 && t == closeBracket) || (opened<=1 && t == TkComma && (stage<2 || stage>3))) { 
-            // argument complete, add to list
-            if (stage == 5 || stage > 6) {
-                args.push_back(cur);
-                cur = Argument();
-                number++;
-                cur.number = number;
-            }
-            else if (stage != firstStage)
-                errMsg(line, "incomplete argument or bracket mismatch in '" + listArgs(args) + "'");            
-            
-            stage = firstStage; 
-            continue;
-        }
-        cur.complete += text;
-        switch (stage) {
-            case 0:
-                // type name
-                assert(t==TkDescriptor, "incomplete argument! expect argument of the form '[type] name [= default]'");
-                if (text == "const") {
-                    cur.isConst = true;                    
-                } 
-                else {
-                    cur.type += text;
-                    stage++;
-                }
-                break;
-            case 1:
-                if (t == TkColon && tokens[index+1].type == TkColon) { // type had namespace
-                    cur.type += "::";
-                    cur.complete += ":";
-                    index++;
-                    stage=0;
-                    break;
-                } // else : fallthough to name
-            case 4:
-                // template open / name / modifiers
-                if (t == TkTBracketL && stage == 1) {
-                    stage++;
-                } else if (t == TkRef) {
-                    cur.isRef = true;
-                    stage = 4;
-                } else if (t == TkPointer) {
-                    cur.isPointer = true;
-                    stage = 4;
-                } else if (t == TkDescriptor) {
-                    cur.name = text;
-                    stage = 5;
-                } else 
-                    errMsg(line, "incomplete argument! expect argument of the form '[type] name [= default]'");
-                break;
-            case 2:
-                // template
-                assert(t == TkDescriptor, "incomplete argument type! expect type<Template> [*|&]");
-                cur.templ += text;
-                stage++;
-                break;
-            case 3:
-                // template close
-                if (t == TkTBracketR)
-                    stage++;
-                else if (t == TkComma) {
-                    cur.templ += ",";
-                    stage = 2;
-                }
-                else 
-                    errMsg(line, "incomplete argument type! expect type<Template> [*|&]");
-                break;
-            case 5:
-                // assign op
-                assert(t == TkAssign, "incomplete argument! expect argument of the form '[type] name [= default]'");
-                stage++;
-                break;
-            default:
-                // default values, stage 6+
-                if (t == TkNone || t == TkDescriptor || t==TkColon || t==TkComma || t==TkBracketL || t==TkBracketR)
-                    cur.value += text;
-                else 
-                    errMsg(line, "incomplete argument! expect argument of the form '[type] name [= default]'");
-                stage++;
+    for(;;) {
+        if (tokens[index].type == closeBracket) 
             break;
-        }        
-    } while(tokens[index].type != closeBracket || opened>0);
+        
+        Argument cur = parseSingleArg(tokens, index, expectType, true, true, lb);
+        args.push_back(cur);
+        
+        if (tokens[index].type == closeBracket) 
+            break;
+        else if (tokens[index].type != TkComma)
+            errMsg(tokens[index].line, "invalid argument list !");
+        index++;
+        lb += consumeWS(tokens, index);
+    }
     
     index++; // consume closing bracket
     
