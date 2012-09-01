@@ -89,24 +89,14 @@ public:
     };
 };
 
-
-// helper constants for windows
-#ifdef WIN32
-#define InvalidTime -1000.0
-#define InvtOffset    500.0
-#endif
-
 //! fast marching algorithm wrapper class
 template<class COMP, int TDIR>
 class FastMarch {
 
 public:
-
-#   ifndef WIN32
-	// MSVC unfortunately doesnt understand this (yet)
-    static const Real InvalidTime = -1000;
-    static const Real InvtOffset = 500;
-#	endif
+    // MSVC doesn't allow static const variables in template classes
+    static inline Real InvalidTime() { return -1000; }
+    static inline Real InvtOffset() { return 500; }
 
     enum SpecialValues { FlagInited = 1, FlagIsOnHeap = 2};
 
@@ -117,15 +107,15 @@ public:
     void performMarching();
 
     //! test value for invalidity
-    inline bool isInvalid(Real v) const { return (v <= InvalidTime); }
+    inline bool isInvalid(Real v) const { return (v <= InvalidTime()); }
 
     void addToList(const Vec3i& p, const Vec3i& src);
 
     //! convert phi to time value
-    inline Real phi2time(Real phival) { return (phival-InvalidTime+ InvtOffset) * -1.0; }
+    inline Real phi2time(Real phival) { return (phival-InvalidTime()+ InvtOffset()) * -1.0; }
     
     //! ... and back
-    inline Real time2phi(Real tval) { return (InvalidTime - InvtOffset - tval); }
+    inline Real time2phi(Real tval) { return (InvalidTime() - InvtOffset() - tval); }
 
 protected:   
     LevelsetGrid& mLevelset;
