@@ -18,14 +18,11 @@ pressure = s.create(RealGrid)
 flip = s.create(FlipSystem)
 mesh = s.create(Mesh)
 
-vgr= s.create(VecGrid)
-testp(vgr)
-
 # scene setup
 flags.initDomain()
 fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.8,1))
-fluidbox.computeLevelset(phi)
-flags.updateFromLevelset(phi)
+phi1 = fluidbox.computeLevelset()
+flags.updateFromLevelset(phi1)
 flip.adjustNumber(vel=vel, flags=flags, minParticles=8, maxParticles=30)
     
 if (GUI):

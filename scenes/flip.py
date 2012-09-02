@@ -22,7 +22,7 @@ mesh = s.create(Mesh)
 # scene setup
 flags.initDomain()
 fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.8,1))
-fluidbox.computeLevelset(phi)
+phi = fluidbox.computeLevelset()
 flags.updateFromLevelset(phi)
 flip.adjustNumber(vel=vel, flags=flags, minParticles=8, maxParticles=30)
     

@@ -26,9 +26,9 @@ Shape::Shape (FluidSolver* parent)
 {
 }
 
-Grid<Real> Shape::computeLevelset() {
+LevelsetGrid Shape::computeLevelset() {
     assertMsg(getParent()->is3D(), "Only 3D Grids supported so far"); 
-    Grid<Real> phi(getParent());
+    LevelsetGrid phi(getParent());
     generateLevelset(phi); 
     return phi;
 }

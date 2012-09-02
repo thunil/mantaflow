@@ -16,7 +16,7 @@
 
 #include "pclass.h"
 #include "vectorbase.h"
-#include "grid.h"
+#include "levelset.h"
 
 namespace Manta {
 
@@ -36,7 +36,7 @@ public:
     //! Apply shape to flag grid, set inside cells to <value>
     PYTHON void applyToGrid(GridBase* grid);
     PYTHON void applyToGridSmooth(GridBase* grid, Real sigma=1.0, Real shift=0);
-    PYTHON Grid<Real> computeLevelset();
+    PYTHON LevelsetGrid computeLevelset();
     PYTHON void collideMesh(Mesh& mesh);
     
     //! Inside test of the shape

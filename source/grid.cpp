@@ -68,7 +68,7 @@ Grid<T>::Grid(const Grid<T>& a) : GridBase(a.getParent()) {
 
 template<class T>
 Grid<T>::~Grid() {
-    mParent->freeGridPointer<T>(mData);    
+    mParent->freeGridPointer<T>(mData);
 }
 
 template<class T>

@@ -167,6 +167,7 @@ void PbArgs::copy(PbArgs& a) {
     mLinArgs = a.mLinArgs;
     mKwds = a.mKwds;    
     mData = a.mData;
+    mLinData = a.mLinData;
     mLinArgs = a.mLinArgs;
 }
 PbArgs& PbArgs::operator=(const PbArgs& a) {
