@@ -243,8 +243,7 @@ if(MT)
         endif()
     else()
         # OpenMP
-        add_definitions( -DOPENMP)
-
+        add_definitions( -DOPENMP -fopenmp)
     endif()
 endif()
 

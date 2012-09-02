@@ -37,4 +37,11 @@ PYTHON void testp(Grid<Vec3>& b) {
     cout << "end" << endl;errMsg("f");
 }
 
+KERNEL(idx) REDUCE(+: double sum=0)
+void test(const Grid<Real>& v)
+{
+    sum += v[idx];
+}
+
+
 } //namespace

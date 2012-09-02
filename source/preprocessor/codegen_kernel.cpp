@@ -18,7 +18,7 @@
 #include <iostream>
 using namespace std;
 
-string processKernel(int lb, const string& kname, const ArgList& opts, Argument retType, const ArgList& templArgs, const ArgList& args, const string& codebase, int line, bool isClass) {
+string processKernel(int lb, const string& kname, const ArgList& opts, Argument retType, const ArgList& templArgs, const ArgList& args, const string& code, int line, bool isClass) {
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = gDebugMode ? "\t" : "";    
@@ -64,15 +64,8 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     if (pts && (idxMode || bnd != "0" ))
         errMsg(line, "KERNEL(opt): Modes 'ijk', 'idx' and 'bnd' can't be applied to particle kernels.");
 
-    // depnding on loop/function, adapt return statement
-    string code = codebase;
-    if (!isClass) {
-        replaceAll(code, "return;", "continue;");
-        replaceAll(code, "return ", "continue ");
-    }
-
     // parse arguments
-    string loader = "", initList = "", argList = "", copier = "", members = "", basegrid="", callList = "";
+    string initList = "", argList = "", copier = "", members = "", basegrid="", callList = "", orgArgList="", mCallList;
     for (size_t i=0; i<args.size(); i++) {
         string type = args[i].type;
         string name = args[i].name;
@@ -85,14 +78,16 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         argList += (i==0) ? "" : ", ";
         copier += (i==0) ? "" : ", ";
         callList += (i==0) ? "" : ", ";
+        orgArgList += (i==0) ? "" : ", ";
         
         string aname = "_" + name;
-        string sname = (isClass ? "" : "m_" )+ name;
-        loader += tb2+ type + " " + name + " = " + sname + ";" + nl;
+        string sname = isClass ? name : ("m_" + name);
         copier += sname + "(o." + sname + ")";
         members += tb+ type + " " + sname + ";" + nl;
         initList += sname + "(" + aname + ")";
         callList += aname;
+        mCallList += ", "+sname;
+        orgArgList += type + " " + name;
         argList += type + " " + aname;
         if (!args[i].value.empty())
             argList += " = " + args[i].value;
@@ -110,8 +105,6 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     }
     if (basegrid.empty()) 
         errMsg(line, "KERNEL: use at least one grid to call the kernel.");
-    if (isClass)
-        loader = "";
     
     string kclass = "", kclassname = kname, caller="";
     
@@ -140,7 +133,8 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         argList += "," + retType.complete + "& _ret";
         initList += ", _m_ret(_ret) ";
         members += tb+ retType.complete + "& _m_ret;" + nl;
-        loader += tb2 + retType.complete + "& _ret = _m_ret;"  + nl;        
+        mCallList += ", _m_ret";
+        orgArgList += ", "+retType.complete+"& _ret";
     }
         
     // create kernel class
@@ -159,32 +153,45 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     kclass += tb2+ "run();" + nl;
     kclass += tb+ "}" + nl;
     
+    // code point
+    if (!isClass) {
+        if (pts)
+            kclass+= tb+ "inline void op(int i,"+orgArgList+") "+nl;
+        else if (idxMode)
+            kclass+= tb+ "inline void op(int idx,"+orgArgList+") "+nl;
+        else
+            kclass+= tb+ "inline void op(int i,int j,int k,"+orgArgList+") "+nl;
+        kclass += code + nl;
+    } else {
+        mCallList = "";
+    }
+    string opfunc = isClass ? "(*this)" : "op";
+    
     // create main kernel function 
     if (gMTType == MTTBB) {
         // multithreading using intel tbb
         kclass += tb+ "void operator() (const tbb::blocked_range<size_t>& r) " + qualifier + "{" + nl;
-        kclass += loader;
         if (pts) {
             kclass += tb2+ "for (int i=r.begin(); i!=(int)r.end(); i++)" + nl;
-            kclass += isClass ? (tb3+"(*this)(i);") : code;                    
+            kclass += tb3+ opfunc+"(i"+mCallList+");" + nl;
         } else if (idxMode) {
             kclass += tb2+ "for (int idx=r.begin(); idx!=(int)r.end(); idx++)" + nl;
-            kclass += isClass ? (tb3+"(*this)(idx);") : code;
+            kclass += tb3+opfunc+"(idx"+mCallList+");" + nl;
         } else {
             kclass += tb2+ "const int _maxX = maxX, _maxY=maxY;" + nl;
             kclass += tb2+ "if (maxZ>1) {" +nl;
             kclass += tb3+ "for (int k=r.begin(); k!=(int)r.end(); k++)" + nl;
             kclass += tb3+ "for (int j=" + bnd + "; j<_maxY; j++)" + nl;
             kclass += tb3+ "for (int i=" + bnd + "; i<_maxX; i++)" + nl;
-            kclass += isClass ? (tb4+"(*this)(i,j,k);") : code;
-            kclass += nl+tb2+ "} else {" + nl;
+            kclass += tb4+opfunc+"(i,j,k"+mCallList+");" + nl;
+            kclass += tb2+ "} else {" + nl;
             kclass += tb3+ "const int k=0;" + nl;
             kclass += tb3+ "for (int j=r.begin(); j!=(int)r.end(); j++)" + nl;
             kclass += tb3+ "for (int i=" + bnd + "; i<_maxX; i++)" + nl;
-            kclass += isClass ? (tb4+"(*this)(i,j,k);") : code;
-            kclass += nl + tb2+ "}";
+            kclass += tb4+opfunc+"(i,j,k"+mCallList+");" + nl;
+            kclass += tb2+ "}";
         }            
-        kclass += nl + tb+"}" + nl;
+        kclass += tb+"}" + nl;
         kclass += tb+ "void run() {" + nl;
         if (pts)
             kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>(0, size), *this);"+ nl;
@@ -194,33 +201,63 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
             kclass += tb2+ "if (maxZ>1)" + nl;
             kclass += tb3+ tbbcall + "(tbb::blocked_range<size_t>(minZ, maxZ), *this);"+ nl;
             kclass += tb2+ "else" + nl;
-            kclass += tb3+ tbbcall + "(tbb::blocked_range<size_t>(minY, maxY), *this);"+ nl;
+            kclass += tb3+ tbbcall + "(tbb::blocked_range<size_t>("+ bnd +", maxY), *this);"+ nl;
         }
         kclass += tb+ "}" + nl;
-	} else if(gMTType == MTOpenMP) {
-	} else {
-        // simple loop
+	}
+    else if(gMTType == MTOpenMP)
+    {
         kclass += tb+ "void run() {" + nl;
-        kclass += loader;
+        if (pts) {
+            kclass += tb2+ "const int _sz = size;"+ nl;
+            kclass += tb2+ "#pragma omp parallel for"+nl;
+            kclass += tb2+ "for (int i=0; i < _sz; i++)" + nl;
+            kclass += tb3+ opfunc+"(i"+mCallList+");" + nl;
+        } else if (idxMode) {
+            kclass += tb2+ "const int _maxCells = maxCells;"+ nl;
+            kclass += tb2+ "#pragma omp parallel for"+nl;
+            kclass += tb2+ "for (int idx=0; idx < _maxCells; idx++)" + nl;
+            kclass += tb3+ opfunc+"(idx"+mCallList+");" + nl;
+        } else {
+            kclass += tb2+ "const int _maxX = maxX, _maxY=maxY, _maxZ = maxZ;" + nl;
+            kclass += tb2+ "if (maxZ>1) {"+nl;
+            kclass += tb3+ "#pragma omp parallel for"+nl;
+            kclass += tb3+ "for (int k=minZ; k < _maxZ; k++)" + nl;
+            kclass += tb3+ "for (int j="+bnd+"; j < _maxY; j++)" + nl;
+            kclass += tb3+ "for (int i="+bnd+"; i < _maxX; i++)" + nl;
+            kclass += tb4+ opfunc+"(i,j,k"+mCallList+");" + nl;
+            kclass += tb2+"} else {"+nl;
+            kclass += tb3+ "const int k=0;"+nl;
+            kclass += tb3+ "#pragma omp parallel for"+nl;
+            kclass += tb3+ "for (int j="+bnd+"; j < _maxY; j++)" + nl;
+            kclass += tb3+ "for (int i="+bnd+"; i < _maxX; i++)" + nl;
+            kclass += tb4+ opfunc+"(i,j,k"+mCallList+");" + nl;
+            kclass += tb2+"}"+nl;
+        }
+        kclass += tb+"}" + nl;
+    }
+    else
+    {
+        kclass += tb+ "void run() {" + nl;
         if (pts) {
             kclass += tb2+ "const int _sz = size;"+ nl;
             kclass += tb2+ "for (int i=0; i < _sz; i++)" + nl;
-            kclass += isClass ? (tb3+"(*this)(i);") : code;
+            kclass += tb3+ opfunc+"(i"+mCallList+");" + nl;
         } else if (idxMode) {
             kclass += tb2+ "const int _maxCells = maxCells;"+ nl;
             kclass += tb2+ "for (int idx=0; idx < _maxCells; idx++)" + nl;
-            kclass += isClass ? (tb3+"(*this)(idx);") : code;
+            kclass += tb3+ opfunc+"(idx"+mCallList+");" + nl;
         } else {
             kclass += tb2+ "const int _maxX = maxX, _maxY=maxY, _maxZ = maxZ;" + nl;
             kclass += tb2+ "for (int k=minZ; k < _maxZ; k++)" + nl;
             kclass += tb3+ "for (int j="+bnd+"; j < _maxY; j++)" + nl;
             kclass += tb4+ "for (int i="+bnd+"; i < _maxX; i++)" + nl;
-            kclass += isClass ? (tb5+"(*this)(i,j,k);") : code;
+            kclass += tb3+ opfunc+"(i,j,k"+mCallList+");" + nl;
         }
-        kclass += nl + tb+"}" + nl;
+        kclass += tb+"}" + nl;
     }
     if (reduce) {
-        if (gMTType == TBB) {
+        if (gMTType == MTTBB) {
             // split constructor
             kclass += tb+ kclassname + " (" + kclassname + "& o, tbb::split) : " + nl;
             if (!pts)
