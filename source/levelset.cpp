@@ -88,6 +88,15 @@ Real LevelsetGrid::invalidTimeValue() {
     return FastMarch<FmHeapComparatorOut, 1>::InvalidTime();
 }
 
+//! Kernel: perform levelset union
+KERNEL(idx) void KnJoin(Grid<Real>& a, const Grid<Real>& b) {
+    a[idx] = min(a[idx], b[idx]);
+}
+
+void LevelsetGrid::join(const LevelsetGrid& o) {
+    KnJoin(*this, o);
+}
+
 void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTransport, bool ignoreWalls, bool correctOuterLayer)
 {
     assertMsg(is3D(), "Only 3D grids supported so far");

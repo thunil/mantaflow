@@ -29,6 +29,9 @@ public:
     //! create a triangle mesh from the levelset isosurface
     PYTHON void createMesh(Mesh& mesh);
     
+    //! union with another levelset
+    PYTHON void join(const LevelsetGrid& o);
+    
     static Real invalidTimeValue();
 };
 
