@@ -408,7 +408,7 @@ PyObject* PbWrapperRegistry::createPyObject(const string& classname, const strin
         
     return obj;    
 }
-
+ 
 void PbWrapperRegistry::addInstance(PbClass* obj) {
     PbClass::mInstances.push_back(obj);
 }
@@ -554,7 +554,21 @@ void PbClass::checkParent() {
         errMsg("New class " + mName + ": no parent given -- specify using parent=xxx !");
     }
 }
-   
+
+PyObject* PbClass::assignNewPyObject(const string& classname) {
+    PbClassData* classdef = PbWrapperRegistry::instance().lookup(classname);
+    assertMsg(classdef,"python class " + classname + " does not exist.");
+    
+    // allocate new object
+    PbObject *obj = (PbObject*) classdef->typeInfo.tp_alloc(&(classdef->typeInfo), 0);
+    assertMsg(obj, "cannot allocate new python object");
+    
+    obj->classdef = classdef;
+    setPyObject((PyObject*)obj);
+    
+    return mPyObject;
+}
+
 
 vector<PbClass*> PbClass::mInstances;
 

@@ -65,7 +65,7 @@ protected:
         void release(T* ptr);
         
         std::vector<T*> grids;
-        size_t used;        
+        int used;
     };
     
     Vec3i mGridSize;

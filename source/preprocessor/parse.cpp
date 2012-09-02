@@ -175,12 +175,14 @@ ArgList parseArgs(const vector<Token>& tokens, size_t& index, bool expectType, i
     if (tokens[index].type != openBracket) return args;
     index++;
     lb += consumeWS(tokens, index);
+    int number = 0;
     
     for(;;) {
         if (tokens[index].type == closeBracket) 
             break;
         
         Argument cur = parseSingleArg(tokens, index, expectType, true, true, lb);
+        cur.number = number++;
         args.push_back(cur);
         
         if (tokens[index].type == closeBracket) 

@@ -75,6 +75,7 @@ public:
     static bool isNullRef(PyObject* o);
     static PbClass* createPyObject(const std::string& classname, const std::string& name, PbArgs& args, PbClass *parent);
     bool canConvertTo(const std::string& classname);
+    PyObject* assignNewPyObject(const std::string& classname);
     
 protected:
     QMutex mMutex;

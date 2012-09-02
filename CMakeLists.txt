@@ -43,13 +43,15 @@ OPTION(CUDA "Compile with CUDA plugins" OFF)
 OPTION(PREPDEBUG "Debug generated files" OFF) # This will beautify generated files, and link to them for compiler errors instead of the original sources
 
 #check consistency of MT options
-set(MT TBB OR OPENMP)
+set(MT OFF)
 set(MT_TYPE "NONE")
 if (TBB)
     set (MT_TYPE "TBB")
+    set (MT ON)
 endif()
 if (OPENMP)
     set (MT_TYPE "OPENMP")
+    set (MT ON)
 endif()
 if (TBB AND OPENMP)
     message(FATAL_ERROR "Cannot activate both OPENMP and TBB")

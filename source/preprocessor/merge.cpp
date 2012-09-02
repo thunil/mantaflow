@@ -49,7 +49,7 @@ string generateMerge(const string& text) {
             else {
                 // update alias name ?
                 if (aliasn[0] != '_' && instances[id][0] == '_')
-                    instances[id] == aliasn;                
+                    instances[id] = aliasn;                
             }
         } else if (!it->compare(0,10,"@template ")) {
             size_t p = it->find(' ', 10);

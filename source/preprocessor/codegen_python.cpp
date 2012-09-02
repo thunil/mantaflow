@@ -130,11 +130,10 @@ string createConverters(const string& name, const string& tb, const string& nl, 
            tb+tb+ "throw Error(\"can't convert argument to type '" + name + "'\");" + nl +
            tb+ "return dynamic_cast<" + name + "*>(pbo);" + nl +
            "}" + nlr +
-           "template<> PyObject* toPy<" + name + " &>(" + name + "& v) {" + nl +
+           "template<> PyObject* toPy< " + name + " >( " + name + "& v) {" + nl +
            tb+ "if (v.getPyObject()) return v.getPyObject();" + nl +
-           tb+ name + "* co = (" + name +"*) PbClass::createPyObject(\"" + name + "\",\"unnamed\",PbArgs::EMPTY,v.getParent());" +
-           tb+ "*co = v;" + nl +
-           tb+ "return co->getPyObject();" + nl +
+           tb+ name + "* co = new " + name + " (v); " +
+           tb+ "return co->assignNewPyObject(\""+name+"\");" + nl +
            "}" + nlr;
 }
 
@@ -185,7 +184,7 @@ string processPythonFunction(int lb, const string& name, const string& type, con
         caller += tb+tb+tb+ "_retval = getPyNone();" + nl;
         caller += tb+tb+tb+ name + "(" + callList + ");" + nl + nl;
     } else
-        caller += tb+tb+tb+ "_retval = toPy(" + name + "(" + callList + ") );" + nl + nl;
+        caller += tb+tb+tb+ "_retval = d_toPy(" + name + "(" + callList + ") );" + nl + nl;
     caller += footer;
     
     // replicate original function
@@ -266,7 +265,7 @@ string processPythonVariable(int lb, const string& name, const ArgList& opts, co
     code += tb + "friend " + sethdr + ";" + nl;
     
     // add get/setter
-    string getter = gethdr+" { return toPy(fromPy<" + gParent+"*>(self)->" + name + "); }";
+    string getter = gethdr+" { return d_toPy(fromPy<" + gParent+"*>(self)->" + name + "); }";
     string setter = sethdr+" { fromPy<" + gParent+"*>(self)->" + name + "=fromPy<" + type + " >(val); return 0;}";
         
     // register
