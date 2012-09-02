@@ -14,7 +14,7 @@
 #ifndef _KERNEL_H
 #define _KERNEL_H
 
-#ifdef MT
+#ifdef TBB
 #   include <tbb/blocked_range3d.h>
 #   include <tbb/blocked_range.h>
 #   include <tbb/parallel_for.h>

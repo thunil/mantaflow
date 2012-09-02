@@ -41,7 +41,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         else if (opts[i].name == "index" || opts[i].name == "idx")
             idxMode = true;
         else if (opts[i].name == "st" || opts[i].name == "single")
-            gMTType = None;
+            gMTType = MTNone;
         else if (opts[i].name == "pts" || opts[i].name == "particle" || opts[i].name == "points")
             pts = true;
         else if (opts[i].name == "bnd")
@@ -160,7 +160,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     kclass += tb+ "}" + nl;
     
     // create main kernel function 
-    if (gMTType == TBB) {
+    if (gMTType == MTTBB) {
         // multithreading using intel tbb
         kclass += tb+ "void operator() (const tbb::blocked_range<size_t>& r) " + qualifier + "{" + nl;
         kclass += loader;
@@ -171,11 +171,18 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
             kclass += tb2+ "for (int idx=r.begin(); idx!=(int)r.end(); idx++)" + nl;
             kclass += isClass ? (tb3+"(*this)(idx);") : code;
         } else {
-            kclass += tb2+ "const int _maxX = maxX, _maxY=maxY;" + nl;            
-            kclass += tb2+ "for (int k=r.begin(); k!=(int)r.end(); k++)" + nl;
+            kclass += tb2+ "const int _maxX = maxX, _maxY=maxY;" + nl;
+            kclass += tb2+ "if (maxZ>1) {" +nl;
+            kclass += tb3+ "for (int k=r.begin(); k!=(int)r.end(); k++)" + nl;
             kclass += tb3+ "for (int j=" + bnd + "; j<_maxY; j++)" + nl;
-            kclass += tb4+ "for (int i=" + bnd + "; i<_maxX; i++)" + nl;
-            kclass += isClass ? (tb5+"(*this)(i,j,k);") : code;
+            kclass += tb3+ "for (int i=" + bnd + "; i<_maxX; i++)" + nl;
+            kclass += isClass ? (tb4+"(*this)(i,j,k);") : code;
+            kclass += nl+tb2+ "} else {" + nl;
+            kclass += tb3+ "const int k=0;" + nl;
+            kclass += tb3+ "for (int j=r.begin(); j!=(int)r.end(); j++)" + nl;
+            kclass += tb3+ "for (int i=" + bnd + "; i<_maxX; i++)" + nl;
+            kclass += isClass ? (tb4+"(*this)(i,j,k);") : code;
+            kclass += nl + tb2+ "}";
         }            
         kclass += nl + tb+"}" + nl;
         kclass += tb+ "void run() {" + nl;
@@ -183,10 +190,14 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
             kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>(0, size), *this);"+ nl;
         else if (idxMode)
             kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>(0, maxCells), *this);"+ nl;
-        else
-            kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>(minZ, maxZ), *this);"+ nl;
+        else {
+            kclass += tb2+ "if (maxZ>1)" + nl;
+            kclass += tb3+ tbbcall + "(tbb::blocked_range<size_t>(minZ, maxZ), *this);"+ nl;
+            kclass += tb2+ "else" + nl;
+            kclass += tb3+ tbbcall + "(tbb::blocked_range<size_t>(minY, maxY), *this);"+ nl;
+        }
         kclass += tb+ "}" + nl;
-	} else if(gMTType == OpenMP) {
+	} else if(gMTType == MTOpenMP) {
 	} else {
         // simple loop
         kclass += tb+ "void run() {" + nl;

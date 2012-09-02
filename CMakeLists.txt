@@ -224,6 +224,8 @@ endif()
 if(MT)
     add_definitions( -DMT)    
     if(TBB)
+        add_definitions( -DTBB)
+
         if (DEBUG)
             add_definitions( -DTBB_USE_DEBUG=1 )
             list(APPEND F_LIBS tbb)
@@ -239,6 +241,10 @@ if(MT)
             list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})    
             list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
         endif()
+    else()
+        # OpenMP
+        add_definitions( -DOPENMP)
+
     endif()
 endif()
 

@@ -64,7 +64,7 @@ inline Keyword checkKeyword(const std::string& word) {
 #define assert(x, msg) if(!(x)){errMsg(line,msg);}
 
 // from main.cpp
-enum MType { None = 0, TBB, OpenMP};
+enum MType { MTNone = 0, MTTBB, MTOpenMP};
 extern std::string gFilename;
 extern bool gDebugMode;
 extern MType gMTType;

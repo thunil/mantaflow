@@ -27,7 +27,7 @@ string gFilename;
 string gRegText;
 bool gDebugMode = true;
 bool gDocMode;
-MType gMTType = None;
+MType gMTType = MTNone;
 
 void errMsg(int line, const string& text) {
     cerr << gFilename << ":" << line << ": error: " << text << endl;
@@ -94,7 +94,7 @@ void doMerge(int argc, char* argv[]) {
 void doGenerate(int argc, char* argv[], bool docs) {
     gDocMode = docs;
     gDebugMode = false;
-    gMTType    = None; 
+    gMTType    = MTNone;
     if (docs && argc != 4) usage();
     if (!docs && argc != 6) usage();
     
@@ -106,8 +106,8 @@ void doGenerate(int argc, char* argv[], bool docs) {
     // TP : only enable in cmake's PREP_DEBUG mode (passed via cmd line option dbg_mode)
     if (!docs) {
         gDebugMode = atoi(argv[2]) != 0;
-        if (!strcmp(argv[3],"TBB")) gMTType = TBB;
-        if (!strcmp(argv[3],"OPENMP")) gMTType = OpenMP;
+        if (!strcmp(argv[3],"TBB")) gMTType = MTTBB;
+        if (!strcmp(argv[3],"OPENMP")) gMTType = MTOpenMP;
     }
     // load complete file into buffer    
     string text = readFile(infile);
