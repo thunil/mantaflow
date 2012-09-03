@@ -29,17 +29,10 @@ void InvertCheckFluid (FlagGrid& flags, Grid<Real>& grid)
 }
 
 //! Kernel: Squared sum over grid
-KERNEL(idx, reduce) 
-struct GridSumSqr (Grid<Real>& grid)
-{
-    double sum;
-    
-    void operator()(int idx) {
-        sum += square((double)grid[idx]);
-    }
-    void setup() { sum = 0; }
-    void join(const GridSumSqr& a) { sum += a.sum; }
-};
+KERNEL(idx, reduce=+) returns(double sum=0)
+double GridSumSqr (Grid<Real>& grid) {
+    sum += square((double)grid[idx]);    
+}
 
 //! Kernel: rotation operator \nabla x v for centered vector fields
 KERNEL(bnd=1) 

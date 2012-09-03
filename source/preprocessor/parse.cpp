@@ -49,6 +49,7 @@ Argument parseSingleArg(const vector<Token>& tokens, size_t& index, bool expectT
     int stage = firstStage; // 0: type, 1: template open / modifiers / name 2: template, 3: template close 4: name / modifiers, 5: assignOp 6+: defaults
     int openTBrackets=0, openBrackets=0;
     bool endPossible = false, endToken = false;
+    bool bracketInitializer = false;
         
     do {
         TokenType t = tokens[index].type;
@@ -135,12 +136,14 @@ Argument parseSingleArg(const vector<Token>& tokens, size_t& index, bool expectT
                 case 5:
                     // assign op
                     endPossible = false;
-                    assert(t == TkAssign, "incomplete argument! expect argument of the form '[type] name [= default]'");
+                    assert(t == TkAssign || TkBracketL, "incomplete argument! expect argument of the form '[type] name [= default]'");
+                    if (t== TkBracketL) bracketInitializer = true;
                     stage++;
                     break;
                 case 6:
                     // default values, stage 6+
-                    if (t == TkNone || t == TkDescriptor || t==TkColon || t==TkComma || t==TkBracketL || t==TkBracketR)
+                    if (t == TkNone || t == TkDescriptor || t==TkColon || t==TkComma || t==TkBracketL || t==TkBracketR || t==TkPointer || t==TkRef ||
+                        t == TkTBracketL || t == TkTBracketR )
                         cur.value += text;
                     else 
                         errMsg(line, "incomplete argument '" + cur.complete + "'");
@@ -156,6 +159,9 @@ Argument parseSingleArg(const vector<Token>& tokens, size_t& index, bool expectT
         endToken = (!isList && tokens[index].type == TkDescriptor) ||
                    (isList && (tokens[index].type == TkBracketR || tokens[index].type == TkComma || tokens[index].type == TkTBracketR));
     } while(!endPossible || !endToken);
+    
+    if (bracketInitializer && !cur.value.empty())
+        cur.value = cur.value.substr(0,cur.value.size()-1); // strip closing bracket
     
     //cout << "Complete Type : " << cur.complete << endl;
     
@@ -217,6 +223,7 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
     if (key == KwKernel) {
         string text = tokens[index].text;
         ArgList templArgs;
+        ArgList returnArg;
         
         // resolve template class or instantiation
         if (text == "template") {
@@ -228,6 +235,20 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
             text = tokens[index].text;            
         }                
         
+        // initialize return value
+        while (text == "returns") {
+            lb += consumeWS(tokens, ++index);
+            assert (tokens[index].type == TkBracketL, "syntax error. expected KERNEL(...) returns(type val [=x]) ...");
+            returnArg.push_back(parseSingleArg(tokens, ++index, true, true, true, lb));
+            assert (tokens[index].type == TkBracketR, "syntax error. expected KERNEL(...) returns(type val [=x]) ...");
+            lb += consumeWS(tokens, ++index);
+            assert (tokens[index].type == TkDescriptor, "syntax error. expected KERNEL(...) returns(type val [=x]) ...");
+            text = tokens[index].text;
+        }
+        
+        if (text == "class" || text == "struct")
+            errMsg(line, "KERNEL struct/class not supported anymore. Use reduce/returns keywords instead");
+        
         // parse return type 
         Argument retType = parseSingleArg(tokens, index, true, false, false, lb);
         
@@ -238,12 +259,7 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
         if (tokens[index].type != TkCodeBlock || index+1 != tokens.size())
             errMsg(line, "Malformed KERNEL, expected: KERNEL(opts...) ret_type name(args...) { code }");
         
-        bool isClass = retType.type == "struct" || retType.type == "class";
-        if (isClass) {
-            retType.complete = "void";
-            retType.type = "void";
-        }
-        return processKernel(lb, name, options, retType, templArgs, args, tokens[index].text, line, isClass);
+        return processKernel(lb, name, options, retType, returnArg, templArgs, args, tokens[index].text, line);
     }
     else if (key == KwPython) 
     {

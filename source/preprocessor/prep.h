@@ -35,6 +35,16 @@ struct Argument {
     std::string name, value, type, templ, complete;
     bool isRef, isPointer, isConst;
     int number;
+    std::string getType() const {
+        std::string s="";
+        if (isConst) s+= "const ";
+        s += type;
+        if (!templ.empty()) s+= "<" + templ + " >";
+        if (isRef) s+= "&";
+        if (isPointer) s+= "*";            
+        return s;
+    }
+    std::string getTypeName() const { return getType() + " " + name; }
 };
 typedef std::vector<Argument> ArgList;
 
@@ -88,7 +98,7 @@ std::string stripWS(const std::string& s);
 
 // functions from codegen_XXX.cpp
 std::string createConverters(const std::string& name, const std::string& tb, const std::string& nl, const std::string& nlr);
-std::string processKernel(int lb, const std::string& name, const ArgList& opts, Argument retType, const ArgList& templArgs, const ArgList& args, const std::string& code, int line, bool isClass); 
+std::string processKernel(int lb, const std::string& name, const ArgList& opts, Argument retType, const ArgList& returnArg, const ArgList& templArgs, const ArgList& args, const std::string& code, int line); 
 std::string processPythonFunction(int lb, const std::string& name, const std::string& type, const ArgList& args, const std::string& initlist, const std::string& code, int line); 
 std::string processPythonVariable(int lb, const std::string& name, const ArgList& opts, const std::string& type, int line); 
 std::string processPythonClass(int lb, const std::string& name, const ArgList& opts, const ArgList& templArgs, const std::string& baseclassName, const ArgList& baseclassTempl, const std::string& code, int line); 

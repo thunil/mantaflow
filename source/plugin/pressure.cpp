@@ -19,45 +19,31 @@ using namespace std;
 namespace Manta {
 
 //! Kernel: Construct the right-hand side of the poisson equation
-KERNEL(bnd=1, reduce) 
-struct MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, 
-                Grid<Real>* perCellCorr, Real corr) 
+KERNEL(bnd=1, reduce=+) returns(int cnt=0) returns(double sum=0)
+void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, 
+              Grid<Real>* perCellCorr, Real corr) 
 {
-    double redSum;
-    int redCnt;
+    if (!flags.isFluid(i,j,k)) {
+        rhs(i,j,k) = 0;
+        return;
+    }
+        
+    Real set;
+    set  = vel(i,j,k).x - vel(i+1,j,k).x;
+    set += vel(i,j,k).y - vel(i,j+1,k).y;
+    set += vel(i,j,k).z - vel(i,j,k+1).z;
+    set += corr;
     
-    void operator()(int i, int j, int k) {
-        if (!flags.isFluid(i,j,k)) {
-            rhs(i,j,k) = 0;
-            return;
-        }
-            
-        Real set;
-        set  = vel(i,j,k).x - vel(i+1,j,k).x;
-        set += vel(i,j,k).y - vel(i,j+1,k).y;
-        set += vel(i,j,k).z - vel(i,j,k+1).z;
-        set += corr;
-        
-        // per cell divergence correction
-        if(perCellCorr) 
-            set += perCellCorr->get(i,j,k);
-        
-        // obtain sum, cell count
-        redSum += set;
-        redCnt++;
-        
-        rhs(i,j,k) = set;
-    }
+    // per cell divergence correction
+    if(perCellCorr) 
+        set += perCellCorr->get(i,j,k);
     
-    void setup() {
-        redSum = 0;
-        redCnt = 0;
-    }
-    void join(const MakeRhs& other) {
-        redSum += other.redSum;
-        redCnt += other.redCnt;
-    }
-};
+    // obtain sum, cell count
+    sum += set;
+    cnt++;
+    
+    rhs(i,j,k) = set;
+}
 
 //! Kernel: Apply velocity update from poisson equation
 KERNEL(bnd=1) 
@@ -254,7 +240,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
         SetOutflow (rhs, loOutflow, upOutflow, outflowHeight);
     
     if (enforceCompatibility)
-        rhs += (Real)(-kernMakeRhs.redSum / (Real)kernMakeRhs.redCnt);
+        rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
     
     // CG
     const int maxIter = (int)(cgMaxIterFac * flags.getSize().max());

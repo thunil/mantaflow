@@ -102,66 +102,50 @@ void Grid<T>::save(string name) {
 //******************************************************************************
 // Grid<T> operators
 
-//! Kernel: Compute minmax value of Real grid
-KERNEL(idx, reduce) struct CompMinmaxReal (Grid<Real>& val) {
-    Real minVal, maxVal;
-    
-    void operator()(int idx) {
-        if (val[idx] < minVal)
-            minVal = val[idx];
-        if (val[idx] > maxVal)
-            maxVal = val[idx];
-    }
-    void setup() {
-        minVal = std::numeric_limits<Real>::max();
-        maxVal = -std::numeric_limits<Real>::max();
-    }
-    void join(const CompMinmaxReal& a) {
-        minVal = std::min(a.minVal, minVal);
-        maxVal = std::max(a.maxVal, maxVal);
-    }
-};
+//! Kernel: Compute min value of Real grid
+KERNEL(idx, reduce=min) returns(Real minVal=std::numeric_limits<Real>::max())
+Real CompMinReal(Grid<Real>& val) {
+    if (val[idx] < minVal)
+        minVal = val[idx];
+}
 
-//! Kernel: Compute minmax value of int grid
-KERNEL(idx, reduce) struct CompMinmaxInt (Grid<int>& val) {
-    int minVal, maxVal;
-    
-    void operator()(int idx) {
-        if (val[idx] < minVal)
-            minVal = val[idx];
-        if (val[idx] > maxVal)
-            maxVal = val[idx];
-    }
-    void setup() {
-        minVal = std::numeric_limits<int>::max();
-        maxVal = std::numeric_limits<int>::min();
-    }
-    void join(const CompMinmaxInt& a) {
-        minVal = std::min(a.minVal, minVal);
-        maxVal = std::max(a.maxVal, maxVal);
-    }
-};
+//! Kernel: Compute max value of Real grid
+KERNEL(idx, reduce=max) returns(Real maxVal=-std::numeric_limits<Real>::max())
+Real CompMaxReal(Grid<Real>& val) {
+    if (val[idx] > maxVal)
+        maxVal = val[idx];
+}
 
-//! Kernel: Compute minmax squared norm of Vec3 grid
-KERNEL(idx, reduce) struct CompMinmaxVec3 (Grid<Vec3>& val) {
-    Real minVal2, maxVal2;
-    
-    void operator()(int idx) {
-        const Real s = normSquare(val[idx]);
-        if (s < minVal2)
-            minVal2 = s;
-        if (s > maxVal2)
-            maxVal2 = s;
-    }
-    void setup() {
-        minVal2 = std::numeric_limits<Real>::max();
-        maxVal2 = 0;
-    }
-    void join(const CompMinmaxVec3& a) {
-        minVal2 = std::min(a.minVal2, minVal2);
-        maxVal2 = std::max(a.maxVal2, maxVal2);
-    }
-};
+//! Kernel: Compute min value of int grid
+KERNEL(idx, reduce=min) returns(int minVal=std::numeric_limits<int>::max())
+int CompMinInt(Grid<int>& val) {
+    if (val[idx] < minVal)
+        minVal = val[idx];
+}
+
+//! Kernel: Compute max value of int grid
+KERNEL(idx, reduce=max) returns(int maxVal=-std::numeric_limits<int>::min())
+int CompMaxInt(Grid<int>& val) {
+    if (val[idx] > maxVal)
+        maxVal = val[idx];
+}
+
+//! Kernel: Compute min norm of vec grid
+KERNEL(idx, reduce=min) returns(Real minVal=std::numeric_limits<Real>::max())
+Real CompMinVec(Grid<Vec3>& val) {
+    const Real s = normSquare(val[idx]);
+    if (s < minVal)
+        minVal = s;
+}
+
+//! Kernel: Compute max norm of vec grid
+KERNEL(idx, reduce=max) returns(Real maxVal=0)
+Real CompMaxVec(Grid<Vec3>& val) {
+    const Real s = normSquare(val[idx]);
+    if (s > maxVal)
+        maxVal = s;
+}
+
 
 template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
     gridSafeDiv<T> (*this, a);
@@ -181,33 +165,35 @@ template<class T> void Grid<T>::scaledAdd(const Grid<T>& a, const T& factor) {
     gridScaleAdd<T> (*this, a, factor);
 }
 template<> Real Grid<Real>::getMaxValue() {
-    return CompMinmaxReal (*this).maxVal;
+    return CompMaxReal (*this);
 }
 template<> Real Grid<Real>::getMinValue() {
-    return CompMinmaxReal (*this).minVal;
+    return CompMinReal (*this);
 }
 template<> Real Grid<Real>::getMaxAbsValue() {
-    CompMinmaxReal op (*this);
-    return max( fabs(op.minVal), fabs(op.maxVal));
+    Real amin = CompMinReal (*this);
+    Real amax = CompMaxReal (*this);
+    return max( fabs(amin), fabs(amax));
 }
 template<> Real Grid<Vec3>::getMaxValue() {
-    return sqrt(CompMinmaxVec3 (*this).maxVal2);
+    return sqrt(CompMaxVec (*this));
 }
 template<> Real Grid<Vec3>::getMinValue() { 
-    return sqrt(CompMinmaxVec3 (*this).minVal2);
+    return sqrt(CompMinVec (*this));
 }
 template<> Real Grid<Vec3>::getMaxAbsValue() {
-    return sqrt(CompMinmaxVec3 (*this).maxVal2);
+    return sqrt(CompMaxVec (*this));
 }
 template<> Real Grid<int>::getMaxValue() {
-    return (Real) CompMinmaxInt (*this).maxVal;
+    return (Real) CompMaxInt (*this);
 }
 template<> Real Grid<int>::getMinValue() {
-    return (Real) CompMinmaxInt (*this).minVal;
+    return (Real) CompMinInt (*this);
 }
 template<> Real Grid<int>::getMaxAbsValue() {
-    CompMinmaxInt op (*this);
-    return max( fabs((Real)op.minVal), fabs((Real)op.maxVal));
+    int amin = CompMinInt (*this);
+    int amax = CompMaxInt (*this);
+    return max( fabs((Real)amin), fabs((Real)amax));
 }
 template<class T> void Grid<T>::add(const Grid<T>& a, const Grid<T>& b) {
     gridAdd2<T>(*this, a, b);

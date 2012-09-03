@@ -244,6 +244,8 @@ if(MT)
     else()
         # OpenMP
         add_definitions( -DOPENMP -fopenmp)
+        SET(F_LINKADD "${F_LINKADD} -fopenmp ")
+        
     endif()
 endif()
 
