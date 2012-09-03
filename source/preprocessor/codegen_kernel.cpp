@@ -20,10 +20,11 @@ using namespace std;
 
 string processKernel(int lb, const string& kname, const ArgList& opts, Argument retType, const ArgList& returnArg, const ArgList& templArgs, const ArgList& args, const string& code, int line) {
     // beautify code
+	string nlr = "\n";
     string nl = gDebugMode ? "\n" : " ";
     string tb = gDebugMode ? "\t" : "";    
     string tb2 = tb+tb, tb3=tb2+tb, tb4=tb3+tb, tb5=tb4+tb;
-    
+	
     if (gDocMode) {
         string ds = "//! \\ingroup Kernels\nKERNEL<";
         for(size_t i=0; i<opts.size(); i++) { if (i!=0) ds+=", "; ds+=opts[i].complete; }
@@ -263,12 +264,17 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
 	}
     else if(gMTType == MTOpenMP)
     {
+		// correct for the introduced linebreaks
+		ostringstream reline;
+		reline << nlr << "#line " << (line) << nlr;
+		callerClass += reline.str();
+
         string directive = "#pragma omp for", postDir = "", preDir = "";
         if (reduce) {
             directive = "#pragma omp for nowait";
             for (size_t i=0; i<returnArg.size(); i++)
                 preDir += tb3 + returnArg[i].getType() + " _loc_" + returnArg[i].name + " = " + returnArg[i].value + ";" + nl;
-            postDir = tb3 + "#pragma omp critical" + nl;
+            postDir = nlr + tb3 + "#pragma omp critical" + nlr;
             postDir += tb3 + "{" + nl;
             for (size_t i=0; i<returnArg.size(); i++) {
                 if (reduceOp == "*" || reduceOp == "/" || reduceOp == "+" || reduceOp == "-")
@@ -287,37 +293,37 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         
         kclass += tb+ "void run() {" + nl;
         if (pts) {
-            kclass += tb2+ "const int _sz = size;"+ nl;
-            kclass += tb2+ "#pragma omp parallel" + nl;
-            kclass += tb2+ "{" + nl + preDir;         
-            kclass += tb3+ directive + nl;                     
+            kclass += tb2+ "const int _sz = size;"+ nlr;
+            kclass += tb2+ "#pragma omp parallel" + nlr;
+            kclass += tb2+ "{" + nl + preDir + nlr;         
+            kclass += tb3+ directive + nlr;
             kclass += tb3+ "for (int i=0; i < _sz; i++)" + nl;
             kclass += tb4+ "op(i"+mCallList+");" + nl;
             kclass += postDir + tb2 + "}" + nl;
         } else if (idxMode) {
-            kclass += tb2+ "const int _maxCells = maxCells;"+ nl;
-            kclass += tb2+ "#pragma omp parallel" + nl;
-            kclass += tb2+ "{" + nl + preDir;                     
-            kclass += tb3+ directive + nl;                     
+            kclass += tb2+ "const int _maxCells = maxCells;"+ nlr;
+            kclass += tb2+ "#pragma omp parallel" + nlr;
+            kclass += tb2+ "{" + nl + preDir + nlr;                     
+            kclass += tb3+ directive + nlr;                     
             kclass += tb3+ "for (int idx=0; idx < _maxCells; idx++)" + nl;
             kclass += tb4+ "op(idx"+mCallList+");" + nl;
             kclass += postDir + tb2 + "}" + nl;
         } else {
             kclass += tb2+ "const int _maxX = maxX, _maxY=maxY, _maxZ = maxZ;" + nl;
-            kclass += tb2+ "if (maxZ>1) {"+nl;
-            kclass += tb3+ "#pragma omp parallel" + nl;
-            kclass += tb3+ "{" + nl + preDir;                     
-            kclass += tb4+ directive + nl;                     
+            kclass += tb2+ "if (maxZ>1) {"+nlr;
+            kclass += tb3+ "#pragma omp parallel" + nlr;
+            kclass += tb3+ "{" + nl + preDir + nlr;                     
+            kclass += tb4+ directive + nlr;
             kclass += tb4+ "for (int k=minZ; k < _maxZ; k++)" + nl;
             kclass += tb4+ "for (int j="+bnd+"; j < _maxY; j++)" + nl;
             kclass += tb4+ "for (int i="+bnd+"; i < _maxX; i++)" + nl;
             kclass += tb5+ "op(i,j,k"+mCallList+");" + nl;
             kclass += postDir + tb3 + "}";        
             kclass += tb2+"} else {"+nl;
-            kclass += tb3+ "const int k=0;"+nl;
-            kclass += tb3+ "#pragma omp parallel" + nl;
-            kclass += tb3+ "{" + nl + preDir;                     
-            kclass += tb4+ directive + nl;                     
+            kclass += tb3+ "const int k=0;"+nlr;
+            kclass += tb3+ "#pragma omp parallel" + nlr;
+            kclass += tb3+ "{" + nl + preDir + nlr;
+            kclass += tb4+ directive + nlr;
             kclass += tb4+ "for (int j="+bnd+"; j < _maxY; j++)" + nl;
             kclass += tb4+ "for (int i="+bnd+"; i < _maxX; i++)" + nl;
             kclass += tb5+ "op(i,j,k"+mCallList+");" + nl;            
@@ -351,5 +357,5 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     kclass += parentMember + members + nl;
     kclass += "};" + nl;
    
-    return buildline(lb) + kclass + callerClass;
+	return buildline(lb) + kclass + callerClass;
 }
