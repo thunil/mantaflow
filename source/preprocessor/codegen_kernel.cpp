@@ -20,7 +20,7 @@ using namespace std;
 
 string processKernel(int lb, const string& kname, const ArgList& opts, Argument retType, const ArgList& returnArg, const ArgList& templArgs, const ArgList& args, const string& code, int line) {
     // beautify code
-    string nl = gDebugMode ? "\n" : "";
+    string nl = gDebugMode ? "\n" : " ";
     string tb = gDebugMode ? "\t" : "";    
     string tb2 = tb+tb, tb3=tb2+tb, tb4=tb3+tb, tb5=tb4+tb;
     
@@ -236,9 +236,9 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         else if (idxMode)
             kclass += tb2+ tbbcall + "(tbb::blocked_range<size_t>(0, maxCells), *this);"+ nl;
         else {
-            kclass += tb2+ "if (maxZ>1)" + nl;
+            kclass += tb2+ "if (maxZ>1) " + nl;
             kclass += tb3+ tbbcall + "(tbb::blocked_range<size_t>(minZ, maxZ), *this);"+ nl;
-            kclass += tb2+ "else" + nl;
+            kclass += tb2+ "else " + nl;
             kclass += tb3+ tbbcall + "(tbb::blocked_range<size_t>("+ bnd +", maxY), *this);"+ nl;
         }
         kclass += tb+ "}" + nl;
