@@ -28,7 +28,8 @@ static const int FlagInited = FastMarch<FmHeapComparatorOut, +1>::FlagInited;
 // neighbor lookup vectors
 static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), Vec3i(0,1,0), Vec3i(0,0,-1), Vec3i(0,0,1) };
     
-KERNEL(bnd=1) InitFmIn (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls) {
+KERNEL(bnd=1) 
+void InitFmIn (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls) {
     const int idx = flags.index(i,j,k);
     const Real v = phi[idx];
     if (v>=0 && (!ignoreWalls || !flags.isObstacle(idx)))
@@ -37,7 +38,8 @@ KERNEL(bnd=1) InitFmIn (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, 
         fmFlags[idx] = 0;
 }
 
-KERNEL(bnd=1) InitFmOut (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls) {
+KERNEL(bnd=1) 
+void InitFmOut (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls) {
     const int idx = flags.index(i,j,k);
     const Real v = phi[idx];
     if (ignoreWalls) {
@@ -51,7 +53,8 @@ KERNEL(bnd=1) InitFmOut (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi,
         fmFlags[idx] = (v<0) ? FlagInited : 0;
 }
 
-KERNEL(bnd=1) SetUninitialized (Grid<int>& fmFlags, LevelsetGrid& phi, const Real val) {
+KERNEL(bnd=1) 
+void SetUninitialized (Grid<int>& fmFlags, LevelsetGrid& phi, const Real val) {
     if (fmFlags(i,j,k) != FlagInited)
         phi(i,j,k) = val;
 }
@@ -83,6 +86,15 @@ extern void updateQtGui(bool full, int frame); // HACK
 
 Real LevelsetGrid::invalidTimeValue() {
     return FastMarch<FmHeapComparatorOut, 1>::InvalidTime();
+}
+
+//! Kernel: perform levelset union
+KERNEL(idx) void KnJoin(Grid<Real>& a, const Grid<Real>& b) {
+    a[idx] = min(a[idx], b[idx]);
+}
+
+void LevelsetGrid::join(const LevelsetGrid& o) {
+    KnJoin(*this, o);
 }
 
 void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTransport, bool ignoreWalls, bool correctOuterLayer)

@@ -108,8 +108,8 @@ class GridCg : public GridCgInterface {
 
 //! Kernel: Apply symmetric stored Matrix
 KERNEL(idx) 
-ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
-             Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
+void ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
+                  Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
 {
     if (!flags.isFluid(idx)) {
         dst[idx] = src[idx];
@@ -126,8 +126,8 @@ ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src,
 
 //! Kernel: Apply symmetric stored Matrix. 2D version
 KERNEL(idx) 
-ApplyMatrix2D (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
-               Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
+void ApplyMatrix2D (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
+                    Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
 {
     unusedParameter(Ak); // only there for parameter compatibility with ApplyMatrix
     
@@ -143,7 +143,8 @@ ApplyMatrix2D (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src,
 }
 
 //! Kernel: Construct the matrix for the poisson equation
-KERNEL (bnd=1) MakeLaplaceMatrix(FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) {
+KERNEL (bnd=1) 
+void MakeLaplaceMatrix(FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) {
     if (!flags.isFluid(i,j,k))
         return;
     

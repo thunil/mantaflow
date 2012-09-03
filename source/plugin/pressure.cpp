@@ -19,47 +19,35 @@ using namespace std;
 namespace Manta {
 
 //! Kernel: Construct the right-hand side of the poisson equation
-KERNEL(bnd=1, reduce) struct MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, 
-                                      Grid<Real>* perCellCorr, Real corr) 
+KERNEL(bnd=1, reduce=+) returns(int cnt=0) returns(double sum=0)
+void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, 
+              Grid<Real>* perCellCorr, Real corr) 
 {
-    double redSum;
-    int redCnt;
+    if (!flags.isFluid(i,j,k)) {
+        rhs(i,j,k) = 0;
+        return;
+    }
+        
+    Real set;
+    set  = vel(i,j,k).x - vel(i+1,j,k).x;
+    set += vel(i,j,k).y - vel(i,j+1,k).y;
+    set += vel(i,j,k).z - vel(i,j,k+1).z;
+    set += corr;
     
-    void operator()(int i, int j, int k) {
-        if (!flags.isFluid(i,j,k)) {
-            rhs(i,j,k) = 0;
-            return;
-        }
-            
-        Real set;
-        set  = vel(i,j,k).x - vel(i+1,j,k).x;
-        set += vel(i,j,k).y - vel(i,j+1,k).y;
-        set += vel(i,j,k).z - vel(i,j,k+1).z;
-        set += corr;
-        
-        // per cell divergence correction
-        if(perCellCorr) 
-            set += perCellCorr->get(i,j,k);
-        
-        // obtain sum, cell count
-        redSum += set;
-        redCnt++;
-        
-        rhs(i,j,k) = set;
-    }
+    // per cell divergence correction
+    if(perCellCorr) 
+        set += perCellCorr->get(i,j,k);
     
-    void setup() {
-        redSum = 0;
-        redCnt = 0;
-    }
-    void join(const MakeRhs& other) {
-        redSum += other.redSum;
-        redCnt += other.redCnt;
-    }
-};
+    // obtain sum, cell count
+    sum += set;
+    cnt++;
+    
+    rhs(i,j,k) = set;
+}
 
 //! Kernel: Apply velocity update from poisson equation
-KERNEL(bnd=1) CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
+KERNEL(bnd=1) 
+void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
 {
 	// correct all faces between fluid-fluid and fluid-empty cells
 	// skip everything with obstacles...
@@ -84,8 +72,8 @@ KERNEL(bnd=1) CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressur
 }
 
 //! Kernel: Set matrix stencils and velocities to enable open boundaries
-KERNEL SetOpenBound(Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, MACGrid& vel,
-                    Vector3D<bool> lowerBound, Vector3D<bool> upperBound)
+KERNEL void SetOpenBound(Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, MACGrid& vel,
+                         Vector3D<bool> lowerBound, Vector3D<bool> upperBound)
 {    
     // set velocity boundary conditions
     if (lowerBound.x && i == 0) vel(0,j,k) = vel(1,j,k);
@@ -107,7 +95,7 @@ KERNEL SetOpenBound(Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& 
 }
 
 //! Kernel: Set matrix rhs for outflow
-KERNEL SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<bool> upperBound, int height)
+KERNEL void SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<bool> upperBound, int height)
 {
     if ((lowerBound.x && i < height) || (upperBound.x && i >= maxX-1-height) ||
         (lowerBound.y && j < height) || (upperBound.y && j >= maxY-1-height) ||
@@ -143,7 +131,8 @@ static inline Real getGhostMatrixAddition(Real a, Real b, const Real accuracy) {
 }
 
 //! Kernel: Adapt A0 for ghost fluid
-KERNEL(bnd=1) ApplyGhostFluid (FlagGrid& flags, Grid<Real>& phi, Grid<Real>& A0, Real accuracy) 
+KERNEL(bnd=1) 
+void ApplyGhostFluid (FlagGrid& flags, Grid<Real>& phi, Grid<Real>& A0, Real accuracy) 
 {
     if (!flags.isFluid(i,j,k))
         return;
@@ -159,7 +148,8 @@ KERNEL(bnd=1) ApplyGhostFluid (FlagGrid& flags, Grid<Real>& phi, Grid<Real>& A0,
 }
 
 //! Kernel: Correct velocities for ghost fluids
-KERNEL(bnd=1) CorrectVelGhostFluid (FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) //, Grid<Real>& phi)
+KERNEL(bnd=1) 
+void CorrectVelGhostFluid (FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) //, Grid<Real>& phi)
 {
     bool curFluid = flags.isFluid(i,j,k);
     if (!curFluid && !flags.isEmpty(i,j,k))
@@ -197,7 +187,7 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 }
 
 //! Perform pressure projection of the velocity grid
-PLUGIN void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
+PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0, 
                      Real divCorr = 0,
@@ -250,7 +240,7 @@ PLUGIN void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
         SetOutflow (rhs, loOutflow, upOutflow, outflowHeight);
     
     if (enforceCompatibility)
-        rhs += (Real)(-kernMakeRhs.redSum / (Real)kernMakeRhs.redCnt);
+        rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
     
     // CG
     const int maxIter = (int)(cgMaxIterFac * flags.getSize().max());

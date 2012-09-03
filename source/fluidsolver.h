@@ -19,7 +19,7 @@
 #include <vector>
 #include <map>
 
-namespace Manta {
+namespace Manta { 
     
 //! Encodes grid size, timstep etc.
 PYTHON(name=Solver) 
@@ -65,7 +65,7 @@ protected:
         void release(T* ptr);
         
         std::vector<T*> grids;
-        size_t used;        
+        int used;
     };
     
     Vec3i mGridSize;

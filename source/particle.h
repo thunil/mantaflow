@@ -112,7 +112,7 @@ int ParticleSystem<S>::add(const S& data) {
 DefineIntegrator(integrateMeshMAC, MACGrid, getInterpolated);
 
 KERNEL(pts) template<class S, IntegrationMode mode>
-KnAdvectInGrid(ParticleSystem<S>& p, MACGrid& vel, FlagGrid& flaggrid, Real dt) {
+void KnAdvectInGrid(ParticleSystem<S>& p, MACGrid& vel, FlagGrid& flaggrid, Real dt) {
     if (!p.isActive(i)) return;
     
     // from integrator.h

@@ -39,7 +39,7 @@ void FluidSolver::GridStorage<T>::free() {
 }
 template<class T>
 T* FluidSolver::GridStorage<T>::get(Vec3i size) {
-    if (grids.size() <= used) {
+    if ((int)grids.size() <= used) {
         grids.push_back(new T[size.x * size.y * size.z]);
     }
     if (used > 200)

@@ -1,30 +1,28 @@
 #
 # Simple example for free-surface simulation
-# with FLIP advection
+# with MacCormack advection
 
 from manta import *
 
 # solver params
-meshing = False
 res = 64
 gs = vec3(res,res,res)
 s = Solver(name='main', gridSize = gs)
-s.timestep = 0.5
+s.timestep = 0.25
 
 # prepare grids and particles
 flags = s.create(FlagGrid)
 vel = s.create(MACGrid)
-phi = s.create(LevelsetGrid)
 pressure = s.create(RealGrid)
-flip = s.create(FlipSystem)
 mesh = s.create(Mesh)
 
 # scene setup
 flags.initDomain()
-fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.8,1))
-phi = fluidbox.computeLevelset()
+drop = s.create(Sphere, center=gs*vec3(0.5,0.5,0.5), radius=res*0.15)
+basin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1,0.2,1))
+phi = basin.computeLevelset()
+phi.join(drop.computeLevelset())
 flags.updateFromLevelset(phi)
-flip.adjustNumber(vel=vel, flags=flags, minParticles=8, maxParticles=30)
     
 if (GUI):
     gui = Gui()
@@ -33,12 +31,7 @@ if (GUI):
 #main loop
 for t in range(200):
     
-    # FLIP advect and writeback
-    flip.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4)
-    flip.velocitiesToGrid(vel=vel, flags=flags)
-    flip.adjustNumber(vel=vel, flags=flags, minParticles=4, maxParticles=30)
-    #advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
-    
+    advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
     addGravity(flags=flags, vel=vel, gravity=(0,-0.002,0))
     
     # pressure solve
@@ -48,9 +41,6 @@ for t in range(200):
     setLiquidBcs(flags=flags, vel=vel)    
     setWallBcs(flags=flags, vel=vel)
     
-    # FLIP load
-    flip.velocitiesFromGrid(vel=vel, flags=flags, flipRatio=0.96)
-        
     # update and advect levelset
     phi.reinitMarching(flags=flags, ignoreWalls=False)
     advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
@@ -58,8 +48,7 @@ for t in range(200):
     
     # note: these meshes are created by fast marching only, should smooth
     #       geometry and normals before rendering
-    if (meshing):
-        phi.createMesh(mesh)
-        mesh.save('phi%04d.bobj.gz' % t)
+    phi.createMesh(mesh)
+    #mesh.save('phi%04d.bobj.gz' % t)
     
     s.step()

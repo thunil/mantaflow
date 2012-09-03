@@ -315,7 +315,7 @@ void FluidGridObject::loadDensity(const char* mask, int offset, MTime& time, MOb
 MStatus initializePlugin(MObject obj)
 {
 	MStatus   status;
-	MFnPlugin plugin(obj, PLUGIN_COMPANY, "6.0", "Any");
+	MFnPlugin plugin(obj, PYTHON_COMPANY, "6.0", "Any");
 
 	status = plugin.registerNode("fluidGridObject", FluidGridObject::id, FluidGridObject::creator, FluidGridObject::initialize);
 	if (!status) {
