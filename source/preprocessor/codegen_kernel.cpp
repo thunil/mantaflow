@@ -144,19 +144,23 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         initRetval += arg.name + "(" + arg.value + "), ";
         retList += (i==0) ? "" : ", ";
         retList += arg.name;
-                
+            
         if (haveOuter) {
             initList +=", m_" + arg.name + "(_"+arg.name+ ")";\
             arg.isRef = true;
-            orgArgList += ", " + arg.getTypeName();
             arg.name = "_" + arg.name;
             argList += ", " + arg.getTypeName();
             arg.name = "m" + arg.name;          
-            mCallList += ", " + arg.name;
         } else {
             initList +=", " + arg.name + "(" + arg.value + ")";
         }
         members += tb + arg.getTypeName() + ";"+nl;        
+        
+        mCallList += ", " + arg.name;
+        // ref it
+        Argument arg2 = returnArg[i];
+        arg2.isRef = true;
+        orgArgList += ", " + arg2.getTypeName();         
     }
 
     // define return conversion operator
@@ -274,6 +278,11 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
                 }                
             }
             postDir += tb3 + "}" + nl;                
+            
+            // rebuild call list with local return args
+            mCallList = "";
+            for (size_t i=0; i<args.size(); i++) mCallList += ", m_" + args[i].name;
+            for (size_t i=0; i<returnArg.size(); i++) mCallList += ", _loc_" + returnArg[i].name;
         }
         
         kclass += tb+ "void run() {" + nl;

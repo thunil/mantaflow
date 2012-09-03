@@ -224,6 +224,7 @@ endif()
 if(MT)
     add_definitions( -DMT)    
     if(TBB)
+        # Intel TBB
         add_definitions( -DTBB)
 
         if (DEBUG)
@@ -243,9 +244,14 @@ if(MT)
         endif()
     else()
         # OpenMP
-        add_definitions( -DOPENMP -fopenmp)
-        SET(F_LINKADD "${F_LINKADD} -fopenmp ")
+        add_definitions( -DOPENMP )
         
+        if (WIN32)
+            add_definitions( /openmp)
+        else()
+            add_definitions(-fopenmp)
+            SET(F_LINKADD "${F_LINKADD} -fopenmp ")
+        endif()
     endif()
 endif()
 
