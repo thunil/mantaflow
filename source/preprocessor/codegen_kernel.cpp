@@ -265,10 +265,12 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     else if(gMTType == MTOpenMP)
     {
 		// correct for the introduced linebreaks
-		ostringstream reline;
-		reline << nlr << "#line " << (line) << nlr;
-		callerClass += reline.str();
-
+        if (!gDebugMode) {
+            ostringstream reline;
+            reline << nlr << "#line " << (line) << nlr;
+            callerClass += reline.str();
+        }
+        
         string directive = "#pragma omp for", postDir = "", preDir = "";
         if (reduce) {
             directive = "#pragma omp for nowait";
