@@ -14,7 +14,7 @@
 #ifndef _FASTMARCH_H
 #define _FASTMARCH_H
 
-#include <vector>
+#include <queue>
 #include "levelset.h"
 
 namespace Manta {
@@ -57,40 +57,46 @@ protected:
     MACGrid* mpVel;
     FlagGrid* mpFlags;
 };
-
-class FmHeapEntry {
+class FmHeapEntryOut {
 public:
     Vec3i p;
     // quick time access for sorting
     Real *time;
-};
-
-//! heap comparison object for outwards marching
-class FmHeapComparatorOut {
-public:
     static inline bool compare(const Real x, const Real y) { 
         return x > y;
     }
 
-    inline bool operator() (const FmHeapEntry& x, const FmHeapEntry& y) const {
-        return (*(x.time) > *(y.time));
+    inline bool operator< (const FmHeapEntryOut& o) const {
+        const Real d = fabs((*time) - (*(o.time)));
+        if (d > 1e-4) return (*time) > (*(o.time)); 
+        if (p.z != o.p.z) return p.z > o.p.z;
+        if (p.y != o.p.y) return p.y > o.p.y;
+        return p.x > o.p.x;
     };
+
 };
 
-//! heap comparison object for inwards marching
-class FmHeapComparatorIn {
+class FmHeapEntryIn {
 public:
-    static inline bool compare(const Real x, const Real y) {
+    Vec3i p;
+    // quick time access for sorting
+    Real *time;
+    static inline bool compare(const Real x, const Real y) { 
         return x < y;
     }
 
-    inline bool operator() (const FmHeapEntry& x, const FmHeapEntry& y) const {
-        return (*(x.time) < *(y.time));
+    inline bool operator< (const FmHeapEntryIn& o) const {
+        const Real d = fabs((*time) - (*(o.time)));
+        if (d > 1e-4) return (*time) < (*(o.time)); 
+        if (p.z != o.p.z) return p.z < o.p.z;
+        if (p.y != o.p.y) return p.y < o.p.y;
+        return p.x < o.p.x;
     };
 };
 
+
 //! fast marching algorithm wrapper class
-template<class COMP, int TDIR>
+template<class T, int TDIR>
 class FastMarch {
 
 public:
@@ -117,6 +123,7 @@ public:
     //! ... and back
     inline Real time2phi(Real tval) { return (InvalidTime() - InvtOffset() - tval); }
 
+    inline Real _phi(int i, int j, int k) { return mLevelset(i,j,k); }
 protected:   
     LevelsetGrid& mLevelset;
     Grid<int>& mFmFlags;
@@ -128,8 +135,7 @@ protected:
     Real mMaxTime;
 
     //! fast marching list
-    std::vector<FmHeapEntry> mHeap;
-    COMP mHeapComp;
+    std::priority_queue<T> mHeap;
     Real mReheapVal;
 
     //! weights for touching points

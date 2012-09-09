@@ -87,6 +87,19 @@ void Grid<T>::swap(Grid<T>& other) {
 }
 
 template<class T>
+void Grid<T>::load(string name) {
+    if (name.find_last_of('.') == string::npos)
+        errMsg("file '" + name + "' does not have an extension");
+    string ext = name.substr(name.find_last_of('.'));
+    if (ext == ".raw")
+        readGridRaw(name, this);
+    else if (ext == ".uni")
+        readGridUni(name, this);
+    else
+        errMsg("file '" + name +"' filetype not supported");
+}
+
+template<class T>
 void Grid<T>::save(string name) {
     if (name.find_last_of('.') == string::npos)
         errMsg("file '" + name + "' does not have an extension");
