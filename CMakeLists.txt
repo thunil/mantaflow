@@ -121,6 +121,7 @@ SET(PP_SOURCES
     source/noisefield.cpp
     source/kernel.cpp
     source/vortexsheet.cpp
+    source/vortexfilament.cpp
     source/vortexpart.cpp
     source/edgecollapse.cpp
     source/plugin/pressure.cpp
@@ -146,6 +147,7 @@ SET(PP_HEADERS
     source/shapes.h
     source/noisefield.h
     source/vortexsheet.h
+    source/vortexfilament.h
     source/general.h
     source/kernel.h
     source/flip.h

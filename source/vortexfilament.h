@@ -7,19 +7,19 @@
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Vortex particles
+ * Vortex filament
  *
  ******************************************************************************/
 
-#ifndef _VORTEXPART_H
-#define _VORTEXPART_H
+#ifndef _VORTEXFIL_H
+#define _VORTEXFIL_H
 
 #include "particle.h"
 
 namespace Manta {
 class Mesh;
     
-struct VortexParticleData {
+struct VortexFilamentData {
     VortexParticleData() : pos(0.0f),vorticity(0.0f),sigma(0),flag(0) {}
     VortexParticleData(const Vec3& p, const Vec3& v, Real sig) : pos(p),vorticity(v),sigma(sig),flag(0) {}
     Vec3 pos, vorticity;
@@ -29,7 +29,7 @@ struct VortexParticleData {
 };
 
 //! Vortex particles
-PYTHON class VortexParticleSystem : public ParticleSystem<VortexParticleData> {
+PYTHON class VortexFilamentSystem : public ParticleSystem<VortexFilamentData> {
 public:
     PYTHON VortexParticleSystem(FluidSolver* parent);
   
