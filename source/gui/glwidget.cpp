@@ -206,12 +206,15 @@ bool GLWidget::keyProcess(int key, int modifier, bool down) {
             mPlaneDim = (mPlaneDim+1) % 3;            
             emit painterEvent(Painter::EventSetDim, mPlaneDim);
             emit painterEvent(Painter::EventSetMax, mGridsize[mPlaneDim]);
-        } else if (key == Qt::Key_Plus) { 
+        } else if (key == Qt::Key_Plus || key == Qt::Key_Equal) { 
             mPlane = clamp(mPlane + 1,0,mGridsize[mPlaneDim]-1);
             emit painterEvent(Painter::EventSetPlane, mPlane);
         } else if (key == Qt::Key_Minus) { 
             mPlane = clamp(mPlane - 1,0,mGridsize[mPlaneDim]-1);
             emit painterEvent(Painter::EventSetPlane, mPlane);
+        }
+        else if ( key == Qt::Key_K) {
+            screenshot( "screenshot.png");
         }
         
         else return false;
