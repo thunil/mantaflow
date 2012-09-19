@@ -83,7 +83,9 @@ MainWnd::MainWnd() : mPaused(false), mRequestPause(false), mRequestClose(false),
     connect(a, SIGNAL(triggered()), SLOT(close()) );
     menuBar()->addMenu( "File" )->addAction( a );        */
     
-    mGlWidget->setFocus();    
+    mGlWidget->setFocus();
+    this->raise();
+    this->activateWindow();
 }
 
 void MainWnd::addControl(void* ctrl) {
