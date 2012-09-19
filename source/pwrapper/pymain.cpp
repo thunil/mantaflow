@@ -45,6 +45,12 @@ void runScript(vector<string>& args) {
         return;
     }
     
+    // Pass through the command line arguments
+    const char ** cargs = new const char*  [args.size()];
+    for (size_t i=0; i<args.size(); i++)
+        cargs[i] = args[i].c_str();
+    PySys_SetArgv( args.size(), (char**) cargs);
+    
     // Run the python script file
     debMsg("Loading script '" << filename << "'", 0);
 #ifdef WIN32
@@ -71,6 +77,8 @@ void runScript(vector<string>& args) {
     // finalize
     Py_Finalize();
     PbWrapperRegistry::instance().cleanup();    
+
+    delete [] cargs;
 }
 
 int main(int argc,char* argv[]) {
