@@ -46,6 +46,7 @@ class FluidSolver;
 class PbClass {
 public:
     PbClass(FluidSolver* parent, const std::string& name="", PyObject* obj=NULL);
+    PbClass(const PbClass& a);
     virtual ~PbClass();
     
     // basic property setter/getters
@@ -53,7 +54,7 @@ public:
     std::string getName() const { return mName; }
     PyObject* getPyObject() const { return mPyObject; }
     void setPyObject(PyObject* obj);
-    FluidSolver* getParent() { return mParent; }
+    FluidSolver* getParent() const { return mParent; }
     void setParent(FluidSolver* v) { mParent = v; }
     void checkParent();
     
@@ -74,9 +75,7 @@ public:
     static bool isNullRef(PyObject* o);
     static PbClass* createPyObject(const std::string& classname, const std::string& name, PbArgs& args, PbClass *parent);
     bool canConvertTo(const std::string& classname);
-    
-private:
-    PbClass& operator=(const PbClass&); // disable copy constructor
+    PyObject* assignNewPyObject(const std::string& classname);
     
 protected:
     QMutex mMutex;
@@ -107,7 +106,6 @@ public:
     void addMethod(const std::string& classname, const std::string& methodname, PbGenericFunction method);
     void addConstructor(const std::string& classname, PbConstructor method);
     void addAlias(const std::string& classname, const std::string& alias);
-    void addGenericFunction(const std::string& funcname, PbGenericFunction func);
     void addInstance(PbClass* obj);
     void addGetSet(const std::string& classname, const std::string& property, PbGetter getfunc, PbSetter setfunc);
     void addPythonPath(const std::string& path);

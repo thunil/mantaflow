@@ -26,8 +26,8 @@ using namespace std;
 string gFilename;
 string gRegText;
 bool gDebugMode = true;
-bool gUseMT;
 bool gDocMode;
+MType gMTType = MTNone;
 
 void errMsg(int line, const string& text) {
     cerr << gFilename << ":" << line << ": error: " << text << endl;
@@ -72,7 +72,7 @@ void replaceAll(string& text, const string& pattern, const string& repl) {
 
 void usage() {
     cerr << "preprocessor error: Unknown parameters." << endl;
-    cerr << "  Usage : prep generate <dbg_mode> <usemt> <inputfile> <outputfile>" << endl;
+    cerr << "  Usage : prep generate <dbg_mode> <mt_type> <inputfile> <outputfile>" << endl;
     cerr << "     or : prep docgen <inputfile> <outputfile>" << endl;
     cerr << "     or : prep merge <outfile> <infiles...>" << endl;
     exit(1);
@@ -93,6 +93,8 @@ void doMerge(int argc, char* argv[]) {
 
 void doGenerate(int argc, char* argv[], bool docs) {
     gDocMode = docs;
+    gDebugMode = false;
+    gMTType    = MTNone;
     if (docs && argc != 4) usage();
     if (!docs && argc != 6) usage();
     
@@ -102,9 +104,11 @@ void doGenerate(int argc, char* argv[], bool docs) {
     gRegText = "";
     gParent = "";
     // TP : only enable in cmake's PREP_DEBUG mode (passed via cmd line option dbg_mode)
-	gDebugMode = false; if (!docs) gDebugMode = atoi(argv[2]) != 0;
-    gUseMT     = false; if (!docs) gUseMT     = atoi(argv[3]) != 0;
-
+    if (!docs) {
+        gDebugMode = atoi(argv[2]) != 0;
+        if (!strcmp(argv[3],"TBB")) gMTType = MTTBB;
+        if (!strcmp(argv[3],"OPENMP")) gMTType = MTOpenMP;
+    }
     // load complete file into buffer    
     string text = readFile(infile);
     if (text.empty()) {

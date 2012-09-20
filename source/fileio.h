@@ -27,6 +27,8 @@ void writeBobjFile(const std::string& name, Mesh* mesh);
 void readObjFile(const std::string& name, Mesh* mesh, bool append);
 template<class T> void writeGridRaw(const std::string& name, Grid<T>* grid);
 template<class T> void writeGridUni(const std::string& name, Grid<T>* grid);
+template<class T> void readGridUni(const std::string& name, Grid<T>* grid);
+template<class T> void readGridRaw(const std::string& name, Grid<T>* grid);
 
 } // namespace
 

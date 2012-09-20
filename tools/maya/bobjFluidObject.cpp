@@ -617,7 +617,7 @@ MStatus bobjFluidObject::compute(const MPlug& plug, MDataBlock& data)
 MStatus initializePlugin(MObject obj)
 {
 	MStatus   status;
-	MFnPlugin plugin(obj, PLUGIN_COMPANY, "3.0", "Any");
+	MFnPlugin plugin(obj, PYTHON_COMPANY, "3.0", "Any");
 
 	status = plugin.registerNode("bobjFluidObject", bobjFluidObject::id,
 						 bobjFluidObject::creator, bobjFluidObject::initialize);

@@ -20,7 +20,7 @@ using namespace std;
 namespace Manta { 
 
 //! add Forces between fl/fl and fl/em cells
-KERNEL(bnd=1) KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
+KERNEL(bnd=1) void KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
     bool curFluid = flags.isFluid(i,j,k);
     bool curEmpty = flags.isEmpty(i,j,k);
     if (!curFluid && !curEmpty) return;
@@ -34,7 +34,7 @@ KERNEL(bnd=1) KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) 
 }
 
 //! add Forces between fl/fl and fl/em cells
-KERNEL(bnd=1) KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
+KERNEL(bnd=1) void KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
     bool curFluid = flags.isFluid(i,j,k);
     bool curEmpty = flags.isEmpty(i,j,k);
     if (!curFluid && !curEmpty) return;
@@ -48,13 +48,13 @@ KERNEL(bnd=1) KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
 }
 
 //! add gravity forces to all fluid cells
-PLUGIN void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {    
+PYTHON void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {    
     Vec3 f = gravity * parent->getDt() / flags.getDx();
     KnAddForce(flags, vel, f);
 }
 
 //! add Buoyancy force based on smoke density
-KERNEL(bnd=1) KnAddBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 strength) {    
+KERNEL(bnd=1) void KnAddBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 strength) {    
     if (!flags.isFluid(i,j,k)) return;
     if (flags.isFluid(i-1,j,k))
         vel(i,j,k).x += (0.5 * strength.x) * (density(i,j,k)+density(i-1,j,k));
@@ -65,16 +65,31 @@ KERNEL(bnd=1) KnAddBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, 
 }
 
 //! add Buoyancy force based on smoke density
-PLUGIN void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravity) {
+PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravity) {
     Vec3 f = - gravity * parent->getDt() / parent->getDx();
     KnAddBuoyancy(flags,density, vel, f);
 }
 
+//! DDF style no-slip (what does it actually do?)
+KERNEL(bnd=1) void KnSetNoSlipBcs(FlagGrid& flags, MACGrid& vel) {
+    if (flags.isObstacle(i,j,k) && !flags.isInflow(i,j,k))  { 
+        vel(i,j,k) = 0; 
+        return;        
+    }
+    if (flags.isEmpty(i,j,k)) 
+        return;
+    if (flags.isFluid(i,j,k)) {
+        if (flags.isObstacle(i-1,j,k) && !flags.isInflow(i,j,k)) vel(i,j,k).x = 0;
+        if (flags.isObstacle(i,j-1,k) && !flags.isInflow(i,j,k)) vel(i,j,k).y = 0;
+        if (flags.is3D() && flags.isObstacle(i,j,k-1) && !flags.isInflow(i,j,k)) vel(i,j,k).z = 0;
+    }
+}
+        
 // Nils: unless I'm misunderstanding something
 // noslip in DDF is actually no-stick, DDF freeselip does something weird ?!
 
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
-KERNEL KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
+KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
     bool curFluid = flags.isFluid(i,j,k);
     bool curObstacle = flags.isObstacle(i,j,k);
     if (!curFluid && !curObstacle) return;
@@ -98,12 +113,13 @@ KERNEL KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 }
 
 //! set no-stick boundary condition on walls
-PLUGIN void setWallBcs(FlagGrid& flags, MACGrid& vel) {
-    KnSetWallBcs(flags, vel);
+PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel) {
+    //KnSetWallBcs(flags, vel);
+    KnSetNoSlipBcs(flags, vel);
 } 
 
 //! set boundary conditions at empty cells
-KERNEL(bnd=1) KnSetLiquidBcs(FlagGrid& flags, MACGrid& vel) {
+KERNEL(bnd=1) void KnSetLiquidBcs(FlagGrid& flags, MACGrid& vel) {
     if (!flags.isFluid(i,j,k)) return;
     
     // init empty cells from fluid
@@ -125,7 +141,7 @@ KERNEL(bnd=1) KnSetLiquidBcs(FlagGrid& flags, MACGrid& vel) {
 }
 
 //! set boundary conditions at empty cells
-PLUGIN void setLiquidBcs(FlagGrid& flags, MACGrid& vel) {
+PYTHON void setLiquidBcs(FlagGrid& flags, MACGrid& vel) {
     FOR_IDX(flags) {
         if (flags.isEmpty(idx)) vel[idx]=0.0f;
     }
@@ -133,13 +149,13 @@ PLUGIN void setLiquidBcs(FlagGrid& flags, MACGrid& vel) {
 } 
 
 //! Kernel: gradient norm operator
-KERNEL(bnd=1) KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
+KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
     Vec3 grad = 0.5 * Vec3( grid(i+1,j,k)-grid(i-1,j,k), grid(i,j+1,k)-grid(i,j-1,k), grid(i,j,k+1)-grid(i,j,k-1));
     normalize(grad);
     force(i,j,k) = str*cross(grad, curl(i,j,k));
 }
 
-PLUGIN void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
+PYTHON void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
     assertMsg(vel.is3D(), "Only 3D grids supported so far");
     Grid<Vec3> velCenter(parent), curl(parent), force(parent);
     Grid<Real> norm(parent);

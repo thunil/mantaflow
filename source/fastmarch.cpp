@@ -139,7 +139,7 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
 
     // discard by source time now , TODO do instead before calling all addtolists?
     Real srct = mLevelset(src);
-    if(mHeapComp.compare(srct, mMaxTime)) return;
+    if(COMP::compare(srct, mMaxTime)) return;
 
     Real ttime = calculateDistance(p);
     
@@ -150,30 +150,29 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
     if (mFmFlags[idx] == FlagIsOnHeap) {
         found = true;
         // is old time better?
-        if(mHeapComp.compare(ttime,oldt)) return;
+        if(COMP::compare(ttime,oldt)) return;        
     }
 
     // update field
     mFmFlags[idx] = FlagIsOnHeap;
     mLevelset[idx] = ttime;
-
+    
     if (mVelTransport.isInitialized())
         mVelTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
 
     if(!found) {
         // add list entry with source value
-        FmHeapEntry entry;
+        COMP entry;
         entry.p = p;
         entry.time  = &mLevelset[idx];
 
-        mHeap.push_back( entry );
-
-        push_heap(mHeap.begin(), mHeap.end(), mHeapComp );        
+        mHeap.push( entry );
     }
 }
 
 //! Enforce delta_phi = 0 on boundaries
-KERNEL SetLevelsetBoundaries (LevelsetGrid& phi) {
+KERNEL(single)
+void SetLevelsetBoundaries (LevelsetGrid& phi) {
     if (i==0) phi(i,j,k) = phi(1,j,k);
     if (j==0) phi(i,j,k) = phi(i,1,k);
     if (k==0) phi(i,j,k) = phi(i,j,1);
@@ -186,22 +185,14 @@ KERNEL SetLevelsetBoundaries (LevelsetGrid& phi) {
 //! Walk...
 template<class COMP, int TDIR>
 void FastMarch<COMP,TDIR>::performMarching() {
-    
-    make_heap(mHeap.begin(), mHeap.end(), mHeapComp ); 
-    
     mReheapVal = 0.0;
     while(mHeap.size() > 0) {
-        if(mReheapVal<0.0) {
-            make_heap(mHeap.begin(), mHeap.end(), mHeapComp ); 
-            mReheapVal = 0.0;            
-        }
-
-        pop_heap( mHeap.begin(), mHeap.end() , mHeapComp );
         
-        Vec3i p = mHeap[mHeap.size()-1].p; 
+        const COMP& ce = mHeap.top();
+        Vec3i p = ce.p; 
         mFmFlags(p) = FlagInited;
-        mHeap.pop_back();
-    
+        mHeap.pop();
+        
         addToList(Vec3i(p.x-1,p.y,p.z), p);
         addToList(Vec3i(p.x+1,p.y,p.z), p);
         addToList(Vec3i(p.x,p.y-1,p.z), p);
@@ -209,13 +200,13 @@ void FastMarch<COMP,TDIR>::performMarching() {
         addToList(Vec3i(p.x,p.y,p.z-1), p);
         addToList(Vec3i(p.x,p.y,p.z+1), p);        
     }
-
+    
     // set boundary for plain array
     SetLevelsetBoundaries setls(mLevelset);
 }
 
 // explicit instantiation
-template class FastMarch<FmHeapComparatorIn, -1>;
-template class FastMarch<FmHeapComparatorOut, +1>;
+template class FastMarch<FmHeapEntryIn, -1>;
+template class FastMarch<FmHeapEntryOut, +1>;
 
 } // namespace

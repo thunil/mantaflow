@@ -155,41 +155,25 @@ void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1,
 
 //! Kernel: Compute the dot product between two Real grids
 /*! Uses double precision internally */
-KERNEL(idx, reduce) struct GridDotProduct (const Grid<Real>& a, const Grid<Real>& b)
-{
-    double result;
-    
-    void operator()(int idx) {
-        result += (a[idx] * b[idx]);
-    }
-    void setup() { result = 0.0; }
-    void join(const GridDotProduct& other) { result += other.result; }
+KERNEL(idx, reduce=+) returns(double result=0.0)
+double GridDotProduct (const Grid<Real>& a, const Grid<Real>& b) {
+    result += (a[idx] * b[idx]);    
 };
 
-Real dotProduct(const Grid<Real>& a, const Grid<Real>& b) {
-    return (Real) GridDotProduct(a, b).result;
-}
-   
-
 //! Kernel: compute residual (init) and add to sigma
-KERNEL(idx, reduce) struct InitSigma (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp) 
-{
-    double sigma;
-    
-    void operator()(int idx) {
-        const double res = rhs[idx] - temp[idx]; 
-        dst[idx] = (Real)res;
-    
-        // only compute residual in fluid region
-        if(flags.isFluid(idx)) 
-            sigma += res*res;
-    }
-    void setup() { sigma = 0; }
-    void join(const InitSigma& a) { sigma += a.sigma; }
+KERNEL(idx, reduce=+) returns(double sigma=0)
+double InitSigma (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp) 
+{    
+    const double res = rhs[idx] - temp[idx]; 
+    dst[idx] = (Real)res;
+
+    // only compute residual in fluid region
+    if(flags.isFluid(idx)) 
+        sigma += res*res;
 };
 
 //! Kernel: update search vector
-KERNEL(idx) UpdateSearchVec (Grid<Real>& dst, Grid<Real>& src, Real factor)
+KERNEL(idx) void UpdateSearchVec (Grid<Real>& dst, Grid<Real>& src, Real factor)
 {
     dst[idx] = src[idx] + factor * dst[idx];
 }
@@ -230,7 +214,7 @@ void GridCg<APPLYMAT>::doInit() {
     
     mSearch = mTmp;
     
-    mSigma = dotProduct(mTmp, mResidual);    
+    mSigma = GridDotProduct(mTmp, mResidual);    
 }
 
 template<class APPLYMAT>
@@ -246,7 +230,7 @@ bool GridCg<APPLYMAT>::iterate() {
     APPLYMAT (mFlags, mTmp, mSearch, *mpA0, *mpAi, *mpAj, *mpAk);
     
     // alpha = sigma/dot(tmp, search)
-    Real dp = dotProduct(mTmp, mSearch);
+    Real dp = GridDotProduct(mTmp, mSearch);
     Real alpha = 0.;
     if(fabs(dp)>0.) alpha = mSigma / (Real)dp;
     
@@ -272,7 +256,7 @@ bool GridCg<APPLYMAT>::iterate() {
     // abort here to safe some work...
     if(mResNorm<mAccuracy) return false;
 
-    Real sigmaNew = dotProduct(mTmp, mResidual);
+    Real sigmaNew = GridDotProduct(mTmp, mResidual);
     Real beta = sigmaNew / mSigma;
     
     // search =  tmp + beta * search

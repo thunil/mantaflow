@@ -18,7 +18,7 @@
 #include <vector>
 
 // Tokens
-enum Keyword { KwNone = 0, KwPlugin, KwKernel, KwPython };
+enum Keyword { KwNone = 0, KwKernel, KwPython };
 
 enum TokenType { TkNone = 0, TkComment, TkWhitespace, TkCodeBlock, TkDescriptor, TkComma, TkBracketL, TkBracketR, TkTBracketL, TkTBracketR, TkAssign, TkPointer, TkRef, TkColon, TkSemicolon };
 
@@ -35,9 +35,20 @@ struct Argument {
     std::string name, value, type, templ, complete;
     bool isRef, isPointer, isConst;
     int number;
+    std::string getType() const {
+        std::string s="";
+        if (isConst) s+= "const ";
+        s += type;
+        if (!templ.empty()) s+= "<" + templ + " >";
+        if (isRef) s+= "&";
+        if (isPointer) s+= "*";            
+        return s;
+    }
+    std::string getTypeName() const { return getType() + " " + name; }
 };
+typedef std::vector<Argument> ArgList;
 
-inline std::string listArgs(const std::vector<Argument>& args) {
+inline std::string listArgs(const ArgList& args) {
     std::string s = "";
     for (size_t i=0; i<args.size(); i++) {
         s += args[i].complete;
@@ -55,7 +66,6 @@ inline bool isIntegral(const std::string& t) {
 }
 
 inline Keyword checkKeyword(const std::string& word) {
-    if (word == "PLUGIN") return KwPlugin;
     if (word == "KERNEL") return KwKernel;
     if (word == "PYTHON") return KwPython;
     return KwNone;
@@ -64,9 +74,10 @@ inline Keyword checkKeyword(const std::string& word) {
 #define assert(x, msg) if(!(x)){errMsg(line,msg);}
 
 // from main.cpp
+enum MType { MTNone = 0, MTTBB, MTOpenMP};
 extern std::string gFilename;
 extern bool gDebugMode;
-extern bool gUseMT;
+extern MType gMTType;
 extern bool gDocMode;
 extern std::string gRegText;
 extern std::string gParent;
@@ -83,15 +94,15 @@ std::vector<Token> tokenizeBlock(const std::string& kw, const std::string& text,
 // functions from parse.cpp
 std::string parseBlock(const std::string& kw, const std::vector<Token>& tokens, int line);
 std::string replaceFunctionHeader(const std::string& text, const std::string& funcname, const std::string& header, const std::string& finalizer, int line);
+std::string stripWS(const std::string& s);
 
-// functions from replace.cpp
+// functions from codegen_XXX.cpp
 std::string createConverters(const std::string& name, const std::string& tb, const std::string& nl, const std::string& nlr);
-std::string processPlugin(int lb, const std::string& name, const std::vector<Argument>& opts, const std::vector<Argument>& args, const std::string& code, int line, const std::string& type); 
-std::string processKernel(int lb, const std::string& name, const std::vector<Argument>& opts, const std::string& templ, const std::vector<Argument>& args, const std::string& code, int line, bool isClass); 
-std::string processPythonFunction(int lb, const std::string& name, const std::string& type, const std::vector<Argument>& args, const std::string& initlist, const std::string& code, int line); 
-std::string processPythonVariable(int lb, const std::string& name, const std::vector<Argument>& opts, const std::string& type, int line); 
-std::string processPythonClass(int lb, const std::string& name, const std::vector<Argument>& opts, const std::vector<Argument>& templArgs, const std::string& baseclassName, const std::vector<Argument>& baseclassTempl, const std::string& code, int line); 
-std::string processPythonInstantiation(int lb, const std::string& name, const std::vector<Argument>& templArgs, const std::string& aliasname, int line); 
+std::string processKernel(int lb, const std::string& name, const ArgList& opts, Argument retType, const ArgList& returnArg, const ArgList& templArgs, const ArgList& args, const std::string& code, int line); 
+std::string processPythonFunction(int lb, const std::string& name, const std::string& type, const ArgList& args, const std::string& initlist, const std::string& code, int line); 
+std::string processPythonVariable(int lb, const std::string& name, const ArgList& opts, const std::string& type, int line); 
+std::string processPythonClass(int lb, const std::string& name, const ArgList& opts, const ArgList& templArgs, const std::string& baseclassName, const ArgList& baseclassTempl, const std::string& code, int line); 
+std::string processPythonInstantiation(int lb, const std::string& name, const ArgList& templArgs, const std::string& aliasname, int line); 
 std::string buildline(int lb);
 
 #endif // _PREP_H

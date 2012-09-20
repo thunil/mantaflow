@@ -1,6 +1,5 @@
 #
-# Simple example for free-surface simulation
-# with FLIP advection
+# Use htis file to test new functionality
 
 from manta import *
 
@@ -22,8 +21,8 @@ mesh = s.create(Mesh)
 # scene setup
 flags.initDomain()
 fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.8,1))
-phi = fluidbox.computeLevelset()
-flags.updateFromLevelset(phi)
+phi1 = fluidbox.computeLevelset()
+flags.updateFromLevelset(phi1)
 flip.adjustNumber(vel=vel, flags=flags, minParticles=8, maxParticles=30)
     
 if (GUI):

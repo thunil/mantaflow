@@ -117,7 +117,7 @@ void PbWrapperRegistry::addClass(const string& pythonName, const string& interna
     data->pythonName = pythonName;
     data->baseclass = baseclass.empty() ? NULL : lookup(baseclass);    
     if (!baseclass.empty() && !data->baseclass)
-        throw Error("Registering class '" + internalName + "' : Base class '" + baseclass + "' not found");
+        errMsg("Registering class '" + internalName + "' : Base class '" + baseclass + "' not found");
     mClasses[internalName] = data;
     mClassList.push_back(data);
     
@@ -146,7 +146,7 @@ void PbWrapperRegistry::addPythonCode(const string& file, const string& code) {
 
 void PbWrapperRegistry::addGetSet(const string& classname, const string& property, PbGetter getfunc, PbSetter setfunc) {
     if (mClasses.find(classname) == mClasses.end())
-        throw Error("Register class " + classname + " before registering get/setter " + property);
+        errMsg("Register class " + classname + " before registering get/setter " + property);
     
     PbClassData* classdef = mClasses[classname];
     PbGetSet& def = classdef->getset[property];
@@ -158,27 +158,26 @@ void PbWrapperRegistry::addGetSet(const string& classname, const string& propert
     if (setfunc) def.setter = setfunc;
 }
 
-void PbWrapperRegistry::addGenericFunction(const string& funcname, PbGenericFunction func) {
-    addMethod("__modclass__", funcname, func);
-}
-
 void PbWrapperRegistry::addAlias(const string& classname, const string& alias) {
     if (mClasses.find(classname) == mClasses.end())
-        throw Error("Trying to register alias '" + alias +"' for non-existing class '" + classname + "'");
+        errMsg("Trying to register alias '" + alias +"' for non-existing class '" + classname + "'");
     mClasses[alias] = mClasses[classname];
 }
 
 void PbWrapperRegistry::addMethod(const string& classname, const string& methodname, PbGenericFunction func) {
-    if (mClasses.find(classname) == mClasses.end())
-        throw Error("Register class " + classname + " before registering methods.");
+    string aclass = classname;
+    if (aclass.empty())
+        aclass = "__modclass__";
+    else if (mClasses.find(aclass) == mClasses.end())
+        errMsg("Register class '" + aclass + "' before registering methods.");
     
-    PbClassData* classdef = mClasses[classname];
+    PbClassData* classdef = mClasses[aclass];
     classdef->methods.push_back(PbMethod(methodname,methodname,func));        
 }
 
 void PbWrapperRegistry::addConstructor(const string& classname, PbConstructor func) {
     if (mClasses.find(classname) == mClasses.end())
-        throw Error("Register class " + classname + " before registering constructor.");
+        errMsg("Register class " + classname + " before registering constructor.");
     
     PbClassData* classdef = mClasses[classname];
     classdef->constructor = func;    
@@ -274,7 +273,7 @@ PyObject* cbNew(PyTypeObject *type, PyObject *args, PyObject *kwds) {
         self->classdef = PbWrapperRegistry::instance().lookup(type->tp_name);
         self->instance = NULL;
     } else
-        throw Error("can't allocate new python class object");
+        errMsg("can't allocate new python class object");
     return (PyObject*) self;
 }
 
@@ -383,7 +382,7 @@ PyObject* PbWrapperRegistry::initModule() {
 PyObject* PbWrapperRegistry::createPyObject(const string& classname, const string& name, PbArgs& args, PbClass *parent) {
     PbClassData* classdef = lookup(classname);
     if (!classdef)
-        throw Error("Class " + classname + " doesn't exist.");    
+        errMsg("Class " + classname + " doesn't exist.");    
     
     // create object
     PyObject* obj = cbNew(&classdef->typeInfo, NULL, NULL);    
@@ -401,7 +400,7 @@ PyObject* PbWrapperRegistry::createPyObject(const string& classname, const strin
     
     // create instance
     if (self->classdef->constructor(obj, args.linArgs(), nkw) < 0)
-        throw Error(""); // assume condition is already set
+        errMsg(""); // assume condition is already set
     
     Py_DECREF(nkw);
     Py_DECREF(nocheck);
@@ -409,7 +408,7 @@ PyObject* PbWrapperRegistry::createPyObject(const string& classname, const strin
         
     return obj;    
 }
-
+ 
 void PbWrapperRegistry::addInstance(PbClass* obj) {
     PbClass::mInstances.push_back(obj);
 }
@@ -428,7 +427,7 @@ void PbWrapperRegistry::runPreInit(vector<string>& args) {
     for (size_t i=0; i<mPaths.size(); i++) {
         PyObject *path = toPy(mPaths[i]);
         if (sys_path == NULL || path == NULL || PyList_Append(sys_path, path) < 0) {
-            throw Error("unable to set python path");
+            errMsg("unable to set python path");
         }
         Py_DECREF(path);
     }
@@ -481,6 +480,11 @@ PbClass::PbClass(FluidSolver* parent, const string& name, PyObject* obj)
 {
 }
 
+PbClass::PbClass(const PbClass& a) : mName("_unnamed"), mPyObject(0), mParent(a.mParent), mHidden(false), mMutex()
+{
+}
+    
+
 PbClass::~PbClass() {   
     for(vector<PbClass*>::iterator it = mInstances.begin(); it != mInstances.end(); ++it) {
         if (*it == this) {
@@ -502,7 +506,7 @@ bool PbClass::tryLock() {
     
 PbClass* PbClass::getInstance(int idx) {
     if (idx<0 || idx > (int)mInstances.size())
-        throw Error("PbClass::getInstance(): invalid index");
+        errMsg("PbClass::getInstance(): invalid index");
     return mInstances[idx];
 }
 
@@ -541,16 +545,30 @@ bool PbClass::canConvertTo(const string& classname) {
     PbClassData* from = ((PbObject*)mPyObject)->classdef;
     PbClassData* dest = PbWrapperRegistry::instance().lookup(classname);
     if (!dest)
-        throw Error("Classname '" + classname + "' is not registered.");
+        errMsg("Classname '" + classname + "' is not registered.");
     return PbWrapperRegistry::instance().canConvert(from, dest);
 }
 
 void PbClass::checkParent() {
     if (getParent() == NULL) {
-        throw Error("New class " + mName + ": no parent given -- specify using parent=xxx !");
+        errMsg("New class " + mName + ": no parent given -- specify using parent=xxx !");
     }
 }
-   
+
+PyObject* PbClass::assignNewPyObject(const string& classname) {
+    PbClassData* classdef = PbWrapperRegistry::instance().lookup(classname);
+    assertMsg(classdef,"python class " + classname + " does not exist.");
+    
+    // allocate new object
+    PbObject *obj = (PbObject*) classdef->typeInfo.tp_alloc(&(classdef->typeInfo), 0);
+    assertMsg(obj, "cannot allocate new python object");
+    
+    obj->classdef = classdef;
+    setPyObject((PyObject*)obj);
+    
+    return mPyObject;
+}
+
 
 vector<PbClass*> PbClass::mInstances;
 

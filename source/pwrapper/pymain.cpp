@@ -16,6 +16,7 @@
 #include "pclass.h"
 #include "pconvert.h"
 #include "general.h"
+#include "wchar.h"
 
 namespace Manta {
     extern void guiMain(int argc, char* argv[]);
@@ -24,6 +25,14 @@ namespace Manta {
 
 using namespace std;
 using namespace Manta;
+
+#if PY_MAJOR_VERSION >= 3
+typedef wchar_t pyChar;
+typedef wstring pyString;
+#else
+typedef char pyChar;
+typedef string pyString;
+#endif
 
 //*****************************************************************************
 // main...
@@ -44,6 +53,16 @@ void runScript(vector<string>& args) {
         Py_Finalize();
         return;
     }
+    
+    // Pass through the command line arguments
+    // for Py3k compatability, convert to wstring
+    vector<pyString> pyArgs(args.size());
+    const pyChar ** cargs = new const pyChar*  [args.size()];
+    for (size_t i=0; i<args.size(); i++) {
+        pyArgs[i] = pyString(args[i].begin(), args[i].end());
+        cargs[i] = pyArgs[i].c_str();
+    }
+    PySys_SetArgv( args.size(), (pyChar**) cargs);
     
     // Run the python script file
     debMsg("Loading script '" << filename << "'", 0);
@@ -71,6 +90,8 @@ void runScript(vector<string>& args) {
     // finalize
     Py_Finalize();
     PbWrapperRegistry::instance().cleanup();    
+
+    delete [] cargs;
 }
 
 int main(int argc,char* argv[]) {

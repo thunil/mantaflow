@@ -20,13 +20,13 @@ using namespace std;
 
 // safety boundary for semi lagrange advection step
 // is 1 enough here ?
-#define SLADVBOUND 1
+#define SLADVBOUND 2
 
 namespace Manta { 
 
 //! Semi-Lagrange interpolation kernel
 KERNEL(bnd=SLADVBOUND) template<class T> 
-SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset) 
+void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset) 
 {
     if (flags.isObstacle(i,j,k)) {
         dst(i,j,k) = 0;
@@ -45,7 +45,7 @@ SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt
 
 //! Semi-Lagrange interpolation kernel for MAC grids
 KERNEL(bnd=SLADVBOUND)
-SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, Real dt) 
+void SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, Real dt) 
 {
     if (flags.isObstacle(i,j,k)) {
         dst(i,j,k) = 0;
@@ -71,8 +71,8 @@ SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, Real 
 
 //! Kernel: Correct based on forward and backward SL steps
 KERNEL(bnd=1) template<class T> 
-MacCormackCorrect(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd,  Grid<T>& bwd, 
-                  Real strength, bool isLevelSet)
+void MacCormackCorrect(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd,  Grid<T>& bwd, 
+                       Real strength, bool isLevelSet)
 {
     const int idx = flags.index(i,j,k);
     
@@ -101,7 +101,7 @@ template<> inline void getMinMax<Vec3>(Vec3& minv, Vec3& maxv, const Vec3& val) 
 
 //! Kernel: Clamp obtained value to min/max in source area, and reset values that point out of grid or into boundaries
 KERNEL(bnd=SLADVBOUND) template<class T>
-MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig, Grid<T>& fwd, Real dt)
+void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig, Grid<T>& fwd, Real dt)
 {
     if (flags.isObstacle(i,j,k))
         return;
@@ -173,7 +173,7 @@ inline Real doClampComponent(const Vec3i& upperClamp, MACGrid& orig, Real dst, c
 //! Kernel: Clamp obtained value to min/max in source area, and reset values that point out of grid or into boundaries. 
 //! Specialized version for MAC grids
 KERNEL(bnd=SLADVBOUND) 
-MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& orig, MACGrid& fwd, Real dt)
+void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& orig, MACGrid& fwd, Real dt)
 {
     if (flags.isObstacle(i,j,k))
         return;
@@ -271,7 +271,7 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 }
 
 //! Perform semi-lagrangian advection of target Real- or Vec3 grid
-PLUGIN void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid, 
+PYTHON void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid, 
                            int order = 1, Real strength = 0.5)
 {    
     assertMsg(order==1 || order==2, "AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");

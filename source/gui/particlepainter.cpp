@@ -16,6 +16,7 @@
 #include <sstream>
 #include <iomanip>
 #include "vortexpart.h"
+#include "vortexfilament.h"
 #include "flip.h"
 
 using namespace std;
@@ -67,7 +68,7 @@ void ParticlePainter::updateText() {
     stringstream s;
     
     if (mObject && !mHide) {
-        s << "ParticleSystem '" << mLocal->getName() << "' [" << mLocal->size() << " parts]" << endl;
+        s << mLocal->infoString() << endl;
     }
     mInfo->setText(s.str().c_str());    
 }
@@ -100,7 +101,7 @@ void ParticlePainter::paint() {
     if(mLocal->getType() == ParticleBase::VORTEX) {
         VortexParticleSystem* vp = (VortexParticleSystem*) mLocal;
         glColor3f(1,1,0);
-        for(int i=0; i<(int)mLocal->size(); i++) {
+        for(int i=0; i<vp->size(); i++) {
             if (vp->isActive(i)) {
                 Vec3 pos = (*vp)[i].pos;
             
@@ -118,7 +119,7 @@ void ParticlePainter::paint() {
         glPointSize(1.0);
         glBegin(GL_LINES);
             
-        for(int i=0; i<(int)mLocal->size(); i++) {
+        for(int i=0; i<fp->size(); i++) {
             if (fp->isActive(i)) {
                 Vec3 pos = (*fp)[i].pos;
                 Vec3 vel = (*fp)[i].vel;
@@ -127,6 +128,20 @@ void ParticlePainter::paint() {
                     glVertex(pos, dx);
                     glVertex(pos + vel * scale, dx);                    
                 }
+            }
+        }   
+        glEnd();
+        glPointSize(1.0);
+    } else if (mLocal->getType() == ParticleBase::FILAMENT) {
+        VortexFilamentSystem* fp = (VortexFilamentSystem*) mLocal;
+        glColor3f(1,1,0);
+        glPointSize(1.0);
+        glBegin(GL_LINES);
+            
+        for(int i=0; i<fp->segSize(); i++) {
+            if (fp->isSegActive(i)) {
+                glVertex( (*fp)[fp->seg(i).idx0].pos, dx);
+                glVertex( (*fp)[fp->seg(i).idx1].pos, dx);
             }
         }   
         glEnd();

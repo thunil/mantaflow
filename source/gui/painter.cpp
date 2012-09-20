@@ -329,7 +329,7 @@ template<> void GridPainter<Real>::paint() {
     //glDepthFunc(GL_LESS);
     FOR_P_SLICE(mLocalGrid, mDim, mPlane) { 
         int flag = FlagGrid::TypeFluid;
-        if (flags) flag = flags->get(p);
+        if (flags && (mLocalGrid->getType() & GridBase::TypeLevelset) == 0) flag = flags->get(p);
         if (flag & FlagGrid::TypeObstacle)
             glColor3f(0.15,0.15,0.15);
         else if (flag & FlagGrid::TypeOutflow)
