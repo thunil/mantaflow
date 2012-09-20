@@ -203,16 +203,16 @@ string processPythonFunction(int lb, const string& name, const string& type, con
     if (isConstructor) {
         caller = "";
         if (gIsTemplated) {
-            regDecl = "@template " + gParent + " " + header + "obj = new " + gParent + "<$> (" + callList + ");" + footer;
-            regCall = "@template " + gParent + " PbWrapperRegistry::instance().addConstructor(\"" + gParent + "<$>\", " + regname + ");";        
+            regDecl = "@template " + gParent + " " + header + "obj = new " + gParent + "<$$> (" + callList + ");" + footer;
+            regCall = "@template " + gParent + " PbWrapperRegistry::instance().addConstructor(\"" + gParent + "<$$>\", " + regname + ");";        
         } else {
             regDecl = header + "obj = new " + gParent + "(" + callList + ");" + footer;
             regCall = "PbWrapperRegistry::instance().addConstructor(\"" + gParent + "\", " + regname + ");";
         }
     } else {
         if (gIsTemplated) {
-            regDecl = "@template " + gParent + " " + regHeader + " { return dynamic_cast<" + gParent +"<$>*>(PbClass::fromPyObject(_self))->_" + name + "(_self, _linargs, _kwds); }";
-            regCall = "@template " + gParent + " PbWrapperRegistry::instance().addMethod(\"" + gParent + "<$>\", \"" + name + "\", " + regname + ");";
+            regDecl = "@template " + gParent + " " + regHeader + " { return dynamic_cast<" + gParent +"<$$>*>(PbClass::fromPyObject(_self))->_" + name + "(_self, _linargs, _kwds); }";
+            regCall = "@template " + gParent + " PbWrapperRegistry::instance().addMethod(\"" + gParent + "<$$>\", \"" + name + "\", " + regname + ");";
         } else {
             regDecl = regHeader + " { return fromPy<" + gParent +"*>(_self)->_" + name + "(_self, _linargs, _kwds); }";
             regCall = "PbWrapperRegistry::instance().addMethod(\"" + gParent + "\", \"" + name + "\", " + regname + ");";
@@ -302,18 +302,52 @@ string processPythonClass(int lb, const string& name, const ArgList& opts, const
     }
     
     // class registry
-    string baseclass = baseclassName, registry = "", implInst = "";
+    string baseclass = baseclassName, modBase = baseclassName, registry = "", implInst = "";
     if (!baseclassTempl.empty()) {
-        // try to implicitly instantiate base class
-        string aliasn = "_" + baseclassName + "_" + listArgs(baseclassTempl);
+        // baseclass known ? try to implicitly instantiate base class
+        string targ="", tcarg="" ,bclist="";
+        bool chain=false;
+        for (size_t i=0; i<baseclassTempl.size(); i++) {
+            // check if template arg            
+            int index = -1;
+            for (size_t j=0; j<templArgs.size(); j++) {
+                if (templArgs[j].name == baseclassTempl[i].name) {
+                    index = j;
+                    chain=true;
+                    break;
+                }
+            }
+            if (index>=0) {
+                targ += "@"+baseclassTempl[i].name+"@";
+                stringstream s;
+                s << "$" << index << "$";
+                bclist += s.str();
+            } else {
+                targ += baseclassTempl[i].name;
+                bclist += baseclassTempl[i].name;
+            }
+            if (i!=baseclassTempl.size()-1) { targ += ","; bclist += ","; }
+        }
+        for (size_t i=0; i<templArgs.size(); i++) {
+            tcarg += "@" + templArgs[i].name + "@";
+            if (i!=templArgs.size()-1) tcarg += ",";
+        }
+        string aliasn = "_" + baseclassName + "_" + targ;
         replaceAll(aliasn,",","_");
-        implInst = processPythonInstantiation(0,baseclassName,baseclassTempl,aliasn,0);
+        
+        // need defer chain ?
+        if (chain){
+            gRegText += "@chain " + name + " " + tcarg + " " + baseclassName + " " + targ + "\n";
+        } else {
+            gRegText += "@instance " + baseclassName + " " + targ + " " + aliasn + "\n";    
+        }
+        modBase += "<" + bclist + ">";
         baseclass += "<" + listArgs(baseclassTempl) + ">";
     }
     if (templArgs.empty())
-        registry = "PbWrapperRegistry::instance().addClass(\"" + pname + "\", \"" + name + "\", \"" + baseclass + "\");";
+        registry = "PbWrapperRegistry::instance().addClass(\"" + pname + "\", \"" + name + "\", \"" + modBase + "\");";
     else {
-        registry = "@template " + name + " PbWrapperRegistry::instance().addClass(\"@\", \"" + name + "<$>\", \"" + baseclass + "\");";
+        registry = "@template " + name + " PbWrapperRegistry::instance().addClass(\"@\", \"" + name + "<$$>\", \"" + modBase + "\");";
     }
     
     // register class

@@ -32,14 +32,11 @@ public:
         PINVALID     = (1<<30), // unused
     };
     
-    PYTHON ParticleBase(FluidSolver* parent) : PbClass(parent), mSize(0) {}
+    PYTHON ParticleBase(FluidSolver* parent) : PbClass(parent) {}
 
     virtual SystemType getType() const { return BASE; }
-    inline int size() const { return mSize; }    
     virtual ParticleBase* clone() { return NULL; }
-    
-protected:
-    int mSize;
+    virtual std::string infoString() { return "ParticleSystem " + mName + "<no info>"; };
 };
 
 
@@ -55,29 +52,51 @@ public:
     // accessors
     inline S& operator[](int i) { return mData[i]; }
     inline const S& operator[](int i) const { return mData[i]; }
-    
+    inline int size() const { return mData.size(); }    
+        
     // adding and deleting
     inline void kill(int i) { mData[i].flag |= PDELETE; if (++mDeletes > mDeleteChunk) compress(); }
     inline bool isActive(int i) { return (mData[i].flag & PDELETE) == 0; }    
     int add(const S& data);
     void clear();
     
-    // plugins
-    
     //! Advect particle in grid velocity field
     PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
     
     virtual ParticleBase* clone();
+    virtual std::string infoString();
     
     protected:  
-    void compress();
+    virtual void compress();
     
     int mDeletes, mDeleteChunk;    
     std::vector<S> mData;    
 };
 
+
+//! Particle set with connectivity
+PYTHON template<class DATA, class CON> 
+class ConnectedParticleSystem : public ParticleSystem<DATA> {
+public:
+    PYTHON ConnectedParticleSystem(FluidSolver* parent) : ParticleSystem<DATA>(parent) {}
+    
+    // accessors
+    inline bool isSegActive(int i) { return (mSegments[i].flag & ParticleBase::PDELETE) == 0; }    
+    inline int segSize() const { return mSegments.size(); }    
+    inline CON& seg(int i) { return mSegments[i]; }
+    inline const CON& seg(int i) const { return mSegments[i]; }
+    
+    
+protected:
+    std::vector<CON> mSegments;
+    virtual void compress();    
+};
+
+
 //! Simplest data class for particle systems
 struct BasicParticleData {
+    BasicParticleData() : pos(0.), flag(0) {}
+    BasicParticleData(const Vec3& p) : pos(p), flag(0) {}
     Vec3 pos;
     int flag;
     static ParticleBase::SystemType getType() { return ParticleBase::PARTICLE; }
@@ -97,15 +116,13 @@ const int DELETE_PART = 20; // chunk size for compression
 template<class S>
 void ParticleSystem<S>::clear() {
     mDeleteChunk = mDeletes = 0;
-    mData.clear();    
-    mSize = mData.size();    
+    mData.clear();
 }
 
 template<class S>
 int ParticleSystem<S>::add(const S& data) {
     mData.push_back(data); 
     mDeleteChunk = mData.size() / DELETE_PART;
-    mSize = mData.size();
     return mData.size()-1;
 }
 
@@ -148,7 +165,43 @@ void ParticleSystem<S>::compress() {
     mData.resize(nextRead);
     mDeletes = 0;
     mDeleteChunk = mData.size() / DELETE_PART;
-    mSize = mData.size();    
+}
+
+template<class DATA, class CON>
+void ConnectedParticleSystem<DATA,CON>::compress() {
+    const int sz = ParticleSystem<DATA>::size();
+    int *renumber_back = new int[sz];
+    int *renumber = new int[sz];
+    memset(renumber, -1, sz*sizeof(int));
+    memset(renumber_back, -1, sz*sizeof(int));
+        
+    // reorder elements
+    std::vector<DATA>& data = ParticleSystem<DATA>::mData;
+    int nextRead = sz;
+    for (int i=0; i<nextRead; i++) {
+        if ((data[i].flag & ParticleBase::PDELETE) != 0) {
+            nextRead--;
+            data[i] = data[nextRead];
+            data[nextRead].flag = 0;           
+            renumber_back[i] = nextRead;
+        } else 
+            renumber_back[i] = i;
+    }
+    
+    // acceleration structure
+    for (int i=0; i<nextRead; i++)
+        renumber[renumber_back[i]] = i;
+    
+    // rename indices in filaments
+    for (size_t i=0; i<mSegments.size(); i++)
+        mSegments[i].renumber(renumber);
+        
+    ParticleSystem<DATA>::mData.resize(nextRead);
+    ParticleSystem<DATA>::mDeletes = 0;
+    ParticleSystem<DATA>::mDeleteChunk = ParticleSystem<DATA>::size() / DELETE_PART;
+    
+    delete[] renumber;
+    delete[] renumber_back;
 }
 
 template<class S>
@@ -157,11 +210,18 @@ ParticleBase* ParticleSystem<S>::clone() {
     compress();
     
     nm->mData = mData;
-    nm->mSize = mSize;
     nm->setName(getName());
     return nm;
 }
 
+template<class S>
+std::string ParticleSystem<S>::infoString() { 
+    std::stringstream s;
+    s << "ParticleSystem '" << getName() << "' [" << size() << " parts]";
+    return s.str();
+}
+    
+    
 } // namespace
 
 
