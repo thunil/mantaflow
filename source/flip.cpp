@@ -66,7 +66,7 @@ void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, i
     Grid<int> tmp(mParent);
     
     // count particles in cells, and delete excess particles
-    for (int i=0; i<mSize; i++) {
+    for (size_t i=0; i<mData.size(); i++) {
         if (isActive(i)) {
             Vec3i p = toVec3i(mData[i].pos);
             int num = tmp(p);
@@ -91,6 +91,16 @@ void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, i
         }
     }
 }
+
+ParticleBase* FlipSystem::clone() {
+    FlipSystem* nm = new FlipSystem(getParent());
+    compress();
+    
+    nm->mData = mData;
+    nm->setName(getName());
+    return nm;
+}
+
 
 
 } // namespace

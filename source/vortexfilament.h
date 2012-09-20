@@ -20,21 +20,30 @@ namespace Manta {
 class Mesh;
     
 struct VortexFilamentData {
-    VortexParticleData() : pos(0.0f),vorticity(0.0f),sigma(0),flag(0) {}
-    VortexParticleData(const Vec3& p, const Vec3& v, Real sig) : pos(p),vorticity(v),sigma(sig),flag(0) {}
-    Vec3 pos, vorticity;
-    Real sigma;
-    int flag;    
-    static ParticleBase::SystemType getType() { return ParticleBase::VORTEX; }
+    VortexFilamentData() : idx0(-1),idx1(-1),circulation(0),flag(0) {}
+    VortexFilamentData(int i0, int i1, Real c) : idx0(i0),idx1(i1),circulation(c),flag(0) {}
+    void renumber(int* _renumber) { idx0 = _renumber[idx0]; idx1 = _renumber[idx1]; }
+    
+    int idx0, idx1;
+    Real circulation;
+    int flag;
 };
 
-//! Vortex particles
-PYTHON class VortexFilamentSystem : public ParticleSystem<VortexFilamentData> {
+
+//! Vortex filaments
+PYTHON class VortexFilamentSystem : public ConnectedParticleSystem<BasicParticleData, VortexFilamentData> {
 public:
-    PYTHON VortexParticleSystem(FluidSolver* parent);
+    virtual SystemType getType() const { return ParticleBase::FILAMENT; };
+        
+    PYTHON VortexFilamentSystem(FluidSolver* parent);
   
-    PYTHON void advectSelf(Real scale=1.0, int integrationMode=RK4);
-    PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, int integrationMode=RK4);
+    PYTHON void advectSelf(Real scale=1.0, Real regularization=0.1, int integrationMode=RK4);
+    PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, Real regularization=0.1, int integrationMode=RK4);
+    
+    PYTHON void addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number);
+    PYTHON void addLine(const Vec3& p0, const Vec3& p1, Real circulation);
+    
+    virtual ParticleBase* clone();
 };
 
 } // namespace

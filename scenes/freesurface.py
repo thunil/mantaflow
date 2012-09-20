@@ -52,6 +52,5 @@ for t in range(200):
     phi.createMesh(mesh)
     #mesh.save('phi%04d.bobj.gz' % t)
     
-    s.printTimings()
     s.step()
     #gui.pause()

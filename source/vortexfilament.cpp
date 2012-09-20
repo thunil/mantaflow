@@ -11,95 +11,111 @@
  *
  ******************************************************************************/
 
-#include "vortexpart.h"
+#include "vortexfilament.h"
 #include "integrator.h"
 #include "mesh.h"
 
 using namespace std;
 namespace Manta {
 
-// vortex particle effect: (cyl coord around wp)
-// u = -|wp|*rho*exp( (-rho^2-z^2)/(2sigma^2) ) e_phi
-struct VortexKernel {
-    VortexKernel() {}
-    VortexKernel(VortexParticleData& d, Real scale) : pos(d.pos) {
-        isigma = -0.5/square(d.sigma);
-        vortNorm = d.vorticity;
-        strength = normalize(vortNorm) * scale;
-        cutoff2 = 6.0 * square(d.sigma);
-    }
-    Vec3 pos;
-    Vec3 vortNorm;
+// vortex filament effect
+struct FilamentKernel {
+    FilamentKernel(const Vec3& g0, const Vec3& g1, Real circ, Real scale, Real cutoff, Real a) : 
+        gamma0(g0), gamma1(g1), cutoff2(cutoff*cutoff), a2(a*a) {
+            gammaMid = 0.5*(g0+g1);
+            gammaDir = g1-g0;
+            strength = scale*circ;
+            regFact = a*a*normSquare(gammaDir);
+        }
+
+    Vec3 gamma0, gamma1, gammaMid, gammaDir;
     Real strength;
-    Real isigma;
     Real cutoff2;
+    Real a2, regFact;
     
     inline bool isValid(const Vec3& p) const {
-        const Real rlen2 = normSquare(p-pos);        
-        return rlen2 < cutoff2 && rlen2 > 1e-8;
+        const Real rlen2 = normSquare(p - gammaMid);
+        const Real r0_2 = normSquare(p - gamma0);
+        const Real r1_2 = normSquare(p - gamma1);
+        return rlen2 < cutoff2 && r0_2 > 1e-8 && r1_2 > 1e-8;
     }
     
     inline Vec3 evaluate(const Vec3& p) const {
-        // transform in cylinder coordinate system
-        const Vec3 r = p-pos;
-        const Real rlen2 = normSquare(r);        
-        const Real rlen = sqrt(rlen2);
-        const Real z = dot(r, vortNorm);
-        const Vec3 ePhi = cross(r, vortNorm) / rlen;
-        const Real rho2 = rlen2 - z*z;
-        
-        Real vortex;
-        if (rho2 > 1e-10) {
-            // evaluate Kernel      
-            vortex = strength * sqrt(rho2) * exp (rlen2 * isigma);  
-        } else {
-            vortex = 0;
-        }
-        return vortex * ePhi;
+        // vortex line integral
+        const Vec3 r0 = gamma0-p, r1 = gamma1-p;
+        const Real r0n = 1.0f/sqrt(a2+normSquare(r0));
+        const Real r1n = 1.0f/sqrt(a2+normSquare(r1));
+        const Vec3 cp = cross(r0,r1);
+        const Real upper = dot(r1,gammaDir)*r1n - dot(r0,gammaDir)*r0n;
+        const Real lower = regFact + normSquare(cp);
+        return upper/lower*cp;
     }
 };
-    
-VortexParticleSystem::VortexParticleSystem(FluidSolver* parent) :
-    ParticleSystem<VortexParticleData>(parent)
+
+
+void VortexFilamentSystem::addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number) {
+	normalize(normal);
+    Vec3 worldup (0,1,0);
+	if (norm(normal - worldup) < 1e-5) worldup = Vec3(1,0,0);
+	
+	Vec3 u = cross(normal, worldup); normalize(u);
+	Vec3 v = cross(normal, u); normalize(v);
+	
+	int firstNum = size();
+	for (int i=0; i<number; i++) {
+		Real phi = (Real)i/(Real)number * M_PI * 2.0;
+		Vec3 p = position + radius * (u*cos(phi) + v*sin(phi));
+		
+		int num = add(BasicParticleData(p));
+        mSegments.push_back(VortexFilamentData(num, num+1, circulation));
+	}
+	mSegments.rbegin()->idx1 = firstNum;
+}
+
+void VortexFilamentSystem::addLine(const Vec3& p0, const Vec3& p1, Real circulation) {
+	mSegments.push_back(VortexFilamentData(add(BasicParticleData(p0)), add(BasicParticleData(p1)), circulation));
+}
+
+VortexFilamentSystem::VortexFilamentSystem(FluidSolver* parent) :
+    ConnectedParticleSystem<BasicParticleData, VortexFilamentData>(parent)
 { 
 }
 
-DefineIntegrator(integrateVortexKernel, VortexKernel, evaluate);
+DefineIntegrator(integrateVortexKernel, FilamentKernel, evaluate);
 
 KERNEL(particle) template<IntegrationMode mode> 
-void advectNodes(vector<Vec3>& nodesNew, const vector<Vec3>& nodesOld, const VortexKernel& kernel, Real dt) {
+void advectNodes(vector<Vec3>& nodesNew, const vector<Vec3>& nodesOld, const FilamentKernel& kernel, Real dt) {
     const Vec3 p = nodesOld[i];
     if (kernel.isValid(p))
         nodesNew[i] += integrateVortexKernel<mode>(p, kernel, dt);    
 }
 
-KERNEL(particle) template<IntegrationMode mode>
-void advectVortices(vector<VortexParticleData>& nodesNew, const vector<VortexKernel>& nodesOld, const VortexKernel& kernel, Real dt) {
-    const Vec3 p = nodesOld[i].pos;
-    if (kernel.isValid(p))
-        nodesNew[i].pos += integrateVortexKernel<mode>(p, kernel, dt);    
-}
-
-void VortexParticleSystem::advectSelf(Real scale, int integrationMode) {
+void VortexFilamentSystem::advectSelf(Real scale, Real regularization, int integrationMode) {
     const Real dt = getParent()->getDt();
+    const Real cutoff = 1e7;
     
-    // copy kernel array
-    vector<VortexKernel> kernels(size());
-    for (size_t i=0; i<mData.size(); i++)
-        kernels[i] = VortexKernel(mData[i], scale);
+    // backup
+    vector<Vec3> nodesOld(size()), nodesNew(size());
+    for (int i=0; i<size(); i++)
+        nodesOld[i] = nodesNew[i] = mData[i].pos;
     
     // loop over the vortices
-    for (size_t i=0; i<mData.size(); i++) {
-        if (!isActive(i)) continue;
-        if (integrationMode==EULER) advectVortices<EULER>(mData, kernels, kernels[i], dt);
-        else if (integrationMode==RK2) advectVortices<RK2>(mData, kernels, kernels[i], dt);
-        else if (integrationMode==RK4) advectVortices<RK4>(mData, kernels, kernels[i], dt);
+    for (size_t i=0; i<mSegments.size(); i++) {
+        if (!isSegActive(i)) continue;
+        FilamentKernel kernel = FilamentKernel(mData[mSegments[i].idx0].pos, mData[mSegments[i].idx1].pos, mSegments[i].circulation, scale, cutoff, regularization);
+        if (integrationMode==EULER) advectNodes<EULER>(nodesNew, nodesOld, kernel, dt);
+        else if (integrationMode==RK2) advectNodes<RK2>(nodesNew, nodesOld, kernel, dt);
+        else if (integrationMode==RK4) advectNodes<RK4>(nodesNew, nodesOld, kernel, dt);
         else errMsg("unknown integration type");
     }
+    
+    for (int i=0; i<size(); i++)
+        mData[i].pos = nodesNew[i];
 }
 
-void VortexParticleSystem::applyToMesh(Mesh& mesh, Real scale, int integrationMode) {
+void VortexFilamentSystem::applyToMesh(Mesh& mesh, Real scale, Real regularization, int integrationMode) {
     const Real dt = getParent()->getDt();
+    const Real cutoff = 1e7;
     
     // copy node array
     const int nodes = mesh.numNodes();
@@ -108,9 +124,9 @@ void VortexParticleSystem::applyToMesh(Mesh& mesh, Real scale, int integrationMo
         nodesOld[i] = nodesNew[i] = mesh.nodes(i).pos;
     
     // loop over the vortices
-    for (size_t i=0; i<mData.size(); i++) {
-        if (!isActive(i)) continue;
-        VortexKernel kernel(mData[i], scale);
+    for (size_t i=0; i<mSegments.size(); i++) {
+        if (!isSegActive(i)) continue;
+        FilamentKernel kernel = FilamentKernel(mData[mSegments[i].idx0].pos, mData[mSegments[i].idx1].pos, mSegments[i].circulation, scale, cutoff, regularization);
         if (integrationMode==EULER) advectNodes<EULER>(nodesNew, nodesOld, kernel, dt);
         else if (integrationMode==RK2) advectNodes<RK2>(nodesNew, nodesOld, kernel, dt);
         else if (integrationMode==RK4) advectNodes<RK4>(nodesNew, nodesOld, kernel, dt);
@@ -124,6 +140,15 @@ void VortexParticleSystem::applyToMesh(Mesh& mesh, Real scale, int integrationMo
     }    
 }
 
+ParticleBase* VortexFilamentSystem::clone() {
+    VortexFilamentSystem* nm = new VortexFilamentSystem(getParent());
+    //compress();
     
+    nm->mData = mData;
+    nm->mSegments = mSegments;
+    nm->setName(getName());
+    return nm;
+}
+
 
 } // namespace

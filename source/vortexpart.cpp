@@ -124,6 +124,15 @@ void VortexParticleSystem::applyToMesh(Mesh& mesh, Real scale, int integrationMo
     }    
 }
 
+ParticleBase* VortexParticleSystem::clone() {
+    VortexParticleSystem* nm = new VortexParticleSystem(getParent());
+    compress();
+    
+    nm->mData = mData;
+    nm->setName(getName());
+    return nm;
+}
+
     
 
 } // namespace

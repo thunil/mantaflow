@@ -39,6 +39,7 @@ public:
     PYTHON void velocitiesToGrid(FlagGrid& flags, MACGrid& vel);
 	PYTHON void adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles=8, int maxParticles=12);
     
+    virtual ParticleBase* clone();
 private:
 	MACGrid mOldVel;
     RandomStream mRand;
