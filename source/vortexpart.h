@@ -35,6 +35,8 @@ public:
   
     PYTHON void advectSelf(Real scale=1.0, int integrationMode=RK4);
     PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, int integrationMode=RK4);
+    
+    virtual ParticleBase* clone();
 };
 
 } // namespace

@@ -25,7 +25,7 @@ template<class T> class Grid;
 //! Baseclass for particle systems. Does not implement any data
 PYTHON class ParticleBase : public PbClass {
 public:
-    enum SystemType { BASE, PARTICLE, VELPART, VORTEX, FILAMENT, FLIP, TRACER };
+    enum SystemType { BASE=0, PARTICLE, VELPART, VORTEX, FILAMENT, FLIP, TRACER };
     enum ParticleType {
         PNONE         = 0,
         PDELETE       = (1<<10), // mark as deleted, will be deleted in next compress() step
@@ -85,7 +85,8 @@ public:
     inline int segSize() const { return mSegments.size(); }    
     inline CON& seg(int i) { return mSegments[i]; }
     inline const CON& seg(int i) const { return mSegments[i]; }
-    
+        
+    virtual ParticleBase* clone();
     
 protected:
     std::vector<CON> mSegments;
@@ -211,6 +212,17 @@ ParticleBase* ParticleSystem<S>::clone() {
     
     nm->mData = mData;
     nm->setName(getName());
+    return nm;
+}
+
+template<class DATA,class CON>
+ParticleBase* ConnectedParticleSystem<DATA,CON>::clone() {
+    ConnectedParticleSystem<DATA,CON>* nm = new ConnectedParticleSystem<DATA,CON>(this->getParent());
+    compress();
+    
+    nm->mData = this->mData;
+    nm->mSegments = mSegments;
+    nm->setName(this->getName());
     return nm;
 }
 

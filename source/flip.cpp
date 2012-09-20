@@ -92,5 +92,15 @@ void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, i
     }
 }
 
+ParticleBase* FlipSystem::clone() {
+    FlipSystem* nm = new FlipSystem(getParent());
+    compress();
+    
+    nm->mData = mData;
+    nm->setName(getName());
+    return nm;
+}
+
+
 
 } // namespace

@@ -37,14 +37,13 @@ public:
         
     PYTHON VortexFilamentSystem(FluidSolver* parent);
   
-    PYTHON void advectSelf(Real scale=1.0, Real regularization=0.1, Real cutoff=1e-6, int integrationMode=RK4);
-    PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, Real regularization=0.1, Real cutoff=1e-6, int integrationMode=RK4);
+    PYTHON void advectSelf(Real scale=1.0, Real regularization=0.1, int integrationMode=RK4);
+    PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, Real regularization=0.1, int integrationMode=RK4);
     
-    PYTHON void addRing(const Vec3& position, Real circulation, Real radius, const Vec3& normal, int number);
+    PYTHON void addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number);
     PYTHON void addLine(const Vec3& p0, const Vec3& p1, Real circulation);
     
-protected:
-    std::vector<VortexFilamentData> mSegments;
+    virtual ParticleBase* clone();
 };
 
 } // namespace

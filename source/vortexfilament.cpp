@@ -21,32 +21,41 @@ namespace Manta {
 // vortex filament effect
 struct FilamentKernel {
     FilamentKernel(const Vec3& g0, const Vec3& g1, Real circ, Real scale, Real cutoff, Real a) : 
-        gamma0(g0), gamma1(g1), gammaMid(0.5*(g0+g1)), strength(scale*circ), cutoff2(cutoff*cutoff), a2(a*a) {}
+        gamma0(g0), gamma1(g1), cutoff2(cutoff*cutoff), a2(a*a) {
+            gammaMid = 0.5*(g0+g1);
+            gammaDir = g1-g0;
+            strength = scale*circ;
+            regFact = a*a*normSquare(gammaDir);
+        }
 
-    Vec3 gamma0, gamma1, gammaMid;
+    Vec3 gamma0, gamma1, gammaMid, gammaDir;
     Real strength;
     Real cutoff2;
-    Real a2;
+    Real a2, regFact;
     
     inline bool isValid(const Vec3& p) const {
         const Real rlen2 = normSquare(p - gammaMid);
-        return rlen2 < cutoff2 && rlen2 > 1e-8;
+        const Real r0_2 = normSquare(p - gamma0);
+        const Real r1_2 = normSquare(p - gamma1);
+        return rlen2 < cutoff2 && r0_2 > 1e-8 && r1_2 > 1e-8;
     }
     
     inline Vec3 evaluate(const Vec3& p) const {
         // vortex line integral
-        const Vec3 r0 = p-gamma0, r1 = p-gamma1;
-        const Vec3 ep = cross(gammaMid, r0);
-        const Vec3 r0n = r0 / (a2 + normSquare(r0));
-        const Vec3 r1n = r1 / (a2 + normSquare(r1));    
-        const Real mag = dot(r1n - r0n, gammaMid) / (a2 + normSquare(ep)) * strength;
-        return mag * ep;
+        const Vec3 r0 = gamma0-p, r1 = gamma1-p;
+        const Real r0n = 1.0f/sqrt(a2+normSquare(r0));
+        const Real r1n = 1.0f/sqrt(a2+normSquare(r1));
+        const Vec3 cp = cross(r0,r1);
+        const Real upper = dot(r1,gammaDir)*r1n - dot(r0,gammaDir)*r0n;
+        const Real lower = regFact + normSquare(cp);
+        return upper/lower*cp;
     }
 };
 
 
-void VortexFilamentSystem::addRing(const Vec3& position, Real circulation, Real radius, const Vec3& normal, int number) {
-	Vec3 worldup (0,1,0);
+void VortexFilamentSystem::addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number) {
+	normalize(normal);
+    Vec3 worldup (0,1,0);
 	if (norm(normal - worldup) < 1e-5) worldup = Vec3(1,0,0);
 	
 	Vec3 u = cross(normal, worldup); normalize(u);
@@ -81,8 +90,9 @@ void advectNodes(vector<Vec3>& nodesNew, const vector<Vec3>& nodesOld, const Fil
         nodesNew[i] += integrateVortexKernel<mode>(p, kernel, dt);    
 }
 
-void VortexFilamentSystem::advectSelf(Real scale, Real regularization, Real cutoff,int integrationMode) {
+void VortexFilamentSystem::advectSelf(Real scale, Real regularization, int integrationMode) {
     const Real dt = getParent()->getDt();
+    const Real cutoff = 1e7;
     
     // backup
     vector<Vec3> nodesOld(size()), nodesNew(size());
@@ -103,8 +113,9 @@ void VortexFilamentSystem::advectSelf(Real scale, Real regularization, Real cuto
         mData[i].pos = nodesNew[i];
 }
 
-void VortexFilamentSystem::applyToMesh(Mesh& mesh, Real scale, Real regularization, Real cutoff, int integrationMode) {
+void VortexFilamentSystem::applyToMesh(Mesh& mesh, Real scale, Real regularization, int integrationMode) {
     const Real dt = getParent()->getDt();
+    const Real cutoff = 1e7;
     
     // copy node array
     const int nodes = mesh.numNodes();
@@ -127,6 +138,16 @@ void VortexFilamentSystem::applyToMesh(Mesh& mesh, Real scale, Real regularizati
         if (!mesh.isNodeFixed(i))
             mesh.nodes(i).pos = nodesNew[i];
     }    
+}
+
+ParticleBase* VortexFilamentSystem::clone() {
+    VortexFilamentSystem* nm = new VortexFilamentSystem(getParent());
+    //compress();
+    
+    nm->mData = mData;
+    nm->mSegments = mSegments;
+    nm->setName(getName());
+    return nm;
 }
 
 
