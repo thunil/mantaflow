@@ -32,7 +32,7 @@ public:
     Quaternion(Real _x, Real _y, Real _z, Real _w) : x(_x), y(_y), z(_z), w(_w) {}
         
     //! construct a quaternion from imag/real parts
-    Quaternion(Vec3 _imag, Real _real) : imag(_imag), real(_real) {}
+    Quaternion(Vec3 i, Real r) : x(i.x), y(i.y), z(i.z), w(r) {}
     
     //! Assign operator
     inline Quaternion& operator= (const Quaternion& q) {
@@ -43,12 +43,6 @@ public:
         return *this;
     }
     
-    //! Assign multiplication operator
-    inline Quaternion& operator*= ( const Quaternion &q ) {
-        *this = (*this) * q;
-        return *this;
-    }
-
     //! Assign multiplication operator
     inline Quaternion& operator*= ( const Real a ) {
         x *= a;
@@ -62,21 +56,17 @@ public:
     inline Quaternion inverse() const {
         return Quaternion(-x,-y,-z,w);
     }
+    
+    //! imaginary part accessor
+    inline Vec3 imag() { return Vec3(x,y,z); }
 
     // imaginary part
-    union {
-        struct {
-            Real x;
-            Real y;
-            Real z;
-        };
-        Vec3 imag;
-    };
+    Real x;
+    Real y;
+    Real z;
+    
     // real part
-    union {
-        Real w;
-        Real real;
-    };
+    Real w;    
 };
 
 

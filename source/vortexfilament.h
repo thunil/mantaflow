@@ -19,19 +19,21 @@
 namespace Manta {
 class Mesh;
     
-struct VortexFilamentData {
-    VortexFilamentData() : idx0(-1),idx1(-1),circulation(0),flag(0) {}
-    VortexFilamentData(int i0, int i1, Real c) : idx0(i0),idx1(i1),circulation(c),flag(0) {}
-    void renumber(int* _renumber) { idx0 = _renumber[idx0]; idx1 = _renumber[idx1]; }
+struct VortexRing {
+    VortexRing() : circulation(0.),flag(0) {}
+    VortexRing(Real c) : circulation(c),flag(0) {}
+    void renumber(int* _renumber);
+    inline int size() const { return indices.size(); }
+    inline int idx0(int i) const { return indices[i]; }
+    inline int idx1(int i) const { return indices[ (i+1) % indices.size() ]; }
     
-    int idx0, idx1;
-    Real circulation;
     int flag;
+    Real circulation;
+    std::vector<int> indices;
 };
 
-
 //! Vortex filaments
-PYTHON class VortexFilamentSystem : public ConnectedParticleSystem<BasicParticleData, VortexFilamentData> {
+PYTHON class VortexFilamentSystem : public ConnectedParticleSystem<BasicParticleData, VortexRing> {
 public:
     virtual SystemType getType() const { return ParticleBase::FILAMENT; };
         
@@ -41,9 +43,15 @@ public:
     PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, Real regularization=0.1, int integrationMode=RK4);
     
     PYTHON void addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number);
-    PYTHON void addLine(const Vec3& p0, const Vec3& p1, Real circulation);
     
     virtual ParticleBase* clone();
+protected:
+    //! perform doubly-discrete smoke ring flow update
+    //! as in [Weissmann,Pinkall 2009]
+    void doublyDiscreteUpdate(Real reg);
+    
+    //! Biot-Savart line integration
+    void integrate(const std::vector<Vec3>& nodesOld, std::vector<Vec3>& nodesNew, Real scale, Real reg, int integrationMode);
 };
 
 } // namespace
