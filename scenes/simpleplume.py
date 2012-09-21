@@ -51,5 +51,4 @@ for t in range(200):
     setWallBcs(flags=flags, vel=vel)
     density.save('den%04d.uni' % t)
     
-    s.printTimings()
     s.step()

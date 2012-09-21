@@ -17,7 +17,7 @@
 
 namespace Manta {
 
-GLWidget::GLWidget(QWidget* p): QGLWidget(QGLFormat(QGL::SampleBuffers), p), mRotX(0), mRotY(0), mGridsize(0)
+GLWidget::GLWidget(QWidget* p): QGLWidget(QGLFormat(QGL::SampleBuffers), p), mRotX(0), mRotY(0), mGridsize(0), mScreenshotNumber(0)
 {
     mPlaneDim = 2; // Y plane
     mPlane = -1;
@@ -206,12 +206,17 @@ bool GLWidget::keyProcess(int key, int modifier, bool down) {
             mPlaneDim = (mPlaneDim+1) % 3;            
             emit painterEvent(Painter::EventSetDim, mPlaneDim);
             emit painterEvent(Painter::EventSetMax, mGridsize[mPlaneDim]);
-        } else if (key == Qt::Key_Plus) { 
+        } else if (key == Qt::Key_Plus || key == Qt::Key_Equal) { 
             mPlane = clamp(mPlane + 1,0,mGridsize[mPlaneDim]-1);
             emit painterEvent(Painter::EventSetPlane, mPlane);
         } else if (key == Qt::Key_Minus) { 
             mPlane = clamp(mPlane - 1,0,mGridsize[mPlaneDim]-1);
             emit painterEvent(Painter::EventSetPlane, mPlane);
+        }
+        else if ( key == Qt::Key_K) {
+            QString filename = QString("scr_%1.png").arg(QString::number(mScreenshotNumber), 3, QChar('0'));
+            screenshot(filename);
+            mScreenshotNumber++;
         }
         
         else return false;

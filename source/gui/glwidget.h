@@ -59,6 +59,8 @@ protected:
     float mRotX, mRotY;
     Vec3i mGridsize;
     int mPlaneDim, mPlane;
+    
+    int mScreenshotNumber;
 };
 
 } // namespace

@@ -19,6 +19,7 @@
 #include "grid.h"
 #include "mesh.h"
 #include "vortexsheet.h"
+#include  <cstring>
 
 using namespace std;
 
@@ -187,8 +188,26 @@ void writeGridRaw(const string& name, Grid<T>* grid) {
     gzclose(gzf);
 }
 
+template<class T>
+void readGridRaw(const string& name, Grid<T>* grid) {
+    cout << "reading grid " << grid->getName() << " from raw file " << name << endl;
+    
+    gzFile gzf = gzopen(name.c_str(), "rb");
+    if (!gzf) errMsg("can't open file");
+    
+    int bytes = sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ();
+    int readBytes = gzread(gzf, &((*grid)[0]), bytes);
+    assertMsg(bytes==readBytes, "can't read raw file, stream length does not match");
+    gzclose(gzf);
+}
+
+
 typedef struct {
-    char id[4];
+    int dimX, dimY, dimZ;
+    int frames, elements, elementType, bytesPerElement, bytesPerFrame;
+} UniLegacyHeader;
+
+typedef struct {
     int dimX, dimY, dimZ;
     int gridType, elementType, bytesPerElement;
 } UniHeader;
@@ -197,12 +216,9 @@ template <class T>
 void writeGridUni(const string& name, Grid<T>* grid) {
     cout << "writing grid " << grid->getName() << " to uni file " << name << endl;
     
+    char ID[5] = "MNT1";
     UniHeader head;
-	head.id[0]='M';
-    head.id[1]='N';
-    head.id[2]='T';
-    head.id[3]='1';
-    head.dimX = grid->getSizeX();
+	head.dimX = grid->getSizeX();
     head.dimY = grid->getSizeY();
     head.dimZ = grid->getSizeZ();
     head.gridType = grid->getType();
@@ -220,17 +236,58 @@ void writeGridUni(const string& name, Grid<T>* grid) {
     gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
     if (!gzf) errMsg("can't open file");
     
+    gzwrite(gzf, ID, 4);
     gzwrite(gzf, &head, sizeof(UniHeader));
     gzwrite(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
     gzclose(gzf);
 };
 
+template <class T>
+void readGridUni(const string& name, Grid<T>* grid) {
+    cout << "reading grid " << grid->getName() << " from uni file " << name << endl;
+    
+    gzFile gzf = gzopen(name.c_str(), "rb");
+    if (!gzf) errMsg("can't open file");
+    
+    char ID[5]={0,0,0,0,0};
+    gzread(gzf, ID, 4);
+    
+    if (!strcmp(ID, "DDF2")) {
+        // legacy file format
+        UniLegacyHeader head;
+        assertMsg (gzread(gzf, &head, sizeof(UniLegacyHeader)) == sizeof(UniLegacyHeader), "can't read file, no header present");
+        assertMsg (head.dimX == grid->getSizeX() && head.dimY == grid->getSizeY() && head.dimZ == grid->getSizeZ(), "grid dim doesn't match");
+        assertMsg (head.bytesPerElement * head.elements == sizeof(T), "grid type doesn't match");
+        // skip flags
+        int numEl = head.dimX*head.dimY*head.dimZ;
+        gzseek(gzf, numEl, SEEK_CUR);
+        // actual grid read
+        gzread(gzf, &((*grid)[0]), sizeof(T)*numEl);
+    } 
+    else if (!strcmp(ID, "MNT1")) {
+        // current file format
+        UniHeader head;
+        assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no header present");
+        assertMsg (head.dimX == grid->getSizeX() && head.dimY == grid->getSizeY() && head.dimZ == grid->getSizeZ(), "grid dim doesn't match");
+        assertMsg (head.gridType == grid->getType() && head.bytesPerElement == sizeof(T), "grid type doesn't match");
+        gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
+    }
+    gzclose(gzf);
+};
+
+// explicit instantiation
 template void writeGridRaw<int>(const string& name, Grid<int>* grid);
 template void writeGridRaw<Real>(const string& name, Grid<Real>* grid);
 template void writeGridRaw<Vec3>(const string& name, Grid<Vec3>* grid);
 template void writeGridUni<int>(const string& name, Grid<int>* grid);
 template void writeGridUni<Real>(const string& name, Grid<Real>* grid);
 template void writeGridUni<Vec3>(const string& name, Grid<Vec3>* grid);
+template void readGridRaw<int>(const string& name, Grid<int>* grid);
+template void readGridRaw<Real>(const string& name, Grid<Real>* grid);
+template void readGridRaw<Vec3>(const string& name, Grid<Vec3>* grid);
+template void readGridUni<int>(const string& name, Grid<int>* grid);
+template void readGridUni<Real>(const string& name, Grid<Real>* grid);
+template void readGridUni<Vec3>(const string& name, Grid<Vec3>* grid);
 
 
 } //namespace

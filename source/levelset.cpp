@@ -23,7 +23,7 @@ namespace Manta {
 //************************************************************************
 // Helper functions and kernels for marching
 
-static const int FlagInited = FastMarch<FmHeapComparatorOut, +1>::FlagInited;
+static const int FlagInited = FastMarch<FmHeapEntryOut, +1>::FlagInited;
 
 // neighbor lookup vectors
 static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), Vec3i(0,1,0), Vec3i(0,0,-1), Vec3i(0,0,1) };
@@ -85,7 +85,7 @@ LevelsetGrid::LevelsetGrid(FluidSolver* parent, bool show)
 extern void updateQtGui(bool full, int frame); // HACK
 
 Real LevelsetGrid::invalidTimeValue() {
-    return FastMarch<FmHeapComparatorOut, 1>::InvalidTime();
+    return FastMarch<FmHeapEntryOut, 1>::InvalidTime();
 }
 
 //! Kernel: perform levelset union
@@ -104,8 +104,8 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
     Grid<int> fmFlags(mParent);
     LevelsetGrid& phi = *this;
     
-    FastMarch<FmHeapComparatorOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport);
-    FastMarch<FmHeapComparatorIn, -1> marchIn(flags, fmFlags, phi, maxTime, NULL);
+    FastMarch<FmHeapEntryOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport);
+    FastMarch<FmHeapEntryIn, -1> marchIn(flags, fmFlags, phi, maxTime, NULL);
     
     // march inside
     InitFmIn (flags, fmFlags, phi, ignoreWalls);
@@ -126,13 +126,13 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
                 
                 // check neighbors of neighbor
                 if (phi(pn) < 0 && !isAtInterface<true>(fmFlags, phi, pn)) {
-                    marchIn.addToList(pn, p);
+                    marchIn.addToList(pn, p); 
                 }
             }            
         }
     }
-    marchIn.performMarching(); 
-        
+    marchIn.performMarching();     
+    
     // set un initialized regions
     SetUninitialized (fmFlags, phi, -maxTime); 
     
@@ -158,7 +158,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
                 
                 // only add nodes near interface, not e.g. outer boundary vs. invalid region                
                 if (nbPhi < 0 && nbPhi >= -2)
-                    marchOut.addToList(p, pn);
+                    marchOut.addToList(p, pn); 
             }
         }         
     } else {
@@ -191,6 +191,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
     
     // set un initialized regions
     SetUninitialized (fmFlags, phi, +maxTime);    
+    
 }
 
 // helper function

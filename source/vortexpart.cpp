@@ -80,33 +80,41 @@ void advectVortices(vector<VortexParticleData>& nodesNew, const vector<VortexKer
         nodesNew[i].pos += integrateVortexKernel<mode>(p, kernel, dt);    
 }
 
+void VortexParticleSystem::advectSelf(Real scale, int integrationMode) {
+    const Real dt = getParent()->getDt();
+    
+    // copy kernel array
+    vector<VortexKernel> kernels(size());
+    for (size_t i=0; i<mData.size(); i++)
+        kernels[i] = VortexKernel(mData[i], scale);
+    
+    // loop over the vortices
+    for (size_t i=0; i<mData.size(); i++) {
+        if (!isActive(i)) continue;
+        if (integrationMode==EULER) advectVortices<EULER>(mData, kernels, kernels[i], dt);
+        else if (integrationMode==RK2) advectVortices<RK2>(mData, kernels, kernels[i], dt);
+        else if (integrationMode==RK4) advectVortices<RK4>(mData, kernels, kernels[i], dt);
+        else errMsg("unknown integration type");
+    }
+}
+
 void VortexParticleSystem::applyToMesh(Mesh& mesh, Real scale, int integrationMode) {
     const Real dt = getParent()->getDt();
     
     // copy node array
     const int nodes = mesh.numNodes();
     vector<Vec3> nodesOld(nodes), nodesNew(nodes);
-    vector<VortexKernel> kernels(nodes);
-    for (int i=0; i<nodes; i++) {
+    for (int i=0; i<nodes; i++)
         nodesOld[i] = nodesNew[i] = mesh.nodes(i).pos;
-    }
-    for (size_t i=0; i<mData.size(); i++) {
-        kernels[i] = VortexKernel(mData[i], scale);
-    }
     
     // loop over the vortices
     for (size_t i=0; i<mData.size(); i++) {
         if (!isActive(i)) continue;
-        if (integrationMode==EULER) {
-            advectNodes<EULER>(nodesNew, nodesOld, kernels[i], dt);
-            advectVortices<EULER>(mData, kernels, kernels[i], dt);
-        } else if (integrationMode==RK2) {
-            advectNodes<RK2>(nodesNew, nodesOld, kernels[i], dt);
-            advectVortices<RK2>(mData, kernels, kernels[i], dt);
-        } else if (integrationMode==RK4) {
-            advectNodes<RK4>(nodesNew, nodesOld, kernels[i], dt);
-            advectVortices<RK4>(mData, kernels, kernels[i], dt);
-        } else throw Error("unknown integration type");
+        VortexKernel kernel(mData[i], scale);
+        if (integrationMode==EULER) advectNodes<EULER>(nodesNew, nodesOld, kernel, dt);
+        else if (integrationMode==RK2) advectNodes<RK2>(nodesNew, nodesOld, kernel, dt);
+        else if (integrationMode==RK4) advectNodes<RK4>(nodesNew, nodesOld, kernel, dt);
+        else errMsg("unknown integration type");
     }
     
     // copy back
@@ -114,6 +122,15 @@ void VortexParticleSystem::applyToMesh(Mesh& mesh, Real scale, int integrationMo
         if (!mesh.isNodeFixed(i))
             mesh.nodes(i).pos = nodesNew[i];
     }    
+}
+
+ParticleBase* VortexParticleSystem::clone() {
+    VortexParticleSystem* nm = new VortexParticleSystem(getParent());
+    compress();
+    
+    nm->mData = mData;
+    nm->setName(getName());
+    return nm;
 }
 
     

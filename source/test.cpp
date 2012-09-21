@@ -51,6 +51,12 @@ double detest(const Grid<Real>& v)
         sum = v[idx];
 }
 
-
+PYTHON void checkGrids(Grid<int>& flags1, Grid<int>& flags2, Grid<Real>& phi1, Grid<Real>& phi2, Grid<Vec3>& vel1, Grid<Vec3>& vel2) {
+    FOR_IJK(flags1) {
+        assertMsg(flags1(i,j,k) == flags2(i,j,k), "flags mismatch");
+        assertMsg(norm(vel1(i,j,k)-vel2(i,j,k)) < 1e-1, "vel mismatch");
+        assertMsg( fabs(phi1(i,j,k)-phi2(i,j,k)) < 1e-4, "phi mismatch");
+    }
+}
 
 } //namespace

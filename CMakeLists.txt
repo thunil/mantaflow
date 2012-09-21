@@ -17,7 +17,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/source/cmake/")
 SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 SET(VERBOSE 1) 
 
-SET(MANTAVERSION "0.3")
+SET(MANTAVERSION "0.4")
 
 #******************************************************************************
 # setup default params
@@ -121,6 +121,7 @@ SET(PP_SOURCES
     source/noisefield.cpp
     source/kernel.cpp
     source/vortexsheet.cpp
+    source/vortexfilament.cpp
     source/vortexpart.cpp
     source/edgecollapse.cpp
     source/plugin/pressure.cpp
@@ -146,6 +147,7 @@ SET(PP_HEADERS
     source/shapes.h
     source/noisefield.h
     source/vortexsheet.h
+    source/vortexfilament.h
     source/general.h
     source/kernel.h
     source/flip.h
@@ -304,14 +306,24 @@ if(CUDA)
     add_definitions( -DCUDA=1 )
     find_package(CUDA QUIET REQUIRED)
     set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
-    set(CUDA_64_BIT_DEVICE_CODE ON)
-    
-    if(DEBUG)
-        set(CUDA_NVCC_FLAGS -g;-ccbin;gcc-4.5;-DDEBUG;-keep;-arch=sm_20;--maxrregcount=31;--compiler-options;-Wall)
+    if (USE64)
+        set(CUDA_64_BIT_DEVICE_CODE ON)
+    endif()
+    if(WIN32)
+        if(DEBUG)
+            set(CUDA_NVCC_FLAGS -DDEBUG;--compiler-options;-Wall)
+        else()
+            set(CUDA_NVCC_FLAGS --use_fast_math;-DNDEBUG;--compiler-options;-Wall;-O2)
+        endif()
     else()
-        #set(CUDA_NVCC_FLAGS -ccbin;gcc-4.5;--use_fast_math;-arch=sm_20;-DNDEBUG;--compiler-options;-Wall;-O3)       
-        set(CUDA_NVCC_FLAGS -ccbin;gcc-4.5;--use_fast_math;-DNDEBUG;--compiler-options;-Wall;-O3)       
-    endif()    
+        # CUDA does not support gcc > 4.5 yet
+        if(DEBUG)
+            set(CUDA_NVCC_FLAGS -g;-ccbin;gcc-4.5;-DDEBUG;-keep;--maxrregcount=31;--compiler-options;-Wall)
+        else()
+             #set(CUDA_NVCC_FLAGS -ccbin;gcc-4.5;--use_fast_math;-arch=sm_20;-DNDEBUG;--compiler-options;-Wall;-O3)       
+             set(CUDA_NVCC_FLAGS -ccbin;gcc-4.5;--use_fast_math;-DNDEBUG;--compiler-options;-Wall;-O3)       
+        endif()    
+    endif()  
 endif()
 
 #******************************************************************************

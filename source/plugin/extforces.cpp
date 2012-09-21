@@ -70,6 +70,21 @@ PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3
     KnAddBuoyancy(flags,density, vel, f);
 }
 
+//! DDF style no-slip (what does it actually do?)
+KERNEL(bnd=1) void KnSetNoSlipBcs(FlagGrid& flags, MACGrid& vel) {
+    if (flags.isObstacle(i,j,k) && !flags.isInflow(i,j,k))  { 
+        vel(i,j,k) = 0; 
+        return;        
+    }
+    if (flags.isEmpty(i,j,k)) 
+        return;
+    if (flags.isFluid(i,j,k)) {
+        if (flags.isObstacle(i-1,j,k) && !flags.isInflow(i,j,k)) vel(i,j,k).x = 0;
+        if (flags.isObstacle(i,j-1,k) && !flags.isInflow(i,j,k)) vel(i,j,k).y = 0;
+        if (flags.is3D() && flags.isObstacle(i,j,k-1) && !flags.isInflow(i,j,k)) vel(i,j,k).z = 0;
+    }
+}
+        
 // Nils: unless I'm misunderstanding something
 // noslip in DDF is actually no-stick, DDF freeselip does something weird ?!
 
@@ -99,7 +114,8 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 
 //! set no-stick boundary condition on walls
 PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel) {
-    KnSetWallBcs(flags, vel);
+    //KnSetWallBcs(flags, vel);
+    KnSetNoSlipBcs(flags, vel);
 } 
 
 //! set boundary conditions at empty cells

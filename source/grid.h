@@ -90,6 +90,7 @@ public:
     typedef T BASETYPE;
     
     PYTHON void save(std::string name);
+    PYTHON void load(std::string name);
     
     //! set all cells to zero
     void clear();
@@ -200,6 +201,10 @@ public:
     inline bool isFluid(int i, int j, int k) { return get(i,j,k) & TypeFluid; }
     inline bool isFluid(const Vec3i& pos) { return get(pos) & TypeFluid; }
     inline bool isFluid(const Vec3& pos) { return getAt(pos) & TypeFluid; }
+    inline bool isInflow(int idx) { return get(idx) & TypeInflow; }
+    inline bool isInflow(int i, int j, int k) { return get(i,j,k) & TypeInflow; }
+    inline bool isInflow(const Vec3i& pos) { return get(pos) & TypeInflow; }
+    inline bool isInflow(const Vec3& pos) { return getAt(pos) & TypeInflow; }
     inline bool isEmpty(int idx) { return get(idx) & TypeEmpty; }
     inline bool isEmpty(int i, int j, int k) { return get(i,j,k) & TypeEmpty; }
     inline bool isEmpty(const Vec3i& pos) { return get(pos) & TypeEmpty; }
