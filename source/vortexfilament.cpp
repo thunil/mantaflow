@@ -174,7 +174,7 @@ bool powerMethod(const vector<Vec3>& gamma, Real l, Real r, Vec3& lT) {
     const int maxIter = 100;
     const Real epsilon = 1e-4;
     
-    lT = Vec3(0,l,0);
+    lT = Vec3(0,0,l);
     for (int i=0; i<maxIter; i++) {
         Vec3 lastLT (lT);
         lT = monodromy(gamma, lT, r);
@@ -251,7 +251,7 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
         // copy back
         for (int i=0; i<N; i++) {
             mData[r.indices[i]].pos = gamma[i];
-        }        
+        }
     }
 }
 
@@ -268,7 +268,7 @@ void VortexFilamentSystem::addRing(const Vec3& position, Real circulation, Real 
     
     for (int i=0; i<number; i++) {
         Real phi = (Real)i/(Real)number * M_PI * 2.0;
-        Vec3 p = position + radius * (u*cos(phi) + v*sin(phi));
+        Vec3 p = position + radius * (u*cos(phi) + v*sin(phi))*Vec3(1,1,0.5);
         
         int num = add(BasicParticleData(p));
         ring.indices.push_back(num);

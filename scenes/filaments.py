@@ -21,8 +21,8 @@ filaments = s.create(VortexFilamentSystem)
 flags.initDomain(boundaryWidth=1)
 flags.fillGrid()
 
-filaments.addRing(position=gs*vec3(0.5,0.1,0.5), circulation=100, radius=0.2*res, normal=(0,1,0), number=10)
-#filaments.addRing(position=gs*vec3(0.5,0.14,0.5), circulation=4, radius=0.2*res, normal=(0,1,0), number=1)
+filaments.addRing(position=gs*vec3(0.5,0.1,0.5), circulation=10, radius=0.2*res, normal=(0,1,0), number=50)
+filaments.addRing(position=gs*vec3(0.5,0.14,0.5), circulation=10, radius=0.2*res, normal=(0,1,0), number=50)
 
 if (GUI):
     gui = Gui()
