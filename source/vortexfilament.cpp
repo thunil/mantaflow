@@ -268,7 +268,7 @@ void VortexFilamentSystem::addRing(const Vec3& position, Real circulation, Real 
     
     for (int i=0; i<number; i++) {
         Real phi = (Real)i/(Real)number * M_PI * 2.0;
-        Vec3 p = position + radius * (u*cos(phi) + v*sin(phi))*Vec3(1,1,0.5);
+        Vec3 p = position + radius * (u*cos(phi) + v*sin(phi));
         
         int num = add(BasicParticleData(p));
         ring.indices.push_back(num);
