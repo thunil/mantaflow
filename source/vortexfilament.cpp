@@ -26,19 +26,18 @@ void VortexRing::renumber(int *_renumber) {
     
 // vortex filament effect
 struct FilamentKernel {
-    FilamentKernel() : gamma0(0.), gamma1(0.), gammaMid(0.), gammaDir(0.), strength(0.), cutoff2(0.), a2(0.), regFact(0.) {}
+    FilamentKernel() : gamma0(0.), gamma1(0.), gammaMid(0.), gammaDir(0.), strength(0.), cutoff2(0.), a2(0.) {}
     FilamentKernel(const Vec3& g0, const Vec3& g1, Real circ, Real scale, Real cutoff, Real a) : 
         gamma0(g0), gamma1(g1), cutoff2(cutoff*cutoff), a2(a*a) {
             gammaMid = 0.5*(g0+g1);
-            gammaDir = g1-g0;
-            strength = -0.25/M_PI*scale*circ;
-            regFact = a*a*normSquare(gammaDir);
+            gammaDir = getNormalized(g1-g0);
+            strength = 0.25/M_PI*scale*circ;
         }
 
     Vec3 gamma0, gamma1, gammaMid, gammaDir;
     Real strength;
     Real cutoff2;
-    Real a2, regFact;
+    Real a2;
     
     inline bool isValid(const Vec3& p) const {
         const Real rlen2 = normSquare(p - gammaMid);
@@ -52,10 +51,10 @@ struct FilamentKernel {
         const Vec3 r0 = gamma0-p, r1 = gamma1-p;
         const Real r0n = 1.0f/sqrt(a2+normSquare(r0));
         const Real r1n = 1.0f/sqrt(a2+normSquare(r1));
-        const Vec3 cp = cross(r0,r1);
+        const Vec3 cp = cross(r0,gammaDir);
         const Real upper = dot(r1,gammaDir)*r1n - dot(r0,gammaDir)*r0n;
-        const Real lower = regFact + normSquare(cp);
-        return upper/lower*cp;
+        const Real lower = a2 + normSquare(cp);
+        return (strength*upper/lower)*cp;
     }
 };
 
@@ -86,10 +85,7 @@ void VortexFilamentSystem::integrate(const vector<Vec3>& nodesOld, vector<Vec3>&
     }    
 }
 
-void VortexFilamentSystem::advectSelf(Real scale, Real regularization, int integrationMode) {
-    // perform doublt-discrete smoke flow update
-    //doublyDiscreteUpdate(regularization);
-    
+void VortexFilamentSystem::advectSelf(Real scale, Real regularization, int integrationMode) {    
     // backup
     vector<Vec3> nodesOld(size()), nodesNew(size());
     for (int i=0; i<size(); i++)
@@ -124,7 +120,7 @@ VortexFilamentSystem::VortexFilamentSystem(FluidSolver* parent) :
 
 ParticleBase* VortexFilamentSystem::clone() {
     VortexFilamentSystem* nm = new VortexFilamentSystem(getParent());
-    //compress();
+    compress();
     
     nm->mData = mData;
     nm->mSegments = mSegments;
@@ -139,20 +135,21 @@ ParticleBase* VortexFilamentSystem::clone() {
 
 Real evaluateRefU(int N, Real L, Real circ, Real reg) {
     // construct regular n-polygon
-    const Real l = L/N;
-    const Real r = 0.5*l/sin(M_PI/N);
+    const Real l = L/(Real)N;
+    const Real r = 0.5*l/sin(M_PI/(Real)N);
     
     vector<Vec3> pos(N);
-    for(int i=0; i<N; i++) 
-        pos[i] = Vec3( r*cos(M_2_PI*i/N), r*sin(M_2_PI*i/N), 0);
+    for(int i=0; i<N; i++) {
+        pos[i] = Vec3( r*cos(2.0*M_PI*(Real)i/N), r*sin(2.0*M_PI*(Real)i/N), 0);
+    }
     
     // evaluate impact on pos[0]
-    Vector3D<double> sum;
-    for(int i=1; i<N; i++) {
-        FilamentKernel kernel (pos[i], pos[(i+1)%N], circ, 1.0, 1e10, reg);
-        sum += toVec3d(kernel.evaluate(pos[0]));
+    Vec3 sum(0.);
+    for(int i=1; i<N-1; i++) {
+        FilamentKernel kernel (pos[i], pos[i+1], circ, 1.0, 1e10, reg);
+        sum += kernel.evaluate(pos[0]);
     }
-    return (Real) (norm(sum)/N);
+    return norm(sum);
 }
 
 Vec3 darbouxStep(const Vec3& Si, const Vec3& lTi, Real r) {
@@ -162,9 +159,10 @@ Vec3 darbouxStep(const Vec3& Si, const Vec3& lTi, Real r) {
     return lTnext.imag();
 }
 
-Vec3 monodromy(const vector<Vec3>& gamma, const Vec3& lTl, Real r) {
+Vec3 monodromy(const vector<Vec3>& gamma, const Vec3& lT_1, Real r) {
     const int N = gamma.size();
-    Vec3 lT (lTl);
+    Vec3 lT (lT_1);
+    
     for (int i=0; i<N; i++) {
         Vec3 Si = gamma[(i+1)%N]-gamma[i];
         lT = darbouxStep(Si, lT, r);
@@ -174,12 +172,13 @@ Vec3 monodromy(const vector<Vec3>& gamma, const Vec3& lTl, Real r) {
 
 bool powerMethod(const vector<Vec3>& gamma, Real l, Real r, Vec3& lT) {
     const int maxIter = 100;
-    const Real epsilon = 1e-3;
+    const Real epsilon = 1e-4;
     
-    lT = Vec3(0,0,l);
+    lT = Vec3(0,l,0);
     for (int i=0; i<maxIter; i++) {
         Vec3 lastLT (lT);
         lT = monodromy(gamma, lT, r);
+        //if ((i%1) == 0) cout << "iteration " << i << " residual: " << norm(lT-lastLT) << endl;
         if (norm(lT-lastLT) < epsilon) 
             return true;
     }   
@@ -207,8 +206,8 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
     for (int rc=0; rc<segSize(); rc++) {
         if (!isSegActive(rc)) continue;
         
-        const VortexRing& r = mSegments[rc];
-        const int N = r.size();
+         VortexRing& r = mSegments[rc];
+         int N = r.size();
         
         // compute arc length
         Real L=0;
@@ -219,12 +218,22 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
         vector<Vec3> gamma(N);
         for (int i=0; i<N; i++) gamma[i] = mData[r.indices[i]].pos;
         
+        //N=1000; L=2.0*M_PI; reg=0.1; r.circulation=1;
+        
         // compute reference parameters 
-        const Real U = 0.5*r.circulation/L * (log(4.0*L/M_PI/reg) - 1.0);
+        const Real U = 0.5*r.circulation/L * (log(4.0*L/(M_PI*reg)) - 1.0);
         const Real Ur = evaluateRefU(N, L, r.circulation, reg);
         const Real d = 0.5*dt*(U-Ur);
         const Real l = sqrt( square(L/N) + square(d) );
         const Real ra = d*tan(M_PI * (0.5 - 1.0/N)); // d*cot(pi/n)
+        
+        /*cout << "L   : " << L << endl;
+        cout << "N   : " << N << endl;
+        cout << "U   : " << U << endl;
+        cout << "Ur  : " << Ur << endl;
+        cout << "d   : " << d << endl;
+        cout << "l   : " << l << endl;
+        cout << "ra  : " << ra << endl;*/
         
         // fwd darboux transform
         vector<Vec3> eta(N);
@@ -240,8 +249,9 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
         }
         
         // copy back
-        for (int i=0; i<N; i++)
+        for (int i=0; i<N; i++) {
             mData[r.indices[i]].pos = gamma[i];
+        }        
     }
 }
 

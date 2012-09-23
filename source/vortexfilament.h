@@ -41,14 +41,14 @@ public:
   
     PYTHON void advectSelf(Real scale=1.0, Real regularization=0.1, int integrationMode=RK4);
     PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, Real regularization=0.1, int integrationMode=RK4);
-    
-    PYTHON void addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number);
-    
-    virtual ParticleBase* clone();
-protected:
     //! perform doubly-discrete smoke ring flow update
     //! as in [Weissmann,Pinkall 2009]
-    void doublyDiscreteUpdate(Real reg);
+    PYTHON void doublyDiscreteUpdate(Real regularization=0.1);
+    
+    PYTHON void addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number);
+        
+    virtual ParticleBase* clone();
+protected:
     
     //! Biot-Savart line integration
     void integrate(const std::vector<Vec3>& nodesOld, std::vector<Vec3>& nodesNew, Real scale, Real reg, int integrationMode);

@@ -54,7 +54,8 @@ public:
     
     //! return inverse quaternion
     inline Quaternion inverse() const {
-        return Quaternion(-x,-y,-z,w);
+        Real mag = 1.0/(x*x+y*y+z*z+w*w);
+        return Quaternion(-x*mag,-y*mag,-z*mag,w*mag);
     }
     
     //! imaginary part accessor
