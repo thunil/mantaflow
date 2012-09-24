@@ -244,6 +244,49 @@ template<> void GridPainter<Vec3>::updateText() {
     mInfo->setText(s.str().c_str());
 }
 
+// compute line intersection with the display plane
+Vec3i getQuad(const Vec3& l0, const Vec3& l1, int dim, int plane, Real dx) {
+    Vec3 n(0.); n[dim] = 1;
+    Vec3 p0 = n*(plane+0.5);
+    Vec3 e = (l1-l0)/dx;
+    Vec3 e0 = l0/dx;
+    Real dotP = dot(p0-e0,n);
+    Real dotE = dot(e,n);
+    if (dotE == 0) 
+        return Vec3i(-1,-1,-1);
+    Vec3 s = e0 + (dotP/dotE)*e;
+    return toVec3i(s);
+}
+
+template<> string GridPainter<int>::clickLine(const Vec3& p0, const Vec3& p1) { 
+    if (!mObject) return "";
+    Vec3i s = getQuad(p0,p1,mDim,mPlane,mLocalGrid->getDx());
+    if (!mLocalGrid->isInBounds(s)) return "";
+    stringstream m;
+    m << "Grid [ " << s.x << ", " << s.y << ", " << s.z << " ]" << endl << mLocalGrid->getName() << ": " << mLocalGrid->get(s) << endl;
+    return m.str();
+}
+
+template<> string GridPainter<Real>::clickLine(const Vec3& p0, const Vec3& p1) { 
+    if (!mObject) return "";
+    Vec3i s = getQuad(p0,p1,mDim,mPlane,mLocalGrid->getDx());
+    if (!mLocalGrid->isInBounds(s)) return "";
+    stringstream m;
+    m << mLocalGrid->getName() << ": " << setprecision(2) << mLocalGrid->get(s) << endl;
+    return m.str();
+}
+
+template<> string GridPainter<Vec3>::clickLine(const Vec3& p0, const Vec3& p1) {
+    if (!mObject) return "";
+    Vec3i s = getQuad(p0,p1,mDim,mPlane,mLocalGrid->getDx());
+    if (!mLocalGrid->isInBounds(s)) return "";
+    stringstream m;
+    m << mLocalGrid->getName() << ": [ " << setprecision(2) << mLocalGrid->get(s).x << ", " <<
+                                         mLocalGrid->get(s).y << ", " << mLocalGrid->get(s).z << " ]" << endl;
+    return m.str();
+}
+
+
 //******************************************************************************
 // Actual painting functions
 
@@ -291,7 +334,7 @@ template<> void GridPainter<int>::paint() {
     
     bool rbox = true;
     bool lines = mLocalGrid->getSize().max() <= 40; 
-    if (lines) {
+    if (lines||1) {
         //glDepthFunc(GL_LESS);
         glBegin(GL_LINES);
         FOR_P_SLICE(mLocalGrid, mDim, mPlane) {

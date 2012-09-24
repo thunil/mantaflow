@@ -82,8 +82,6 @@ LevelsetGrid::LevelsetGrid(FluidSolver* parent, bool show)
     mType = (GridType)(TypeLevelset | TypeReal);    
 }    
 
-extern void updateQtGui(bool full, int frame); // HACK
-
 Real LevelsetGrid::invalidTimeValue() {
     return FastMarch<FmHeapEntryOut, 1>::InvalidTime();
 }

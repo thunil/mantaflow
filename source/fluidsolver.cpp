@@ -21,9 +21,9 @@ namespace Manta {
 
 #ifdef GUI
     // defined in qtmain.cpp
-    extern void updateQtGui(bool full, int frame);
+    extern void updateQtGui(bool full, int frame, const std::string& curPlugin);
 #else
-    inline void updateQtGui(bool full, int frame) {}
+    inline void updateQtGui(bool full, int frame, const std::string& curPlugin) {}
 #endif
 
 //******************************************************************************
@@ -113,7 +113,7 @@ PbClass* FluidSolver::create(PbType t, const string& name) {
 void FluidSolver::step() {
     mTimeTotal += mDt;
     mFrame++;
-    updateQtGui(true, mFrame);
+    updateQtGui(true, mFrame, "FluidSolver::step");
     
     // update timings
     for(size_t i=0;i<mTimings.size(); i++) {

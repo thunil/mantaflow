@@ -174,7 +174,8 @@ string processPythonFunction(int lb, const string& name, const string& type, con
     string header, footer, callList;
     FunctionType funcType = isConstructor ? FtConstructor : FtMember;
     if (isPlugin) funcType = FtPlugin;
-    createPythonWrapper(args, isConstructor ? (clname+clname) : fname, gParent+"::"+name, funcType, header, footer, callList, !isPlugin);    
+    const string displayName = gParent.empty() ? name : (gParent+"::"+name);
+    createPythonWrapper(args, isConstructor ? (clname+clname) : fname, displayName, funcType, header, footer, callList, !isPlugin);    
 
     string caller = (isPlugin ? "" : tb ) + header + nl;
     if (isPlugin) {

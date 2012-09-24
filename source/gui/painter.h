@@ -38,6 +38,7 @@ public:
     Painter(QWidget* par = 0) : QObject(par) {}
     virtual ~Painter() {}
     
+    virtual std::string clickLine(const Vec3& p0, const Vec3& p1) { return ""; }
     virtual void attachWidget(QLayout* layout) {}
 signals:
     void setViewport(const Vec3i& gridsize);
@@ -80,6 +81,8 @@ public:
     int getPlane() { return mPlane; }
     int getDim() { return mDim; }
     int getMax() { return mMax; }
+    virtual std::string clickLine(const Vec3& p0, const Vec3& p1);
+
 protected:
     std::string getID();
     Real getScale();
