@@ -131,6 +131,17 @@ void ParticlePainter::paint() {
             }
         }   
         glEnd();
+        /*glPointSize(1.0);
+        glBegin(GL_POINTS);
+            
+        for(int i=0; i<fp->size(); i++) {
+            if (fp->isActive(i)) {
+                Vec3 pos = (*fp)[i].pos;
+                if (pos[dim] >= plane && pos[dim] <= plane + 1.0f)
+                    glVertex(pos, dx);
+            }
+        }   
+        glEnd();*/
         glPointSize(1.0);
     } else if (mLocal->getType() == ParticleBase::FILAMENT) {
         VortexFilamentSystem* fp = (VortexFilamentSystem*) mLocal;
@@ -139,9 +150,12 @@ void ParticlePainter::paint() {
         glBegin(GL_LINES);
             
         for(int i=0; i<fp->segSize(); i++) {
-            if (fp->isSegActive(i)) {
-                glVertex( (*fp)[fp->seg(i).idx0].pos, dx);
-                glVertex( (*fp)[fp->seg(i).idx1].pos, dx);
+            if (!fp->isSegActive(i)) continue;
+            const VortexRing& r = fp->seg(i);
+            
+            for(int j=0; j<r.size(); j++) {
+                glVertex( (*fp)[r.idx0(j)].pos, dx);
+                glVertex( (*fp)[r.idx1(j)].pos, dx);
             }
         }   
         glEnd();

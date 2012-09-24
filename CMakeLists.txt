@@ -171,6 +171,7 @@ SET(NOPP_HEADERS
     source/pwrapper/pclass.h
     source/pwrapper/pconvert.h
     source/util/vectorbase.h
+    source/util/quaternion.h
 )
 
 if (GUI)

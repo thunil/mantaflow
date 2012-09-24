@@ -36,6 +36,7 @@ MainWnd::MainWnd() : mPaused(false), mRequestPause(false), mRequestClose(false),
     // register GL widget
     mGlWidget = new GLWidget();
     setCentralWidget(mGlWidget);  
+    connect(mGlWidget, SIGNAL(clickLine(QPoint,float,float,float,float,float,float)), SLOT(clickLine(QPoint,float,float,float,float,float,float)));
         
     // register grid painters
     mPainterLayout = new QVBoxLayout;    
@@ -86,6 +87,15 @@ MainWnd::MainWnd() : mPaused(false), mRequestPause(false), mRequestClose(false),
     mGlWidget->setFocus();
     this->raise();
     this->activateWindow();
+}
+
+void MainWnd::clickLine(QPoint pos, float p0, float p1,float p2, float q0, float q1, float q2) {
+    string msg;
+    for (int i=mPainter.size()-1; i>=0; i--) {
+        msg += mPainter[i]->clickLine(Vec3(p0,p1,p2),Vec3(q0,q1,q2));
+    }
+    if (!msg.empty())
+        QToolTip::showText(pos, QString(msg.c_str()));
 }
 
 void MainWnd::addControl(void* ctrl) {
