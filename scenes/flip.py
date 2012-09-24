@@ -29,6 +29,7 @@ flip.adjustNumber(vel=vel, flags=flags, minParticles=8, maxParticles=30)
 if (GUI):
     gui = Gui()
     gui.show()
+    gui.pause()
     
 #main loop
 for t in range(200):

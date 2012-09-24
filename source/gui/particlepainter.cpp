@@ -132,6 +132,17 @@ void ParticlePainter::paint() {
         }   
         glEnd();
         glPointSize(1.0);
+        glBegin(GL_POINTS);
+            
+        for(int i=0; i<fp->size(); i++) {
+            if (fp->isActive(i)) {
+                Vec3 pos = (*fp)[i].pos;
+                if (pos[dim] >= plane && pos[dim] <= plane + 1.0f)
+                    glVertex(pos, dx);
+            }
+        }   
+        glEnd();
+        glPointSize(1.0);
     } else if (mLocal->getType() == ParticleBase::FILAMENT) {
         VortexFilamentSystem* fp = (VortexFilamentSystem*) mLocal;
         glColor3f(1,1,0);
