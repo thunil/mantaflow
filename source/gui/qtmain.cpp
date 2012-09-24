@@ -126,7 +126,7 @@ void guiWaitFinish() {
 
 
 // external callback functions 
-void updateQtGui(bool full, int frame) {    
+void updateQtGui(bool full, int frame, const string& curPlugin) {    
     if (!gGuiThread->getWindow()->isVisible()) return;
     if (gGuiThread->getWindow()->closeRequest()) throw Error("User interrupt");    
     
@@ -134,6 +134,9 @@ void updateQtGui(bool full, int frame) {
     gMainThread->sendAndWait(full ? (int)MainWnd::EventFullUpdate : (int)MainWnd::EventStepUpdate);
     
     if (gGuiThread->getWindow()->pauseRequest()) {
+        if (!curPlugin.empty()) {
+            cout << "Step: " << curPlugin <<  endl;
+        }
         gGuiThread->getWindow()->setPauseStatus(true);
         while (gGuiThread->getWindow()->pauseRequest()) {            
             gMainThread->threadSleep(10);

@@ -21,24 +21,22 @@ filaments = s.create(VortexFilamentSystem)
 flags.initDomain(boundaryWidth=1)
 flags.fillGrid()
 
-filaments.addRing(position=gs*vec3(0.5,0.1,0.5), circulation=1, radius=0.2*res, normal=(0,1,0), number=100)
-filaments.addRing(position=gs*vec3(0.5,0.14,0.5), circulation=1, radius=0.2*res, normal=(0,1,0), number=100)
+for i in range(20):
+    filaments.addRing(position=gs*vec3(0.5,0.1+i*0.03,0.5), circulation=4, radius=0.2*res, normal=(0,1,0), number=30)
 
 if (GUI):
     gui = Gui()
     gui.show()
     
 #main loop
-for t in range(2000):
-    filaments.advectSelf(scale=1e-3, regularization=1, integrationMode=IntRK4)
+for t in range(200):
+    filaments.advectSelf(scale=1, regularization=1, integrationMode=IntRK4)
     
-    # velocity self-advection
-    #advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+    s.step()
     
-    # pressure solve
-    #setWallBcs(flags=flags, vel=vel)    
-    #solvePressure(flags=flags, vel=vel, pressure=pressure)
-    #setWallBcs(flags=flags, vel=vel)
+#main loop
+for t in range(200):
+    filaments.advectSelf(scale=-1, regularization=1, integrationMode=IntRK4)
     
     s.step()
     
