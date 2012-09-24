@@ -216,7 +216,8 @@ template<class T> void Grid<T>::add(const Grid<T>& a, const Grid<T>& b) {
 // Specialization classes
 
 void FlagGrid::initDomain(int boundaryWidth) {
-    memset(mData, TypeEmpty, sizeof(int) * mSize.x * mSize.y * mSize.z);    
+    FOR_IDX(*this)
+        mData[idx] = TypeEmpty;
     initBoundaries(boundaryWidth);
 }
 

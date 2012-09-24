@@ -173,8 +173,8 @@ void ConnectedParticleSystem<DATA,CON>::compress() {
     const int sz = ParticleSystem<DATA>::size();
     int *renumber_back = new int[sz];
     int *renumber = new int[sz];
-    memset(renumber, -1, sz*sizeof(int));
-    memset(renumber_back, -1, sz*sizeof(int));
+    for (int i=0; i<sz; i++)
+        renumber[i] = renumber_back[i] = -1;
         
     // reorder elements
     std::vector<DATA>& data = ParticleSystem<DATA>::mData;
