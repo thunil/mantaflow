@@ -5,7 +5,7 @@
 from manta import *
 
 # solver params
-meshing = False
+meshing = True
 res = 64
 gs = vec3(res,res,res)
 s = Solver(name='main', gridSize = gs)
@@ -20,8 +20,8 @@ flip = s.create(FlipSystem)
 mesh = s.create(Mesh)
 
 # scene setup
-flags.initDomain()
-fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.8,1))
+flags.initDomain(boundaryWidth=1)
+fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1))
 phi = fluidbox.computeLevelset()
 flags.updateFromLevelset(phi)
 flip.adjustNumber(vel=vel, flags=flags, minParticles=8, maxParticles=30)
@@ -29,7 +29,6 @@ flip.adjustNumber(vel=vel, flags=flags, minParticles=8, maxParticles=30)
 if (GUI):
     gui = Gui()
     gui.show()
-    gui.pause()
     
 #main loop
 for t in range(200):
@@ -53,7 +52,7 @@ for t in range(200):
     flip.velocitiesFromGrid(vel=vel, flags=flags, flipRatio=0.96)
         
     # update and advect levelset
-    phi.reinitMarching(flags=flags, ignoreWalls=False)
+    phi.reinitMarching(flags=flags, ignoreWalls=True, velTransport=vel)
     advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
     flags.updateFromLevelset(phi)
     

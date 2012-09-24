@@ -334,7 +334,7 @@ template<> void GridPainter<int>::paint() {
     
     bool rbox = true;
     bool lines = mLocalGrid->getSize().max() <= 40; 
-    if (lines||1) {
+    if (lines) {
         //glDepthFunc(GL_LESS);
         glBegin(GL_LINES);
         FOR_P_SLICE(mLocalGrid, mDim, mPlane) {

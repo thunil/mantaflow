@@ -131,7 +131,7 @@ void ParticlePainter::paint() {
             }
         }   
         glEnd();
-        glPointSize(1.0);
+        /*glPointSize(1.0);
         glBegin(GL_POINTS);
             
         for(int i=0; i<fp->size(); i++) {
@@ -141,7 +141,7 @@ void ParticlePainter::paint() {
                     glVertex(pos, dx);
             }
         }   
-        glEnd();
+        glEnd();*/
         glPointSize(1.0);
     } else if (mLocal->getType() == ParticleBase::FILAMENT) {
         VortexFilamentSystem* fp = (VortexFilamentSystem*) mLocal;
