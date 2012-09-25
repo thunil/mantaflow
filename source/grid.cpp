@@ -216,7 +216,7 @@ template<class T> void Grid<T>::add(const Grid<T>& a, const Grid<T>& b) {
 // Specialization classes
 
 void FlagGrid::initDomain(int boundaryWidth) {
-    FOR_IDX(*this) 
+    FOR_IDX(*this)
         mData[idx] = TypeEmpty;
     initBoundaries(boundaryWidth);
 }
@@ -242,10 +242,10 @@ void FlagGrid::updateFromLevelset(LevelsetGrid& levelset) {
     }
 }   
 
-void FlagGrid::fillGrid() {
+void FlagGrid::fillGrid(int type) {
     FOR_IDX(*this) {
         if ((mData[idx] & TypeObstacle)==0)
-            mData[idx] = (mData[idx] & ~TypeEmpty) | TypeFluid;
+            mData[idx] = (mData[idx] & ~(TypeEmpty | TypeFluid)) | type;
     }
 }
 

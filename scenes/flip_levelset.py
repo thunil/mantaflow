@@ -1,6 +1,6 @@
 #
 # Simple example for free-surface simulation
-# with FLIP advection
+# with FLIP advection and mesh generation from levelset
 
 from manta import *
 
