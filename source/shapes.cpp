@@ -39,14 +39,18 @@ bool Shape::isInside(const Vec3& pos) const {
 
 //! Kernel: Apply a shape to a grid, setting value inside
 KERNEL template<class T> 
-void ApplyShapeToGrid (Grid<T>* grid, Shape* shape, T value) {
+void ApplyShapeToGrid (Grid<T>* grid, Shape* shape, T value, FlagGrid* respectFlags) {
+    if (respectFlags && respectFlags->isObstacle(i,j,k))
+        return;
     if (shape->isInsideGrid(i,j,k))
         (*grid)(i,j,k) = value;
 }
 
 //! Kernel: Apply a shape to a grid, setting value inside (scaling by SDF value)
 KERNEL template<class T> 
-void ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi, Real sigma, Real shift, T value) {
+void ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi, Real sigma, Real shift, T value, FlagGrid* respectFlags) {
+    if (respectFlags && respectFlags->isObstacle(i,j,k))
+        return;
     const Real p = phi(i,j,k) - shift;
     if (p < -sigma)
         (*grid)(i,j,k) = value;
@@ -55,36 +59,38 @@ void ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi, Real sigma, Real sh
 }
 
 //! Kernel: Apply a shape to a MAC grid, setting value inside
-KERNEL void ApplyShapeToMACGrid (MACGrid* grid, Shape* shape, Vec3 value) 
+KERNEL void ApplyShapeToMACGrid (MACGrid* grid, Shape* shape, Vec3 value, FlagGrid* respectFlags) 
 {
+    if (respectFlags && respectFlags->isObstacle(i,j,k))
+        return;    
     if (shape->isInside(Vec3(i,j+0.5,k+0.5))) (*grid)(i,j,k).x = value.x;
     if (shape->isInside(Vec3(i+0.5,j,k+0.5))) (*grid)(i,j,k).y = value.y;
     if (shape->isInside(Vec3(i+0.5,j+0.5,k))) (*grid)(i,j,k).z = value.z;
 }
 
-void Shape::applyToGrid(GridBase* grid) {
+void Shape::applyToGrid(GridBase* grid, FlagGrid* respectFlags) {
     if (grid->getType() & GridBase::TypeInt)
-        ApplyShapeToGrid<int> ((Grid<int>*)grid, this, _args.get<int>("value"));
+        ApplyShapeToGrid<int> ((Grid<int>*)grid, this, _args.get<int>("value"), respectFlags);
     else if (grid->getType() & GridBase::TypeReal)
-        ApplyShapeToGrid<Real> ((Grid<Real>*)grid, this, _args.get<Real>("value"));
+        ApplyShapeToGrid<Real> ((Grid<Real>*)grid, this, _args.get<Real>("value"), respectFlags);
     else if (grid->getType() & GridBase::TypeMAC)
-        ApplyShapeToMACGrid ((MACGrid*)grid, this, _args.get<Vec3>("value"));
+        ApplyShapeToMACGrid ((MACGrid*)grid, this, _args.get<Vec3>("value"), respectFlags);
     else if (grid->getType() & GridBase::TypeVec3)
-        ApplyShapeToGrid<Vec3> ((Grid<Vec3>*)grid, this, _args.get<Vec3>("value"));
+        ApplyShapeToGrid<Vec3> ((Grid<Vec3>*)grid, this, _args.get<Vec3>("value"), respectFlags);
     else
         errMsg("Shape::applyToGrid(): unknown grid type");
 }
 
-void Shape::applyToGridSmooth(GridBase* grid, Real sigma, Real shift) {
+void Shape::applyToGridSmooth(GridBase* grid, Real sigma, Real shift, FlagGrid* respectFlags) {
     Grid<Real> phi(grid->getParent());
     generateLevelset(phi);
 
     if (grid->getType() & GridBase::TypeInt)
-        ApplyShapeToGridSmooth<int> ((Grid<int>*)grid, phi, sigma, shift, _args.get<int>("value"));
+        ApplyShapeToGridSmooth<int> ((Grid<int>*)grid, phi, sigma, shift, _args.get<int>("value"), respectFlags);
     else if (grid->getType() & GridBase::TypeReal)
-        ApplyShapeToGridSmooth<Real> ((Grid<Real>*)grid, phi, sigma, shift, _args.get<Real>("value"));
+        ApplyShapeToGridSmooth<Real> ((Grid<Real>*)grid, phi, sigma, shift, _args.get<Real>("value"), respectFlags);
     else if (grid->getType() & GridBase::TypeVec3)
-        ApplyShapeToGridSmooth<Vec3> ((Grid<Vec3>*)grid, phi, sigma, shift, _args.get<Vec3>("value"));
+        ApplyShapeToGridSmooth<Vec3> ((Grid<Vec3>*)grid, phi, sigma, shift, _args.get<Vec3>("value"), respectFlags);
     else
         errMsg("Shape::applyToGridSmooth(): unknown grid type");
 }

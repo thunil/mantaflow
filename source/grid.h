@@ -218,7 +218,7 @@ public:
     PYTHON void initDomain(int boundaryWidth=1);
     PYTHON void initBoundaries(int boundaryWidth=1);
     PYTHON void updateFromLevelset(LevelsetGrid& levelset);    
-    PYTHON void fillGrid();
+    PYTHON void fillGrid(int type=TypeFluid);
 };
 
 
