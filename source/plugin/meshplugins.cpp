@@ -35,7 +35,7 @@ namespace Manta {
 /*! see Desbrun 99 "Implicit fairing of of irregular meshes using diffusion and curvature flow"*/
 PYTHON void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLength=1e-5) {
     const Real dt = parent->getDt();
-    const Real str = min(dt * strength, 1.0f);
+    const Real str = min(dt * strength, (Real)1);
     
     // calculate original mesh volume
     Vec3 origCM;
@@ -56,7 +56,7 @@ PYTHON void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLength=
             if (visited[node]) continue;
             
             const Vec3 pos = mesh.nodes(node).pos;
-            Vec3 dx(0.0f);
+            Vec3 dx(_0);
             Real totalLen = 0;
                 
             // rotate around vertex
@@ -66,10 +66,10 @@ PYTHON void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLength=
                 Real len = norm(edge);
 
                 if (len > minLength) {
-                    dx += edge * (1.0f/len);
+                    dx += edge * (_1/len);
                     totalLen += len;
                 } else {
-                    totalLen = 0.0f;
+                    totalLen = _0;
                     break;
                 }                
             }

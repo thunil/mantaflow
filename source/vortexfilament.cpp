@@ -13,6 +13,7 @@
 
 #include "vortexfilament.h"
 #include "integrator.h"
+#include "interpol.h"
 #include "mesh.h"
 #include "quaternion.h"
 
@@ -24,51 +25,52 @@ void VortexRing::renumber(int *_renumber) {
         indices[i] = _renumber[indices[i]];
 }
     
-// vortex filament effect
-struct FilamentKernel {
-    FilamentKernel() : gamma0(0.), gamma1(0.), gammaMid(0.), gammaDir(0.), strength(0.), cutoff2(0.), a2(0.) {}
-    FilamentKernel(const Vec3& g0, const Vec3& g1, Real circ, Real scale, Real cutoff, Real a) : 
-        gamma0(g0), gamma1(g1), cutoff2(cutoff*cutoff), a2(a*a) {
-            gammaMid = 0.5*(g0+g1);
-            gammaDir = getNormalized(g1-g0);
-            strength = 0.25/M_PI*scale*circ;
-        }
-
-    Vec3 gamma0, gamma1, gammaMid, gammaDir;
-    Real strength;
-    Real cutoff2;
-    Real a2;
-    
-    inline bool isValid(const Vec3& p) const {
-        const Real rlen2 = normSquare(p - gammaMid);
-        const Real r0_2 = normSquare(p - gamma0);
-        const Real r1_2 = normSquare(p - gamma1);
-        return rlen2 < cutoff2 && r0_2 > 1e-8 && r1_2 > 1e-8;
-    }
-    
-    inline Vec3 evaluate(const Vec3& p) const {
-        // vortex line integral
-        const Vec3 r0 = gamma0-p, r1 = gamma1-p;
-        const Real r0n = 1.0f/sqrt(a2+normSquare(r0));
-        const Real r1n = 1.0f/sqrt(a2+normSquare(r1));
-        const Vec3 cp = cross(r0,gammaDir);
-        const Real upper = dot(r1,gammaDir)*r1n - dot(r0,gammaDir)*r0n;
-        const Real lower = a2 + normSquare(cp);
-        return (strength*upper/lower)*cp;
-    }
-};
-
-DefineIntegrator(integrateVortexKernel, FilamentKernel, evaluate);
-
-KERNEL(particle) template<IntegrationMode mode> 
-void advectNodes(vector<Vec3>& nodesNew, const vector<Vec3>& nodesOld, const FilamentKernel& kernel, Real dt) {
-    const Vec3 p = nodesOld[i];
-    if (kernel.isValid(p))
-        nodesNew[i] += integrateVortexKernel<mode>(p, kernel, dt);    
+KERNEL (particle) filamentKernel(const vector<Vec3>& x, vector<Vec3>& u, const FilamentIntegrator& fi) {
+    u[i] = fi.kernel(x,x[i]);
 }
 
+struct FilamentIntegrator {
+    FilamentIntegrator(Real dt, Real regularization, Real cutoff, Real scale, const vector<VortexRing>& rings) :
+        mDt(dt), mCutoff2(square(cutoff)), mA2(square(regularization), mRings(rings) {
+            mStrength = 0.25 / M_PI * scale * dt;
+        }
+    
+    void eval(const vector<Vec3>& x, vector<Vec3>& u) const {
+        filamentKernel(x, u, *this);
+    }
+    
+    Vec3 kernel(const vector<Vec3>& x, const Vec3& xi) const {
+        Vec3 u(_0);
+        for (size_t i=0; i<mRings.size(); i++) {
+            const VortexRing& r = mRings[i];
+            if (r.flag & ParticleBase::PDELETE) continue;
+            
+            const int N = r.size();
+            const Real str = mStrength * r.circulation;
+            for (size_t j=0; j<N; j++) {
+                const Vec3 r0 = x[r.idx0(j)] - xi;
+                const Vec3 r1 = x[r.idx1(j)] - xi;
+                const Real r0_2 = normSquare(r0), r1_2 = normSquare(r1);
+                if (r0_2 > mCutoff2 || r1_2 > mCutoff2 || r0_2 < 1e-6 || r1_2 < 1e-6)
+                    continue;
+                
+                const Vec3 e = getNormalized(r1-r0);
+                const Real r0n = 1.0f/sqrt(a2+r0_2);
+                const Real r1n = 1.0f/sqrt(a2+r1_2);
+                const Vec3 cp = cross(r0,e);
+                const Real A = str * (dot(r1,e)*r1n - dot(r0,e)*r0n) / (a2 + normSquare(cp));
+                u += A * cp;
+            }
+        }
+        return u;
+    }
+    
+    Real mDt, mCutoff2, mA2, mStrength;
+    const vector<VortexRing>& mRings;
+};
+
 void VortexFilamentSystem::integrate(const vector<Vec3>& nodesOld, vector<Vec3>& nodesNew, Real scale, Real reg, int integrationMode) {
-    const Real dt = getParent()->getDt();
+/*    const Real dt = getParent()->getDt();
     const Real cutoff = 1e7;
     
     // loop over the vortices
@@ -76,13 +78,29 @@ void VortexFilamentSystem::integrate(const vector<Vec3>& nodesOld, vector<Vec3>&
         if (!isSegActive(i)) continue;
         const VortexRing& r = mSegments[i];
         for (int j=0; j<r.size(); j++) {
-            FilamentKernel kernel = FilamentKernel(mData[r.idx0(j)].pos, mData[r.idx1(j)].pos, mSegments[i].circulation, scale, cutoff, reg);
+            /*FilamentKernel kernel = FilamentKernel(mData[r.idx0(j)].pos, mData[r.idx1(j)].pos, mSegments[i].circulation, scale, cutoff, reg);
             if (integrationMode==EULER) advectNodes<EULER>(nodesNew, nodesOld, kernel, dt);
             else if (integrationMode==RK2) advectNodes<RK2>(nodesNew, nodesOld, kernel, dt);
             else if (integrationMode==RK4) advectNodes<RK4>(nodesNew, nodesOld, kernel, dt);
             else errMsg("unknown integration type");
-        }
-    }    
+            Vec3 pos = nodesOld[r.idx0(j)];
+            
+            Vec3 v1 = dt*ev(pos,r,reg,nodesOld);
+            Vec3 pos2 = pos + 0.5*v1;
+            
+            Vec3 v2 = dt*ev(pos2,r,reg,nodesOld);
+            Vec3 pos3 = pos + 0.5*v2;
+            
+            Vec3 v3 = dt*ev(pos3,r,reg,nodesOld);
+            Vec3 pos4 = pos + v3*dt;
+            
+            Vec3 v4 = dt*ev(pos4,r,reg,nodesOld);
+            Vec3 u = (v1 + (v2+v3)*2.0 + v4) * (dt/6.0);
+            //u = (v1 + (v2+v3)*2.0 + v4) * (dt/6.0);
+            
+            nodesNew[r.idx0(j)] = pos+u;
+        }        
+    }*/
 }
 
 void VortexFilamentSystem::advectSelf(Real scale, Real regularization, int integrationMode) {    
@@ -111,6 +129,47 @@ void VortexFilamentSystem::applyToMesh(Mesh& mesh, Real scale, Real regularizati
         if (!mesh.isNodeFixed(i))
             mesh.nodes(i).pos = nodesNew[i];
     }    
+}
+
+void VortexFilamentSystem::remesh(Real maxLen) {
+    const Real maxLen2 = maxLen*maxLen;
+    
+    for (int i=0; i < segSize(); i++) {
+        for(;;) {
+            map<int,int> insert;        
+            VortexRing& r = mSegments[i];
+            const int oldLen = r.size();
+            int offset = 1;
+            for (int j=0; j<oldLen; j++) {
+                const Vec3 p0 = mData[r.idx0(j)].pos;
+                const Vec3 p1 = mData[r.idx1(j)].pos;
+                const Real l2 = normSquare(p1-p0);
+                
+                if (l2 > maxLen2) {
+                    // insert midpoint
+                    const Vec3 p_1 = mData[r.idx(j-1)].pos;
+                    const Vec3 p2 = mData[r.idx(j+2)].pos;
+                    const Vec3 mp = hermiteSpline(p0,p1,crTangent(p_1,p0,p1),crTangent(p0,p1,p2), 0.5);
+                    insert.insert(pair<int,int>(j+offset, add(mp)));
+                    offset++;
+                }
+            }
+            if (insert.empty()) 
+                break;
+            
+            // renumber indices
+            const int newLen = oldLen + insert.size();
+            int num=oldLen-1;
+            r.indices.resize(newLen);
+            for (int j=newLen-1; j>=0; j--) {
+                map<int,int>::const_iterator f = insert.find(j);
+                if (f==insert.end())
+                    r.indices[j] = r.indices[num--];
+                else
+                    r.indices[j] = f->second;
+            }
+        }
+    }
 }
 
 VortexFilamentSystem::VortexFilamentSystem(FluidSolver* parent) :
@@ -227,14 +286,6 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
         const Real l = sqrt( square(L/N) + square(d) );
         const Real ra = d*tan(M_PI * (0.5 - 1.0/N)); // d*cot(pi/n)
         
-        /*cout << "L   : " << L << endl;
-        cout << "N   : " << N << endl;
-        cout << "U   : " << U << endl;
-        cout << "Ur  : " << Ur << endl;
-        cout << "d   : " << d << endl;
-        cout << "l   : " << l << endl;
-        cout << "ra  : " << ra << endl;*/
-        
         // fwd darboux transform
         vector<Vec3> eta(N);
         if (!darboux(gamma, eta, l, ra)) {
@@ -254,7 +305,6 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
         }
     }
 }
-
 
 void VortexFilamentSystem::addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number) {
     normalize(normal);

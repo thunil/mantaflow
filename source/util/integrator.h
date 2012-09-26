@@ -16,29 +16,50 @@
 
 namespace Manta {
 
-enum IntegrationMode { EULER=0, RK2 , RK4, _MAXMODES };
+enum IntegrationMode { IntEuler=0, IntRK2, IntRK4 };
 
-#define DefineIntegrator(Name, VelocityClass, Func) \
-    template<IntegrationMode mode> inline Vec3 Name(const Vec3& pos, const VelocityClass& obj, Real dt); \
-    template<> inline Vec3 Name<EULER>(const Vec3& pos, const VelocityClass& obj, Real dt) { \
-        return dt * obj.Func(pos); \
-    } \
-    template<> inline Vec3 Name<RK2>(const Vec3& pos, const VelocityClass& obj, Real dt) { \
-        Vec3 v1 = obj.Func(pos); \
-        Vec3 pos2 = pos + v1*dt; \
-        Vec3 v2 = obj.Func(pos2); \
-        return (v1+v2) * 0.5 * dt; \
-    } \
-    template<> inline Vec3 Name<RK4>(const Vec3& pos, const VelocityClass& obj, Real dt) { \
-        Vec3 v1 = obj.Func(pos); \
-        Vec3 pos2 = pos + v1*(0.5*dt); \
-        Vec3 v2 = obj.Func(pos2); \
-        Vec3 pos3 = pos + v2*(0.5*dt); \
-        Vec3 v3 = obj.Func(pos3); \
-        Vec3 pos4 = pos + v3*dt; \
-        Vec3 v4 = obj.Func(pos4); \
-        return (v1 + (v2+v3)*2.0 + v4) * (dt/6.0); \
-    }
+template<class EVAL>
+void IntegratePointSet(vector<Vec3>& pos, EVAL& evalulator, IntegrationMode mode) {
+    const int N = pos.size();
+    
+    if (mode == IntEuler) 
+    {
+        vector<Vec3> k(N);
+        
+        evalulator.eval(pos, k);
+        for(int i=0; i<N; i++) pos[i] += k[i];
+        
+    } 
+    else if (mode == IntRK2) 
+    {
+        vector<Vec3> k(N),x(N);
+        
+        evalulator.eval(pos, k);
+        for(int i=0; i<N; i++) x[i] = pos[i] + 0.5*k[i];
+        
+        evalulator.eval(x, k);
+        for(int i=0; i<N; i++) pos[i] += k[i];
+    } 
+    else if (mode == IntRK4) 
+    {
+        vector<Vec3> k1(N),k2(N),k3(N),k4(N),x(N);
+        
+        evalulator.eval(pos, k1);
+        for(int i=0; i<N; i++) x[i] = pos[i] + 0.5*k1[i];
+        
+        evalulator.eval(x, k2);
+        for(int i=0; i<N; i++) x[i] = pos[i] + 0.5*k2[i];
+        
+        evalulator.eval(x, k3);
+        for(int i=0; i<N; i++) x[i] = pos[i] + k3[i];
+        
+        evalulator.eval(x, k4);
+        for(int i=0; i<N; i++) pos[i] += (_1/6) * (k1[i] + 2*(k2[i] + k3[i]) + k4[i]);
+    } 
+    else 
+        errMsg("unknown integration type");
+}
+
 
 } // namespace
 

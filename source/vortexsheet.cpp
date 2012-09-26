@@ -48,10 +48,10 @@ void VortexSheetMesh::calcVorticity() {
         Real area = getFaceArea(tri);
         
         if (area < 1e-10) {
-            v.smokeAmount = 0.0f;
-            v.vorticity = 0.0;
+            v.smokeAmount = 0;
+            v.vorticity = 0;
         } else {
-            v.smokeAmount = 0.0f;            
+            v.smokeAmount = 0;            
             v.vorticity = (v.circulation[0]*e0 + v.circulation[1]*e1 + v.circulation[2]*e2) / area;
         }
     }
@@ -64,7 +64,7 @@ void VortexSheetMesh::calcCirculation() {
         Real area = getFaceArea(tri);
         
         if (area < 1e-10 || normSquare(v.vorticity) < 1e-10) {
-            v.circulation = 0.0;
+            v.circulation = 0;
             continue;
         }
         
