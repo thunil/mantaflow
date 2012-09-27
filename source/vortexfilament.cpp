@@ -25,21 +25,18 @@ void VortexRing::renumber(int *_renumber) {
         indices[i] = _renumber[indices[i]];
 }
     
-KERNEL (particle) filamentKernel(const vector<Vec3>& x, vector<Vec3>& u, const FilamentIntegrator& fi) {
-    u[i] = fi.kernel(x,x[i]);
-}
-
-struct FilamentIntegrator {
+class FilamentIntegrator : public PointSetIntegrator<vector<Vec3> > {
+public:
     FilamentIntegrator(Real dt, Real regularization, Real cutoff, Real scale, const vector<VortexRing>& rings) :
         mDt(dt), mCutoff2(square(cutoff)), mA2(square(regularization), mRings(rings) {
             mStrength = 0.25 / M_PI * scale * dt;
         }
     
-    void eval(const vector<Vec3>& x, vector<Vec3>& u) const {
-        filamentKernel(x, u, *this);
+    void eval(const vector<Vec3>& x, const vector<Vec3>& y0, vector<Vec3>& u) const {
+        filamentKernel(x, y0, u, *this);
     }
     
-    Vec3 kernel(const vector<Vec3>& x, const Vec3& xi) const {
+    Vec3 kernel(const vector<Vec3>& y, const Vec3& xi) const {
         Vec3 u(_0);
         for (size_t i=0; i<mRings.size(); i++) {
             const VortexRing& r = mRings[i];
@@ -48,8 +45,8 @@ struct FilamentIntegrator {
             const int N = r.size();
             const Real str = mStrength * r.circulation;
             for (size_t j=0; j<N; j++) {
-                const Vec3 r0 = x[r.idx0(j)] - xi;
-                const Vec3 r1 = x[r.idx1(j)] - xi;
+                const Vec3 r0 = y[r.idx0(j)] - xi;
+                const Vec3 r1 = y[r.idx1(j)] - xi;
                 const Real r0_2 = normSquare(r0), r1_2 = normSquare(r1);
                 if (r0_2 > mCutoff2 || r1_2 > mCutoff2 || r0_2 < 1e-6 || r1_2 < 1e-6)
                     continue;
@@ -69,65 +66,39 @@ struct FilamentIntegrator {
     const vector<VortexRing>& mRings;
 };
 
-void VortexFilamentSystem::integrate(const vector<Vec3>& nodesOld, vector<Vec3>& nodesNew, Real scale, Real reg, int integrationMode) {
-/*    const Real dt = getParent()->getDt();
-    const Real cutoff = 1e7;
-    
-    // loop over the vortices
-    for (size_t i=0; i<mSegments.size(); i++) {
-        if (!isSegActive(i)) continue;
-        const VortexRing& r = mSegments[i];
-        for (int j=0; j<r.size(); j++) {
-            /*FilamentKernel kernel = FilamentKernel(mData[r.idx0(j)].pos, mData[r.idx1(j)].pos, mSegments[i].circulation, scale, cutoff, reg);
-            if (integrationMode==EULER) advectNodes<EULER>(nodesNew, nodesOld, kernel, dt);
-            else if (integrationMode==RK2) advectNodes<RK2>(nodesNew, nodesOld, kernel, dt);
-            else if (integrationMode==RK4) advectNodes<RK4>(nodesNew, nodesOld, kernel, dt);
-            else errMsg("unknown integration type");
-            Vec3 pos = nodesOld[r.idx0(j)];
-            
-            Vec3 v1 = dt*ev(pos,r,reg,nodesOld);
-            Vec3 pos2 = pos + 0.5*v1;
-            
-            Vec3 v2 = dt*ev(pos2,r,reg,nodesOld);
-            Vec3 pos3 = pos + 0.5*v2;
-            
-            Vec3 v3 = dt*ev(pos3,r,reg,nodesOld);
-            Vec3 pos4 = pos + v3*dt;
-            
-            Vec3 v4 = dt*ev(pos4,r,reg,nodesOld);
-            Vec3 u = (v1 + (v2+v3)*2.0 + v4) * (dt/6.0);
-            //u = (v1 + (v2+v3)*2.0 + v4) * (dt/6.0);
-            
-            nodesNew[r.idx0(j)] = pos+u;
-        }        
-    }*/
+KERNEL (particle)
+void filamentKernel(const vector<Vec3>& x, const vector<Vec3>& y0, vector<Vec3>& u, const FilamentIntegrator& fi) {
+    u[i] = fi.kernel(y0,x[i]);
 }
 
-void VortexFilamentSystem::advectSelf(Real scale, Real regularization, int integrationMode) {    
+void VortexFilamentSystem::advectSelf(Real scale, Real regularization, int integrationMode) {
+    const Real cutoff = 1e7;
     // backup
-    vector<Vec3> nodesOld(size()), nodesNew(size());
-    for (int i=0; i<size(); i++)
-        nodesOld[i] = nodesNew[i] = mData[i].pos;
+    vector<Vec3> pos(size());
+    for (i=0; i<pos.size(); i++)
+        pos[i] = mData[i].pos;
     
-    integrate(nodesOld, nodesNew, scale, regularization, integrationMode);
+    FilamentIntegrator fi(getParent90->getDt(), regularization, cutoff, scale, mSegments);
+    fi.integrate(pos, pos, integrationMode);
     
     for (int i=0; i<size(); i++)
-        mData[i].pos = nodesNew[i];
+        mData[i].pos = pos[i];
 }
 
 void VortexFilamentSystem::applyToMesh(Mesh& mesh, Real scale, Real regularization, int integrationMode) {
     // copy node array
     const int nodes = mesh.numNodes();
-    vector<Vec3> nodesOld(nodes), nodesNew(nodes);
+    vector<Vec3> nodes(nodes);
     for (int i=0; i<nodes; i++)
-        nodesOld[i] = nodesNew[i] = mesh.nodes(i).pos;
+        nodes[i] = mesh.nodes(i).pos;
     
-    integrate(nodesOld, nodesNew, scale, regularization, integrationMode);
+    FilamentIntegrator fi(getParent90->getDt(), regularization, cutoff, scale, mSegments);
+    fi.integrate(pos, pos, integrationMode);
     
     // copy back
     for (int i=0; i<nodes; i++) {
         if (!mesh.isNodeFixed(i))
-            mesh.nodes(i).pos = nodesNew[i];
+            mesh.nodes(i).pos = nodes[i];
     }    
 }
 

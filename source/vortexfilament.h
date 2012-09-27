@@ -41,9 +41,9 @@ public:
     PYTHON VortexFilamentSystem(FluidSolver* parent);
   
     //! self-advect the filament system
-    PYTHON void advectSelf(Real scale=1.0, Real regularization=0.1, int integrationMode=RK4);
+    PYTHON void advectSelf(Real scale=1.0, Real regularization=0.1, int integrationMode=IntRK4);
     //! advect triangle mesh using filaments
-    PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, Real regularization=0.1, int integrationMode=RK4);
+    PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, Real regularization=0.1, int integrationMode=IntRK4);
     //! perform doubly-discrete smoke ring flow update
     //! as in [Weissmann,Pinkall 2009]
     PYTHON void doublyDiscreteUpdate(Real regularization=0.1);
