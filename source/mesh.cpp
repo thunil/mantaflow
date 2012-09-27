@@ -186,52 +186,32 @@ void Mesh::rebuildChannels() {
         mNodeChannels[i]->resize(mNodes.size());   
 }
 
-DefineIntegrator(integratePosition, MACGrid, getInterpolated);
-
-KERNEL(pts) template<IntegrationMode mode>
-void KnAdvectMeshInGrid(vector<Node>& p, MACGrid& vel, FlagGrid& flaggrid, Real dt) {
-    if (p[i].flags & Mesh::NfFixed) return;
+struct AdvectMeshInGridKernel {
+    AdvectMeshInGridKernel (FlagGrid& f) : flaggrid(f) {}
+    FlagGrid& flaggrid;
     
-    // from integrator.h
-    p[i].pos += integratePosition<mode>(p[i].pos, vel, dt);
-    
-    // TODO: else if(flaggrid.isObstacle(pos)) reproject
-    if (!flaggrid.isInBounds(p[i].pos,1)) 
-        p[i].pos = clamp(p[i].pos, Vec3(1,1,1), toVec3(flaggrid.getSize()-1));    
-}
-
-DefineIntegrator(integrateCenteredVel, Grid<Vec3>, getInterpolated);
-
-KERNEL(pts) template<IntegrationMode mode>
-void KnAdvectMeshInCenterGrid(vector<Node>& p, Grid<Vec3>& vel, FlagGrid& flaggrid, Real dt) {
-    if (p[i].flags & Mesh::NfFixed) return;
-    
-    // from integrator.h
-    p[i].pos += integrateCenteredVel<mode>(p[i].pos, vel, dt);
-    
-    // TODO: else if(flaggrid.isObstacle(pos)) reproject
-    if (!flaggrid.isInBounds(p[i].pos,1)) 
-        p[i].pos = clamp(p[i].pos, Vec3(1,1,1), toVec3(flaggrid.getSize()-1));    
-}
+    // MAC
+    inline Vec3 eval(const Vec3& p, Node& orig, MACGrid& vel) const {
+        if (orig.flags & Mesh::NfFixed) return Vec3::Zero;
+        if (!flaggrid.isInBounds(p,1)) return Vec3::Zero;
+        return vel.getInterpolated(p);
+    }
+    // Center vel
+    inline Vec3 eval(const Vec3& p, Node& orig, Grid<Vec3>& vel) const {
+        if (orig.flags & Mesh::NfFixed) return Vec3::Zero;
+        if (!flaggrid.isInBounds(p,1)) return Vec3::Zero;
+        return vel.getInterpolated(p);
+    }
+};
 
 // advection plugin
 void Mesh::advectInGrid(FlagGrid& flaggrid, Grid<Vec3>& vel, int integrationMode) {
-    const Real dt = mParent->getDt();
-    if (vel.getType() & GridBase::TypeMAC) {        
-        switch((IntegrationMode)integrationMode) {
-            case EULER: KnAdvectMeshInGrid<EULER>(mNodes, *((MACGrid*) &vel), flaggrid, dt); break;
-            case RK2: KnAdvectMeshInGrid<RK2>(mNodes, *((MACGrid*) &vel), flaggrid, dt); break;
-            case RK4: KnAdvectMeshInGrid<RK4>(mNodes, *((MACGrid*) &vel), flaggrid, dt); break;
-            default: errMsg("invalid integration mode");
-        }
-    } else {
-        switch((IntegrationMode)integrationMode) {
-            case EULER: KnAdvectMeshInCenterGrid<EULER>(mNodes, vel, flaggrid, dt); break;
-            case RK2: KnAdvectMeshInCenterGrid<RK2>(mNodes, vel, flaggrid, dt); break;
-            case RK4: KnAdvectMeshInCenterGrid<RK4>(mNodes, vel, flaggrid, dt); break;
-            default: errMsg("invalid integration mode");
-        }
-    }    
+    AdvectMeshInGridKernel kernel(flaggrid);
+    
+    if (vel.getType() & GridBase::TypeMAC)
+        integratePointSet(mNodes, *((MACGrid*) &vel), kernel, integrationMode);
+    else
+        integratePointSet(mNodes, vel, kernel, integrationMode);
 }
 
 void Mesh::scale(Vec3 s) {

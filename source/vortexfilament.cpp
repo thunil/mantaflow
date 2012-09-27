@@ -25,18 +25,15 @@ void VortexRing::renumber(int *_renumber) {
         indices[i] = _renumber[indices[i]];
 }
     
-class FilamentIntegrator : public PointSetIntegrator<vector<Vec3> > {
-public:
-    FilamentIntegrator(Real dt, Real regularization, Real cutoff, Real scale, const vector<VortexRing>& rings) :
+struct FilamentKernel {
+    FilamentKernel(Real dt, Real regularization, Real cutoff, Real scale, const vector<VortexRing>& rings) :
         mDt(dt), mCutoff2(square(cutoff)), mA2(square(regularization), mRings(rings) {
             mStrength = 0.25 / M_PI * scale * dt;
         }
     
-    void eval(const vector<Vec3>& x, const vector<Vec3>& y0, vector<Vec3>& u) const {
-        filamentKernel(x, y0, u, *this);
-    }
-    
-    Vec3 kernel(const vector<Vec3>& y, const Vec3& xi) const {
+    inline Vec3 eval(const Vec3& xi, const BasicParticleData& orig, const vector<Vec3>& y) const {
+        if (orig.flag & ParticleBase::PDELETE) return Vec3::Zero;
+
         Vec3 u(_0);
         for (size_t i=0; i<mRings.size(); i++) {
             const VortexRing& r = mRings[i];
@@ -66,27 +63,15 @@ public:
     const vector<VortexRing>& mRings;
 };
 
-KERNEL (particle)
-void filamentKernel(const vector<Vec3>& x, const vector<Vec3>& y0, vector<Vec3>& u, const FilamentIntegrator& fi) {
-    u[i] = fi.kernel(y0,x[i]);
-}
-
 void VortexFilamentSystem::advectSelf(Real scale, Real regularization, int integrationMode) {
     const Real cutoff = 1e7;
-    // backup
-    vector<Vec3> pos(size());
-    for (i=0; i<pos.size(); i++)
-        pos[i] = mData[i].pos;
     
-    FilamentIntegrator fi(getParent90->getDt(), regularization, cutoff, scale, mSegments);
-    fi.integrate(pos, pos, integrationMode);
-    
-    for (int i=0; i<size(); i++)
-        mData[i].pos = pos[i];
+    FilamentKernel fk(getParent()->getDt(), regularization, cutoff, scale, mSegments);
+    integratePointSet(mData, mData, fk, integrationMode);
 }
 
 void VortexFilamentSystem::applyToMesh(Mesh& mesh, Real scale, Real regularization, int integrationMode) {
-    // copy node array
+/*    // copy node array
     const int nodes = mesh.numNodes();
     vector<Vec3> nodes(nodes);
     for (int i=0; i<nodes; i++)
@@ -99,7 +84,7 @@ void VortexFilamentSystem::applyToMesh(Mesh& mesh, Real scale, Real regularizati
     for (int i=0; i<nodes; i++) {
         if (!mesh.isNodeFixed(i))
             mesh.nodes(i).pos = nodes[i];
-    }    
+    }    */
 }
 
 void VortexFilamentSystem::remesh(Real maxLen) {
@@ -168,18 +153,20 @@ Real evaluateRefU(int N, Real L, Real circ, Real reg) {
     const Real l = L/(Real)N;
     const Real r = 0.5*l/sin(M_PI/(Real)N);
     
+    // build vortex ring
+    VortexRing ring (circ);
     vector<Vec3> pos(N);
     for(int i=0; i<N; i++) {
         pos[i] = Vec3( r*cos(2.0*M_PI*(Real)i/N), r*sin(2.0*M_PI*(Real)i/N), 0);
     }
     
+    // Build kernel
+    vector<VortexRing> rings;
+    rings.push_back(ring);
+    FilamentKernel fk(1.0, reg, 1e10, 1.0, rings);
+    
     // evaluate impact on pos[0]
-    Vec3 sum(0.);
-    for(int i=1; i<N-1; i++) {
-        FilamentKernel kernel (pos[i], pos[i+1], circ, 1.0, 1e10, reg);
-        sum += kernel.evaluate(pos[0]);
-    }
-    return norm(sum);
+    return norm(fk.eval(pos[0], pos[0], pos));
 }
 
 Vec3 darbouxStep(const Vec3& Si, const Vec3& lTi, Real r) {

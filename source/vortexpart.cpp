@@ -21,42 +21,51 @@ namespace Manta {
 // vortex particle effect: (cyl coord around wp)
 // u = -|wp|*rho*exp( (-rho^2-z^2)/(2sigma^2) ) e_phi
 struct VortexKernel {
-    VortexKernel() {}
-    VortexKernel(VortexParticleData& d, Real scale) : pos(d.pos) {
-        isigma = -0.5/square(d.sigma);
-        vortNorm = d.vorticity;
-        strength = normalize(vortNorm) * scale;
-        cutoff2 = 6.0 * square(d.sigma);
-    }
-    Vec3 pos;
-    Vec3 vortNorm;
-    Real strength;
-    Real isigma;
-    Real cutoff2;
+    VortexKernel(vector<VortexParticleData>& _vp, Real _scale) : vp(_vp), scale(_scale) {}
     
-    inline bool isValid(const Vec3& p) const {
-        const Real rlen2 = normSquare(p-pos);        
-        return rlen2 < cutoff2 && rlen2 > 1e-8;
+    inline Vec3 eval(const Vec3& p, VortexParticleData& orig, vector<Vec3>& pos) const {
+        if (orig.flag & ParticleBase::PDELETE) return Vec3::Zero;
+        return integrate(p,pos);
     }
     
-    inline Vec3 evaluate(const Vec3& p) const {
-        // transform in cylinder coordinate system
-        const Vec3 r = p-pos;
-        const Real rlen2 = normSquare(r);        
-        const Real rlen = sqrt(rlen2);
-        const Real z = dot(r, vortNorm);
-        const Vec3 ePhi = cross(r, vortNorm) / rlen;
-        const Real rho2 = rlen2 - z*z;
+    inline Vec3 eval(const Vec3& p, Node& orig, vector<Vec3>& pos) const {
+        if (orig.flags & Mesh::NfFixed) return Vec3::Zero;
+        return integrate(p,pos);
+    }
+    
+    inline Vec3 integrate(const Vec3& p, vector<Vec3>& pos) const {
+        Vec3 u(_0);
+        for (size_t i=0; i<pos.size(); i++) {
+            if (vp[i].flag & ParticleBase::PDELETE) continue;
+            
+            // cutoff radius
+            const Vec3 r = p - pos[i];
+            const Real rlen2 = normSquare(r);   
+            const Real sigma2 = square(vp[i].sigma);
+            if (rlen2 > 6.0 * sigma2 || rlen2 < 1e-8) continue;
+            
+            // split vortex strength
+            Vec3 vortNorm = vp[i].vorticity;
+            Real strength = normalize(vortNorm) * scale;
         
-        Real vortex;
-        if (rho2 > 1e-10) {
-            // evaluate Kernel      
-            vortex = strength * sqrt(rho2) * exp (rlen2 * isigma);  
-        } else {
-            vortex = 0;
+            // transform in cylinder coordinate system
+            const Real rlen = sqrt(rlen2);
+            const Real z = dot(r, vortNorm);
+            const Vec3 ePhi = cross(r, vortNorm) / rlen;
+            const Real rho2 = rlen2 - z*z;
+        
+            Real vortex = 0;
+            if (rho2 > 1e-10) {
+                // evaluate Kernel      
+                vortex = strength * sqrt(rho2) * exp (rlen2 * -0.5/sigma2);  
+            }
+            u += vortex * ePhi;
         }
-        return vortex * ePhi;
+        return u;
     }
+    
+    const vector<VortexParticleData>& vp;
+    const Real scale;
 };
     
 VortexParticleSystem::VortexParticleSystem(FluidSolver* parent) :
@@ -64,64 +73,14 @@ VortexParticleSystem::VortexParticleSystem(FluidSolver* parent) :
 { 
 }
 
-DefineIntegrator(integrateVortexKernel, VortexKernel, evaluate);
-
-KERNEL(particle) template<IntegrationMode mode> 
-void advectNodes(vector<Vec3>& nodesNew, const vector<Vec3>& nodesOld, const VortexKernel& kernel, Real dt) {
-    const Vec3 p = nodesOld[i];
-    if (kernel.isValid(p))
-        nodesNew[i] += integrateVortexKernel<mode>(p, kernel, dt);    
-}
-
-KERNEL(particle) template<IntegrationMode mode>
-void advectVortices(vector<VortexParticleData>& nodesNew, const vector<VortexKernel>& nodesOld, const VortexKernel& kernel, Real dt) {
-    const Vec3 p = nodesOld[i].pos;
-    if (kernel.isValid(p))
-        nodesNew[i].pos += integrateVortexKernel<mode>(p, kernel, dt);    
-}
-
 void VortexParticleSystem::advectSelf(Real scale, int integrationMode) {
-    const Real dt = getParent()->getDt();
-    
-    // copy kernel array
-    vector<VortexKernel> kernels(size());
-    for (size_t i=0; i<mData.size(); i++)
-        kernels[i] = VortexKernel(mData[i], scale);
-    
-    // loop over the vortices
-    for (size_t i=0; i<mData.size(); i++) {
-        if (!isActive(i)) continue;
-        if (integrationMode==EULER) advectVortices<EULER>(mData, kernels, kernels[i], dt);
-        else if (integrationMode==RK2) advectVortices<RK2>(mData, kernels, kernels[i], dt);
-        else if (integrationMode==RK4) advectVortices<RK4>(mData, kernels, kernels[i], dt);
-        else errMsg("unknown integration type");
-    }
+    VortexKernel kernel(mData, scale);
+    integratePointSet(mData, mData, kernel, integrationMode);    
 }
 
 void VortexParticleSystem::applyToMesh(Mesh& mesh, Real scale, int integrationMode) {
-    const Real dt = getParent()->getDt();
-    
-    // copy node array
-    const int nodes = mesh.numNodes();
-    vector<Vec3> nodesOld(nodes), nodesNew(nodes);
-    for (int i=0; i<nodes; i++)
-        nodesOld[i] = nodesNew[i] = mesh.nodes(i).pos;
-    
-    // loop over the vortices
-    for (size_t i=0; i<mData.size(); i++) {
-        if (!isActive(i)) continue;
-        VortexKernel kernel(mData[i], scale);
-        if (integrationMode==EULER) advectNodes<EULER>(nodesNew, nodesOld, kernel, dt);
-        else if (integrationMode==RK2) advectNodes<RK2>(nodesNew, nodesOld, kernel, dt);
-        else if (integrationMode==RK4) advectNodes<RK4>(nodesNew, nodesOld, kernel, dt);
-        else errMsg("unknown integration type");
-    }
-    
-    // copy back
-    for (int i=0; i<nodes; i++) {
-        if (!mesh.isNodeFixed(i))
-            mesh.nodes(i).pos = nodesNew[i];
-    }    
+    VortexKernel kernel(mData, scale);
+    integratePointSet(mData, mesh.getNodeData(), kernel, integrationMode);    
 }
 
 ParticleBase* VortexParticleSystem::clone() {

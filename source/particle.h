@@ -127,28 +127,29 @@ int ParticleSystem<S>::add(const S& data) {
     return mData.size()-1;
 }
 
-KERNEL(pts) template<class S, IntegrationMode mode>
-void KnAdvectInGrid(ParticleSystem<S>& p, MACGrid& vel, FlagGrid& flaggrid, Real dt) {
-    if (!p.isActive(i)) return;
+template<class S>
+struct GridAdvectKernel {
+    GridAdvectKernel(FlagGrid& f) : flaggrid(f) {}
     
-    // from integrator.h
-    p[i].pos += integrateMeshMAC<mode>(p[i].pos, vel, dt);
-    
-    // TODO: else if(flaggrid.isObstacle(pos)) reproject
-    if ((!flaggrid.isInBounds(p[i].pos,1) || flaggrid.isObstacle(p[i].pos)) && p[i].pos.x > 5)
-        p[i].flag |= ParticleBase::PDELETE;
-}
+    inline Vec3 eval(const Vec3& pos, const S& orig, MACGrid& data) const {
+        if (orig.flag & ParticleBase::PDELETE) 
+            return Vec3::Zero;
+        
+        if (!flaggrid.isInBounds(pos,1) || flaggrid.isObstacle(pos)) {
+            orig.flag |= ParticleBase::PDELETE;
+            return Vec3::Zero;
+        }        
+        return data.getInterpolated(pos);
+    }
+    FlagGrid& flaggrid;
+};
 
 // advection plugin
 template<class S>
 void ParticleSystem<S>::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode) {
     const Real dt = mParent->getDt();
-    switch((IntegrationMode)integrationMode) {
-        case EULER: KnAdvectInGrid<S, EULER>(*this, vel, flaggrid, dt); break;
-        case RK2: KnAdvectInGrid<S, RK2>(*this, vel, flaggrid, dt); break;
-        case RK4: KnAdvectInGrid<S, RK4>(*this, vel, flaggrid, dt); break;
-        default: throw Error("invalid integration mode");
-    }
+    GridAdvectKernel<S> kernel(flaggrid);
+    integratePointSet(mData, vel, kernel, integrationMode);
 }
 
 template<class S>
