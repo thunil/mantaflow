@@ -24,67 +24,62 @@ void VortexRing::renumber(int *_renumber) {
     for (size_t i=0; i<indices.size(); i++)
         indices[i] = _renumber[indices[i]];
 }
-    
-struct FilamentKernel {
-    FilamentKernel(Real dt, Real regularization, Real cutoff, Real scale, const vector<VortexRing>& rings) :
-        mDt(dt), mCutoff2(square(cutoff)), mA2(square(regularization), mRings(rings) {
-            mStrength = 0.25 / M_PI * scale * dt;
-        }
-    
-    inline Vec3 eval(const Vec3& xi, const BasicParticleData& orig, const vector<Vec3>& y) const {
-        if (orig.flag & ParticleBase::PDELETE) return Vec3::Zero;
 
-        Vec3 u(_0);
-        for (size_t i=0; i<mRings.size(); i++) {
-            const VortexRing& r = mRings[i];
-            if (r.flag & ParticleBase::PDELETE) continue;
-            
-            const int N = r.size();
-            const Real str = mStrength * r.circulation;
-            for (size_t j=0; j<N; j++) {
-                const Vec3 r0 = y[r.idx0(j)] - xi;
-                const Vec3 r1 = y[r.idx1(j)] - xi;
-                const Real r0_2 = normSquare(r0), r1_2 = normSquare(r1);
-                if (r0_2 > mCutoff2 || r1_2 > mCutoff2 || r0_2 < 1e-6 || r1_2 < 1e-6)
-                    continue;
-                
-                const Vec3 e = getNormalized(r1-r0);
-                const Real r0n = 1.0f/sqrt(a2+r0_2);
-                const Real r1n = 1.0f/sqrt(a2+r1_2);
-                const Vec3 cp = cross(r0,e);
-                const Real A = str * (dot(r1,e)*r1n - dot(r0,e)*r0n) / (a2 + normSquare(cp));
-                u += A * cp;
-            }
-        }
-        return u;
-    }
+inline Vec3 FilamentKernel(const Vec3& pos, const vector<VortexRing>& rings, const vector<BasicParticleData>& fp, Real reg, Real cutoff, Real scale) {
+    const Real strength = 0.25 / M_PI * scale;
+    const Real a2 = square(reg);
+    const Real cutoff2 = square(cutoff);
+    const Real mindist = 1e-6;
+    Vec3 u(_0);
     
-    Real mDt, mCutoff2, mA2, mStrength;
-    const vector<VortexRing>& mRings;
-};
+    for (size_t i=0; i<rings.size(); i++) {
+        const VortexRing& r = rings[i];
+        if (r.flag & ParticleBase::PDELETE) continue;
+        
+        const int N = r.size();
+        const Real str = strength * r.circulation;
+        for (int j=0; j<N; j++) {
+            const Vec3 r0 = fp[r.idx0(j)].pos - pos;
+            const Vec3 r1 = fp[r.idx1(j)].pos - pos;
+            const Real r0_2 = normSquare(r0), r1_2 = normSquare(r1);
+            if (r0_2 > cutoff2 || r1_2 > cutoff2 || r0_2 < mindist || r1_2 < mindist)
+                continue;
+            
+            const Vec3 e = getNormalized(r1-r0);
+            const Real r0n = 1.0f/sqrt(a2+r0_2);
+            const Real r1n = 1.0f/sqrt(a2+r1_2);
+            const Vec3 cp = cross(r0,e);
+            const Real A = str * (dot(r1,e)*r1n - dot(r0,e)*r0n) / (a2 + normSquare(cp));
+            u += A * cp;
+        }
+    }
+    return u;
+}
+
+KERNEL(pts) returns(vector<Vec3> u())
+vector<Vec3> KnFilamentAdvectSelf(vector<BasicParticleData>& fp, const vector<VortexRing>& rings, Real reg, Real cutoff, Real scale) {
+    if (fp[i].flag & ParticleBase::PDELETE)
+        u[i] = _0;
+    else
+        u[i] = FilamentKernel(fp[i].pos, rings, fp, reg, cutoff, scale);
+}
+
+KERNEL(pts) returns(vector<Vec3> u())
+vector<Vec3> KnFilamentAdvectMesh(vector<Node>& nodes, const vector<VortexRing>& rings, const vector<BasicParticleData>& fp, Real reg, Real cutoff, Real scale) {
+    if (nodes[i].flags & Mesh::NfFixed)
+        u[i] = _0;
+    else
+        u[i] = FilamentKernel(nodes[i].pos, rings, fp, reg, cutoff, scale);
+}
 
 void VortexFilamentSystem::advectSelf(Real scale, Real regularization, int integrationMode) {
-    const Real cutoff = 1e7;
-    
-    FilamentKernel fk(getParent()->getDt(), regularization, cutoff, scale, mSegments);
-    integratePointSet(mData, mData, fk, integrationMode);
+    KnFilamentAdvectSelf kernel(mData, mSegments , regularization, 1e10, scale * getParent()->getDt());
+    integratePointSet( kernel, integrationMode);
 }
 
 void VortexFilamentSystem::applyToMesh(Mesh& mesh, Real scale, Real regularization, int integrationMode) {
-/*    // copy node array
-    const int nodes = mesh.numNodes();
-    vector<Vec3> nodes(nodes);
-    for (int i=0; i<nodes; i++)
-        nodes[i] = mesh.nodes(i).pos;
-    
-    FilamentIntegrator fi(getParent90->getDt(), regularization, cutoff, scale, mSegments);
-    fi.integrate(pos, pos, integrationMode);
-    
-    // copy back
-    for (int i=0; i<nodes; i++) {
-        if (!mesh.isNodeFixed(i))
-            mesh.nodes(i).pos = nodes[i];
-    }    */
+    KnFilamentAdvectMesh kernel(mesh.getNodeData(), mSegments, mData, regularization, 1e10, scale * getParent()->getDt());
+    integratePointSet( kernel, integrationMode);   
 }
 
 void VortexFilamentSystem::remesh(Real maxLen) {
@@ -155,18 +150,17 @@ Real evaluateRefU(int N, Real L, Real circ, Real reg) {
     
     // build vortex ring
     VortexRing ring (circ);
-    vector<Vec3> pos(N);
+    vector<BasicParticleData> pos(N);
     for(int i=0; i<N; i++) {
-        pos[i] = Vec3( r*cos(2.0*M_PI*(Real)i/N), r*sin(2.0*M_PI*(Real)i/N), 0);
+        pos[i].pos = Vec3( r*cos(2.0*M_PI*(Real)i/N), r*sin(2.0*M_PI*(Real)i/N), 0);
     }
     
     // Build kernel
     vector<VortexRing> rings;
     rings.push_back(ring);
-    FilamentKernel fk(1.0, reg, 1e10, 1.0, rings);
     
     // evaluate impact on pos[0]
-    return norm(fk.eval(pos[0], pos[0], pos));
+    return norm(FilamentKernel(pos[0].pos, rings, pos, reg, 1e10, 1.0));    
 }
 
 Vec3 darbouxStep(const Vec3& Si, const Vec3& lTi, Real r) {

@@ -127,29 +127,24 @@ int ParticleSystem<S>::add(const S& data) {
     return mData.size()-1;
 }
 
-template<class S>
-struct GridAdvectKernel {
-    GridAdvectKernel(FlagGrid& f) : flaggrid(f) {}
-    
-    inline Vec3 eval(const Vec3& pos, const S& orig, MACGrid& data) const {
-        if (orig.flag & ParticleBase::PDELETE) 
-            return Vec3::Zero;
-        
-        if (!flaggrid.isInBounds(pos,1) || flaggrid.isObstacle(pos)) {
-            orig.flag |= ParticleBase::PDELETE;
-            return Vec3::Zero;
-        }        
-        return data.getInterpolated(pos);
-    }
-    FlagGrid& flaggrid;
+KERNEL(pts) template<class S> returns(std::vector<Vec3> u()) 
+std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flaggrid, Real dt) 
+{
+    if (p[i].flag & ParticleBase::PDELETE) 
+        u[i] =_0;
+    else if (!flaggrid.isInBounds(p[i].pos,1) || flaggrid.isObstacle(p[i].pos)) {
+        p[i].flag |= ParticleBase::PDELETE;
+        u[i] = _0;
+    }        
+    else 
+        u[i] = vel.getInterpolated(p[i].pos) * dt;
 };
 
 // advection plugin
 template<class S>
 void ParticleSystem<S>::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode) {
-    const Real dt = mParent->getDt();
-    GridAdvectKernel<S> kernel(flaggrid);
-    integratePointSet(mData, vel, kernel, integrationMode);
+    GridAdvectKernel<S> kernel(mData, vel, flaggrid, getParent()->getDt());
+    integratePointSet(kernel, integrationMode);
 }
 
 template<class S>

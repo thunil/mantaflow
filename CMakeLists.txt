@@ -154,13 +154,6 @@ SET(PP_HEADERS
     source/fileio.h
     source/edgecollapse.h
     source/vortexpart.h
-    source/util/integrator.h
-    source/util/vectorbase.h
-    source/util/quaternion.h
-    source/util/interpol.h
-    source/util/mcubes.h
-    source/util/randomstream.h
-    source/util/solvana.h
     #source/test.h    
 )
 
@@ -177,6 +170,13 @@ SET(NOPP_HEADERS
     source/pwrapper/pythonInclude.h
     source/pwrapper/pclass.h
     source/pwrapper/pconvert.h
+    source/util/integrator.h
+    source/util/vectorbase.h
+    source/util/quaternion.h
+    source/util/interpol.h
+    source/util/mcubes.h
+    source/util/randomstream.h
+    source/util/solvana.h    
 )
 
 if (GUI)
@@ -216,8 +216,8 @@ endif()
 SET(INCLUDE_PATHS
    source/pwrapper
    source/cuda
-   ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
-   ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/util
+   source/util
+   ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source   
 )
 
 # 64 bit config , not for windows

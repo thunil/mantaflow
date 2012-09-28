@@ -186,32 +186,20 @@ void Mesh::rebuildChannels() {
         mNodeChannels[i]->resize(mNodes.size());   
 }
 
-struct AdvectMeshInGridKernel {
-    AdvectMeshInGridKernel (FlagGrid& f) : flaggrid(f) {}
-    FlagGrid& flaggrid;
-    
-    // MAC
-    inline Vec3 eval(const Vec3& p, Node& orig, MACGrid& vel) const {
-        if (orig.flags & Mesh::NfFixed) return Vec3::Zero;
-        if (!flaggrid.isInBounds(p,1)) return Vec3::Zero;
-        return vel.getInterpolated(p);
-    }
-    // Center vel
-    inline Vec3 eval(const Vec3& p, Node& orig, Grid<Vec3>& vel) const {
-        if (orig.flags & Mesh::NfFixed) return Vec3::Zero;
-        if (!flaggrid.isInBounds(p,1)) return Vec3::Zero;
-        return vel.getInterpolated(p);
-    }
-};
+KERNEL(pts) returns(vector<Vec3> u())
+vector<Vec3> KnAdvectMeshInGrid(vector<Node>& nodes, const FlagGrid& flags, const MACGrid& vel, const Real dt) {
+    if (nodes[i].flags & Mesh::NfFixed) 
+        u[i] = _0;
+    else if (!flags.isInBounds(nodes[i].pos,1)) 
+        u[i] = _0;
+    else 
+        u[i] = vel.getInterpolated(nodes[i].pos) * dt;
+}
 
 // advection plugin
-void Mesh::advectInGrid(FlagGrid& flaggrid, Grid<Vec3>& vel, int integrationMode) {
-    AdvectMeshInGridKernel kernel(flaggrid);
-    
-    if (vel.getType() & GridBase::TypeMAC)
-        integratePointSet(mNodes, *((MACGrid*) &vel), kernel, integrationMode);
-    else
-        integratePointSet(mNodes, vel, kernel, integrationMode);
+void Mesh::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode) {
+    KnAdvectMeshInGrid kernel(mNodes, flaggrid, vel, getParent()->getDt());
+    integratePointSet( kernel, integrationMode);    
 }
 
 void Mesh::scale(Vec3 s) {

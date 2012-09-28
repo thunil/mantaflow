@@ -25,9 +25,9 @@ namespace Manta {
 
 // fwd decl
 class FlagGrid;
+class MACGrid;
 class Shape;
-template<class T> class Grid;
-    
+
 //! Node position and flags
 struct Node {
     Node() : pos(Vec3::Zero), normal(Vec3::Zero), flags(0) {}
@@ -139,7 +139,7 @@ public:
     PYTHON void load (std::string name, bool append = false);
     PYTHON void fromShape (Shape& shape, bool append = false);
     PYTHON void save (std::string name);
-    PYTHON void advectInGrid(FlagGrid& flaggrid, Grid<Vec3>& vel, int integrationMode);
+    PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
     PYTHON void scale(Vec3 s);
     PYTHON void offset(Vec3 o);
     
