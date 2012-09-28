@@ -147,12 +147,14 @@ Real evaluateRefU(int N, Real L, Real circ, Real reg) {
     // construct regular n-polygon
     const Real l = L/(Real)N;
     const Real r = 0.5*l/sin(M_PI/(Real)N);
-    
+    cout << r << " " << l << endl;
     // build vortex ring
     VortexRing ring (circ);
     vector<BasicParticleData> pos(N);
     for(int i=0; i<N; i++) {
         pos[i].pos = Vec3( r*cos(2.0*M_PI*(Real)i/N), r*sin(2.0*M_PI*(Real)i/N), 0);
+        pos[i].flag =0;
+        ring.indices.push_back(i);
     }
     
     // Build kernel
@@ -237,6 +239,7 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
         const Real d = 0.5*dt*(U-Ur);
         const Real l = sqrt( square(L/N) + square(d) );
         const Real ra = d*tan(M_PI * (0.5 - 1.0/N)); // d*cot(pi/n)
+        cout << U << " <-< " << Ur << endl;
         
         // fwd darboux transform
         vector<Vec3> eta(N);
