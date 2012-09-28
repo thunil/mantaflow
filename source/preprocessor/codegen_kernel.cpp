@@ -175,10 +175,16 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     // create outer class for non-reduce return values
     if (haveOuter) {
         kclassname = "_kernel_" + kname;
-        callerClass = "struct " + kname + " { " + nl;
-        callerClass += tb + kname + " ( " + outerArgList + ") : "+initParent + initRetval + " _inner(" + callList + ") { }" + nl;
+        callerClass = "struct " + kname + " : public " + (pts ? "Particle" : "") + "KernelBase { " + nl;
+        callerClass += tb + kname + " ( " + outerArgList + ") : ";
+        if (pts)
+            callerClass += "ParticleKernelBase((" + basegrid + ").size()), ";
+        else
+            callerClass += "KernelBase(" + basegrid + ", " + bnd + "), ";
+        callerClass += initParent + initRetval + " _inner(" + callList + ") { }" + nl;
+        
         callerClass += outOp;
-        callerClass += tb + kclassname + " _inner;" + nl + outerMembers;
+        callerClass += outerMembers + tb + kclassname + " _inner;" + nl;
         callerClass += "};" + nl;
     }
         

@@ -61,7 +61,7 @@ PYTHON void checkGrids(Grid<int>& flags1, Grid<int>& flags2, Grid<Real>& phi1, G
 
 
 struct myvec {
-    myvec() { cout << "constructor" << endl; };
+    myvec(int n) : x(n) { cout << "constructor" << endl; };
     myvec(const myvec& a) : x(a.x) { cout << "copy constructor" << endl; }
     myvec& operator=(const myvec& a) { x=a.x; cout << "copy operator" << endl; return *this;}
     int& operator[](int idx) { return x[idx]; }
@@ -69,17 +69,20 @@ struct myvec {
     vector<int> x;
 };
 
-KERNEL(pts) returns(myvec vec) 
+KERNEL(pts) returns(myvec vec(size)) 
 myvec testy(vector<int>& a) {
     vec[i] = a[i];
 }
 
-PYTHON void kernelTest( ) {
+PYTHON void kernelTest() {
+    cout << "kernel test" << endl;
     vector<int> a(10);
     for (int i=0;i<10;i++) a[i]=i;
     
+    //testy xx(a);
     myvec b = testy(a);
     for (int i=0;i<10;i++) cout << b[i] << endl;
+    cout << "kernel end" << endl;
     
 }
 
