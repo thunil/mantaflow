@@ -44,7 +44,7 @@ PYTHON void texcoordInflow(VortexSheetMesh& mesh, Shape* shape, MACGrid& vel)
     
     // get mean velocity
     int cnt=0;
-    Vec3 meanV(0.0f);
+    Vec3 meanV(_0);
     FOR_IJK(vel) {
         if (shape->isInsideGrid(i,j,k)) {
             cnt++;
@@ -305,7 +305,7 @@ PYTHON void densityFromLevelset(LevelsetGrid& phi, Grid<Real>& density, Real val
         else if (phi(i,j,k) > sigma)
             density(i,j,k) = 0;
         else
-            density(i,j,k) = clamp(0.5f*value/sigma*(1.0f-phi(i,j,k)), 0.0f, value);
+            density(i,j,k) = clamp((Real)(0.5*value/sigma*(1.0-phi(i,j,k))), _0, value);
     }    
 }
 

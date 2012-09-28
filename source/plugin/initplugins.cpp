@@ -25,7 +25,7 @@ KERNEL
 void KnApplyNoise(FlagGrid& flags, Grid<Real>& dens, WaveletNoiseField& noise, Grid<Real>& sdf, Real scale, Real sigma) 
 {
     if (!flags.isFluid(i,j,k) || sdf(i,j,k) > sigma) return;
-    Real factor = clamp(1.0f-0.5f/sigma * (sdf(i,j,k)+sigma), 0.0f, 1.0f);
+    Real factor = clamp(1.0-0.5/sigma * (sdf(i,j,k)+sigma), 0.0, 1.0);
     
     Real target = noise.evaluate(Vec3(i,j,k)) * scale * factor;
     if (dens(i,j,k) < target)

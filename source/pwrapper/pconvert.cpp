@@ -49,7 +49,10 @@ template<> PyObject* toPy<int>( int& v) {
 template<> PyObject* toPy<string>( string& val) {
     return PyUnicode_DecodeLatin1(val.c_str(),val.length(),"replace");
 }
-template<> PyObject* toPy<Real>( Real& v) {
+template<> PyObject* toPy<float>( float& v) {
+    return PyFloat_FromDouble(v);     
+}
+template<> PyObject* toPy<double>( double& v) {
     return PyFloat_FromDouble(v);     
 }
 template<> PyObject* toPy<bool>( bool& v) {
@@ -67,13 +70,21 @@ template<> PyObject* toPy<PbClass*>( PbClass*& obj) {
     return obj->getPyObject();
 }
 
-template<> Real fromPy<Real>(PyObject* obj) {
+template<> float fromPy<float>(PyObject* obj) {
 #if PY_MAJOR_VERSION <= 2
     if (PyInt_Check(obj)) return PyInt_AsLong(obj);
 #endif
     if (PyFloat_Check(obj)) return PyFloat_AsDouble(obj);
     if (PyLong_Check(obj)) return PyLong_AsDouble(obj);
     errMsg("argument is not a float");    
+}
+template<> double fromPy<double>(PyObject* obj) {
+#if PY_MAJOR_VERSION <= 2
+    if (PyInt_Check(obj)) return PyInt_AsLong(obj);
+#endif
+    if (PyFloat_Check(obj)) return PyFloat_AsDouble(obj);
+    if (PyLong_Check(obj)) return PyLong_AsDouble(obj);
+    errMsg("argument is not a double");    
 }
 template<> PyObject* fromPy<PyObject*>(PyObject *obj) {
     return obj;

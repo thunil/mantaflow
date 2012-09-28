@@ -24,6 +24,7 @@ struct VortexRing {
     VortexRing(Real c) : circulation(c),flag(0) {}
     void renumber(int* _renumber);
     inline int size() const { return indices.size(); }
+    inline int idx(int i) const { return indices[(i+indices.size()) % indices.size()]; }
     inline int idx0(int i) const { return indices[i]; }
     inline int idx1(int i) const { return indices[ (i+1) % indices.size() ]; }
     
@@ -39,13 +40,19 @@ public:
         
     PYTHON VortexFilamentSystem(FluidSolver* parent);
   
-    PYTHON void advectSelf(Real scale=1.0, Real regularization=0.1, int integrationMode=RK4);
-    PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, Real regularization=0.1, int integrationMode=RK4);
+    //! self-advect the filament system
+    PYTHON void advectSelf(Real scale=1.0, Real regularization=0.1, int integrationMode=IntRK4);
+    //! advect triangle mesh using filaments
+    PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, Real regularization=0.1, int integrationMode=IntRK4);
     //! perform doubly-discrete smoke ring flow update
     //! as in [Weissmann,Pinkall 2009]
     PYTHON void doublyDiscreteUpdate(Real regularization=0.1);
+    //! remesh long or strongly-curved segments
+    PYTHON void remesh(Real maxLen=1.0);
     
+    //! add a filament ring to the system
     PYTHON void addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number);
+    
         
     virtual ParticleBase* clone();
 protected:

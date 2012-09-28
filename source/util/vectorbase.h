@@ -52,10 +52,14 @@
     typedef float Real;
 #   define FP_REAL_MAX __FLT_MAX__
 #   define VECTOR_EPSILON (1e-6f)
+#   define _0 0.0f
+#   define _1 1.0f
 #else
     typedef double Real;
 #   define FP_REAL_MAX __DBL_MAX__
 #   define VECTOR_EPSILON (1e-10)
+#   define _0 0.0
+#   define _1 1.0
 #endif
 
 // windos, hardcoded limits for now...

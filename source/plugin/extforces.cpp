@@ -143,7 +143,7 @@ KERNEL(bnd=1) void KnSetLiquidBcs(FlagGrid& flags, MACGrid& vel) {
 //! set boundary conditions at empty cells
 PYTHON void setLiquidBcs(FlagGrid& flags, MACGrid& vel) {
     FOR_IDX(flags) {
-        if (flags.isEmpty(idx)) vel[idx]=0.0f;
+        if (flags.isEmpty(idx)) vel[idx]=_0;
     }
     KnSetLiquidBcs(flags, vel);
 } 

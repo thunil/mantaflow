@@ -129,9 +129,16 @@ Argument parseSingleArg(const vector<Token>& tokens, size_t& index, bool expectT
                     else if (t == TkComma) {
                         cur.templ += ",";
                         stage = 2;
-                    }
-                    else 
-                        errMsg(line, "incomplete argument type! expect type<Template> [*|&]");
+                    } else if (t == TkColon && tokens[index+1].type == TkColon) { 
+                        // template type had namespace
+                        cur.templ += "::";
+                        cur.complete += ":";
+                        index++;
+                        stage=2;
+                        endPossible = false;
+                        break;
+                    } else                   
+                        errMsg(line, "incomplete argument type '"+ cur.complete +"'! expect type<Template> [*|&]");
                     break;
                 case 5:
                     // assign op
