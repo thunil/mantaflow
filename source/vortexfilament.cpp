@@ -56,7 +56,7 @@ inline Vec3 FilamentKernel(const Vec3& pos, const vector<VortexRing>& rings, con
     return u;
 }
 
-KERNEL(pts) returns(vector<Vec3> u())
+KERNEL(pts) returns(vector<Vec3> u(size))
 vector<Vec3> KnFilamentAdvectSelf(vector<BasicParticleData>& fp, const vector<VortexRing>& rings, Real reg, Real cutoff, Real scale) {
     if (fp[i].flag & ParticleBase::PDELETE)
         u[i] = _0;
@@ -64,7 +64,7 @@ vector<Vec3> KnFilamentAdvectSelf(vector<BasicParticleData>& fp, const vector<Vo
         u[i] = FilamentKernel(fp[i].pos, rings, fp, reg, cutoff, scale);
 }
 
-KERNEL(pts) returns(vector<Vec3> u())
+KERNEL(pts) returns(vector<Vec3> u(size))
 vector<Vec3> KnFilamentAdvectMesh(vector<Node>& nodes, const vector<VortexRing>& rings, const vector<BasicParticleData>& fp, Real reg, Real cutoff, Real scale) {
     if (nodes[i].flags & Mesh::NfFixed)
         u[i] = _0;

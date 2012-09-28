@@ -127,7 +127,7 @@ int ParticleSystem<S>::add(const S& data) {
     return mData.size()-1;
 }
 
-KERNEL(pts) template<class S> returns(std::vector<Vec3> u()) 
+KERNEL(pts) template<class S> returns(std::vector<Vec3> u(size)) 
 std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flaggrid, Real dt) 
 {
     if (p[i].flag & ParticleBase::PDELETE) 

@@ -34,15 +34,15 @@ void integratePointSet(VelKernel& k, int mode) {
         for(int i=0; i<N; i++) x[i].pos += u[i];
     } 
     else if (mode == IntRK2) {
-        PosType x0(k.getArg0());
+        PosType x0(x);
         
         for(int i=0; i<N; i++) x[i].pos = x0[i].pos + 0.5*u[i];
         
         k.run();
-        for(int i=0; i<N; i++) x[i].pos += u[i];
+        for(int i=0; i<N; i++) x[i].pos = x0[i].pos + u[i];
     } 
     else if (mode == IntRK4) {
-        PosType x0(k.getArg0());
+        PosType x0(x);
         std::vector<Vec3> uTotal(u);
         
         for(int i=0; i<N; i++) x[i].pos = x0[i].pos + 0.5*u[i];
@@ -60,10 +60,13 @@ void integratePointSet(VelKernel& k, int mode) {
         }
         
         k.run();
-        for(int i=0; i<N; i++) x[i].pos += (_1/6) * (uTotal[i] + u[i]);
+        for(int i=0; i<N; i++) x[i].pos = x0[i].pos + (_1/6) * (uTotal[i] + u[i]);
     }
     else 
         errMsg("unknown integration type");
+    
+    //for(int i=0; i<N; i++) std::cout << x[i].pos.y-x[0].pos.y << std::endl;
+    //std::cout << "<><><>" << std::endl;
 }
 
 
