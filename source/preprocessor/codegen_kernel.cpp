@@ -78,7 +78,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         errMsg(line, "return argument specified without matching 'returns' initializer");
     
     // parse arguments
-    string initList = "", argList = "", copier = "", members = "", basegrid="", baseobj="", callList = "", orgArgList="", mCallList;
+    string initList = "", argList = "", copier = "", members = "", basegrid="", baseobj="", callList = "", orgArgList="", mCallList, outerCopier="";
     for (size_t i=0; i<args.size(); i++) {
         string type = args[i].type;
         string name = args[i].name;
@@ -92,10 +92,12 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         copier += (i==0) ? "" : ", ";
         callList += (i==0) ? "" : ", ";
         orgArgList += (i==0) ? "" : ", ";
+        outerCopier += (i==0) ? "" : ", ";
         
         string aname = "_" + name;
         string sname = "m_" + name;
         copier += sname + "(o." + sname + ")";
+        outerCopier += "o._inner." + sname;
         members += tb+ type + " " + sname + ";" + nl;
         initList += sname + "(" + aname + ")";
         callList += aname;
@@ -183,11 +185,19 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
             callerClass += "KernelBase(" + basegrid + ", " + bnd + "), ";
         callerClass += initParent + initRetval + " _inner(" + callList + ") { }" + nl;
         
+        // copy constructor
+        callerClass += tb+ kname + " (const " + kname + "& o) : ";
+        if (!pts)
+            callerClass += "KernelBase(o.maxX, o.maxY, o.maxZ, o.maxCells, o.minZ, o.X, o.Y, o.Z), ";
+        else
+            callerClass += "ParticleKernelBase(o.size), ";
+        callerClass += copyParent + initRetval + " _inner(" + outerCopier + "," + retList + ") {}" + nl;
+    
         callerClass += outOp;
         callerClass += outerMembers + tb + kclassname + " _inner;" + nl;
         callerClass += "};" + nl;
     }
-        
+    
     // create kernel class
     if (!templArgs.empty()) kclass += "template <" + listArgs(templArgs) + ">" + nl;
     kclass += "struct " + kclassname + " : public " + (pts ? "Particle" : "") + "KernelBase { " + nl;
@@ -201,6 +211,16 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     kclass += tb + "{" + nl;
     kclass += tb2+ "run();" + nl;
     kclass += tb+ "}" + nl;
+    
+    // copy constructor
+    if (!haveOuter) {
+        kclass += tb+ kclassname + " (const " + kclassname + "& o) : ";
+        if (!pts)
+            kclass += "KernelBase(o.maxX, o.maxY, o.maxZ, o.maxCells, o.minZ, o.X, o.Y, o.Z), ";
+        else
+            kclass += "ParticleKernelBase(o.size), ";
+        kclass += copyParent + copier + " {}" + nl;
+    }
     
     // code point
     if (pts)
@@ -255,7 +275,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
             if (!pts)
                 kclass += tb2+ "KernelBase(o.maxX, o.maxY, o.maxZ, o.maxCells, o.minZ, o.X, o.Y, o.Z)," + nl;
             else
-                kclass += tb2+ "KernelBase(o.size)," + nl;
+                kclass += tb2+ "ParticleKernelBase(o.size)," + nl;
             kclass += tb2+ copyParent + copier + " {}" + nl;
             // join
             kclass += tb + "void join(const " + kclassname+"& _other) {" + nl;
