@@ -2,6 +2,7 @@
 # Use htis file to test new functionality
 
 from manta import *
+import sys
 
 # solver params
 meshing = False
@@ -9,6 +10,9 @@ res = 64
 gs = vec3(res,res,res)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 0.5
+
+kernelTest()
+sys.exit(0)
 
 # prepare grids and particles
 flags = s.create(FlagGrid)

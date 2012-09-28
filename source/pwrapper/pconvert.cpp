@@ -252,8 +252,9 @@ FluidSolver* PbArgs::obtainParent() {
         }
     }
     
-    if (!solver)
-        errMsg("Solver cannot be deduced from arguments, specify using argument 'solver=xxx'");
+    // allow plugins without solver
+    //if (!solver)
+    //    errMsg("Solver cannot be deduced from arguments, specify using argument 'solver=xxx'");
     return solver;    
 }
 

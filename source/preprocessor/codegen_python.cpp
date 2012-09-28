@@ -179,7 +179,8 @@ string processPythonFunction(int lb, const string& name, const string& type, con
 
     string caller = (isPlugin ? "" : tb ) + header + nl;
     if (isPlugin) {
-        callList += ", parent";
+        if (!callList.empty()) callList +=", ";
+        callList += "parent";
     }
     if (type == "void") {
         caller += tb+tb+tb+ "_retval = getPyNone();" + nl;
