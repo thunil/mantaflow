@@ -52,14 +52,19 @@ public:
     // accessors
     inline S& operator[](int i) { return mData[i]; }
     inline const S& operator[](int i) const { return mData[i]; }
-    inline int size() const { return mData.size(); }    
-        
+    PYTHON inline int size() const { return mData.size(); }
+    
     // adding and deleting
     inline void kill(int i) { mData[i].flag |= PDELETE; if (++mDeletes > mDeleteChunk) compress(); }
     inline bool isActive(int i) { return (mData[i].flag & PDELETE) == 0; }    
     int add(const S& data);
     void clear();
     
+    //! safe accessor for python
+    PYTHON void setPos(int idx, const Vec3& pos);
+    //! safe accessor for python
+    PYTHON Vec3 getPos(int idx);
+            
     //! Advect particle in grid velocity field
     PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
     
@@ -127,7 +132,21 @@ int ParticleSystem<S>::add(const S& data) {
     return mData.size()-1;
 }
 
+<<<<<<< local
+template<class S> Vec3 ParticleSystem::getPos(int idx) {
+    assertMsg(idx>=0 && idx<size(), "Indedx out of bounds");
+    return mData[idx];
+}
+
+template<class S> void ParticleSystem::setPos(int idx, const Vec3& pos) {
+    assertMsg(idx>=0 && idx<size(), "Indedx out of bounds");
+    mData[idx] = pos;
+}
+
+KERNEL(pts) template<class S> returns(std::vector<Vec3> u(size)) 
+=======
 KERNEL(pts) template<class S> returns(std::vector<Vec3> u()) 
+>>>>>>> other
 std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flaggrid, Real dt) 
 {
     if (p[i].flag & ParticleBase::PDELETE) 
