@@ -21,19 +21,21 @@ filaments = s.create(VortexFilamentSystem)
 flags.initDomain(boundaryWidth=1)
 flags.fillGrid()
 
-filaments.addRing(position=gs*vec3(0.5,0.1,0.5), circulation=40, radius=15, normal=(0,1,0), number=30)
-#filaments.addRing(position=gs*vec3(0.5,0.14,0.5), circulation=10, radius=0.2*res, normal=(0,1,0), number=120)
+#filaments.addRing(position=gs*vec3(0.5,0.1,0.5), circulation=10, radius=0.2*res, normal=(0,1,0), number=40)
+filaments.addRing(position=gs*vec3(0.5,0.14,0.5), circulation=10, radius=0.2*res, normal=(0,1,0), number=20)
+#filaments.setPos(0,)
+print(filaments.getPos(0).x)
 
 if (GUI):
     gui = Gui()
     gui.show()
-    gui.pause()
+#    gui.pause()
     
 #main loop
-for t in range(2000):
-    #filaments.doublyDiscreteUpdate(regularization=10)
+for t in range(25):
+    #filaments.doublyDiscreteUpdate(regularization=1)
     filaments.advectSelf(scale=1, regularization=1, integrationMode=IntRK4)
-    #filaments.remesh(maxLen=10)
+    #filaments.remesh(maxLen=1)
     
     s.step()
     

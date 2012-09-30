@@ -186,7 +186,7 @@ void Mesh::rebuildChannels() {
         mNodeChannels[i]->resize(mNodes.size());   
 }
 
-KERNEL(pts) returns(vector<Vec3> u())
+KERNEL(pts) returns(vector<Vec3> u(size))
 vector<Vec3> KnAdvectMeshInGrid(vector<Node>& nodes, const FlagGrid& flags, const MACGrid& vel, const Real dt) {
     if (nodes[i].flags & Mesh::NfFixed) 
         u[i] = _0;

@@ -56,7 +56,7 @@ inline Vec3 FilamentKernel(const Vec3& pos, const vector<VortexRing>& rings, con
     return u;
 }
 
-KERNEL(pts) returns(vector<Vec3> u())
+KERNEL(pts) returns(vector<Vec3> u(size))
 vector<Vec3> KnFilamentAdvectSelf(vector<BasicParticleData>& fp, const vector<VortexRing>& rings, Real reg, Real cutoff, Real scale) {
     if (fp[i].flag & ParticleBase::PDELETE)
         u[i] = _0;
@@ -64,7 +64,7 @@ vector<Vec3> KnFilamentAdvectSelf(vector<BasicParticleData>& fp, const vector<Vo
         u[i] = FilamentKernel(fp[i].pos, rings, fp, reg, cutoff, scale);
 }
 
-KERNEL(pts) returns(vector<Vec3> u())
+KERNEL(pts) returns(vector<Vec3> u(size))
 vector<Vec3> KnFilamentAdvectMesh(vector<Node>& nodes, const vector<VortexRing>& rings, const vector<BasicParticleData>& fp, Real reg, Real cutoff, Real scale) {
     if (nodes[i].flags & Mesh::NfFixed)
         u[i] = _0;
@@ -147,12 +147,14 @@ Real evaluateRefU(int N, Real L, Real circ, Real reg) {
     // construct regular n-polygon
     const Real l = L/(Real)N;
     const Real r = 0.5*l/sin(M_PI/(Real)N);
-    
+    cout << r << " " << l << endl;
     // build vortex ring
     VortexRing ring (circ);
     vector<BasicParticleData> pos(N);
     for(int i=0; i<N; i++) {
         pos[i].pos = Vec3( r*cos(2.0*M_PI*(Real)i/N), r*sin(2.0*M_PI*(Real)i/N), 0);
+        pos[i].flag =0;
+        ring.indices.push_back(i);
     }
     
     // Build kernel
@@ -237,6 +239,7 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
         const Real d = 0.5*dt*(U-Ur);
         const Real l = sqrt( square(L/N) + square(d) );
         const Real ra = d*tan(M_PI * (0.5 - 1.0/N)); // d*cot(pi/n)
+        cout << U << " <-< " << Ur << endl;
         
         // fwd darboux transform
         vector<Vec3> eta(N);

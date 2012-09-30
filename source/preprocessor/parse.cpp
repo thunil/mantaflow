@@ -354,12 +354,18 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
             
             if ( (tokens[index].type != TkCodeBlock && tokens[index].type != TkSemicolon) || index+1 != tokens.size())
                 errMsg(line, "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]");
-            return processPythonFunction(lb, name, type, args, cb, tokens[index].text, line);
+            return processPythonFunction(lb, name, type, args, cb, false, false, tokens[index].text, line);
         } else {
+            bool isInline=false, isConst=false;
             // parse return type 
             Argument retType = parseSingleArg(tokens, index, true, false, false, lb);
             type = stripWS(retType.complete);
-
+            if (type == "inline") {
+                retType = parseSingleArg(tokens, index, true, false, false, lb);
+                type = stripWS(retType.complete);
+                isInline = true;
+            }
+            
             // function or member function
             assert(tokens[index].type == TkDescriptor, "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]'");
             string name = tokens[index++].text;
@@ -370,10 +376,14 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
                 return processPythonVariable(lb, name, options, type, line);
             }
             ArgList args = parseArgs(tokens, index, true, lb, false);
+            if (tokens[index].type == TkDescriptor && tokens[index].text == "const") {
+                isConst = true;
+                lb += consumeWS(tokens, ++index);
+            }
             
             if ( (tokens[index].type != TkCodeBlock && tokens[index].type != TkSemicolon) || index+1 != tokens.size())
                 errMsg(line, "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]");
-            return processPythonFunction(lb, name, type, args, "", tokens[index].text, line);
+            return processPythonFunction(lb, name, type, args, "", isInline, isConst, tokens[index].text, line);
         }
     }
     else 

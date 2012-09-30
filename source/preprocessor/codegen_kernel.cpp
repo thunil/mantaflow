@@ -106,7 +106,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         if (i<3) {
             Argument refa(args[i]), refb(args[i]);
             refa.isRef = true;
-            refb.isRef = false;
+            refb.isRef = false; refb.isConst = false;
             char num = '0' + i;
             string avar = (haveOuter ? "_inner." : "") + sname;
             lineAcc += tb + refa.getType() + " getArg" + num + "() { return " + avar + "; }" + nl;

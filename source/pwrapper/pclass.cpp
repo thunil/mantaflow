@@ -51,6 +51,7 @@ struct PbClassData {
     string pythonName;
     PbInitFunc init;
     PyTypeObject typeInfo;
+    //PySequenceMethods seqInfo;
     vector<PbMethod> methods;
     map<string,PbGetSet> getset;
     PbClassData* baseclass;

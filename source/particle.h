@@ -132,22 +132,18 @@ int ParticleSystem<S>::add(const S& data) {
     return mData.size()-1;
 }
 
-<<<<<<< local
-template<class S> Vec3 ParticleSystem::getPos(int idx) {
-    assertMsg(idx>=0 && idx<size(), "Indedx out of bounds");
-    return mData[idx];
+template<class S> Vec3 ParticleSystem<S>::getPos(int idx) {
+    assertMsg(idx>=0 && idx<size(), "Index out of bounds");
+    std::cout << idx << ":" << mData[idx].pos << std::endl;
+    return mData[idx].pos;
 }
 
-template<class S> void ParticleSystem::setPos(int idx, const Vec3& pos) {
-    assertMsg(idx>=0 && idx<size(), "Indedx out of bounds");
-    mData[idx] = pos;
+template<class S> void ParticleSystem<S>::setPos(int idx, const Vec3& pos) {
+    assertMsg(idx>=0 && idx<size(), "Index out of bounds");
+    mData[idx].pos = pos;
 }
-
-KERNEL(pts) template<class S> returns(std::vector<Vec3> u(size)) 
-=======
-KERNEL(pts) template<class S> returns(std::vector<Vec3> u()) 
->>>>>>> other
-std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flaggrid, Real dt) 
+KERNEL(pts) template<class S> returns(std::vector<Vec3> u(size))
+std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flaggrid, Real dt)
 {
     if (p[i].flag & ParticleBase::PDELETE) 
         u[i] =_0;
