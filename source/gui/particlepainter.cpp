@@ -112,7 +112,6 @@ void ParticlePainter::paint() {
                 glEnd();
             }
         }        
-        glPointSize(1.0);
     } else if (mLocal->getType() == ParticleBase::FLIP) {
         FlipSystem* fp = (FlipSystem*) mLocal;
         glColor3f(0,1,1);
@@ -142,25 +141,42 @@ void ParticlePainter::paint() {
             }
         }   
         glEnd();*/
-        glPointSize(1.0);
     } else if (mLocal->getType() == ParticleBase::FILAMENT) {
         VortexFilamentSystem* fp = (VortexFilamentSystem*) mLocal;
         glColor3f(1,1,0);
-        glPointSize(1.0);
-        glBegin(GL_LINES);
             
         for(int i=0; i<fp->segSize(); i++) {
             if (!fp->isSegActive(i)) continue;
             const VortexRing& r = fp->seg(i);
             
+            glPointSize(1.0);
+            glBegin(GL_LINES);
             for(int j=0; j<r.size(); j++) {
                 glVertex( (*fp)[r.idx0(j)].pos, dx);
                 glVertex( (*fp)[r.idx1(j)].pos, dx);
             }
+            glEnd();
+            
+            /*glPointSize(3.0);
+            glBegin(GL_POINTS);
+            glVertex((*fp)[r.idx0(0)].pos,dx);
+            glEnd();        */
+        }   
+    } else if(mLocal->getType() == ParticleBase::PARTICLE) {
+        TracerParticleSystem* vp = (TracerParticleSystem*) mLocal;
+        glPointSize(0.5);
+        glColor3f(0,1,0);
+        glBegin(GL_POINTS);
+        for(int i=0; i<(int)vp->size(); i++) {
+            Vec3 pos = (*vp)[i].pos;
+            
+            glVertex(pos, dx);
+            
         }   
         glEnd();
-        glPointSize(1.0);
+        
     }
+    glPointSize(1.0);
     /*if(mLocal->getType() == ParticleBase::TRACER) {
         TracerParticleSystem* vp = (TracerParticleSystem*) mLocal;
         glPointSize(3.0);

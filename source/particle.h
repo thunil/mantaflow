@@ -53,6 +53,7 @@ public:
     inline S& operator[](int i) { return mData[i]; }
     inline const S& operator[](int i) const { return mData[i]; }
     PYTHON inline int size() const { return mData.size(); }
+    std::vector<S>& getData() { return mData; }
     
     // adding and deleting
     inline void kill(int i) { mData[i].flag |= PDELETE; if (++mDeletes > mDeleteChunk) compress(); }
@@ -78,6 +79,24 @@ public:
     std::vector<S> mData;    
 };
 
+//! Simplest data class for particle systems
+struct BasicParticleData {
+    BasicParticleData() : pos(0.), flag(0) {}
+    BasicParticleData(const Vec3& p) : pos(p), flag(0) {}
+    Vec3 pos;
+    int flag;
+    static ParticleBase::SystemType getType() { return ParticleBase::PARTICLE; }
+};
+
+PYTHON class TracerParticleSystem : public ParticleSystem<BasicParticleData> {
+    public:
+    PYTHON TracerParticleSystem(FluidSolver* parent) : ParticleSystem<BasicParticleData>(parent) {}
+    
+    PYTHON void addParticle(Vec3 pos) { add(BasicParticleData(pos));}
+};
+
+
+
 
 //! Particle set with connectivity
 PYTHON template<class DATA, class CON> 
@@ -97,20 +116,6 @@ protected:
     std::vector<CON> mSegments;
     virtual void compress();    
 };
-
-
-//! Simplest data class for particle systems
-struct BasicParticleData {
-    BasicParticleData() : pos(0.), flag(0) {}
-    BasicParticleData(const Vec3& p) : pos(p), flag(0) {}
-    Vec3 pos;
-    int flag;
-    static ParticleBase::SystemType getType() { return ParticleBase::PARTICLE; }
-};
-
-
-
-
 
 
 //******************************************************************************
@@ -134,7 +139,6 @@ int ParticleSystem<S>::add(const S& data) {
 
 template<class S> Vec3 ParticleSystem<S>::getPos(int idx) {
     assertMsg(idx>=0 && idx<size(), "Index out of bounds");
-    std::cout << idx << ":" << mData[idx].pos << std::endl;
     return mData[idx].pos;
 }
 

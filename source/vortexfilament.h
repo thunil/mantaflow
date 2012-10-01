@@ -42,13 +42,18 @@ public:
   
     //! self-advect the filament system
     PYTHON void advectSelf(Real scale=1.0, Real regularization=0.1, int integrationMode=IntRK4);
+    //! advect a particle system 
+    PYTHON void advectParticles(TracerParticleSystem& sys, Real scale=1.0, Real regularization=0.1, int integrationMode=IntRK2);
     //! advect triangle mesh using filaments
-    PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, Real regularization=0.1, int integrationMode=IntRK4);
+    PYTHON void advectMesh(Mesh& mesh, Real scale=1.0, Real regularization=0.1, int integrationMode=IntRK4);
     //! perform doubly-discrete smoke ring flow update
     //! as in [Weissmann,Pinkall 2009]
     PYTHON void doublyDiscreteUpdate(Real regularization=0.1);
     //! remesh long or strongly-curved segments
-    PYTHON void remesh(Real maxLen=1.0);
+    PYTHON void remesh(Real maxLen=3.0, Real minLen=1.0);
+    
+    //test
+    PYTHON void ddTest(Real d, Real phi);
     
     //! add a filament ring to the system
     PYTHON void addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number);

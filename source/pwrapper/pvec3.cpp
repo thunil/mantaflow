@@ -59,7 +59,6 @@ static int PbVec3Init(PbVec3 *self, PyObject *args, PyObject *kwds) {
         self->data[1] = 0;
         self->data[2] = 0;
     }
-    cout << x1 << endl;
     return 0;
 }
 
