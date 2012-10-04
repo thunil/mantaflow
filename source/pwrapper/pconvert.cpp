@@ -60,11 +60,11 @@ template<> PyObject* toPy<bool>( bool& v) {
 }
 template<> PyObject* toPy<Vec3i>( Vec3i& v) {
     float x=(float)v.x, y=(float)v.y, z=(float)v.z;
-    return PyObject_CallFunction((PyObject*)&PbVec3Type, (char*)"fff", &x, &y, &z);
+    return PyObject_CallFunction((PyObject*)&PbVec3Type, (char*)"fff", x, y, z);
 }
 template<> PyObject* toPy<Vec3>( Vec3& v) {
     float x=(float)v.x, y=(float)v.y, z=(float)v.z;
-    return PyObject_CallFunction((PyObject*)&PbVec3Type, (char*)"fff", &x, &y, &z);
+    return PyObject_CallFunction((PyObject*)&PbVec3Type, (char*)"fff", x, y, z);
 }
 template<> PyObject* toPy<PbClass*>( PbClass*& obj) {
     return obj->getPyObject();

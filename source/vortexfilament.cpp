@@ -42,8 +42,8 @@ inline Vec3 FilamentKernel(const Vec3& pos, const vector<VortexRing>& rings, con
             const Vec3 r0 = fp[r.idx0(j)].pos - pos;
             const Vec3 r1 = fp[r.idx1(j)].pos - pos;
             const Real r0_2 = normSquare(r0), r1_2 = normSquare(r1);
-            if (r0_2 > cutoff2 || r1_2 > cutoff2 || r0_2 < mindist || r1_2 < mindist)
-                continue;
+            /*if (r0_2 > cutoff2 || r1_2 > cutoff2 || r0_2 < mindist || r1_2 < mindist)
+                continue;*/
             
             const Vec3 e = getNormalized(r1-r0);
             const Real r0n = 1.0f/sqrt(a2+r0_2);
@@ -57,11 +57,11 @@ inline Vec3 FilamentKernel(const Vec3& pos, const vector<VortexRing>& rings, con
 }
 
 KERNEL(pts) returns(vector<Vec3> u(size))
-vector<Vec3> KnFilamentAdvectSelf(vector<BasicParticleData>& fp, const vector<VortexRing>& rings, Real reg, Real cutoff, Real scale) {
-    if (fp[i].flag & ParticleBase::PDELETE)
+vector<Vec3> KnFilamentAdvectParts(vector<BasicParticleData>& nodes, vector<BasicParticleData>& fp, const vector<VortexRing>& rings, Real reg, Real cutoff, Real scale) {
+    if (nodes[i].flag & ParticleBase::PDELETE)
         u[i] = _0;
     else
-        u[i] = FilamentKernel(fp[i].pos, rings, fp, reg, cutoff, scale);
+        u[i] = FilamentKernel(nodes[i].pos, rings, fp, reg, cutoff, scale);
 }
 
 KERNEL(pts) returns(vector<Vec3> u(size))
@@ -73,24 +73,32 @@ vector<Vec3> KnFilamentAdvectMesh(vector<Node>& nodes, const vector<VortexRing>&
 }
 
 void VortexFilamentSystem::advectSelf(Real scale, Real regularization, int integrationMode) {
-    KnFilamentAdvectSelf kernel(mData, mSegments , regularization, 1e10, scale * getParent()->getDt());
+    KnFilamentAdvectParts kernel(mData, mData, mSegments , regularization, 1e10, scale * getParent()->getDt());
     integratePointSet( kernel, integrationMode);
 }
 
-void VortexFilamentSystem::applyToMesh(Mesh& mesh, Real scale, Real regularization, int integrationMode) {
+void VortexFilamentSystem::advectMesh(Mesh& mesh, Real scale, Real regularization, int integrationMode) {
     KnFilamentAdvectMesh kernel(mesh.getNodeData(), mSegments, mData, regularization, 1e10, scale * getParent()->getDt());
     integratePointSet( kernel, integrationMode);   
 }
 
-void VortexFilamentSystem::remesh(Real maxLen) {
-    const Real maxLen2 = maxLen*maxLen;
+void VortexFilamentSystem::advectParticles(TracerParticleSystem& sys, Real scale, Real regularization, int integrationMode) {
+    KnFilamentAdvectParts kernel(sys.getData(), mData, mSegments, regularization, 1e10, scale * getParent()->getDt());
+    integratePointSet( kernel, integrationMode);   
+}
+
+void VortexFilamentSystem::remesh(Real maxLen, Real minLen) {
+    const Real maxLen2 = maxLen*maxLen, minLen2 = minLen*minLen;
     
     for (int i=0; i < segSize(); i++) {
+        VortexRing& r = mSegments[i];
+            
+        // insert edges
         for(;;) {
-            map<int,int> insert;        
-            VortexRing& r = mSegments[i];
             const int oldLen = r.size();
+            map<int,int> insert;        
             int offset = 1;
+            
             for (int j=0; j<oldLen; j++) {
                 const Vec3 p0 = mData[r.idx0(j)].pos;
                 const Vec3 p1 = mData[r.idx1(j)].pos;
@@ -120,7 +128,44 @@ void VortexFilamentSystem::remesh(Real maxLen) {
                     r.indices[j] = f->second;
             }
         }
+        
+        // remove edges
+        for(;;) {
+            const int oldLen = r.size();
+            std::vector<bool> deleted(r.size());
+            
+            int newLen=oldLen;
+            for (int j=0; j<oldLen; j++) {
+                if (mData[r.idx0(j)].flag & PDELETE || mData[r.idx1(j)].flag & PDELETE) continue;
+                const Vec3 p0 = mData[r.idx0(j)].pos;
+                const Vec3 p1 = mData[r.idx1(j)].pos;
+                const Real l2 = normSquare(p1-p0);
+                
+                if (l2 < minLen2) {
+                    // kill edge
+                    mData[r.idx0(j)].flag |= PDELETE;
+                    mData[r.idx1(j)].pos = 0.5*(p0+p1);
+                    deleted[j] = true;
+                    newLen--;
+                    j++;
+                }
+            }
+            if (newLen == oldLen)
+                break;
+            
+            // renumber indices
+            for (int j=0, copyFrom=0; j<newLen; j++,copyFrom++) {
+                while (deleted[copyFrom]) 
+                    copyFrom++;
+                if (j!=copyFrom)
+                    r.indices[j] = r.indices[copyFrom];
+            }            
+            r.indices.resize(newLen);
+        }
     }
+    
+    // remove deleted particles
+    compress();
 }
 
 VortexFilamentSystem::VortexFilamentSystem(FluidSolver* parent) :
@@ -187,7 +232,6 @@ bool powerMethod(const vector<Vec3>& gamma, Real l, Real r, Vec3& lT) {
     const int maxIter = 100;
     const Real epsilon = 1e-4;
     
-    lT = Vec3(0,0,l);
     for (int i=0; i<maxIter; i++) {
         Vec3 lastLT (lT);
         lT = monodromy(gamma, lT, r);
@@ -200,9 +244,10 @@ bool powerMethod(const vector<Vec3>& gamma, Real l, Real r, Vec3& lT) {
 
 bool darboux(const vector<Vec3>& from, vector<Vec3>& to, Real l, Real r) {
     const int N = from.size();
-    Vec3 lT(0.);
+    Vec3 lT(0,0,l);
     if (!powerMethod(from, l, r, lT))
         return false;
+    cout << "iniLT " << lT << " norm " << lT/l<< endl;
     
     for (int i=0; i<N; i++) {
         to[i] = from[i] + lT;
@@ -249,7 +294,7 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
         }
         
         // bwd darboux transform
-        if (!darboux(eta, gamma, l, -ra)) {
+        if (!darboux(eta, gamma, l, ra)) {
             cout << "Bwd Darboux correction failed, skipped." << endl; 
             continue;
         }
@@ -261,6 +306,53 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
     }
 }
 
+void VortexFilamentSystem::ddTest(Real d, Real phi) {
+    const Real dt = getParent()->getDt();
+    
+    for (int rc=0; rc<segSize(); rc++) {
+        if (!isSegActive(rc)) continue;
+        
+        VortexRing& r = mSegments[rc];
+        int N = r.size();
+        // compute arc length
+        Real L=0;
+        for (int i=0; i<N; i++)
+            L += norm(mData[r.idx0(i)].pos - mData[r.idx1(i)].pos);
+        
+        // build gamma
+        vector<Vec3> gamma(N);
+        for (int i=0; i<N; i++) gamma[i] = mData[r.indices[i]].pos;
+        
+        Real l = sqrt( square(L/N) + square(d) );
+        Real ra = d*tan(M_PI * 0.5 - M_PI/N); // d*cot(pi/n)
+        cout << "l: " << l << " ra: " << ra <<endl;
+        
+        // fwd darboux transform
+        vector<Vec3> eta(N);
+        if (!darboux(gamma, eta, l, ra)) {
+            cout << "Fwd Darboux correction failed, skipped." << endl; 
+            continue;
+        }
+        if (!darboux(eta, gamma, l, -ra)) {
+            cout << "Bwd Darboux correction failed, skipped." << endl; 
+            continue;
+        }
+        /*
+        // bwd darboux transform
+        if (!darboux(eta, gamma, l, -ra)) {
+            cout << "Bwd Darboux correction failed, skipped." << endl; 
+            continue;
+        }
+        */
+        // copy back
+        Vec3 sum(0.);
+        for (int i=0; i<N; i++) {
+            sum += mData[r.indices[i]].pos - gamma[i];
+            mData[r.indices[i]].pos = gamma[i];
+        }
+        cout << "total: " << sum/N << endl;
+    }
+}
 void VortexFilamentSystem::addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number) {
     normalize(normal);
     Vec3 worldup (0,1,0);

@@ -141,10 +141,13 @@ string createConverters(const string& name, const string& tb, const string& nl, 
 string gLocalReg, gParent;
 bool gFoundConstructor = false, gIsTemplated=false;
 
-string processPythonFunction(int lb, const string& name, const string& type, const ArgList& args, const string& initlist, const string& code, int) {
+string processPythonFunction(int lb, const string& name, const string& type, const ArgList& args, const string& initlist, bool isInline, bool isConst, const string& code, int) {
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = (gDebugMode) ? "\t" : "";
+    
+    const string inlineS = isInline ? "inline " : "";
+    const string constS = isConst ? " const" : "";
     
     // is header file ?
     bool isHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
@@ -190,13 +193,13 @@ string processPythonFunction(int lb, const string& name, const string& type, con
     caller += footer;
     
     // replicate original function
-    string func = type + " " + name + "(" + listArgs(args);
+    string func = inlineS + type + " " + name + "(" + listArgs(args);
     if (isPlugin) {
         // add parent as argument
         if (args.size()>0) func += ",";
         func += " FluidSolver* parent = NULL, PbArgs& _args = PbArgs::EMPTY";
     }
-    func += ") " + initlist + codeInline + nl;
+    func += ") " + constS + initlist + codeInline + nl;
         
     // register
     string regname = clname + (isConstructor ? clname : fname);
