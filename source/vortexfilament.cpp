@@ -42,8 +42,8 @@ inline Vec3 FilamentKernel(const Vec3& pos, const vector<VortexRing>& rings, con
             const Vec3 r0 = fp[r.idx0(j)].pos - pos;
             const Vec3 r1 = fp[r.idx1(j)].pos - pos;
             const Real r0_2 = normSquare(r0), r1_2 = normSquare(r1);
-            /*if (r0_2 > cutoff2 || r1_2 > cutoff2 || r0_2 < mindist || r1_2 < mindist)
-                continue;*/
+            if (r0_2 > cutoff2 || r1_2 > cutoff2 || r0_2 < mindist || r1_2 < mindist)
+                continue;
             
             const Vec3 e = getNormalized(r1-r0);
             const Real r0n = 1.0f/sqrt(a2+r0_2);
@@ -303,54 +303,6 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
         for (int i=0; i<N; i++) {
             mData[r.indices[i]].pos = gamma[i];
         }
-    }
-}
-
-void VortexFilamentSystem::ddTest(Real d, Real phi) {
-    const Real dt = getParent()->getDt();
-    
-    for (int rc=0; rc<segSize(); rc++) {
-        if (!isSegActive(rc)) continue;
-        
-        VortexRing& r = mSegments[rc];
-        int N = r.size();
-        // compute arc length
-        Real L=0;
-        for (int i=0; i<N; i++)
-            L += norm(mData[r.idx0(i)].pos - mData[r.idx1(i)].pos);
-        
-        // build gamma
-        vector<Vec3> gamma(N);
-        for (int i=0; i<N; i++) gamma[i] = mData[r.indices[i]].pos;
-        
-        Real l = sqrt( square(L/N) + square(d) );
-        Real ra = d*tan(M_PI * 0.5 - M_PI/N); // d*cot(pi/n)
-        cout << "l: " << l << " ra: " << ra <<endl;
-        
-        // fwd darboux transform
-        vector<Vec3> eta(N);
-        if (!darboux(gamma, eta, l, ra)) {
-            cout << "Fwd Darboux correction failed, skipped." << endl; 
-            continue;
-        }
-        if (!darboux(eta, gamma, l, -ra)) {
-            cout << "Bwd Darboux correction failed, skipped." << endl; 
-            continue;
-        }
-        /*
-        // bwd darboux transform
-        if (!darboux(eta, gamma, l, -ra)) {
-            cout << "Bwd Darboux correction failed, skipped." << endl; 
-            continue;
-        }
-        */
-        // copy back
-        Vec3 sum(0.);
-        for (int i=0; i<N; i++) {
-            sum += mData[r.indices[i]].pos - gamma[i];
-            mData[r.indices[i]].pos = gamma[i];
-        }
-        cout << "total: " << sum/N << endl;
     }
 }
 void VortexFilamentSystem::addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number) {

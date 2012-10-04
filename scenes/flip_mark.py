@@ -19,7 +19,7 @@ flip = s.create(FlipSystem)
 mesh = s.create(Mesh)
 
 # scene setup
-flags.initDomain(boundaryWidth=1)
+flags.initDomain(boundaryWidth=0)
 fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1))
 fluidbox.applyToGrid(grid=flags, value=FlagFluid, respectFlags=flags)
 flip.adjustNumber(vel=vel, flags=flags, minParticles=8, maxParticles=30)

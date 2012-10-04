@@ -217,8 +217,8 @@ public:
     inline bool isStick(const Vec3& pos) const { return getAt(pos) & TypeStick; }
     
     // Python callables
-    PYTHON void initDomain(int boundaryWidth=1);
-    PYTHON void initBoundaries(int boundaryWidth=1);
+    PYTHON void initDomain(int boundaryWidth=0);
+    PYTHON void initBoundaries(int boundaryWidth=0);
     PYTHON void updateFromLevelset(LevelsetGrid& levelset);    
     PYTHON void fillGrid(int type=TypeFluid);
 };

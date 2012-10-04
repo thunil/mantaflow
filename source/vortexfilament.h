@@ -52,9 +52,6 @@ public:
     //! remesh long or strongly-curved segments
     PYTHON void remesh(Real maxLen=3.0, Real minLen=1.0);
     
-    //test
-    PYTHON void ddTest(Real d, Real phi);
-    
     //! add a filament ring to the system
     PYTHON void addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number);
     
