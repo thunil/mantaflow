@@ -32,6 +32,9 @@ public:
     //! union with another levelset
     PYTHON void join(const LevelsetGrid& o);
     
+    //! completely init levelset from flags
+    PYTHON void initFromFlags(FlagGrid& flags, bool ignoreWalls=false);
+    
     static Real invalidTimeValue();
 };
 

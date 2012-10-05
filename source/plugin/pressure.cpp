@@ -28,15 +28,16 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
         return;
     }
        
-    // compute divergence (adjusted for obstacles)
-    // (for usolid !=0 additional term needed)
-    Real set = 0;
+    // compute divergence 
+    // assumes vel at obstacle interfaces is set to zero
+    /* Real set = 0;
     if (!flags.isObstacle(i-1,j,k)) set += vel(i,j,k).x;
     if (!flags.isObstacle(i+1,j,k)) set -= vel(i+1,j,k).x;
     if (!flags.isObstacle(i,j-1,k)) set += vel(i,j,k).y;
     if (!flags.isObstacle(i,j+1,k)) set -= vel(i,j+1,k).y;
     if (!flags.isObstacle(i,j,k-1)) set += vel(i,j,k).z;
-    if (!flags.isObstacle(i,j,k+1)) set -= vel(i,j,k+1).z;
+    if (!flags.isObstacle(i,j,k+1)) set -= vel(i,j,k+1).z; */
+    Real set = vel(i,j,k).x - vel(i+1,j,k).x + vel(i,j,k).y - vel(i,j+1,k).y + vel(i,j,k).z - vel(i,j,k+1).z;
     
     // per cell divergence correction
     if(perCellCorr) 

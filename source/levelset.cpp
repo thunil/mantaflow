@@ -192,6 +192,18 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
     
 }
 
+
+void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
+    FOR_IDX(*this) {
+        if (flags.isFluid(idx) || (ignoreWalls && flags.isObstacle(idx)))
+            mData[idx] = -0.5;
+        else
+            mData[idx] = 0.5;
+    }
+    reinitMarching(flags, getSize().max(), NULL, ignoreWalls, true);
+}
+    
+
 // helper function
 inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
     if (i > data.getSizeX()-2) i= data.getSizeX()-2;
