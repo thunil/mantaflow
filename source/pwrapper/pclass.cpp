@@ -51,6 +51,7 @@ struct PbClassData {
     string pythonName;
     PbInitFunc init;
     PyTypeObject typeInfo;
+    //PySequenceMethods seqInfo;
     vector<PbMethod> methods;
     map<string,PbGetSet> getset;
     PbClassData* baseclass;
@@ -70,9 +71,9 @@ struct PbObject {
 // Free functions
 
 #ifdef GUI
-    extern void updateQtGui(bool full, int frame);
+    extern void updateQtGui(bool full, int frame, const std::string& curPlugin);
 #else
-    inline void updateQtGui(bool full, int frame) {}
+    inline void updateQtGui(bool full, int frame, const std::string& curPlugin) {}
 #endif
 
 void pbPreparePlugin(FluidSolver* parent, const string& name) {
@@ -85,7 +86,8 @@ void pbFinalizePlugin(FluidSolver *parent, const string& name) {
         parent->pluginStop(name);
     
     // GUI update
-    updateQtGui(false, 0);
+    if (name != "FluidSolver::step")
+        updateQtGui(false, 0, name);
     
     // name unnamed PbClass Objects from var name
     PbWrapperRegistry::instance().renameObjects();

@@ -47,6 +47,7 @@ public slots:
     void step();
     void addControl(void* ctrl);
     void screenshot(QString file);
+    void clickLine(QPoint pos, float p0, float p1,float p2, float q0, float q1, float q2);
     
 signals:
     void painterEvent(int e, int param=0);    

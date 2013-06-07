@@ -21,7 +21,7 @@
 namespace Manta {
     
 struct FlipData {
-    FlipData() : pos(0.0f),vel(0.0f),flag(0) {}
+    FlipData() : pos(_0),vel(_0),flag(0) {}
     FlipData(const Vec3& p, const Vec3& v) : pos(p),vel(v),flag(0) {}
     Vec3 pos, vel;
     int flag;
@@ -37,8 +37,11 @@ public:
     PYTHON void velocitiesFromGrid(FlagGrid& flags, MACGrid& vel, Real flipRatio=0.95);
 	//! Write back velocities to grid
     PYTHON void velocitiesToGrid(FlagGrid& flags, MACGrid& vel);
-	PYTHON void adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles=8, int maxParticles=12);
-    
+	//! Ensure minimum/maximum number of particles per cell
+    PYTHON void adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles=8, int maxParticles=12);
+    //! Mark cells with particles as fluid, otherwise empty
+    PYTHON void markFluidCells(FlagGrid& flags);
+        
     virtual ParticleBase* clone();
 private:
 	MACGrid mOldVel;

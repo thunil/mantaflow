@@ -52,11 +52,11 @@ public:
     //! Check if indices are within bounds, otherwise error
     inline void checkIndex(int idx) const;
     //! Check if index is within given boundaries
-    inline bool isInBounds(const Vec3i& p, int bnd) { return (p.x >= bnd && p.y >= bnd && p.z >= bnd && p.x < mSize.x-bnd && p.y < mSize.y-bnd && p.z < mSize.z-bnd); }
+    inline bool isInBounds(const Vec3i& p, int bnd) const { return (p.x >= bnd && p.y >= bnd && p.z >= bnd && p.x < mSize.x-bnd && p.y < mSize.y-bnd && p.z < mSize.z-bnd); }
     //! Check if index is within given boundaries
-    inline bool isInBounds(const Vec3i& p) { return (p.x >= 0 && p.y >= 0 && p.z >= 0 && p.x < mSize.x && p.y < mSize.y && p.z < mSize.z); }
+    inline bool isInBounds(const Vec3i& p) const { return (p.x >= 0 && p.y >= 0 && p.z >= 0 && p.x < mSize.x && p.y < mSize.y && p.z < mSize.z); }
     //! Check if index is within given boundaries
-    inline bool isInBounds(const Vec3& p, int bnd = 0) { return isInBounds(toVec3i(p), bnd); }
+    inline bool isInBounds(const Vec3& p, int bnd = 0) const { return isInBounds(toVec3i(p), bnd); }
     
     //! Get the type of grid
     inline GridType getType() const { return mType; }
@@ -95,6 +95,8 @@ public:
     //! set all cells to zero
     void clear();
     
+    //! access data
+    inline T get(int i,int j, int k) const { return mData[index(i,j,k)]; }
     //! access data
     inline T& get(int i,int j, int k) { return mData[index(i,j,k)]; }
     //! access data
@@ -161,11 +163,11 @@ public:
     PYTHON MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { mType = (GridType)(TypeMAC | TypeVec3); }
     
     // specialized functions for interpolating MAC information
-    inline Vec3 getCentered(int i, int j, int k);
-    inline Vec3 getCentered(const Vec3i& pos) { return getCentered(pos.x, pos.y, pos.z); }
-    inline Vec3 getAtMACX(int i, int j, int k);
-    inline Vec3 getAtMACY(int i, int j, int k);
-    inline Vec3 getAtMACZ(int i, int j, int k);
+    inline Vec3 getCentered(int i, int j, int k) const;
+    inline Vec3 getCentered(const Vec3i& pos) const { return getCentered(pos.x, pos.y, pos.z); }
+    inline Vec3 getAtMACX(int i, int j, int k) const;
+    inline Vec3 getAtMACY(int i, int j, int k) const;
+    inline Vec3 getAtMACZ(int i, int j, int k) const;
     template<int comp> inline Real getInterpolatedComponent(Vec3 pos) const { return interpolComponent<comp>(mData, mSize, mStrideZ, pos); }
     inline Vec3 getInterpolated(const Vec3& pos) const { return interpolMAC(mData, mSize, mStrideZ, pos); }
     inline void setInterpolated(const Vec3& pos, const Vec3& val, Vec3* tmp) { return setInterpolMAC(mData, mSize, mStrideZ, pos, val, tmp); }
@@ -193,32 +195,32 @@ public:
     inline int getAt(const Vec3& pos) const { return mData[index((int)pos.x, (int)pos.y, (int)pos.z)]; }
             
 	//! check for different flag types
-    inline bool isObstacle(int idx) { return get(idx) & TypeObstacle; }
-    inline bool isObstacle(int i, int j, int k) { return get(i,j,k) & TypeObstacle; }
-    inline bool isObstacle(const Vec3i& pos) { return get(pos) & TypeObstacle; }
-    inline bool isObstacle(const Vec3& pos) { return getAt(pos) & TypeObstacle; }
-    inline bool isFluid(int idx) { return get(idx) & TypeFluid; }
-    inline bool isFluid(int i, int j, int k) { return get(i,j,k) & TypeFluid; }
-    inline bool isFluid(const Vec3i& pos) { return get(pos) & TypeFluid; }
-    inline bool isFluid(const Vec3& pos) { return getAt(pos) & TypeFluid; }
-    inline bool isInflow(int idx) { return get(idx) & TypeInflow; }
-    inline bool isInflow(int i, int j, int k) { return get(i,j,k) & TypeInflow; }
-    inline bool isInflow(const Vec3i& pos) { return get(pos) & TypeInflow; }
-    inline bool isInflow(const Vec3& pos) { return getAt(pos) & TypeInflow; }
-    inline bool isEmpty(int idx) { return get(idx) & TypeEmpty; }
-    inline bool isEmpty(int i, int j, int k) { return get(i,j,k) & TypeEmpty; }
-    inline bool isEmpty(const Vec3i& pos) { return get(pos) & TypeEmpty; }
-    inline bool isEmpty(const Vec3& pos) { return getAt(pos) & TypeEmpty; }
-    inline bool isStick(int idx) { return get(idx) & TypeStick; }
-    inline bool isStick(int i, int j, int k) { return get(i,j,k) & TypeStick; }
-    inline bool isStick(const Vec3i& pos) { return get(pos) & TypeStick; }
-    inline bool isStick(const Vec3& pos) { return getAt(pos) & TypeStick; }
+    inline bool isObstacle(int idx) const { return get(idx) & TypeObstacle; }
+    inline bool isObstacle(int i, int j, int k) const { return get(i,j,k) & TypeObstacle; }
+    inline bool isObstacle(const Vec3i& pos) const { return get(pos) & TypeObstacle; }
+    inline bool isObstacle(const Vec3& pos) const { return getAt(pos) & TypeObstacle; }
+    inline bool isFluid(int idx) const { return get(idx) & TypeFluid; }
+    inline bool isFluid(int i, int j, int k) const { return get(i,j,k) & TypeFluid; }
+    inline bool isFluid(const Vec3i& pos) const { return get(pos) & TypeFluid; }
+    inline bool isFluid(const Vec3& pos) const { return getAt(pos) & TypeFluid; }
+    inline bool isInflow(int idx) const { return get(idx) & TypeInflow; }
+    inline bool isInflow(int i, int j, int k) const { return get(i,j,k) & TypeInflow; }
+    inline bool isInflow(const Vec3i& pos) const { return get(pos) & TypeInflow; }
+    inline bool isInflow(const Vec3& pos) const { return getAt(pos) & TypeInflow; }
+    inline bool isEmpty(int idx) const { return get(idx) & TypeEmpty; }
+    inline bool isEmpty(int i, int j, int k) const { return get(i,j,k) & TypeEmpty; }
+    inline bool isEmpty(const Vec3i& pos) const { return get(pos) & TypeEmpty; }
+    inline bool isEmpty(const Vec3& pos) const { return getAt(pos) & TypeEmpty; }
+    inline bool isStick(int idx) const { return get(idx) & TypeStick; }
+    inline bool isStick(int i, int j, int k) const { return get(i,j,k) & TypeStick; }
+    inline bool isStick(const Vec3i& pos) const { return get(pos) & TypeStick; }
+    inline bool isStick(const Vec3& pos) const { return getAt(pos) & TypeStick; }
     
     // Python callables
     PYTHON void initDomain(int boundaryWidth=0);
     PYTHON void initBoundaries(int boundaryWidth=0);
     PYTHON void updateFromLevelset(LevelsetGrid& levelset);    
-    PYTHON void fillGrid();
+    PYTHON void fillGrid(int type=TypeFluid);
 };
 
 
@@ -241,7 +243,7 @@ inline void GridBase::checkIndex(int idx) const {
     }
 }
 
-inline Vec3 MACGrid::getCentered(int i, int j, int k) {
+inline Vec3 MACGrid::getCentered(int i, int j, int k) const {
     DEBUG_ONLY(checkIndex(i+1,j+1,k+1));
     const int idx = index(i,j,k);
     return Vec3(0.5* (mData[idx].x + mData[idx+1].x),
@@ -249,7 +251,7 @@ inline Vec3 MACGrid::getCentered(int i, int j, int k) {
                 0.5* (mData[idx].z + mData[idx+mStrideZ].z) );
 }
 
-inline Vec3 MACGrid::getAtMACX(int i, int j, int k) {
+inline Vec3 MACGrid::getAtMACX(int i, int j, int k) const {
     DEBUG_ONLY(checkIndex(i-1,j+1,k+1));
     const int idx = index(i,j,k);
     return Vec3(      (mData[idx].x),
@@ -257,7 +259,7 @@ inline Vec3 MACGrid::getAtMACX(int i, int j, int k) {
                 0.25* (mData[idx].z + mData[idx-1].z + mData[idx+mStrideZ].z + mData[idx+mStrideZ-1].z) );
 }
 
-inline Vec3 MACGrid::getAtMACY(int i, int j, int k) {
+inline Vec3 MACGrid::getAtMACY(int i, int j, int k) const {
     DEBUG_ONLY(checkIndex(i+1,j-1,k+1));
     const int idx = index(i,j,k);
     return Vec3(0.25* (mData[idx].x + mData[idx-mSize.x].x + mData[idx+1].x + mData[idx+1-mSize.x].x),
@@ -265,7 +267,7 @@ inline Vec3 MACGrid::getAtMACY(int i, int j, int k) {
                 0.25* (mData[idx].z + mData[idx-mSize.x].z + mData[idx+mStrideZ].z + mData[idx+mStrideZ-mSize.x].z) );
 }
 
-inline Vec3 MACGrid::getAtMACZ(int i, int j, int k) {
+inline Vec3 MACGrid::getAtMACZ(int i, int j, int k) const {
     DEBUG_ONLY(checkIndex(i+1,j+1,k-1));
     const int idx = index(i,j,k);
     return Vec3(0.25* (mData[idx].x + mData[idx-mStrideZ].x + mData[idx+1].x + mData[idx+1-mStrideZ].x),

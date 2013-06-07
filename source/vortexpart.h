@@ -20,7 +20,7 @@ namespace Manta {
 class Mesh;
     
 struct VortexParticleData {
-    VortexParticleData() : pos(0.0f),vorticity(0.0f),sigma(0),flag(0) {}
+    VortexParticleData() : pos(_0),vorticity(_0),sigma(0),flag(0) {}
     VortexParticleData(const Vec3& p, const Vec3& v, Real sig) : pos(p),vorticity(v),sigma(sig),flag(0) {}
     Vec3 pos, vorticity;
     Real sigma;
@@ -33,8 +33,8 @@ PYTHON class VortexParticleSystem : public ParticleSystem<VortexParticleData> {
 public:
     PYTHON VortexParticleSystem(FluidSolver* parent);
   
-    PYTHON void advectSelf(Real scale=1.0, int integrationMode=RK4);
-    PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, int integrationMode=RK4);
+    PYTHON void advectSelf(Real scale=1.0, int integrationMode=IntRK4);
+    PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, int integrationMode=IntRK4);
     
     virtual ParticleBase* clone();
 };

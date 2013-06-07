@@ -21,6 +21,24 @@
 
 namespace Manta {
 
+inline Vec3 fdTangent(const Vec3& p0, const Vec3& p1, const Vec3& p2) {
+    return 0.5*(getNormalized(p2-p1) + getNormalized(p1-p0));
+}
+
+inline Vec3 crTangent(const Vec3& p0, const Vec3& p1, const Vec3& p2) {
+    return 0.5*(p2-p0);
+}
+    
+inline Vec3 hermiteSpline(const Vec3& p0, const Vec3& p1, const Vec3& m0, const Vec3& m1, Real t) {
+    const Real t2=t*t, t3=t2*t;
+    return (2.0*t3 - 3.0*t2 + 1.0)*p0 + (t3 - 2.0*t2 + t)*m0 + (-2.0*t3 + 3.0*t2)*p1 + (t3 - t2)*m1;
+}
+
+
+// ----------------------------------------------------------------------
+// Grid interpolators
+// ----------------------------------------------------------------------
+    
 #define BUILD_INDEX \
     Real px=pos.x-0.5f, py=pos.y-0.5f, pz=pos.z-0.5f; \
     int xi = (int)px; \

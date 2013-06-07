@@ -53,10 +53,9 @@ WaveletNoiseField::WaveletNoiseField(FluidSolver* parent) :
     PbClass(parent), mPosOffset(0.), mPosScale(1.), mValOffset(0.), mValScale(1.), mClamp(false), 
     mClampNeg(0), mClampPos(1), mTimeAnim(0), mGsInvX(0), mGsInvY(0), mGsInvZ(0)
 {
-    assertMsg(parent->is3D(), "Only works for 3D solvers for now");
     mGsInvX = 1.0/(parent->getGridSize().x);
     mGsInvY = 1.0/(parent->getGridSize().y);
-    mGsInvZ = 1.0/(parent->getGridSize().z);
+    mGsInvZ = parent->is3D() ? (1.0/(parent->getGridSize().z)) : 1;
     generateTile();
 };
 

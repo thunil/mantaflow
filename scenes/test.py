@@ -1,64 +1,63 @@
 #
-# Use htis file to test new functionality
+# Simple example for free-surface simulation
+# with MacCormack advection
 
 from manta import *
 
 # solver params
-meshing = False
-res = 64
-gs = vec3(res,res,res)
+gs = vec3(96,40,40)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 0.5
 
 # prepare grids and particles
 flags = s.create(FlagGrid)
 vel = s.create(MACGrid)
-phi = s.create(LevelsetGrid)
 pressure = s.create(RealGrid)
-flip = s.create(FlipSystem)
 mesh = s.create(Mesh)
+phi = s.create(LevelsetGrid)
+vorty = s.create(RealGrid)
 
 # scene setup
-flags.initDomain()
-fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.8,1))
-phi1 = fluidbox.computeLevelset()
-flags.updateFromLevelset(phi1)
-flip.adjustNumber(vel=vel, flags=flags, minParticles=8, maxParticles=30)
-    
+flags.initDomain(boundaryWidth=0)
+step = s.create(Box, p0=gs*vec3(0.3,0,0), p1=gs*vec3(0.4,0.2,1))
+step.applyToGrid(grid=flags, value=FlagObstacle)
+
+h = 0.6
+riverInit = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1,h,1))
+#riverInit.applyToGrid(grid=flags, value=FlagFluid, respectFlags=flags)
+#riverInit.applyToGrid(grid=vel, value=(0.2,0,0), respectFlags=flags)
+phi.initFromFlags(flags=flags, ignoreWalls = True)
+
 if (GUI):
     gui = Gui()
     gui.show()
+    gui.pause()
     
 #main loop
-for t in range(200):
+for t in range(2000):
     
-    # FLIP advect and writeback
-    flip.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4)
-    flip.velocitiesToGrid(vel=vel, flags=flags)
-    flip.adjustNumber(vel=vel, flags=flags, minParticles=4, maxParticles=30)
-    #advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+    # update and advect levelset
+    phi.reinitMarching(flags=flags, velTransport=vel, ignoreWalls = True) #, ignoreWalls=False)
+    getCurl(vel=vel, vort=vorty, comp=2)
+    advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
+    flags.updateFromLevelset(phi)
     
-    addGravity(flags=flags, vel=vel, gravity=(0,-0.002,0))
+    # velocity self-advection
+    advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+    addGravity(flags=flags, vel=vel, gravity=vec3(0,-0.005,0))
     
     # pressure solve
     setWallBcs(flags=flags, vel=vel)    
     setLiquidBcs(flags=flags, vel=vel)
-    solvePressure(flags=flags, vel=vel, pressure=pressure)
+    setinflow(flags=flags, vel=vel,phi=phi,h=h)
+    solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=1.5, cgAccuracy=0.001, useResNorm=False, phi=phi, ghostAccuracy=0.0) 
     setLiquidBcs(flags=flags, vel=vel)    
     setWallBcs(flags=flags, vel=vel)
-    
-    # FLIP load
-    flip.velocitiesFromGrid(vel=vel, flags=flags, flipRatio=0.96)
+    setinflow(flags=flags, phi=phi, vel=vel,h=h)
         
-    # update and advect levelset
-    phi.reinitMarching(flags=flags, ignoreWalls=False)
-    advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
-    flags.updateFromLevelset(phi)
-    
     # note: these meshes are created by fast marching only, should smooth
     #       geometry and normals before rendering
-    if (meshing):
-        phi.createMesh(mesh)
-        mesh.save('phi%04d.bobj.gz' % t)
+    phi.createMesh(mesh)
     
     s.step()
+    #gui.pause()

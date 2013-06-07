@@ -21,18 +21,23 @@ namespace Manta {
 //! Kernel: Construct the right-hand side of the poisson equation
 KERNEL(bnd=1, reduce=+) returns(int cnt=0) returns(double sum=0)
 void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, 
-              Grid<Real>* perCellCorr, Real corr) 
+              Grid<Real>* perCellCorr) 
 {
     if (!flags.isFluid(i,j,k)) {
         rhs(i,j,k) = 0;
         return;
     }
-        
-    Real set;
-    set  = vel(i,j,k).x - vel(i+1,j,k).x;
-    set += vel(i,j,k).y - vel(i,j+1,k).y;
-    set += vel(i,j,k).z - vel(i,j,k+1).z;
-    set += corr;
+       
+    // compute divergence 
+    // assumes vel at obstacle interfaces is set to zero
+    /* Real set = 0;
+    if (!flags.isObstacle(i-1,j,k)) set += vel(i,j,k).x;
+    if (!flags.isObstacle(i+1,j,k)) set -= vel(i+1,j,k).x;
+    if (!flags.isObstacle(i,j-1,k)) set += vel(i,j,k).y;
+    if (!flags.isObstacle(i,j+1,k)) set -= vel(i,j+1,k).y;
+    if (!flags.isObstacle(i,j,k-1)) set += vel(i,j,k).z;
+    if (!flags.isObstacle(i,j,k+1)) set -= vel(i,j,k+1).z; */
+    Real set = vel(i,j,k).x - vel(i+1,j,k).x + vel(i,j,k).y - vel(i,j+1,k).y + vel(i,j,k).z - vel(i,j,k+1).z;
     
     // per cell divergence correction
     if(perCellCorr) 
@@ -49,26 +54,18 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 KERNEL(bnd=1) 
 void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
 {
-	// correct all faces between fluid-fluid and fluid-empty cells
+    // correct all faces between fluid-fluid and fluid-empty cells
 	// skip everything with obstacles...
 	if (flags.isObstacle(i,j,k))
         return;
+    
+    // skip faces between two empty cells
+	const bool curEmpty = flags.isEmpty(i,j,k);
+    const Real p = pressure(i,j,k);
 
-	// skip faces between two empty cells
-	const bool myFlagIsEmpty = flags.isEmpty(i,j,k);
-
-	if(! ((flags.isEmpty(i-1,j,k)) && (myFlagIsEmpty)) )
-	{
-        vel(i,j,k).x -= (pressure(i,j,k) - pressure(i-1,j,k) );
-    }
-	if(! ((flags.isEmpty(i,j-1,k)) && (myFlagIsEmpty)) )
-	{
-        vel(i,j,k).y -= (pressure(i,j,k) - pressure(i,j-1,k) );
-    }
-	if(flags.is3D() && (! ((flags.isEmpty(i,j,k-1)) && (myFlagIsEmpty)) ))
-	{
-        vel(i,j,k).z -= (pressure(i,j,k) - pressure(i,j,k-1) );
-    }    
+    if (!curEmpty || !flags.isEmpty(i-1,j,k)) vel(i,j,k).x -= (p - pressure(i-1,j,k));
+    if (!curEmpty || !flags.isEmpty(i,j-1,k)) vel(i,j,k).y -= (p - pressure(i,j-1,k));
+    if (!curEmpty || !flags.isEmpty(i,j,k-1)) vel(i,j,k).z -= (p - pressure(i,j,k-1));
 }
 
 //! Kernel: Set matrix stencils and velocities to enable open boundaries
@@ -190,7 +187,6 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0, 
-                     Real divCorr = 0,
                      Real ghostAccuracy = 0, 
                      Real cgMaxIterFac = 1.5,
                      Real cgAccuracy = 1e-3,
@@ -234,7 +230,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     }
     
     // compute divergence and init right hand side
-    MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, divCorr);
+    MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr);
     
     if (!outflow.empty())
         SetOutflow (rhs, loOutflow, upOutflow, outflowHeight);

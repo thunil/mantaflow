@@ -32,6 +32,7 @@ public:
      
      void mousePressEvent(QMouseEvent *e);
      void mouseMoveEvent(QMouseEvent *e);
+     void mouseReleaseEvent(QMouseEvent *e);
      void wheelEvent(QWheelEvent *e);     
      void screenshot(QString file);
 
@@ -40,6 +41,7 @@ public slots:
      
 signals:
     void paintSub();
+    void clickLine(QPoint pos, float p0, float p1,float p2, float q0, float q1, float q2);
     void painterEvent(int e, int param=0);
      
 protected:
@@ -54,7 +56,7 @@ protected:
     enum MoveDir { None = 0, MoveLeft, MoveRight, MoveUp, MoveDown, MoveIn, MoveOut, MoveDirNum };
     
     bool mMoveState[MoveDirNum];
-    QPoint mAnchor;
+    QPoint mAnchor, mDownPos;
     Vec3 mCamPos;
     float mRotX, mRotY;
     Vec3i mGridsize;

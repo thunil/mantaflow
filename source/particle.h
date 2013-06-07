@@ -52,14 +52,20 @@ public:
     // accessors
     inline S& operator[](int i) { return mData[i]; }
     inline const S& operator[](int i) const { return mData[i]; }
-    inline int size() const { return mData.size(); }    
-        
+    PYTHON inline int size() const { return mData.size(); }
+    std::vector<S>& getData() { return mData; }
+    
     // adding and deleting
     inline void kill(int i) { mData[i].flag |= PDELETE; if (++mDeletes > mDeleteChunk) compress(); }
     inline bool isActive(int i) { return (mData[i].flag & PDELETE) == 0; }    
     int add(const S& data);
     void clear();
     
+    //! safe accessor for python
+    PYTHON void setPos(int idx, const Vec3& pos);
+    //! safe accessor for python
+    PYTHON Vec3 getPos(int idx);
+            
     //! Advect particle in grid velocity field
     PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
     
@@ -72,6 +78,24 @@ public:
     int mDeletes, mDeleteChunk;    
     std::vector<S> mData;    
 };
+
+//! Simplest data class for particle systems
+struct BasicParticleData {
+    BasicParticleData() : pos(0.), flag(0) {}
+    BasicParticleData(const Vec3& p) : pos(p), flag(0) {}
+    Vec3 pos;
+    int flag;
+    static ParticleBase::SystemType getType() { return ParticleBase::PARTICLE; }
+};
+
+PYTHON class TracerParticleSystem : public ParticleSystem<BasicParticleData> {
+    public:
+    PYTHON TracerParticleSystem(FluidSolver* parent) : ParticleSystem<BasicParticleData>(parent) {}
+    
+    PYTHON void addParticle(Vec3 pos) { add(BasicParticleData(pos));}
+};
+
+
 
 
 //! Particle set with connectivity
@@ -94,20 +118,6 @@ protected:
 };
 
 
-//! Simplest data class for particle systems
-struct BasicParticleData {
-    BasicParticleData() : pos(0.), flag(0) {}
-    BasicParticleData(const Vec3& p) : pos(p), flag(0) {}
-    Vec3 pos;
-    int flag;
-    static ParticleBase::SystemType getType() { return ParticleBase::PARTICLE; }
-};
-
-
-
-
-
-
 //******************************************************************************
 // Implementation
 //******************************************************************************
@@ -127,30 +137,33 @@ int ParticleSystem<S>::add(const S& data) {
     return mData.size()-1;
 }
 
-DefineIntegrator(integrateMeshMAC, MACGrid, getInterpolated);
-
-KERNEL(pts) template<class S, IntegrationMode mode>
-void KnAdvectInGrid(ParticleSystem<S>& p, MACGrid& vel, FlagGrid& flaggrid, Real dt) {
-    if (!p.isActive(i)) return;
-    
-    // from integrator.h
-    p[i].pos += integrateMeshMAC<mode>(p[i].pos, vel, dt);
-    
-    // TODO: else if(flaggrid.isObstacle(pos)) reproject
-    if ((!flaggrid.isInBounds(p[i].pos,1) || flaggrid.isObstacle(p[i].pos)) && p[i].pos.x > 5)
-        p[i].flag |= ParticleBase::PDELETE;
+template<class S> Vec3 ParticleSystem<S>::getPos(int idx) {
+    assertMsg(idx>=0 && idx<size(), "Index out of bounds");
+    return mData[idx].pos;
 }
+
+template<class S> void ParticleSystem<S>::setPos(int idx, const Vec3& pos) {
+    assertMsg(idx>=0 && idx<size(), "Index out of bounds");
+    mData[idx].pos = pos;
+}
+KERNEL(pts) template<class S> returns(std::vector<Vec3> u(size))
+std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flaggrid, Real dt)
+{
+    if (p[i].flag & ParticleBase::PDELETE) 
+        u[i] =_0;
+    else if (!flaggrid.isInBounds(p[i].pos,1) || flaggrid.isObstacle(p[i].pos)) {
+        p[i].flag |= ParticleBase::PDELETE;
+        u[i] = _0;
+    }        
+    else 
+        u[i] = vel.getInterpolated(p[i].pos) * dt;
+};
 
 // advection plugin
 template<class S>
 void ParticleSystem<S>::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode) {
-    const Real dt = mParent->getDt();
-    switch((IntegrationMode)integrationMode) {
-        case EULER: KnAdvectInGrid<S, EULER>(*this, vel, flaggrid, dt); break;
-        case RK2: KnAdvectInGrid<S, RK2>(*this, vel, flaggrid, dt); break;
-        case RK4: KnAdvectInGrid<S, RK4>(*this, vel, flaggrid, dt); break;
-        default: throw Error("invalid integration mode");
-    }
+    GridAdvectKernel<S> kernel(mData, vel, flaggrid, getParent()->getDt());
+    integratePointSet(kernel, integrationMode);
 }
 
 template<class S>

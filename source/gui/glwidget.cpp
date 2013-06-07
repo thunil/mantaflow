@@ -12,6 +12,11 @@
  ******************************************************************************/
 
 #include "glwidget.h"
+#ifdef __APPLE__
+#   include <OpenGL/glu.h>
+#else
+#   include <GL/glu.h>
+#endif
 #include <cmath>
 #include "painter.h"
 
@@ -93,6 +98,27 @@ void GLWidget::resizeGL(int w, int h)
     
 }
 
+void GLWidget::mouseReleaseEvent(QMouseEvent* event) {
+    // only do tooltip if not moving
+    QPoint pos = event->pos();
+    if ((mDownPos - pos).manhattanLength() == 0) {
+        // get GL transform matrices
+        int viewport[4];
+        GLdouble modelMatrix[16], projMatrix[16];
+        glGetDoublev(GL_MODELVIEW_MATRIX,modelMatrix);
+        glGetDoublev(GL_PROJECTION_MATRIX,projMatrix);
+        glGetIntegerv(GL_VIEWPORT,viewport);
+        
+        // obtain click line
+        GLdouble line[6], wx=pos.x(), wy=viewport[3]-pos.y();
+        if (!gluUnProject(wx,wy,0,modelMatrix,projMatrix,viewport,&line[0],&line[1],&line[2])) return;
+        if (!gluUnProject(wx,wy,1.0,modelMatrix,projMatrix,viewport,&line[3],&line[4],&line[5])) return;
+        
+        // calculate intersection with plane
+        emit clickLine(event->globalPos(), line[0],line[1],line[2],line[3],line[4],line[5]);
+    }
+}
+
 void GLWidget::mouseMoveEvent(QMouseEvent* e)
 {
     const float speedRot = 0.2f, speedPan = 0.002f;
@@ -114,7 +140,7 @@ void GLWidget::mouseMoveEvent(QMouseEvent* e)
 
 void GLWidget::mousePressEvent(QMouseEvent* e)
 {
-    mAnchor = e->pos();
+    mDownPos = mAnchor = e->pos();
 }
 
 void GLWidget::wheelEvent(QWheelEvent* e)

@@ -82,8 +82,6 @@ LevelsetGrid::LevelsetGrid(FluidSolver* parent, bool show)
     mType = (GridType)(TypeLevelset | TypeReal);    
 }    
 
-extern void updateQtGui(bool full, int frame); // HACK
-
 Real LevelsetGrid::invalidTimeValue() {
     return FastMarch<FmHeapEntryOut, 1>::InvalidTime();
 }
@@ -193,6 +191,18 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
     SetUninitialized (fmFlags, phi, +maxTime);    
     
 }
+
+
+void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
+    FOR_IDX(*this) {
+        if (flags.isFluid(idx) || (ignoreWalls && flags.isObstacle(idx)))
+            mData[idx] = -0.5;
+        else
+            mData[idx] = 0.5;
+    }
+    reinitMarching(flags, getSize().max(), NULL, ignoreWalls, true);
+}
+    
 
 // helper function
 inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {

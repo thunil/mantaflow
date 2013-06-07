@@ -5,7 +5,7 @@
 from manta import *
 
 # solver params
-res = 64
+res = 128
 gs = vec3(res,1.5*res,res)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 1.0
@@ -36,7 +36,7 @@ if (GUI):
 source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))
     
 #main loop
-for t in range(200):
+for t in range(50):
     if t<100:
         densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
         
@@ -47,8 +47,8 @@ for t in range(200):
     setWallBcs(flags=flags, vel=vel)    
     addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags)
     
-    solvePressure(flags=flags, vel=vel, pressure=pressure)
+    solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True)
     setWallBcs(flags=flags, vel=vel)
-    density.save('den%04d.uni' % t)
+    #density.save('den%04d.uni' % t)
     
     s.step()

@@ -52,10 +52,14 @@
     typedef float Real;
 #   define FP_REAL_MAX __FLT_MAX__
 #   define VECTOR_EPSILON (1e-6f)
+#   define _0 0.0f
+#   define _1 1.0f
 #else
     typedef double Real;
 #   define FP_REAL_MAX __DBL_MAX__
 #   define VECTOR_EPSILON (1e-10)
+#   define _0 0.0
+#   define _1 1.0
 #endif
 
 // windos, hardcoded limits for now...
@@ -94,34 +98,19 @@ public:
     inline Vector3D() : x(0),y(0),z(0) {}
     
     //! Copy-Constructor
-    inline Vector3D ( const Vector3D<S> &v ) {
-        x = v.x;
-        y = v.y;
-        z = v.z;
-    }
+    inline Vector3D ( const Vector3D<S> &v ) : x(v.x), y(v.y), z(v.z) {}
+
     //! Copy-Constructor
-    inline Vector3D ( const float * v) {
-        x = ( S) v[0];
-        y = ( S) v[1];
-        z = ( S) v[2];
-    }
+    inline Vector3D ( const float * v) : x((S)v[0]), y((S)v[1]), z((S)v[2]) {}
+
     //! Copy-Constructor
-    inline Vector3D ( const double * v) {
-        x = ( S) v[0];
-        y = ( S) v[1];
-        z = ( S) v[2];
-    }
+    inline Vector3D ( const double * v) : x((S)v[0]), y((S)v[1]), z((S)v[2]) {}
     
     //! Construct a vector from one S
-    inline Vector3D ( S v) {
-        x = y = z = v;
-    }
+    inline Vector3D ( S v) : x(v), y(v), z(v) {}
+        
     //! Construct a vector from three Ss
-    inline Vector3D ( S vx, S vy, S vz) {
-        x = vx;
-        y = vy;
-        z = vz;
-    }
+    inline Vector3D ( S vx, S vy, S vz) : x(vx), y(vy), z(vz) {}
 
     // Operators
     
@@ -229,9 +218,7 @@ public:
 
     //! actual values
     union {
-        struct {
-            S value[3];
-        };
+        S value[3];
         struct {
             S x;
             S y;

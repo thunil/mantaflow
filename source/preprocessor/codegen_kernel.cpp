@@ -59,7 +59,8 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     }
     string qualifier = (!reduce && gMTType==MTTBB) ? "const" : "";
     string tbbcall = reduce ? "tbb::parallel_reduce" : "tbb::parallel_for";
-
+    const bool haveOuter = !reduce && !returnArg.empty() && gMTType == MTTBB;
+    
 	// point out illegal paramter combinations
     if (bnd != "0" && idxMode)
         errMsg(line, "KERNEL(opt): can't combine index mode with bounds iteration.");    
@@ -78,24 +79,22 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         errMsg(line, "return argument specified without matching 'returns' initializer");
     
     // parse arguments
-    string initList = "", argList = "", copier = "", members = "", basegrid="", baseobj="", callList = "", orgArgList="", mCallList;
+    string initList = "", argList = "", copier = "", members = "", basegrid="", baseobj="", callList = "", orgArgList="", mCallList, outerCopier="", lineAcc="";
     for (size_t i=0; i<args.size(); i++) {
-        string type = args[i].type;
+        string type = args[i].getType();
         string name = args[i].name;
-        if (!args[i].templ.empty()) type+= "<" + args[i].templ + ">";                
-        if (args[i].isPointer) type += "*";                
-        if (args[i].isRef) type += "&";
-        if (args[i].isConst) type = "const "+type;
         
         initList += (i==0) ? "" : ", ";
         argList += (i==0) ? "" : ", ";
         copier += (i==0) ? "" : ", ";
         callList += (i==0) ? "" : ", ";
         orgArgList += (i==0) ? "" : ", ";
+        outerCopier += (i==0) ? "" : ", ";
         
         string aname = "_" + name;
         string sname = "m_" + name;
         copier += sname + "(o." + sname + ")";
+        outerCopier += "o._inner." + sname;
         members += tb+ type + " " + sname + ";" + nl;
         initList += sname + "(" + aname + ")";
         callList += aname;
@@ -104,6 +103,16 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         argList += type + " " + aname;
         if (!args[i].value.empty())
             argList += " = " + args[i].value;
+        if (i<3) {
+            Argument refa(args[i]), refb(args[i]);
+            refa.isRef = true;
+            refb.isRef = false; refb.isConst = false;
+            char num = '0' + i;
+            string avar = (haveOuter ? "_inner." : "") + sname;
+            lineAcc += tb + refa.getType() + " getArg" + num + "() { return " + avar + "; }" + nl;
+            //lineAcc += tb + "void setArg" + num + "(" + refa.getType() + " _v) { " + avar + " = _v; }" + nl;
+            lineAcc += tb + "typedef " + refb.getType() + " type" + num + ";" + nl;
+        }
         
         // figure out basegrid and baseobj
         if (basegrid.empty()) {
@@ -132,7 +141,6 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     }
     
     string kclass = "", kclassname = kname, callerClass="";
-    const bool haveOuter = !reduce && !returnArg.empty() && gMTType == MTTBB;
     string outerMembers = parentMember, outerArgList = argList, initRetval = "", retList = "";
         
     // add return args as members
@@ -170,18 +178,46 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         outOp += tb + "operator " + retType.complete + " () {" + nl;
         outOp += tb2+ "return " + returnArg[0].name + ";" + nl;
         outOp += tb + "}" + nl;
+        Argument crRet = retType;
+        crRet.isRef = true; crRet.isConst = true;
+        outOp += tb + crRet.getType() + " getRet() const { return " + returnArg[0].name + "; }" + nl;
+        outOp += lineAcc;
     }
         
     // create outer class for non-reduce return values
     if (haveOuter) {
         kclassname = "_kernel_" + kname;
-        callerClass = "struct " + kname + " { " + nl;
-        callerClass += tb + kname + " ( " + outerArgList + ") : "+initParent + initRetval + " _inner(" + callList + ") { }" + nl;
-        callerClass += outOp;
-        callerClass += tb + kclassname + " _inner;" + nl + outerMembers;
-        callerClass += "};" + nl;
-    }
+        if (!templArgs.empty()) callerClass += "template <" + listArgs(templArgs) + ">" + nl;
+        callerClass += "struct " + kname + " : public " + (pts ? "Particle" : "") + "KernelBase { " + nl;
+        callerClass += tb + kname + " ( " + outerArgList + ") : ";
+        if (pts)
+            callerClass += "ParticleKernelBase((" + basegrid + ").size()), ";
+        else
+            callerClass += "KernelBase(" + basegrid + ", " + bnd + "), ";
+        callerClass += initParent + initRetval + " _inner(" + callList + ") { }" + nl;
         
+        // copy constructor
+        callerClass += tb+ kname + " (const " + kname + "& o) : ";
+        if (!pts)
+            callerClass += "KernelBase(o.maxX, o.maxY, o.maxZ, o.maxCells, o.minZ, o.X, o.Y, o.Z), ";
+        else
+            callerClass += "ParticleKernelBase(o.size), ";
+        callerClass += copyParent + initRetval + " _inner(" + outerCopier + "," + retList + ") {}" + nl;
+    
+        callerClass += tb + "void run() { _inner.run(); }" + nl;
+        callerClass += outOp;
+        callerClass += outerMembers;
+        // declar inner class
+        callerClass += tb + kclassname;
+        if (!templArgs.empty()) {
+            callerClass += "<" + templArgs[0].name;
+            for (size_t i=1; i<templArgs.size(); i++) callerClass += ", "+templArgs[i].name;
+            callerClass += ">";
+        }
+        callerClass += " _inner;" + nl;
+        callerClass += "};" + nl;        
+    }
+    
     // create kernel class
     if (!templArgs.empty()) kclass += "template <" + listArgs(templArgs) + ">" + nl;
     kclass += "struct " + kclassname + " : public " + (pts ? "Particle" : "") + "KernelBase { " + nl;
@@ -196,6 +232,16 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     kclass += tb2+ "run();" + nl;
     kclass += tb+ "}" + nl;
     
+    // copy constructor
+    if (!haveOuter) {
+        kclass += tb+ kclassname + " (const " + kclassname + "& o) : ";
+        if (!pts)
+            kclass += "KernelBase(o.maxX, o.maxY, o.maxZ, o.maxCells, o.minZ, o.X, o.Y, o.Z), ";
+        else
+            kclass += "ParticleKernelBase(o.size), ";
+        kclass += copyParent + copier + " {}" + nl;
+    }
+    
     // code point
     if (pts)
         kclass+= tb+ "inline void op(int i,"+orgArgList+") "+qualifier+nl;
@@ -204,7 +250,6 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     else
         kclass+= tb+ "inline void op(int i,int j,int k,"+orgArgList+") "+qualifier+nl;
     kclass += code + nl;
-       
     
     // create main kernel function 
     if (gMTType == MTTBB) {
@@ -249,7 +294,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
             if (!pts)
                 kclass += tb2+ "KernelBase(o.maxX, o.maxY, o.maxZ, o.maxCells, o.minZ, o.X, o.Y, o.Z)," + nl;
             else
-                kclass += tb2+ "KernelBase(o.size)," + nl;
+                kclass += tb2+ "ParticleKernelBase(o.size)," + nl;
             kclass += tb2+ copyParent + copier + " {}" + nl;
             // join
             kclass += tb + "void join(const " + kclassname+"& _other) {" + nl;

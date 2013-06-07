@@ -34,8 +34,8 @@ public:
     inline GridType getType() const { return mType; }
     
     //! Apply shape to flag grid, set inside cells to <value>
-    PYTHON void applyToGrid(GridBase* grid);
-    PYTHON void applyToGridSmooth(GridBase* grid, Real sigma=1.0, Real shift=0);
+    PYTHON void applyToGrid(GridBase* grid, FlagGrid* respectFlags=0);
+    PYTHON void applyToGridSmooth(GridBase* grid, Real sigma=1.0, Real shift=0, FlagGrid* respectFlags=0);
     PYTHON LevelsetGrid computeLevelset();
     PYTHON void collideMesh(Mesh& mesh);
     

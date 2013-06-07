@@ -51,7 +51,7 @@ template<class T> PyObject* toPy( T& val);
 PyObject* getPyNone();
     
 // additional indirection somehow needed to resolve specializations in ppreg.cpp
-template<class T> PyObject* d_toPy(T val) { return toPy<T>(val);}
+template<class T> inline PyObject* d_toPy(T val) { return toPy<T>(val);}
 
 //! Encapsulation of python arguments
 class PbArgs {

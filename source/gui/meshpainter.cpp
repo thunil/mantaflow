@@ -141,12 +141,15 @@ void MeshPainter::setupLights(bool specular) {
 }
 
 static inline void glColor(const Vec3& color) {
-    glColor3f(std::max(0.0f,std::min(1.0f,color.x)), std::max(0.0f,std::min(1.0f,color.y)), std::max(0.0f,std::min(1.0f,color.z)));
+    glColor3f(std::max(_0,std::min(_1,color.x)), std::max(_0,std::min(_1,color.y)), std::max(_0,std::min(_1,color.z)));
 }
 
 static inline void glVertex(const Vec3& v, Real dx) {
     glVertex3f(v.x * dx, v.y * dx, v.z * dx);
 }
+static inline void glNormal(const Vec3& v) {
+    glNormal3f(v.x, v.y, v.z);
+}            
 
 void MeshPainter::paint() {
     if (!mObject || mHide) return;
@@ -183,7 +186,7 @@ void MeshPainter::paint() {
         for(int tri=0; tri<mBackground->numTris(); tri++) {
             Vec3 normal = mBackground->getFaceNormal(tri);
             for (int c=0; c<3; c++) {
-                glNormal3fv(&normal[0]);
+                glNormal(normal);
                 glVertex(mBackground->getNode(tri,c), dx);                
             }
         }
@@ -238,7 +241,7 @@ void MeshPainter::paint() {
                     tc = nmod(tc, Vec3(1,1,1));
                     glColor3f(tc.x, tc.y ,tc.z);
                 }
-                glNormal3fv(&(mLocalMesh->getFaceNormal(tri)[0]));
+                glNormal(mLocalMesh->getFaceNormal(tri));
                 glVertex(mLocalMesh->getNode(tri,c), dx);
             }
         }

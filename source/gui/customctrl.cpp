@@ -81,7 +81,7 @@ void TextSlider::set(float v) {
 // **************************************************************************************
 // GUI class
 
-void updateQtGui(bool full, int frame);
+void updateQtGui(bool full, int frame, const std::string& curPlugin);
 extern MainThread* gMainThread;
 extern GuiThread* gGuiThread;
 
@@ -96,7 +96,7 @@ void Gui::show() {
     mMainPtr->sendAndWait((int)MainWnd::EventGuiShow);         
 }
 void Gui::update() { 
-    updateQtGui(true,-1);
+    updateQtGui(true,-1,"");
 }
 void Gui::pause() {
     mMainPtr->sendAndWait((int)MainWnd::EventFullUpdate);         

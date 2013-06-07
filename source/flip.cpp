@@ -92,6 +92,18 @@ void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, i
     }
 }
 
+void FlipSystem::markFluidCells(FlagGrid& flags) {
+    // kill all fluid cells
+    flags.fillGrid(FlagGrid::TypeEmpty);
+    
+    // mark all particles in flaggrid
+    for(size_t i=0;i<mData.size();i++) {
+        const Vec3i p = toVec3i(mData[i].pos);
+        if (flags.isInBounds(p) && flags.isEmpty(p))
+            flags(p) = (flags(p) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
+    }
+}
+
 ParticleBase* FlipSystem::clone() {
     FlipSystem* nm = new FlipSystem(getParent());
     compress();
