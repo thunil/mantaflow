@@ -63,7 +63,7 @@ PYTHON void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseFiel
 
 
 
-
+//!interpolate grid from one size to another size
 PYTHON void interpolateGrid(Grid<Real>& source, Grid<Real>& target)
 {
 	Vec3 sourceFactor = Vec3( 
@@ -77,7 +77,7 @@ PYTHON void interpolateGrid(Grid<Real>& source, Grid<Real>& target)
 	}
 }
 
-
+//!interpolate a mac velocity grid from one size to another size
 PYTHON void interpolateMACGrid(MACGrid& source, MACGrid& target)
 {
 	Vec3 sourceFactor = Vec3( 

@@ -244,10 +244,10 @@ void FlagGrid::updateFromLevelset(LevelsetGrid& levelset) {
     }
 }   
 
-void FlagGrid::fillGrid() {
+void FlagGrid::fillGrid(int type) {
     FOR_IDX(*this) {
         if ((mData[idx] & TypeObstacle)==0)
-            mData[idx] = (mData[idx] & ~TypeEmpty) | TypeFluid;
+            mData[idx] = (mData[idx] & ~(TypeEmpty | TypeFluid)) | type;
     }
 }
 
