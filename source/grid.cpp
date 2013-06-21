@@ -106,8 +106,10 @@ void Grid<T>::save(string name) {
     string ext = name.substr(name.find_last_of('.'));
     if (ext == ".raw")
         writeGridRaw(name, this);
-    else if (ext == ".uni")
-        writeGridUni(name, this);
+	else if (ext == ".uni")
+		writeGridUni(name, this);
+	else if (ext == ".vol")
+		writeGridVol(name, this);
     else
         errMsg("file '" + name +"' filetype not supported");
 }
@@ -242,10 +244,10 @@ void FlagGrid::updateFromLevelset(LevelsetGrid& levelset) {
     }
 }   
 
-void FlagGrid::fillGrid(int type) {
+void FlagGrid::fillGrid() {
     FOR_IDX(*this) {
         if ((mData[idx] & TypeObstacle)==0)
-            mData[idx] = (mData[idx] & ~(TypeEmpty | TypeFluid)) | type;
+            mData[idx] = (mData[idx] & ~TypeEmpty) | TypeFluid;
     }
 }
 

@@ -52,6 +52,7 @@ protected:
     void initializeGL();
     void resizeGL(int w, int h);
     void paintGL();
+	void updatePlane(int plane);
     
     enum MoveDir { None = 0, MoveLeft, MoveRight, MoveUp, MoveDown, MoveIn, MoveOut, MoveDirNum };
     

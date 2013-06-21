@@ -62,5 +62,38 @@ PYTHON void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseFiel
 }
 
 
+
+
+PYTHON void interpolateGrid(Grid<Real>& source, Grid<Real>& target)
+{
+	Vec3 sourceFactor = Vec3( 
+		Real(source.getSizeX())/target.getSizeX(), 
+		Real(source.getSizeY())/target.getSizeY(), 
+		Real(source.getSizeZ())/target.getSizeZ() );
+
+	FOR_IJK(target) {
+		Vec3 pos = Vec3(i,j,k) * sourceFactor;
+		target(i,j,k) = source.getInterpolated(pos);
+	}
+}
+
+
+PYTHON void interpolateMACGrid(MACGrid& source, MACGrid& target)
+{
+	Vec3 sourceFactor = Vec3( 
+		Real(source.getSizeX())/target.getSizeX(), 
+		Real(source.getSizeY())/target.getSizeY(), 
+		Real(source.getSizeZ())/target.getSizeZ() );
+
+	FOR_IJK(target) {
+		Vec3 pos = Vec3(i,j,k) * sourceFactor;
+		Real vx = source.getInterpolated(pos - Vec3(0.5,0,0))[0];
+		Real vy = source.getInterpolated(pos - Vec3(0,0.5,0))[1];
+		Real vz = source.getInterpolated(pos - Vec3(0,0,0.5))[2];
+		target(i,j,k) = Vec3(vx,vy,vz);
+	}
+}
+
+
     
 } // namespace
