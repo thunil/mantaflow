@@ -201,63 +201,14 @@ void GLWidget::keyReleaseEvent(QKeyEvent* e)
         updateGL();
 }
 
-bool GLWidget::keyProcess(int key, int modifier, bool down) {
-    if (key == Qt::Key_A) mMoveState[MoveLeft] = down;
-    else if (key == Qt::Key_D) mMoveState[MoveRight] = down;
-    else if (key == Qt::Key_W) mMoveState[MoveIn] = down;
-    else if (key == Qt::Key_S) mMoveState[MoveOut] = down;
-    else if (key == Qt::Key_Q) mMoveState[MoveUp] = down;
-    else if (key == Qt::Key_E) mMoveState[MoveDown] = down;
-    else if (down) {
-        // only press events
-        bool shift = (modifier & Qt::ShiftModifier);
-        if (key == Qt::Key_Z) emit painterEvent(Painter::EventNextReal);
-        else if (key == Qt::Key_X) emit painterEvent(Painter::EventNextVec);
-        else if (key == Qt::Key_BraceLeft && shift) emit painterEvent(Painter::EventScaleVecDown);
-        else if (key == Qt::Key_BracketLeft) emit painterEvent(Painter::EventScaleRealDown);
-        else if (key == Qt::Key_BraceRight && shift) emit painterEvent(Painter::EventScaleVecUp);
-        else if (key == Qt::Key_BracketRight) emit painterEvent(Painter::EventScaleRealUp);
-        else if (key == Qt::Key_V && shift) emit painterEvent(Painter::EventToggleCentered);
-        else if (key == Qt::Key_V) emit painterEvent(Painter::EventToggleVels);
-        else if (key == Qt::Key_M) emit painterEvent(Painter::EventMeshMode);
-        else if (key == Qt::Key_C) emit painterEvent(Painter::EventNextMesh);
-        else if (key == Qt::Key_G) emit painterEvent(Painter::EventToggleGridDisplay);
-        else if (key == Qt::Key_Period) emit painterEvent(Painter::EventScaleMeshUp);
-        else if (key == Qt::Key_Comma) emit painterEvent(Painter::EventScaleMeshDown);
-        else if (key == Qt::Key_Backslash) emit painterEvent(Painter::EventMeshColorMode);
-        else if (key == Qt::Key_B && shift) emit painterEvent(Painter::EventToggleParticles);
-        else if (key == Qt::Key_B) emit painterEvent(Painter::EventNextSystem);
-        else if (key == Qt::Key_O && shift) emit painterEvent(Painter::EventToggleBackgroundMesh);
-        else if (key == Qt::Key_Asterisk) {
-            mPlaneDim = (mPlaneDim+1) % 3;            
-            emit painterEvent(Painter::EventSetDim, mPlaneDim);
-            emit painterEvent(Painter::EventSetMax, mGridsize[mPlaneDim]);
-        } else if (key == Qt::Key_Plus || key == Qt::Key_Equal) { 
-            mPlane = clamp(mPlane + 1,0,mGridsize[mPlaneDim]-1);
-            emit painterEvent(Painter::EventSetPlane, mPlane);
-        } else if (key == Qt::Key_Minus) { 
-            mPlane = clamp(mPlane - 1,0,mGridsize[mPlaneDim]-1);
-            emit painterEvent(Painter::EventSetPlane, mPlane);
-        }
-        else if ( key == Qt::Key_K) {
-            QString filename = QString("scr_%1.png").arg(QString::number(mScreenshotNumber), 3, QChar('0'));
-            screenshot(filename);
-            mScreenshotNumber++;
-        }
-        
-        else return false;
-    }
-    else return false;
-    return true;
-}
 bool GLWidget::keyProcess(int key, int modifier, bool down) 
 {
-    if      (key == Qt::Key_A) mMoveState[MoveLeft] = down;
+    if      (key == Qt::Key_A) mMoveState[MoveLeft]  = down;
     else if (key == Qt::Key_D) mMoveState[MoveRight] = down;
-    else if (key == Qt::Key_W) mMoveState[MoveIn] = down;
-    else if (key == Qt::Key_S) mMoveState[MoveOut] = down;
-    else if (key == Qt::Key_Q) mMoveState[MoveUp] = down;
-    else if (key == Qt::Key_E) mMoveState[MoveDown] = down;
+    else if (key == Qt::Key_W) mMoveState[MoveIn]    = down;
+    else if (key == Qt::Key_S) mMoveState[MoveOut]   = down;
+    else if (key == Qt::Key_Q) mMoveState[MoveUp]    = down;
+    else if (key == Qt::Key_E) mMoveState[MoveDown]  = down;
     else if (down) 
 	{
         // only press events
@@ -279,8 +230,7 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
         else if (key == Qt::Key_Period)               emit painterEvent(Painter::EventScaleMeshUp);
         else if (key == Qt::Key_Comma)                emit painterEvent(Painter::EventScaleMeshDown);
         else if (key == Qt::Key_Backslash)            emit painterEvent(Painter::EventMeshColorMode);
-		else if (key == Qt::Key_O && shift)           emit painterEvent(Painter::EventToggleBackgroundMesh);
-
+		else if (key == Qt::Key_O && shift)           emit painterEvent(Painter::EventToggleBackgroundMesh); 
         else if (key == Qt::Key_B && shift)           emit painterEvent(Painter::EventToggleParticles);
         else if (key == Qt::Key_B)                    emit painterEvent(Painter::EventNextSystem);
 
