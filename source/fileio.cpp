@@ -319,7 +319,6 @@ void writeGridVol<Real>(const string& name, Grid<Real>* grid) {
 #	if FLOATINGPOINT_PRECISION==1
 	// for float, write one big chunk
 	fwrite( &(*grid)[0], sizeof(float), grid->getSizeX()*grid->getSizeY()*grid->getSizeZ(), fp );
-	test
 #	else
 	// explicitly convert each entry to float - we might have double precision in mantaflow
 	FOR_IDX(*grid) {
