@@ -22,7 +22,7 @@ namespace Manta {
 PYTHON(name=NoiseField) 
 class WaveletNoiseField : public PbClass {
     public:     
-        PYTHON WaveletNoiseField(FluidSolver* parent);
+        PYTHON WaveletNoiseField( FluidSolver* parent, int fixedSeed=-1 );
         ~WaveletNoiseField() {};
 
         //! evaluate noise
@@ -38,16 +38,17 @@ class WaveletNoiseField : public PbClass {
         
         // texcoord position and scale
         PYTHON(name=posOffset) Vec3 mPosOffset;
-        PYTHON(name=posScale) Vec3 mPosScale;
+        PYTHON(name=posScale)  Vec3 mPosScale;
         // value offset & scale
         PYTHON(name=valOffset) Real mValOffset;
-        PYTHON(name=valScale) Real mValScale;
+        PYTHON(name=valScale)  Real mValScale;
         // clamp? (default 0-1)
-        PYTHON(name=clamp) bool mClamp;
-        PYTHON(name=clampNeg) Real mClampNeg;
-        PYTHON(name=clampPos) Real mClampPos;
+        PYTHON(name=clamp)     bool mClamp;
+        PYTHON(name=clampNeg)  Real mClampNeg;
+        PYTHON(name=clampPos)  Real mClampPos;
+        // animated over time
+        PYTHON(name=timeAnim)  Real mTimeAnim;
         
-        PYTHON(name=timeAnim) Real mTimeAnim;        
     protected:
         static inline float WNoiseDx(Vec3 p, float *data);
         static inline Vec3 WNoiseVec(const Vec3& p, float *data);
@@ -59,14 +60,15 @@ class WaveletNoiseField : public PbClass {
         #define modFast128(x)  ((x) & 127)
 
         inline Real getTime() { return mParent->getTime() * mParent->getDx() * mTimeAnim; }
-        void generateTile();
+        void generateTile( int seed );
                 
         // animation over time
         // grid size normalization (inverse size)
         Real mGsInvX, mGsInvY, mGsInvZ;
         
         float* mNoiseTile;
-        static int seed;
+        // global random seed storage
+        static int randomSeed;
 };
 
 

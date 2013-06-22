@@ -27,7 +27,7 @@ static float _aCoeffs[32] = {
 
 namespace Manta {
 
-int WaveletNoiseField::seed = 13322223;
+int WaveletNoiseField::randomSeed = 13322223;
 
 void WaveletNoiseField::Downsample(float *from, float *to, int n, int stride){
     const float *a = &_aCoeffs[16];
@@ -49,14 +49,15 @@ void WaveletNoiseField::Upsample(float *from, float *to, int n, int stride) {
     }
 }
 
-WaveletNoiseField::WaveletNoiseField(FluidSolver* parent) :
+WaveletNoiseField::WaveletNoiseField(FluidSolver* parent, int fixedSeed) :
     PbClass(parent), mPosOffset(0.), mPosScale(1.), mValOffset(0.), mValScale(1.), mClamp(false), 
     mClampNeg(0), mClampPos(1), mTimeAnim(0), mGsInvX(0), mGsInvY(0), mGsInvZ(0)
 {
     mGsInvX = 1.0/(parent->getGridSize().x);
     mGsInvY = 1.0/(parent->getGridSize().y);
     mGsInvZ = parent->is3D() ? (1.0/(parent->getGridSize().z)) : 1;
-    generateTile();
+	// use a fixed seed, instead of a globally random one?
+    generateTile( fixedSeed );
 };
 
 string WaveletNoiseField::toString() {
@@ -65,19 +66,24 @@ string WaveletNoiseField::toString() {
         "  pos off="<<mPosOffset<<" scale="<<mPosScale<<
         "  val off="<<mValOffset<<" scale="<<mValScale<<
         "  clamp ="<<mClamp<<" val="<<mClampNeg<<" to "<<mClampPos<<
-        "  timeAni ="<<mTimeAnim<<
+		"  timeAni ="<<mTimeAnim<<
         "  gridInv ="<<Vec3(mGsInvX,mGsInvY,mGsInvZ) ;
     return out.str();
 }
 
-void WaveletNoiseField::generateTile() {
+void WaveletNoiseField::generateTile(int seed) {
     // generate tile
     const int n = NOISE_TILE_SIZE;
     const int n3 = n*n*n;
-    cout << "generating " << n << "^3 noise tile" << endl;
     
+	if (seed==-1) {
+		// use global random seed
+		seed = randomSeed;
+		randomSeed += 123;
+	}
     RandomStream randStream (seed);
-    seed += 123;
+
+	cout << "generating " << n << "^3 noise tile, seed " << seed <<" " << endl;
     
     float *temp13 = new float[n3];
     float *temp23 = new float[n3];

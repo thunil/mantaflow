@@ -26,13 +26,13 @@ density = sm.create(RealGrid)
 pressure = sm.create(RealGrid)
 
 # noise field
-noise = sm.create(NoiseField)
-noise.posScale = vec3(45)
+noise = sm.create(NoiseField, fixedSeed=765)
+noise.posScale = vec3(20)
 noise.clamp = True
 noise.clampNeg = 0
-noise.clampPos = 1
+noise.clampPos = 2
 noise.valScale = 1
-noise.valOffset = 10.75
+noise.valOffset = 0.075
 # solid:
 # noise.valOffset = 990.75
 noise.timeAnim = 0.2
@@ -43,6 +43,7 @@ flags.fillGrid()
 source = sm.create(Cylinder, center=gs*vec3(0.2,0.2,0.5), radius=res*0.1, z=gs*vec3(0.1, 0, 0))
 
 # larger solver
+# recompute sizes...
 
 upres = 2
 xl_res = upres*res
@@ -59,14 +60,14 @@ xl_flags.fillGrid()
 
 xl_source = xl.create(Cylinder, center=xl_gs*vec3(0.2,0.2,0.5), radius=xl_res*0.1, z=xl_gs*vec3(0.1, 0, 0))
 
-xl_noise = xl.create(NoiseField)
-xl_noise.posScale = noise.posScale
+xl_noise = xl.create(NoiseField, fixedSeed=765)
+xl_noise.posScale = vec3(20)
 xl_noise.clamp = noise.clamp
 xl_noise.clampNeg = noise.clampNeg
 xl_noise.clampPos = noise.clampPos
 xl_noise.valScale = noise.valScale
 xl_noise.valOffset = noise.valOffset
-xl_noise.timeAnim = noise.timeAnim
+xl_noise.timeAnim  = noise.timeAnim
 
 
 
@@ -84,7 +85,7 @@ for t in range(200):
     advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
     advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
     
-    if (curt>0 and curt<30) or (curt>60 and curt<90):
+    if (curt>=0 and curt<30) or (curt>60 and curt<90):
         densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )
         source.applyToGrid( grid=vel , value=velInflow )
     
@@ -94,7 +95,7 @@ for t in range(200):
     solvePressure(flags=flags, vel=vel, pressure=pressure)
     setWallBcs(flags=flags, vel=vel)
 
-    density.save('densitySm_%04d.vol' % t)
+#    density.save('densitySm_%04d.vol' % t)
     
     sm.step()
     
@@ -107,11 +108,11 @@ for t in range(200):
     advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=2)    
 #    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_vel, order=2)
     
-    if (curt>0 and curt<30) or (curt>60 and curt<90):
+    if (curt>=0 and curt<30) or (curt>60 and curt<90):
          densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 )
  #       source.applyToGrid( grid=xl_vel , value=velInflow )
     
-    xl_density.save('densityXl_%04d.vol' % t)
+#    xl_density.save('densityXl_%04d.vol' % t)
 	
     xl.step()
 
