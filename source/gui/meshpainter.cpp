@@ -73,7 +73,7 @@ void MeshPainter::processKeyEvent(PainterEvent e, int param)
 void MeshPainter::updateText() {
     stringstream s;
     
-    if (mObject && !mHide) {
+    if ( mObject && !mHide && mLocalMesh ) {
         s << "Mesh '" << mLocalMesh->getName() << "' [" << mLocalMesh->numTris() << " tris]" << endl;
         if (mMode == ModeFlatShade) s << "DisplayMode: Flatshade" << endl;
         if (mMode == ModeInvisible) s << "DisplayMode: Invisible" << endl;
@@ -152,7 +152,7 @@ static inline void glNormal(const Vec3& v) {
 }            
 
 void MeshPainter::paint() {
-    if (!mObject || mHide) return;
+    if (!mObject || mHide || !mLocalMesh) return;
 
     Real dx = mLocalMesh->getParent()->getDx();
     
