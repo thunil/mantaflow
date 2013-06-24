@@ -59,7 +59,7 @@ __global__ void KnSynthesizeK41(CVec3Ptr nodes, CVec3Ptr tex1, CVec3Ptr tex2, Re
 }
 
 //! synthesize K41 curl noise onto mesh
-PLUGIN void synthesizeK41(VortexSheetMesh& mesh, Grid<Real>* k = NULL,
+PYTHON void synthesizeK41(VortexSheetMesh& mesh, Grid<Real>* k = NULL,
                      Real scale = 1.0, Real L0 = 0.1, int octaves=3, Real switchLength = 10.0, bool hardReset=false, Real minIntensity=0.1) 
 {
     const int blockSize = 256;
@@ -132,7 +132,7 @@ __global__ void KnSynthesizeGridK41(CVec3Ptr nodes, CudaNoiseDev noise, const in
 }
 
 //! synthesize K41 curl noise onto grid
-PLUGIN void synthesizeK41Grid(MACGrid& vel, MACGrid& dst, Real scale = 1.0, Real L0 = 0.1, int octaves=3) 
+PYTHON void synthesizeK41Grid(MACGrid& vel, MACGrid& dst, Real scale = 1.0, Real L0 = 0.1, int octaves=3) 
 {    
     const float dt = parent->getDt();
     const float str = dt * scale;

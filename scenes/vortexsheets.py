@@ -7,11 +7,11 @@
 from manta import *
 assert(CUDA), 'Requires CUDA. Please compile with -DCUDA=ON'
 
-res = 64
 scale = 0.2
 
 # solver params
-gs = vec3(1,1.5,1) * res
+res = 64
+gs = vec3(res,res*1.5,res)
 dx = 1/(1.5*res)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 0.5
@@ -24,7 +24,6 @@ flags = s.create(FlagGrid)
 pressure = s.create(RealGrid, show=False)
 vel = s.create(MACGrid)
 density = s.create(RealGrid)
-densityInflow = s.create(RealGrid, show=False)
 
 # noise field
 noise = s.create(NoiseField)
@@ -57,7 +56,7 @@ fixedRegion = s.create(Box, center=gs*vec3(0.5,0.09,0.5), size=gs*vec3(0.4,0.03,
 #main loop
 for t in range(180):
     # seed smoke within the source region and apply inflow velocity condition
-    densityNoiseInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
+    densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
     source.applyToGrid(grid=vel, value=velInflow)
     advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)
     markAsFixed(mesh=mesh, shape=fixedRegion)
