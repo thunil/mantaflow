@@ -402,7 +402,7 @@ PyObject* PbWrapperRegistry::createPyObject(const string& classname, const strin
     
     // create instance
     if (self->classdef->constructor(obj, args.linArgs(), nkw) < 0)
-        errMsg(""); // assume condition is already set
+        errMsg("error raised in constructor"); // assume condition is already set
     
     Py_DECREF(nkw);
     Py_DECREF(nocheck);

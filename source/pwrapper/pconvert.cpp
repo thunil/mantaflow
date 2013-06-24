@@ -175,12 +175,18 @@ PbArgs::PbArgs(PyObject* linarg, PyObject* dict) : mLinArgs(0), mKwds(0) {
     setup(linarg, dict);
 }
 void PbArgs::copy(PbArgs& a) {
-    mLinArgs = a.mLinArgs;
-    mKwds = a.mKwds;    
+    mKwds = a.mKwds;
     mData = a.mData;
     mLinData = a.mLinData;
     mLinArgs = a.mLinArgs;
 }
+void PbArgs::clear() {
+    mLinArgs = 0;
+    mKwds = 0;
+    mData.clear();
+    mLinData.clear();
+}
+
 PbArgs& PbArgs::operator=(const PbArgs& a) {
 //    mLinArgs = 0;
 //    mKwds = 0;

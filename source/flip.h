@@ -41,7 +41,9 @@ public:
     PYTHON void adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles=8, int maxParticles=12);
     //! Mark cells with particles as fluid, otherwise empty
     PYTHON void markFluidCells(FlagGrid& flags);
-        
+    //! Initialize grid of particles + jitter. No surface alignment yet
+    PYTHON void initialize(FlagGrid& flags, int discretization=2);
+    
     virtual ParticleBase* clone();
 private:
 	MACGrid mOldVel;

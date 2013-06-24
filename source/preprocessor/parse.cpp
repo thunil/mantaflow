@@ -354,12 +354,17 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
             
             if ( (tokens[index].type != TkCodeBlock && tokens[index].type != TkSemicolon) || index+1 != tokens.size())
                 errMsg(line, "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]");
-            return processPythonFunction(lb, name, type, args, cb, false, false, tokens[index].text, line);
+            return processPythonFunction(lb, name, type, args, cb, false, false, false, tokens[index].text, line);
         } else {
-            bool isInline=false, isConst=false;
-            // parse return type 
+            bool isInline=false, isConst=false, isVirtual=false;
+            // parse return type
             Argument retType = parseSingleArg(tokens, index, true, false, false, lb);
             type = stripWS(retType.complete);
+            if (type == "virtual") {
+                retType = parseSingleArg(tokens, index, true, false, false, lb);
+                type = stripWS(retType.complete);
+                isVirtual = true;
+            }
             if (type == "inline") {
                 retType = parseSingleArg(tokens, index, true, false, false, lb);
                 type = stripWS(retType.complete);
@@ -383,7 +388,7 @@ string parseBlock(const string& kw, const vector<Token>& tokens, int line) {
             
             if ( (tokens[index].type != TkCodeBlock && tokens[index].type != TkSemicolon) || index+1 != tokens.size())
                 errMsg(line, "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]");
-            return processPythonFunction(lb, name, type, args, "", isInline, isConst, tokens[index].text, line);
+            return processPythonFunction(lb, name, type, args, "", isInline, isConst, isVirtual, tokens[index].text, line);
         }
     }
     else 

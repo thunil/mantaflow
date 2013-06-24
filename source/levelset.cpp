@@ -29,22 +29,22 @@ static const int FlagInited = FastMarch<FmHeapEntryOut, +1>::FlagInited;
 static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), Vec3i(0,1,0), Vec3i(0,0,-1), Vec3i(0,0,1) };
     
 KERNEL(bnd=1) 
-void InitFmIn (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls) {
+void InitFmIn (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls, int obstacleType) {
     const int idx = flags.index(i,j,k);
     const Real v = phi[idx];
-    if (v>=0 && (!ignoreWalls || !flags.isObstacle(idx)))
+    if (v>=0 && (!ignoreWalls || (flags[idx] & obstacleType) == 0))
         fmFlags[idx] = FlagInited;
     else
         fmFlags[idx] = 0;
 }
 
 KERNEL(bnd=1) 
-void InitFmOut (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls) {
+void InitFmOut (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls, int obstacleType) {
     const int idx = flags.index(i,j,k);
     const Real v = phi[idx];
     if (ignoreWalls) {
         fmFlags[idx] = (v<0) ? FlagInited : 0;
-        if (flags.isObstacle(idx)) {
+        if ((flags[idx] & obstacleType) != 0) {
             fmFlags[idx] = 0;
             phi[idx] = 0;
         }
@@ -95,7 +95,7 @@ void LevelsetGrid::join(const LevelsetGrid& o) {
     KnJoin(*this, o);
 }
 
-void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTransport, bool ignoreWalls, bool correctOuterLayer)
+void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTransport, bool ignoreWalls, bool correctOuterLayer, int obstacleType)
 {
     assertMsg(is3D(), "Only 3D grids supported so far");
     
@@ -106,11 +106,11 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
     FastMarch<FmHeapEntryIn, -1> marchIn(flags, fmFlags, phi, maxTime, NULL);
     
     // march inside
-    InitFmIn (flags, fmFlags, phi, ignoreWalls);
+    InitFmIn (flags, fmFlags, phi, ignoreWalls, obstacleType);
     
     FOR_IJK_BND(flags, 1) {
         if (fmFlags(i,j,k) == FlagInited) continue;
-        if (flags.isObstacle(i,j,k)) continue;
+        if ((flags(i,j,k) & obstacleType) != 0) continue;
         const Vec3i p(i,j,k);
                 
         if(isAtInterface<true>(fmFlags, phi, p)) {
@@ -120,7 +120,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
             // add neighbors that are not at the interface
             for (int nb=0; nb<6; nb++) {
                 const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
-                if (flags.isObstacle(pn)) continue;
+                if ((flags.get(pn) & obstacleType) != 0) continue;
                 
                 // check neighbors of neighbor
                 if (phi(pn) < 0 && !isAtInterface<true>(fmFlags, phi, pn)) {
@@ -135,14 +135,14 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
     SetUninitialized (fmFlags, phi, -maxTime); 
     
     // done with inwards marching, now march out...    
-    InitFmOut (flags, fmFlags, phi, ignoreWalls);
+    InitFmOut (flags, fmFlags, phi, ignoreWalls, obstacleType);
     
     // by default, correctOuterLayer is on
     if (correctOuterLayer) {    
         // normal version, inwards march is done, now add all outside values (0..2] to list
         // note, this might move the interface a bit! but keeps a nice signed distance field...        
         FOR_IJK_BND(flags, 1) {
-            if (flags.isObstacle(i,j,k)) continue;
+            if ((flags(i,j,k) & obstacleType) != 0) continue;
             const Vec3i p(i,j,k);
             
             // check nbs
@@ -150,7 +150,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
                 const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
                 
                 if (fmFlags(pn) != FlagInited) continue;
-                if (flags.isObstacle(pn)) continue;
+                if ((flags.get(pn) & obstacleType) != 0) continue;
                 
                 const Real nbPhi = phi(pn);
                 
@@ -163,7 +163,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
         // alternative version, keep interface, do not distort outer cells
         // add all ouside values, but not those at the IF layer
         FOR_IJK_BND(flags, 1) {
-            if (flags.isObstacle(i,j,k)) continue;
+            if ((flags(i,j,k) & obstacleType) != 0) continue;
             
             // only look at ouside values
             const Vec3i p(i,j,k);
@@ -176,7 +176,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
                 // add neighbors that are not at the interface
                 for (int nb=0; nb<6; nb++) {
                     const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
-                    if (flags.isObstacle(pn)) continue;
+                    if ((flags.get(pn) & obstacleType) != 0) continue;
                 
                     // check neighbors of neighbor
                     if (phi(pn) > 0 && !isAtInterface<false>(fmFlags, phi, pn))
@@ -192,7 +192,6 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
     
 }
 
-
 void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
     FOR_IDX(*this) {
         if (flags.isFluid(idx) || (ignoreWalls && flags.isObstacle(idx)))
@@ -200,7 +199,6 @@ void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
         else
             mData[idx] = 0.5;
     }
-    reinitMarching(flags, getSize().max(), NULL, ignoreWalls, true);
 }
     
 

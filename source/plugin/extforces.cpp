@@ -149,5 +149,4 @@ PYTHON void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
     KnAddForceField(flags, vel, force);
 }
 
-
 } // namespace

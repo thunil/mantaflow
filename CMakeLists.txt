@@ -117,6 +117,7 @@ SET(PP_SOURCES
     source/mesh.cpp
     source/general.cpp
     source/flip.cpp
+    source/movingobs.cpp
     source/fileio.cpp   
     source/noisefield.cpp
     source/kernel.cpp
@@ -151,6 +152,7 @@ SET(PP_HEADERS
     source/general.h
     source/kernel.h
     source/flip.h
+    source/movingobs.h
     source/fileio.h
     source/edgecollapse.h
     source/vortexpart.h
