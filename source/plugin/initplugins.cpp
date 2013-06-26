@@ -62,8 +62,14 @@ PYTHON void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseFiel
 }
 
 
-
 //!interpolate grid from one size to another size
+KERNEL 
+void KnInterpolateGrid(Grid<Real>& source, Grid<Real>& target, const Vec3& sourceFactor)
+{
+	Vec3 pos = Vec3(i,j,k) * sourceFactor;
+	target(i,j,k) = source.getInterpolated(pos);
+}
+
 PYTHON void interpolateGrid(Grid<Real>& source, Grid<Real>& target)
 {
 	Vec3 sourceFactor = Vec3( 
@@ -71,27 +77,32 @@ PYTHON void interpolateGrid(Grid<Real>& source, Grid<Real>& target)
 		Real(source.getSizeY())/target.getSizeY(), 
 		Real(source.getSizeZ())/target.getSizeZ() );
 
-	FOR_IJK(target) {
-		Vec3 pos = Vec3(i,j,k) * sourceFactor;
-		target(i,j,k) = source.getInterpolated(pos);
-	}
+	KnInterpolateGrid(source, target, sourceFactor);
 }
 
+
 //!interpolate a mac velocity grid from one size to another size
-PYTHON void interpolateMACGrid(MACGrid& source, MACGrid& target)
+KERNEL 
+void KnInterpolateMACGrid(MACGrid& target, MACGrid& source, const Vec3& sourceFactor)
+{
+	Vec3 pos = Vec3(i,j,k) * sourceFactor;
+
+	Real vx = source.getInterpolated(pos - Vec3(0.5,0,0))[0];
+	Real vy = source.getInterpolated(pos - Vec3(0,0.5,0))[1];
+	Real vz = 0.f;
+	if(source.is3D()) vz = source.getInterpolated(pos - Vec3(0,0,0.5))[2];
+
+	target(i,j,k) = Vec3(vx,vy,vz);
+}
+
+PYTHON void interpolateMACGrid(MACGrid& target, MACGrid& source)
 {
 	Vec3 sourceFactor = Vec3( 
 		Real(source.getSizeX())/target.getSizeX(), 
 		Real(source.getSizeY())/target.getSizeY(), 
 		Real(source.getSizeZ())/target.getSizeZ() );
 
-	FOR_IJK(target) {
-		Vec3 pos = Vec3(i,j,k) * sourceFactor;
-		Real vx = source.getInterpolated(pos - Vec3(0.5,0,0))[0];
-		Real vy = source.getInterpolated(pos - Vec3(0,0.5,0))[1];
-		Real vz = source.getInterpolated(pos - Vec3(0,0,0.5))[2];
-		target(i,j,k) = Vec3(vx,vy,vz);
-	}
+	KnInterpolateMACGrid(target, source, sourceFactor);
 }
 
 

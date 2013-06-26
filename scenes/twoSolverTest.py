@@ -5,12 +5,15 @@
 from manta import *
 import os, shutil, math, sys
 
+dim = 3
+
 # solver params
 res = 44
 # gs = vec3(res,1.5*res,res)
 gs = vec3(res,res,res)
+if (dim==2): gs.z = 1  # 2D
 
-sm = Solver(name='main', gridSize = gs)
+sm = Solver(name='main', gridSize = gs, dim=dim)
 
 
 # sm.timestep = 1.0
@@ -48,7 +51,8 @@ source = sm.create(Cylinder, center=gs*vec3(0.2,0.2,0.5), radius=res*0.1, z=gs*v
 upres = 2
 xl_res = upres*res
 xl_gs = vec3(xl_res,xl_res,xl_res)
-xl = Solver(name='larger', gridSize = xl_gs)
+if (dim==2): xl_gs.z = 1  # 2D
+xl = Solver(name='larger', gridSize = xl_gs, dim=dim)
 xl.timestep = upres*sm.timestep
 
 xl_flags   = xl.create(FlagGrid)
@@ -102,8 +106,8 @@ for t in range(200):
      # xl ...
 	 # same inflow
     
-#    interpolateGrid(density,xl_density)
-    interpolateMACGrid(vel,xl_vel)
+    #interpolateGrid(target=xl_density, source=density)
+    interpolateMACGrid(target=xl_vel, source=vel)
     
     advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=2)    
 #    advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_vel, order=2)
