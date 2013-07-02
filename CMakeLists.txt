@@ -132,7 +132,6 @@ SET(PP_SOURCES
     source/plugin/turbulence.cpp
     source/plugin/meshplugins.cpp
     source/plugin/vortexplugins.cpp
-    source/plugin/waveletturbulence.cpp
     source/python/defines.py
     source/test.cpp
 )
