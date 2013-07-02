@@ -24,6 +24,7 @@ using namespace std;
 namespace Manta {
 
 int WaveletNoiseField::randomSeed = 13322223;
+float* WaveletNoiseField::mNoiseTile = NULL;
 
 static Real _aCoeffs[32] = {
     0.000334f,-0.001528f, 0.000410f, 0.003545f,-0.000938f,-0.008233f, 0.002172f, 0.019120f,
@@ -54,15 +55,22 @@ void WaveletNoiseField::upsample(Real *from, Real *to, int n, int stride) {
     }
 }
 
-WaveletNoiseField::WaveletNoiseField(FluidSolver* parent, int fixedSeed) :
+WaveletNoiseField::WaveletNoiseField(FluidSolver* parent, int fixedSeed, int loadFromFile) :
     PbClass(parent), mPosOffset(0.), mPosScale(1.), mValOffset(0.), mValScale(1.), mClamp(false), 
     mClampNeg(0), mClampPos(1), mTimeAnim(0), mGsInvX(0), mGsInvY(0), mGsInvZ(0)
 {
     mGsInvX = 1.0/(parent->getGridSize().x);
     mGsInvY = 1.0/(parent->getGridSize().y);
     mGsInvZ = parent->is3D() ? (1.0/(parent->getGridSize().z)) : 1;
-	// use a fixed seed, instead of a globally random one?
-    generateTile( fixedSeed );
+
+    // use global random seed with offset if none is given
+    if (fixedSeed==-1) {
+        fixedSeed = randomSeed + 123;
+    }
+    RandomStream randStreamPos(fixedSeed);
+    mSeedOffset = Vec3( randStreamPos.getVec3Norm() );
+
+    generateTile( loadFromFile );
 };
 
 string WaveletNoiseField::toString() {
@@ -76,23 +84,28 @@ string WaveletNoiseField::toString() {
     return out.str();
 }
 
-void WaveletNoiseField::generateTile(int seed) {
+void WaveletNoiseField::generateTile( int loadFromFile) {
     // generate tile
     const int n = NOISE_TILE_SIZE;
     const int n3 = n*n*n;
 
-    if (seed==-1) {
-	    // use global random seed
-	    seed = randomSeed;
-	    randomSeed += 123;
+    if(mNoiseTile) return;
+
+    Real *noise3 = new Real[n3];
+    if(loadFromFile) {
+        FILE* fp = fopen("waveletNoiseTile.bin","rb"); 
+        if(fp) {
+            fread(noise3, sizeof(Real), n3, fp); 
+            fclose(fp);
+            cout << "noise tile loaded from file! " << endl;
+            mNoiseTile = noise3;
+            return;
+        }
     }
-    RandomStream randStream (seed);
 
-    cout << "generating " << n << "^3 noise tile, seed " << seed <<" " << endl;
-
+    cout << "generating " << n << "^3 noise tile " << endl;
     Real *temp13 = new Real[n3];
     Real *temp23 = new Real[n3];
-    Real *noise3 = new Real[n3];
 
     // initialize
     for (int i = 0; i < n3; i++) {
@@ -101,9 +114,10 @@ void WaveletNoiseField::generateTile(int seed) {
     }
 
     // Step 1. Fill the tile with random numbers in the range -1 to 1.
+    RandomStream randStreamTile ( randomSeed );
     for (int i = 0; i < n3; i++) {
         //noise3[i] = (randStream.getFloat() + randStream2.getFloat()) -1.; // produces repeated values??
-        noise3[i] = randStream.getRandNorm(0,1);
+        noise3[i] = randStreamTile.getRandNorm(0,1);
     }
 
     // Steps 2 and 3. Downsample and upsample the tile
@@ -153,7 +167,14 @@ void WaveletNoiseField::generateTile(int seed) {
     delete[] temp13;
     delete[] temp23;
     
-    //FILE* fp = fopen("/tmp/bla.bin","wb"); fwrite(noise3, sizeof(Real), n3, fp); fclose(fp);
+    if(loadFromFile) {
+        FILE* fp = fopen("waveletNoiseTile.bin","wb"); 
+        if(fp) {
+            fwrite(noise3, sizeof(Real), n3, fp); 
+            fclose(fp);
+            cout << "saved to file! " << endl;
+        }
+    }
 }
 
 
@@ -251,9 +272,7 @@ void WaveletNoiseField::computeCoefficients(Grid<Real>& input, Grid<Real>& tempI
     Real smoothingFactor = 1./6.;
     if(!input.is3D()) smoothingFactor = 1./4.;
     FOR_IJK_BND(input,1) {
-        input(i,j,k) = (temp13[k*sx*sy+j*sx+i]);
-
-        // brute force smoothing
+        // apply some brute force smoothing
         Real res = temp13[k*sx*sy+j*sx+i-1] + temp13[k*sx*sy+j*sx+i+1];
         res     += temp13[k*sx*sy+j*sx+i-sx] + temp13[k*sx*sy+j*sx+i+sx];
         if( input.is3D()) res += temp13[k*sx*sy+j*sx+i-sx*sy] + temp13[k*sx*sy+j*sx+i+sx*sy];

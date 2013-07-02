@@ -22,8 +22,10 @@ namespace Manta {
 PYTHON(name=NoiseField) 
 class WaveletNoiseField : public PbClass {
     public:     
-        PYTHON WaveletNoiseField( FluidSolver* parent, int fixedSeed=-1 );
-        ~WaveletNoiseField() {};
+        PYTHON WaveletNoiseField( FluidSolver* parent, int fixedSeed=-1 , int loadFromFile=false );
+        ~WaveletNoiseField() {
+            if(mNoiseTile) { delete mNoiseTile; mNoiseTile=NULL; }
+        };
 
         //! evaluate noise
         inline Real evaluate(Vec3 pos);
@@ -54,9 +56,9 @@ class WaveletNoiseField : public PbClass {
         
     protected:
         // noise evaluation functions
-        static inline float WNoiseDx(Vec3 p, float *data);
+        static inline float WNoiseDx (const Vec3& p, float *data);
         static inline Vec3  WNoiseVec(const Vec3& p, float *data);
-        static inline float WNoise(const Vec3& p, float *data);
+        static inline float WNoise   (const Vec3& p, float *data);
 
         // helpers for tile generation , for periodic 128 grids only
         static void downsample(float *from, float *to, int n, int stride);
@@ -73,13 +75,15 @@ class WaveletNoiseField : public PbClass {
         inline Real getTime() { return mParent->getTime() * mParent->getDx() * mTimeAnim; }
 
         // pre-compute tile data for wavelet noise
-        void generateTile( int seed );
+        void generateTile( int loadFromFile );
                 
         // animation over time
         // grid size normalization (inverse size)
         Real mGsInvX, mGsInvY, mGsInvZ;
+        // random offset into tile to simulate different random seeds
+        Vec3 mSeedOffset;
         
-        float* mNoiseTile;
+        static float* mNoiseTile;
         // global random seed storage
         static int randomSeed;
 };
@@ -102,7 +106,7 @@ class WaveletNoiseField : public PbClass {
 //////////////////////////////////////////////////////////////////////////////////////////
 // derivatives of 3D noise - unrolled for performance
 //////////////////////////////////////////////////////////////////////////////////////////
-inline float WaveletNoiseField::WNoiseDx(Vec3 p, float *data) {
+inline float WaveletNoiseField::WNoiseDx(const Vec3& p, float *data) {
     float w[3][3], t, result = 0;
 
     // Evaluate quadratic B-spline basis functions
@@ -319,6 +323,7 @@ inline Real WaveletNoiseField::evaluate(Vec3 pos) {
     pos[0] *= mGsInvX;
     pos[1] *= mGsInvY;
     pos[2] *= mGsInvZ;
+    pos += mSeedOffset;
 
     // time anim
     pos += Vec3(getTime());
@@ -343,6 +348,7 @@ inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos) {
     pos[0] *= mGsInvX;
     pos[1] *= mGsInvY;
     pos[2] *= mGsInvZ;
+    pos += mSeedOffset;
 
     // time anim
     pos += Vec3(getTime());
