@@ -11,7 +11,7 @@
  *
  ******************************************************************************/
 
-#include "grid.h"
+#include "levelset.h"
 #include "commonkernels.h"
 #include <cmath>
 
@@ -83,7 +83,51 @@ PYTHON void kernelTest() {
     myvec b = testy(a);
     for (int i=0;i<10;i++) cout << b[i] << endl;
     cout << "kernel end" << endl;
-    
 }
+
+PYTHON void getCurl(MACGrid& vel, Grid<Real>& vort, int comp) {
+    Grid<Vec3> velCenter(parent), curl(parent);
+    
+    GetCentered(velCenter, vel);
+    CurlOp(velCenter, curl);
+    GetComponent(curl, vort, comp);
+}
+
+PYTHON void setinflow(FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Real h) {
+    FOR_IJK(vel) {
+        if (i<=2) {
+            if (j < h*flags.getSizeY()) {
+                vel(i,j,k).x = 1;            
+                if (!flags.isObstacle(i,j,k)) { 
+                    flags(i,j,k) = 1;        
+                    phi(i,j,k) = -1;
+                }                
+            } else {
+                vel(i,j,k).x = 0;                            
+                if (!flags.isObstacle(i,j,k)) { 
+                    flags(i,j,k) = 4;
+                    phi(i,j,k) = 1;
+                }
+            }
+        }
+        else if (i>=flags.getSizeX()-2) {
+            vel(i,j,k).x = 1;            
+            /*if (j < 30-12) {
+                vel(i,j,k).x = 1;            
+                if (!flags.isObstacle(i,j,k)) { 
+                    flags(i,j,k) = 1;        
+                    phi(i,j,k) = -1;
+                }                
+            } else {
+                vel(i,j,k).x = 0;                            
+                if (!flags.isObstacle(i,j,k)) { 
+                    flags(i,j,k) = 4;
+                    phi(i,j,k) = 1;
+                }
+            }*/
+        }
+    }
+}
+    
 
 } //namespace

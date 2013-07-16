@@ -65,7 +65,7 @@ __global__ void VorticityKernel(CVec3Ptr nodes, const CVec3Ptr vortexPos, const 
     nodes.set(nodeIdx, u);    
 }
 
-PLUGIN void meshApplyBuoyancyTotalCuda(VortexSheetMesh& mesh, 
+PYTHON void meshApplyBuoyancyTotalCuda(VortexSheetMesh& mesh, 
                                   Real scale=1e-3, Real regularization=1, Real cutoffCells = 1e10, bool useDiff = false)
 {
     Real dt = parent->getDt();
@@ -182,7 +182,7 @@ inline int cIndex(const Vec3& pos, const Vec3i& s) {
 }
 
 // TODO: don't reorder nodes -- performance ?
-PLUGIN void meshApplyBuoyancyLocalCuda(VortexSheetMesh& mesh, 
+PYTHON void meshApplyBuoyancyLocalCuda(VortexSheetMesh& mesh, 
                              Real scale=1e-3, int cutoffCells=5, Real regularization=1)
 {        
     Real dt = parent->getDt();
@@ -371,7 +371,7 @@ __global__ void GaussKernel(CVec3Ptr distance, int* con, CVec3Ptr vort, CVec3Ptr
     vortSmooth.set(Cidx, make_float3(smooth.x/sum, smooth.y/sum, smooth.z/sum));
 }
 
-PLUGIN void filterVorticityCuda(VortexSheetMesh& mesh, Real sigma) {
+PYTHON void filterVorticityCuda(VortexSheetMesh& mesh, Real sigma) {
     const int len = mesh.numTris();
     
     // upload mesh properties

@@ -25,12 +25,15 @@ public:
     PYTHON LevelsetGrid(FluidSolver* parent, bool show = true);
     
     //! reconstruct the levelset using fast marching
-    PYTHON void reinitMarching(FlagGrid& flags, Real maxTime=4.0, MACGrid* velTransport=NULL, bool ignoreWalls=false, bool correctOuterLayer=true);
+    PYTHON void reinitMarching(FlagGrid& flags, Real maxTime=4.0, MACGrid* velTransport=NULL, bool ignoreWalls=false, bool correctOuterLayer=true, int obstacleType = FlagGrid::TypeObstacle);
     //! create a triangle mesh from the levelset isosurface
     PYTHON void createMesh(Mesh& mesh);
     
     //! union with another levelset
     PYTHON void join(const LevelsetGrid& o);
+    
+    //! initialize levelset from flags (+/- 0.5 heaviside)
+    PYTHON void initFromFlags(FlagGrid& flags, bool ignoreWalls=false);
     
     static Real invalidTimeValue();
 };

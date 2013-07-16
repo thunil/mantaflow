@@ -59,6 +59,11 @@ KERNEL(bnd=1) void GradientOp(Grid<Vec3>& gradient, const Grid<Real>& grid) {
     gradient(i,j,k) = 0.5 * Vec3( grid(i+1,j,k)-grid(i-1,j,k), grid(i,j+1,k)-grid(i,j-1,k), grid(i,j,k+1)-grid(i,j,k-1));
 }
 
+//! Kernel: Laplace operator
+KERNEL (bnd=1) void LaplaceOp(Grid<Real>& laplace, const Grid<Real>& grid) {
+    laplace(i,j,k) = -(6.0*grid(i,j,k)-grid(i+1,j,k)-grid(i-1,j,k)-grid(i,j+1,k)-grid(i,j-1,k)-grid(i,j,k+1)-grid(i,j,k-1));
+}
+
 //! Kernel: get component at MAC positions
 KERNEL(bnd=1) void GetShiftedComponent(const Grid<Vec3>& grid, Grid<Real>& comp, int dim) {
     Vec3i ishift(i,j,k);
@@ -90,6 +95,16 @@ KERNEL(bnd=1) void GetCentered(Grid<Vec3>& center, const MACGrid& vel) {
 KERNEL(bnd=1) void GetMAC(MACGrid& vel, const Grid<Vec3>& center) {
     vel(i,j,k) = 0.5*(center(i,j,k)+Vec3(center(i-1,j,k).x, center(i,j-1,k).y, center(i,j,k-1).z));
 };
+
+//! Fill in the domain boundary cells (i,j,k=0/size-1) from the neighboring cells
+KERNEL void FillInBoundary(Grid<Vec3>& grid, int g) {
+    if (i==0) grid(i,j,k) = grid(i+1,j,k);
+    if (j==0) grid(i,j,k) = grid(i,j+1,k);
+    if (k==0) grid(i,j,k) = grid(i,j,k+1);
+    if (i==grid.getSizeX()-1) grid(i,j,k) = grid(i-1,j,k);
+    if (j==grid.getSizeY()-1) grid(i,j,k) = grid(i,j-1,k);
+    if (k==grid.getSizeZ()-1) grid(i,j,k) = grid(i,j,k-1);
+}
 
 } // namespace
 #endif

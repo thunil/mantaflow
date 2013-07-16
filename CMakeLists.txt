@@ -117,6 +117,7 @@ SET(PP_SOURCES
     source/mesh.cpp
     source/general.cpp
     source/flip.cpp
+    source/movingobs.cpp
     source/fileio.cpp   
     source/noisefield.cpp
     source/kernel.cpp
@@ -151,6 +152,7 @@ SET(PP_HEADERS
     source/general.h
     source/kernel.h
     source/flip.h
+    source/movingobs.h
     source/fileio.h
     source/edgecollapse.h
     source/vortexpart.h
@@ -324,10 +326,10 @@ if(CUDA)
     else()
         # CUDA does not support gcc > 4.5 yet
         if(DEBUG)
-            set(CUDA_NVCC_FLAGS -g;-ccbin;gcc-4.5;-DDEBUG;-keep;--maxrregcount=31;--compiler-options;-Wall)
+            set(CUDA_NVCC_FLAGS --pre-include;/usr/local/include/undef_atomics_int128.h;-g;-DDEBUG;-keep;--maxrregcount=31;--compiler-options;-Wall)
         else()
              #set(CUDA_NVCC_FLAGS -ccbin;gcc-4.5;--use_fast_math;-arch=sm_20;-DNDEBUG;--compiler-options;-Wall;-O3)       
-             set(CUDA_NVCC_FLAGS -ccbin;gcc-4.5;--use_fast_math;-DNDEBUG;--compiler-options;-Wall;-O3)       
+             set(CUDA_NVCC_FLAGS --pre-include;/usr/local/include/undef_atomics_int128.h;--use_fast_math;-DNDEBUG;--compiler-options;-Wall;-O3)       
         endif()    
     endif()  
 endif()

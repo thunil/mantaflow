@@ -20,14 +20,15 @@ namespace Manta {
 class Mesh;
     
 struct VortexRing {
-    VortexRing() : circulation(0.),flag(0) {}
-    VortexRing(Real c) : circulation(c),flag(0) {}
+    VortexRing() : circulation(0.),flag(0),isClosed(false) {}
+    VortexRing(Real c, bool closed=false) : circulation(c),flag(0),isClosed(closed) {}
     void renumber(int* _renumber);
     inline int size() const { return indices.size(); }
     inline int idx(int i) const { return indices[(i+indices.size()) % indices.size()]; }
     inline int idx0(int i) const { return indices[i]; }
     inline int idx1(int i) const { return indices[ (i+1) % indices.size() ]; }
     
+    bool isClosed;
     int flag;
     Real circulation;
     std::vector<int> indices;
@@ -52,11 +53,10 @@ public:
     //! remesh long or strongly-curved segments
     PYTHON void remesh(Real maxLen=3.0, Real minLen=1.0);
     
-    //test
-    PYTHON void ddTest(Real d, Real phi);
-    
     //! add a filament ring to the system
     PYTHON void addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number);
+    //! add a line filament to the system
+    PYTHON void addLine(const Vec3& p0, const Vec3& p1, Real circulation);
     
         
     virtual ParticleBase* clone();

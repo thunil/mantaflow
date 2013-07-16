@@ -18,14 +18,10 @@
 
 using namespace std;
 
-// safety boundary for semi lagrange advection step
-// is 1 enough here ?
-#define SLADVBOUND 2
-
 namespace Manta { 
 
 //! Semi-Lagrange interpolation kernel
-KERNEL(bnd=SLADVBOUND) template<class T> 
+KERNEL(bnd=1) template<class T> 
 void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset) 
 {
     if (flags.isObstacle(i,j,k)) {
@@ -44,7 +40,7 @@ void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Re
 }
 
 //! Semi-Lagrange interpolation kernel for MAC grids
-KERNEL(bnd=SLADVBOUND)
+KERNEL(bnd=1)
 void SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, Real dt) 
 {
     if (flags.isObstacle(i,j,k)) {
@@ -100,7 +96,7 @@ template<> inline void getMinMax<Vec3>(Vec3& minv, Vec3& maxv, const Vec3& val) 
 }
 
 //! Kernel: Clamp obtained value to min/max in source area, and reset values that point out of grid or into boundaries
-KERNEL(bnd=SLADVBOUND) template<class T>
+KERNEL(bnd=1) template<class T>
 void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig, Grid<T>& fwd, Real dt)
 {
     if (flags.isObstacle(i,j,k))
@@ -172,7 +168,7 @@ inline Real doClampComponent(const Vec3i& upperClamp, MACGrid& orig, Real dst, c
 
 //! Kernel: Clamp obtained value to min/max in source area, and reset values that point out of grid or into boundaries. 
 //! Specialized version for MAC grids
-KERNEL(bnd=SLADVBOUND) 
+KERNEL(bnd=1) 
 void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& orig, MACGrid& fwd, Real dt)
 {
     if (flags.isObstacle(i,j,k))

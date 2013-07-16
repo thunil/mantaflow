@@ -73,7 +73,7 @@ inline int _cIndex(const Vec3& pos, const Vec3i& s) {
 
 //! Obtain levelset from mesh.
 //! This only works for dense meshes -- simply uses normals and triangle centers, no triangle integration
-PLUGIN void meshSDFCuda(Mesh& mesh, Grid<Real>& levelset, Real sigma, Real cutoff=-1)
+PYTHON void meshSDFCuda(Mesh& mesh, Grid<Real>& levelset, Real sigma, Real cutoff=-1)
 {        
     if (cutoff<0) cutoff = 2*sigma;
     

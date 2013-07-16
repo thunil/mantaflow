@@ -67,7 +67,7 @@ for t in range(1000):
     subdivideMesh(mesh=mesh, minAngle=0.01, minLength=scale, maxLength=2*scale, cutTubes=True)
     killSmallComponents(mesh=mesh, elements=20)
         
-    filaments.remesh(maxLen=3, minLen=1)
+    filaments.remesh(maxLen=4, minLen=3)
     #gui.pause()
     #filaments.ddTest(d=0.25,phi=0.1)
     #filaments.doublyDiscreteUpdate(regularization=2)

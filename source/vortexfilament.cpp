@@ -36,14 +36,14 @@ inline Vec3 FilamentKernel(const Vec3& pos, const vector<VortexRing>& rings, con
         const VortexRing& r = rings[i];
         if (r.flag & ParticleBase::PDELETE) continue;
         
-        const int N = r.size();
+        const int N = r.isClosed ? (r.size()) : (r.size()-1);
         const Real str = strength * r.circulation;
         for (int j=0; j<N; j++) {
             const Vec3 r0 = fp[r.idx0(j)].pos - pos;
             const Vec3 r1 = fp[r.idx1(j)].pos - pos;
             const Real r0_2 = normSquare(r0), r1_2 = normSquare(r1);
-            /*if (r0_2 > cutoff2 || r1_2 > cutoff2 || r0_2 < mindist || r1_2 < mindist)
-                continue;*/
+            if (r0_2 > cutoff2 || r1_2 > cutoff2 || r0_2 < mindist || r1_2 < mindist)
+                continue;
             
             const Vec3 e = getNormalized(r1-r0);
             const Real r0n = 1.0f/sqrt(a2+r0_2);
@@ -132,10 +132,11 @@ void VortexFilamentSystem::remesh(Real maxLen, Real minLen) {
         // remove edges
         for(;;) {
             const int oldLen = r.size();
+            const int N = r.isClosed ? oldLen : (oldLen-1);
             std::vector<bool> deleted(r.size());
             
             int newLen=oldLen;
-            for (int j=0; j<oldLen; j++) {
+            for (int j=0; j<N; j++) {
                 if (mData[r.idx0(j)].flag & PDELETE || mData[r.idx1(j)].flag & PDELETE) continue;
                 const Vec3 p0 = mData[r.idx0(j)].pos;
                 const Vec3 p1 = mData[r.idx1(j)].pos;
@@ -186,6 +187,7 @@ ParticleBase* VortexFilamentSystem::clone() {
 // ------------------------------------------------------------------------------
 // Functions needed for doubly-discrete smoke flow using Darboux transforms
 // see [Weissmann,Pinkall 2009]
+// doesn't really work yet (can't reverse rotation dir)
 // ------------------------------------------------------------------------------
 
 Real evaluateRefU(int N, Real L, Real circ, Real reg) {
@@ -262,7 +264,7 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
     const Real dt = getParent()->getDt();
     
     for (int rc=0; rc<segSize(); rc++) {
-        if (!isSegActive(rc)) continue;
+        if (!isSegActive(rc) || !mSegments[rc].isClosed) continue;
         
          VortexRing& r = mSegments[rc];
          int N = r.size();
@@ -306,53 +308,14 @@ void VortexFilamentSystem::doublyDiscreteUpdate(Real reg) {
     }
 }
 
-void VortexFilamentSystem::ddTest(Real d, Real phi) {
-    const Real dt = getParent()->getDt();
+void VortexFilamentSystem::addLine(const Vec3& p0, const Vec3& p1, Real circulation) {
+    VortexRing ring(circulation, false);
     
-    for (int rc=0; rc<segSize(); rc++) {
-        if (!isSegActive(rc)) continue;
-        
-        VortexRing& r = mSegments[rc];
-        int N = r.size();
-        // compute arc length
-        Real L=0;
-        for (int i=0; i<N; i++)
-            L += norm(mData[r.idx0(i)].pos - mData[r.idx1(i)].pos);
-        
-        // build gamma
-        vector<Vec3> gamma(N);
-        for (int i=0; i<N; i++) gamma[i] = mData[r.indices[i]].pos;
-        
-        Real l = sqrt( square(L/N) + square(d) );
-        Real ra = d*tan(M_PI * 0.5 - M_PI/N); // d*cot(pi/n)
-        cout << "l: " << l << " ra: " << ra <<endl;
-        
-        // fwd darboux transform
-        vector<Vec3> eta(N);
-        if (!darboux(gamma, eta, l, ra)) {
-            cout << "Fwd Darboux correction failed, skipped." << endl; 
-            continue;
-        }
-        if (!darboux(eta, gamma, l, -ra)) {
-            cout << "Bwd Darboux correction failed, skipped." << endl; 
-            continue;
-        }
-        /*
-        // bwd darboux transform
-        if (!darboux(eta, gamma, l, -ra)) {
-            cout << "Bwd Darboux correction failed, skipped." << endl; 
-            continue;
-        }
-        */
-        // copy back
-        Vec3 sum(0.);
-        for (int i=0; i<N; i++) {
-            sum += mData[r.indices[i]].pos - gamma[i];
-            mData[r.indices[i]].pos = gamma[i];
-        }
-        cout << "total: " << sum/N << endl;
-    }
+    ring.indices.push_back(add(BasicParticleData(p0)));
+    ring.indices.push_back(add(BasicParticleData(p1)));
+    mSegments.push_back(ring);
 }
+
 void VortexFilamentSystem::addRing(const Vec3& position, Real circulation, Real radius, Vec3 normal, int number) {
     normalize(normal);
     Vec3 worldup (0,1,0);
@@ -361,7 +324,7 @@ void VortexFilamentSystem::addRing(const Vec3& position, Real circulation, Real 
     Vec3 u = cross(normal, worldup); normalize(u);
     Vec3 v = cross(normal, u); normalize(v);
     
-    VortexRing ring(circulation);
+    VortexRing ring(circulation, true);
     
     for (int i=0; i<number; i++) {
         Real phi = (Real)i/(Real)number * M_PI * 2.0;

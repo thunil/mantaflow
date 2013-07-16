@@ -188,7 +188,9 @@ public:
         TypeEmpty = 4,
         TypeInflow = 8,
         TypeOutflow = 16,
-		TypeStick = 128
+		TypeStick = 128,
+        TypeReserved = 256
+        // 2^10 - 2^14 reserved for moving obstacles
 	};
         
     //! access for particles
@@ -217,8 +219,8 @@ public:
     inline bool isStick(const Vec3& pos) const { return getAt(pos) & TypeStick; }
     
     // Python callables
-    PYTHON void initDomain(int boundaryWidth=1);
-    PYTHON void initBoundaries(int boundaryWidth=1);
+    PYTHON void initDomain(int boundaryWidth=0);
+    PYTHON void initBoundaries(int boundaryWidth=0);
     PYTHON void updateFromLevelset(LevelsetGrid& levelset);    
     PYTHON void fillGrid(int type=TypeFluid);
 };

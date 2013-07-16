@@ -9,6 +9,9 @@
  *
  * Random numbers
  *
+ * Based on GPL code by Makoto Matsumoto, Takuji Nishimura, and Shawn Cokus
+ * Richard J. Wagner  v0.5  7 November 2000  rjwagner@writeme.com
+ *
  ******************************************************************************/
 
 #ifndef _RANDOMSTREAM_H

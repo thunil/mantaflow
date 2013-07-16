@@ -95,7 +95,7 @@ __global__ void rewriteNoise(CudaNoiseDev nd, float* a) {
     a[cell.x + 128*cell.y + 128*128*cell.z] = (float)n.x * nd.scale;
 }
 
-PLUGIN void testme() {
+PYTHON void testme() {
     CudaNoiseTexture nd;
     CArray<float> a(128*128*128);
     a.upload();
