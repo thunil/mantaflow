@@ -90,7 +90,7 @@ void MovingObstacle::moveLinear(Real t, Real t0, Real t1, Vec3 p0, Vec3 p1, Flag
         }
         
         Vec3 pos = alpha * p1 + (1.0f-alpha) * p0;
-        for (int i=0; i<mShapes.size(); i++)
+        for (size_t i=0; i<mShapes.size(); i++)
             mShapes[i]->setCenter(pos);
         
         // reset flags
@@ -99,7 +99,7 @@ void MovingObstacle::moveLinear(Real t, Real t0, Real t1, Vec3 p0, Vec3 p1, Flag
                 flags[idx] = mEmptyType;
         }
         // apply new flags
-        for (int i=0; i<mShapes.size(); i++) {
+        for (size_t i=0; i<mShapes.size(); i++) {
             mShapes[i]->_args.clear();
             mShapes[i]->_args.add("value", FlagGrid::TypeObstacle | mID);
             mShapes[i]->applyToGrid(&flags, 0);

@@ -149,4 +149,25 @@ PYTHON void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
     KnAddForceField(flags, vel, force);
 }
 
+//! enforce a constant inflow/outflow at the grid boundaries
+KERNEL void KnSetInflow(MACGrid& vel, int dim, int p0, const Vec3& val) {
+    Vec3i p(i,j,k);
+    if (p[dim] == p0 || p[dim] == p0+1)
+        vel(i,j,k) = val;
+}
+
+//! enforce a constant inflow/outflow at the grid boundaries
+PYTHON void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
+    for(size_t i=0; i<dir.size(); i++) {
+        if (dir[i] >= 'x' && dir[i] <= 'z') { 
+            int dim = dir[i]-'x';
+            KnSetInflow(vel,dim,0,value);
+        } else if (dir[i] >= 'X' && dir[i] <= 'Z') {
+            int dim = dir[i]-'X';
+            KnSetInflow(vel,dim,vel.getSize()[dim]-1,value);
+        } else 
+            errMsg("invalid character in direction string. Only [xyzXYZ] allowed.");
+    }
+}
+
 } // namespace
