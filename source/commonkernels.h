@@ -37,26 +37,38 @@ double GridSumSqr (Grid<Real>& grid) {
 //! Kernel: rotation operator \nabla x v for centered vector fields
 KERNEL(bnd=1) 
 void CurlOp (const Grid<Vec3>& grid, Grid<Vec3>& dst) {
-    dst(i,j,k) = Vec3(0.5*((grid(i,j+1,k).z - grid(i,j-1,k).z) - (grid(i,j,k+1).y - grid(i,j,k-1).y)),
-                      0.5*((grid(i,j,k+1).x - grid(i,j,k-1).x) - (grid(i+1,j,k).z - grid(i-1,j,k).z)),
-                      0.5*((grid(i+1,j,k).y - grid(i-1,j,k).y) - (grid(i,j+1,k).x - grid(i,j-1,k).x)));
+    Vec3 v = Vec3(0. , 0. , 
+               0.5*((grid(i+1,j,k).y - grid(i-1,j,k).y) - (grid(i,j+1,k).x - grid(i,j-1,k).x)) );
+    if(dst.is3D()) {
+        v[0] = 0.5*((grid(i,j+1,k).z - grid(i,j-1,k).z) - (grid(i,j,k+1).y - grid(i,j,k-1).y));
+        v[1] = 0.5*((grid(i,j,k+1).x - grid(i,j,k-1).x) - (grid(i+1,j,k).z - grid(i-1,j,k).z));
+    }
+    dst(i,j,k) = v;
 };
 
 //! Kernel: divergence operator (from MAC grid)
 KERNEL(bnd=1) 
 void DivergenceOpMAC(Grid<Real>& div, const MACGrid& grid) {
-    Vec3 del = Vec3(grid(i+1,j,k).x, grid(i,j+1,k).y, grid(i,j,k+1).z) - grid(i,j,k);
+    Vec3 del = Vec3(grid(i+1,j,k).x, grid(i,j+1,k).y, 0.) - grid(i,j,k); 
+    if(grid.is3D()) del[2] += grid(i,j,k+1).z;
+    else            del[2]  = 0.;
     div(i,j,k) = del.x + del.y + del.z;
 }
 
-//! Kernel: gradient operator (create MAC grid)
+//! Kernel: gradient operator for MAC grid
 KERNEL(bnd=1)void GradientOpMAC(MACGrid& gradient, const Grid<Real>& grid) {
-    gradient(i,j,k) = (Vec3(grid(i,j,k)) - Vec3(grid(i-1,j,k), grid(i,j-1,k), grid(i,j,k-1)));
+    Vec3 grad = (Vec3(grid(i,j,k)) - Vec3(grid(i-1,j,k), grid(i,j-1,k), 0. ));
+    if(grid.is3D()) grad[2] -= grid(i,j,k-1);
+    else            grad[2]  = 0.;
+    gradient(i,j,k) = grad;
 }
 
-//! Kernel: gradient operator 
+//! Kernel: centered gradient operator 
 KERNEL(bnd=1) void GradientOp(Grid<Vec3>& gradient, const Grid<Real>& grid) {
-    gradient(i,j,k) = 0.5 * Vec3( grid(i+1,j,k)-grid(i-1,j,k), grid(i,j+1,k)-grid(i,j-1,k), grid(i,j,k+1)-grid(i,j,k-1));
+    Vec3 grad = 0.5 * Vec3(        grid(i+1,j,k)-grid(i-1,j,k), 
+                                   grid(i,j+1,k)-grid(i,j-1,k), 0.);
+    if(grid.is3D()) grad[2]= 0.5*( grid(i,j,k+1)-grid(i,j,k-1) );
+    gradient(i,j,k) = grad;
 }
 
 //! Kernel: Laplace operator
@@ -88,12 +100,18 @@ KERNEL(idx) void SetComponent(Grid<Vec3>& grid, const Grid<Real>& comp, int dim)
 
 //! Kernel: compute centered velocity field from MAC
 KERNEL(bnd=1) void GetCentered(Grid<Vec3>& center, const MACGrid& vel) {
-    center(i,j,k) = 0.5*(vel(i,j,k)+Vec3(vel(i+1,j,k).x, vel(i,j+1,k).y, vel(i,j,k+1).z));
+    Vec3 v = 0.5 * ( vel(i,j,k) + Vec3(vel(i+1,j,k).x, vel(i,j+1,k).y, 0. ) );
+    if(vel.is3D()) v[2] += 0.5 * vel(i,j,k+1).z;
+    else           v[2]  = 0.;
+    center(i,j,k) = v;
 };
 
 //! Kernel: compute MAC from centered velocity field
 KERNEL(bnd=1) void GetMAC(MACGrid& vel, const Grid<Vec3>& center) {
-    vel(i,j,k) = 0.5*(center(i,j,k)+Vec3(center(i-1,j,k).x, center(i,j-1,k).y, center(i,j,k-1).z));
+    Vec3 v = 0.5*(center(i,j,k) + Vec3(center(i-1,j,k).x, center(i,j-1,k).y, 0. ));
+    if(vel.is3D()) v[2] += 0.5 * center(i,j,k-1).z; 
+    else           v[2]  = 0.;
+    vel(i,j,k) = v;
 };
 
 //! Fill in the domain boundary cells (i,j,k=0/size-1) from the neighboring cells

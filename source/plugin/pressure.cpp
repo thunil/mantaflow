@@ -37,7 +37,9 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
     if (!flags.isObstacle(i,j+1,k)) set -= vel(i,j+1,k).y;
     if (!flags.isObstacle(i,j,k-1)) set += vel(i,j,k).z;
     if (!flags.isObstacle(i,j,k+1)) set -= vel(i,j,k+1).z; */
-    Real set = vel(i,j,k).x - vel(i+1,j,k).x + vel(i,j,k).y - vel(i,j+1,k).y + vel(i,j,k).z - vel(i,j,k+1).z;
+    Real set =          vel(i,j,k).x - vel(i+1,j,k).x + 
+                        vel(i,j,k).y - vel(i,j+1,k).y; 
+    if(vel.is3D()) set+=vel(i,j,k).z - vel(i,j,k+1).z;
     
     // per cell divergence correction
     if(perCellCorr) 
@@ -63,9 +65,11 @@ void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure)
 	const bool curEmpty = flags.isEmpty(i,j,k);
     const Real p = pressure(i,j,k);
 
-    if (!curEmpty || !flags.isEmpty(i-1,j,k)) vel(i,j,k).x -= (p - pressure(i-1,j,k));
-    if (!curEmpty || !flags.isEmpty(i,j-1,k)) vel(i,j,k).y -= (p - pressure(i,j-1,k));
-    if (!curEmpty || !flags.isEmpty(i,j,k-1)) vel(i,j,k).z -= (p - pressure(i,j,k-1));
+    if (!curEmpty || !flags.isEmpty(i-1,j,k))     vel(i,j,k).x -= (p - pressure(i-1,j,k));
+    if (!curEmpty || !flags.isEmpty(i,j-1,k))     vel(i,j,k).y -= (p - pressure(i,j-1,k));
+    if(vel.is3D()) {
+        if (!curEmpty || !flags.isEmpty(i,j,k-1)) vel(i,j,k).z -= (p - pressure(i,j,k-1));
+    }
 }
 
 //! Kernel: Set matrix stencils and velocities to enable open boundaries
@@ -75,10 +79,12 @@ KERNEL void SetOpenBound(Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Re
     // set velocity boundary conditions
     if (lowerBound.x && i == 0) vel(0,j,k) = vel(1,j,k);
     if (lowerBound.y && j == 0) vel(i,0,k) = vel(i,1,k);
-    if (lowerBound.z && k == 0) vel(i,j,0) = vel(i,j,1);
     if (upperBound.x && i == maxX-1) vel(maxX-1,j,k) = vel(maxX-2,j,k);
     if (upperBound.y && j == maxY-1) vel(i,maxY-1,k) = vel(i,maxY-2,k);
-    if (upperBound.z && k == maxZ-1) vel(i,j,maxZ-1) = vel(i,j,maxZ-2);
+    if(vel.is3D()) {
+        if (lowerBound.z && k == 0)      vel(i,j,0)      = vel(i,j,1);
+        if (upperBound.z && k == maxZ-1) vel(i,j,maxZ-1) = vel(i,j,maxZ-2); 
+    }
     
     // set matrix stencils at boundary
     if ((lowerBound.x && i<=1) || (upperBound.x && i>=maxX-2) ||

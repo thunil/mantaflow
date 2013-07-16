@@ -106,8 +106,10 @@ void Grid<T>::save(string name) {
     string ext = name.substr(name.find_last_of('.'));
     if (ext == ".raw")
         writeGridRaw(name, this);
-    else if (ext == ".uni")
-        writeGridUni(name, this);
+	else if (ext == ".uni")
+		writeGridUni(name, this);
+	else if (ext == ".vol")
+		writeGridVol(name, this);
     else
         errMsg("file '" + name +"' filetype not supported");
 }
