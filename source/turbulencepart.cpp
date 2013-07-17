@@ -103,6 +103,8 @@ void TurbulenceParticleSystem::synthesize(FlagGrid& flags, Grid<Real>& k, int oc
     KnSynthesizeTurbulence(*this, flags, noise, k, alpha, dt, octaves, scale, 1.0f/L0);
 }
 
+
+
 PYTHON void applyK41(Grid<Vec3>& grid ,WaveletNoiseField& noise, Real L0=0.001, Real scale=1e-1,int octaves=1) {
     const Real PERSISTENCE = 0.56123f;
     

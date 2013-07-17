@@ -225,6 +225,9 @@ inline Vec3 WaveletNoiseField::WNoiseVec(const Vec3& p, float *data)
     float t1 =   midY - (p[1] - 0.5f);
     float t2 =   midZ - (p[2] - 0.5f);
 
+    std::cout << midX << " " << midY << " " << midZ << std::endl;
+    std::cout << t0 << " " << t1 << " " << t2<< std::endl;
+    
     // precache all the neighbors for fast access
     float neighbors[3][3][3];
     for (int z = -1; z <=1; z++)
