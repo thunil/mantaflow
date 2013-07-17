@@ -124,12 +124,13 @@ SET(PP_SOURCES
     source/vortexsheet.cpp
     source/vortexfilament.cpp
     source/vortexpart.cpp
+    source/turbulencepart.cpp
     source/edgecollapse.cpp
     source/plugin/pressure.cpp
     source/plugin/initplugins.cpp
     source/plugin/advection.cpp
     source/plugin/extforces.cpp
-    source/plugin/turbulence.cpp
+    source/plugin/kepsilon.cpp
     source/plugin/meshplugins.cpp
     source/plugin/vortexplugins.cpp
     source/plugin/waveletturbulence.cpp
@@ -157,6 +158,7 @@ SET(PP_HEADERS
     source/fileio.h
     source/edgecollapse.h
     source/vortexpart.h
+    source/turbulencepart.h
     #source/test.h    
 )
 

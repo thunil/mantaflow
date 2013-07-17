@@ -316,8 +316,8 @@ Cylinder::Cylinder(FluidSolver* parent, Vec3 center, Real radius, Vec3 z)
 bool Cylinder::isInside(const Vec3& pos) const {
     Real z = dot(pos-mCenter, mZDir);
     if (fabs(z) > mZ) return false;
-    Real r2 = normSquare(pos-mCenter)-z*z;
-    return r2 < (mRadius*mRadius);
+    Real r2 = normSquare(pos-mCenter)-square(z);
+    return r2 < square(mRadius);
 }
 
 void Cylinder::generateMesh(Mesh* mesh) {

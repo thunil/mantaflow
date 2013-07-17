@@ -125,8 +125,8 @@ PYTHON void KEpsilonSources(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod) {
     KnTurbulenceClamp(k, eps, minK, maxK, keNuMin, keNuMax);    
 }
 
-//! Initialize the domain or inflow
-PYTHON void KEpsilonInit(FlagGrid& flags, Grid<Real>& k, Grid<Real>& eps, Real intensity, Real nu, bool fillArea) {
+//! Initialize the domain or boundary conditions
+PYTHON void KEpsilonBcs(FlagGrid& flags, Grid<Real>& k, Grid<Real>& eps, Real intensity, Real nu, bool fillArea) {
     // compute limits
     const Real vk = 1.5*square(keU0)*square(intensity);
     const Real ve = keCmu*square(vk) / nu;
@@ -139,33 +139,7 @@ PYTHON void KEpsilonInit(FlagGrid& flags, Grid<Real>& k, Grid<Real>& eps, Real i
     }
 }
 
-/*void Laplace(FlagGrid& flags, Grid<Real>& grid) {
-    // Prepare grids for poisson solve
-    Grid<Real> rhs(flags.getParent());
-    Grid<Real> solution(flags.getParent());
-    Grid<Real> residual(flags.getParent());
-    Grid<Real> search(flags.getParent());
-    Grid<Real> temp1(flags.getParent());
-    Grid<Real> A0(flags.getParent());
-    Grid<Real> Ai(flags.getParent());
-    Grid<Real> Aj(flags.getParent());
-    Grid<Real> Ak(flags.getParent());
-    
-    MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak);    
-            
-    // prepare CG solver
-    const int maxIter = (int) (1.5 * flags.getSize().max());    
-    GridCgInterface *gcg = new GridCg<ApplyMatrix>(solution, rhs, residual, search, flags, temp1, &A0, &Ai, &Aj, &Ak );
-    gcg->setAccuracy(1e-3); 
-    gcg->setUseResNorm(true);
-    
-    // iterations
-    for (int iter=0; iter<maxIter; iter++) {
-        if (!gcg->iterate()) iter=maxIter;
-    } 
-    delete gcg;
-}*/
-
+//! Gradient diffusion smoothing. Not unconditionally stable -- should probably do substepping etc.
 void ApplyGradDiff(const Grid<Real>& grid, Grid<Real>& res, const Grid<Real>& nu, Real dt, Real sigma) {
     // should do this (but requires better boundary handling)
     /*MACGrid grad(grid.getParent());
@@ -203,5 +177,7 @@ PYTHON void KEpsilonGradientDiffusion(Grid<Real>& k, Grid<Real>& eps, Grid<Real>
         }
     }
 }
+
+
 
 } // namespace

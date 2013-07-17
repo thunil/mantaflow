@@ -19,8 +19,6 @@ velInflow = vec3(0.52,0,0)
 # prepare grids
 flags = s.create(FlagGrid)
 pressure = s.create(RealGrid, show=False)
-vel = s.create(MACGrid)
-density = s.create(RealGrid, show=False)
 
 k = s.create(RealGrid)
 eps = s.create(RealGrid)
@@ -28,42 +26,49 @@ prod = s.create(RealGrid)
 nuT= s.create(RealGrid)
 strain= s.create(RealGrid)
 vc=s.create(MACGrid)
+temp=s.create(RealGrid)
+vel = s.create(MACGrid)
 
 # noise field
 noise = s.create(NoiseField)
-noise.posScale = vec3(45)
-noise.clamp = True
-noise.clampNeg = 0
-noise.clampPos = 1
-noise.valScale = 1
-noise.valOffset = 0.75
-noise.timeAnim = 0.2
+noise.timeAnim = 0
+#noise.posScale = vec3(1)
+
+# turbulence particles
+#turb = s.create(TurbulenceParticleSystem, noise=noise)
 
 flags.initDomain()
 flags.fillGrid()
 
+# obstacle grid
 for i in range(4):
     for j in range(4):
         obs = s.create(Sphere, center=gs*vec3(0.2,(i+1)/5.0,(j+1)/5.0), radius=res*0.025)
         obs.applyToGrid(grid=flags,value=FlagObstacle)
 
+# particle inflow
+cyl = s.create(Cylinder, center = gs*vec3(0.07,0.5,0.5), radius=res*0.1, z=vec3(res*0.03,0,0))
+
 if (GUI):
     gui = Gui()
     gui.show()
 
-KEpsilonInit(flags=flags,k=k,eps=eps,intensity=0.1,nu=0.1,fillArea=True)
+KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=0.1,nu=0.1,fillArea=True)
+
+#box=s.create(Box, p0=vec3(0,0,0), p1=gs*vec3(1,1,1))
+#turb.seed(box,10000)
 
 #main loop
 for t in range(10000):
-    # seed smoke within the source region and apply inflow velocity condition
-    #densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
-    #source.applyToGrid(grid=vel, value=velInflow)
-    #advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)
+    #turb.seed(cyl,20)
+    #turb.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4)
+    #turb.synthesize(flags=flags, octaves=1, k=k, switchLength=10, L0=0.001, scale=1e-1)
+    applyK41(grid=vc,noise=noise, L0=0.1, scale=1,octaves=1)
     
-    KEpsilonInit(flags=flags,k=k,eps=eps,intensity=0.1,nu=0.1,fillArea=False)
-    advectSemiLagrange(flags=flags, vel=vel, grid=k, order=1)
-    advectSemiLagrange(flags=flags, vel=vel, grid=eps, order=1)
-    KEpsilonInit(flags=flags,k=k,eps=eps,intensity=0.1,nu=0.1,fillArea=False)
+    KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=0.1,nu=0.1,fillArea=False)
+    advectSemiLagrange(flags=flags, vel=vel, grid=k, order=2)
+    advectSemiLagrange(flags=flags, vel=vel, grid=eps, order=2)
+    KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=0.1,nu=0.1,fillArea=False)
     KEpsilonComputeProduction(vel=vel, k=k, eps=eps, prod=prod, nuT=nuT, strain=strain, pscale=1.0) 
     KEpsilonSources(k=k, eps=eps, prod=prod)
     

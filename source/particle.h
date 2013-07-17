@@ -25,7 +25,7 @@ template<class T> class Grid;
 //! Baseclass for particle systems. Does not implement any data
 PYTHON class ParticleBase : public PbClass {
 public:
-    enum SystemType { BASE=0, PARTICLE, VELPART, VORTEX, FILAMENT, FLIP, TRACER };
+    enum SystemType { BASE=0, PARTICLE, VELPART, VORTEX, FILAMENT, FLIP, TRACER, TURBULENCE };
     enum ParticleType {
         PNONE         = 0,
         PDELETE       = (1<<10), // mark as deleted, will be deleted in next compress() step

@@ -11,6 +11,9 @@
  *
  ******************************************************************************/
  
+#ifndef _NOISEFIELD_H_
+#define _NOISEFIELD_H_
+
 #include "vectorbase.h"
 #include "pclass.h"
 
@@ -362,6 +365,7 @@ inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos) {
 
     v += Vec3(mValOffset);
     v *= mValScale;
+    
     if (mClamp) {
         for(int i=0; i<3; i++) {
             if (v[i]< mClampNeg) v[i] = mClampNeg;
@@ -373,5 +377,6 @@ inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos) {
 
 
 
-} // namespace WAVELETNOISE 
+} // namespace  
 
+#endif
