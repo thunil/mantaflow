@@ -31,9 +31,11 @@ class WaveletNoiseField : public PbClass {
         };
 
         //! evaluate noise
-        inline Real evaluate(Vec3 pos);
+        inline Real evaluate(Vec3 pos, int tile=0);
         //! evaluate noise as a vector
-        inline Vec3 evaluateVec(Vec3 pos);
+        inline Vec3 evaluateVec(Vec3 pos, int tile=0);
+        //! evaluate curl noise
+        inline Vec3 evaluateCurl(Vec3 pos);
 
         //! direct data access
         float* data() { return mNoiseTile; }
@@ -86,7 +88,7 @@ class WaveletNoiseField : public PbClass {
         // random offset into tile to simulate different random seeds
         Vec3 mSeedOffset;
         
-        static float* mNoiseTile;
+        static Real* mNoiseTile;
         // global random seed storage
         static int randomSeed;
 };
@@ -225,9 +227,6 @@ inline Vec3 WaveletNoiseField::WNoiseVec(const Vec3& p, float *data)
     float t1 =   midY - (p[1] - 0.5f);
     float t2 =   midZ - (p[2] - 0.5f);
 
-    std::cout << midX << " " << midY << " " << midZ << std::endl;
-    std::cout << t0 << " " << t1 << " " << t2<< std::endl;
-    
     // precache all the neighbors for fast access
     float neighbors[3][3][3];
     for (int z = -1; z <=1; z++)
@@ -325,7 +324,7 @@ inline Vec3 WaveletNoiseField::WNoiseVec(const Vec3& p, float *data)
 #undef ADD_WEIGHTEDY
 #undef ADD_WEIGHTEDZ
 
-inline Real WaveletNoiseField::evaluate(Vec3 pos) { 
+inline Real WaveletNoiseField::evaluate(Vec3 pos, int tile) { 
     pos[0] *= mGsInvX;
     pos[1] *= mGsInvY;
     pos[2] *= mGsInvZ;
@@ -339,7 +338,8 @@ inline Real WaveletNoiseField::evaluate(Vec3 pos) {
     pos[2] *= mPosScale[2];
     pos += mPosOffset;
 
-    Real v = WNoise(pos, mNoiseTile);
+    const int n3 = square(NOISE_TILE_SIZE) * NOISE_TILE_SIZE;
+    Real v = WNoise(pos, &mNoiseTile[tile*n3]);
 
     v += mValOffset;
     v *= mValScale;
@@ -350,7 +350,7 @@ inline Real WaveletNoiseField::evaluate(Vec3 pos) {
     return v;
 }
 
-inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos) { 
+inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos, int tile) { 
     pos[0] *= mGsInvX;
     pos[1] *= mGsInvY;
     pos[2] *= mGsInvZ;
@@ -364,7 +364,8 @@ inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos) {
     pos[2] *= mPosScale[2];
     pos += mPosOffset;
 
-    Vec3 v = WNoiseVec(pos, mNoiseTile);
+    const int n3 = square(NOISE_TILE_SIZE) * NOISE_TILE_SIZE;
+    Vec3 v = WNoiseVec(pos, &mNoiseTile[tile*n3]);
 
     v += Vec3(mValOffset);
     v *= mValScale;
@@ -378,7 +379,14 @@ inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos) {
     return v;
 }
 
-
+inline Vec3 WaveletNoiseField::evaluateCurl(Vec3 pos) {
+    // gradients of w0-w2
+    Vec3 d0 = evaluateVec(pos,0), 
+         d1 = evaluateVec(pos,1), 
+         d2 = evaluateVec(pos,2);
+    
+    return Vec3(d0.y-d1.z, d2.z-d0.x, d1.x-d2.y);
+}
 
 } // namespace  
 

@@ -32,7 +32,7 @@ const Real keU0 = 1.0;
 const Real keImin = 2e-3;
 const Real keImax = 1.0;
 const Real keNuMin = 1e-3;
-const Real keNuMax = 4.0;
+const Real keNuMax = 5.0;
 
 //! clamp k and epsilon to limits    
 KERNEL(idx) 

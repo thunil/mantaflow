@@ -36,32 +36,6 @@ void MovingObstacle::add(Shape* shape) {
     mShapes.push_back(shape);
 }
 
-KERNEL(pts, single) // no thread-safe random gen yet
-void ProjectParticles(FlipSystem& part, LevelsetGrid& levelset, Grid<Vec3>& gradient) {
-    static RandomStream rand (3123984);
-    const double jlen = 0.1;
-    
-    if (part.isActive(i)) {
-        // project along levelset gradient
-        Vec3 p = part[i].pos;
-        if (levelset.isInBounds(p)) {
-            Real dist = levelset.getInterpolated(p);
-            if (dist < 0) {
-                Vec3 n = gradient.getInterpolated(p);
-                Real s = normalize(n);
-                if (s > 0.1) {
-                    Vec3 dx = n * (-dist + jlen * (1 + rand.getReal()));
-                    p += dx;
-                }
-            }
-        }
-        // clamp to outer boundaries (+jitter)
-        const double jlen = 0.1;
-        Vec3 jitter = jlen * rand.getVec3();
-        part[i].pos = clamp(p, Vec3(1,1,1)+jitter, toVec3(levelset.getSize()-1)-jitter);
-    }
-}
-
 void MovingObstacle::projectOutside(FlagGrid& flags, FlipSystem& flip) {
     LevelsetGrid levelset(mParent,false);
     Grid<Vec3> gradient(mParent);
@@ -75,7 +49,7 @@ void MovingObstacle::projectOutside(FlagGrid& flags, FlipSystem& flip) {
     // build levelset gradient
     GradientOp(gradient, levelset);
     
-    ProjectParticles(flip, levelset, gradient);
+    flip.projectOutside(gradient);
 }
 
 void MovingObstacle::moveLinear(Real t, Real t0, Real t1, Vec3 p0, Vec3 p1, FlagGrid& flags, MACGrid& vel, bool smooth) {

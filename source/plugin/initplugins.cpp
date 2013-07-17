@@ -39,4 +39,32 @@ PYTHON void densityInflow(FlagGrid& flags, Grid<Real>& density, WaveletNoiseFiel
     KnApplyNoise(flags, density, noise, sdf, scale, sigma);
 }
 
+//! SDF gradient from obstacle flags
+PYTHON Grid<Vec3> obstacleGradient(FlagGrid& flags) {
+    LevelsetGrid levelset(parent,false);
+    Grid<Vec3> gradient(parent);
+    
+    // rebuild obstacle levelset
+    FOR_IDX(levelset) {
+        levelset[idx] = flags.isObstacle(idx) ? -0.5 : 0.5;
+    }
+    levelset.reinitMarching(flags, 6.0, 0, true, false, FlagGrid::TypeReserved);
+    
+    // build levelset gradient
+    GradientOp(gradient, levelset);
+    
+    FOR_IDX(levelset) {
+        Vec3 grad = gradient[idx];
+        Real s = normalize(grad);
+        if (s <= 0.1 || levelset[idx] >= 0) 
+            grad=Vec3(0.);        
+        gradient[idx] = grad * levelset[idx];
+    }
+    
+    return gradient;
+}
+
+    
+
+
 } // namespace

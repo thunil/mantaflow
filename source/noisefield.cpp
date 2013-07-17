@@ -59,9 +59,10 @@ WaveletNoiseField::WaveletNoiseField(FluidSolver* parent, int fixedSeed, int loa
     PbClass(parent), mPosOffset(0.), mPosScale(1.), mValOffset(0.), mValScale(1.), mClamp(false), 
     mClampNeg(0), mClampPos(1), mTimeAnim(0), mGsInvX(0), mGsInvY(0), mGsInvZ(0)
 {
-    mGsInvX = 1.0/(parent->getGridSize().x);
-    mGsInvY = 1.0/(parent->getGridSize().y);
-    mGsInvZ = parent->is3D() ? (1.0/(parent->getGridSize().z)) : 1;
+    Real scale = 1.0/parent->getGridSize().max();
+    mGsInvX = scale;
+    mGsInvY = scale;
+    mGsInvZ = parent->is3D() ? scale : 1;
 
     // use global random seed with offset if none is given
     if (fixedSeed==-1) {
@@ -87,15 +88,15 @@ string WaveletNoiseField::toString() {
 void WaveletNoiseField::generateTile( int loadFromFile) {
     // generate tile
     const int n = NOISE_TILE_SIZE;
-    const int n3 = n*n*n;
+    const int n3 = n*n*n, n3d=n3*3;
 
     if(mNoiseTile) return;
 
-    Real *noise3 = new Real[n3];
+    Real *noise3 = new Real[n3d];
     if(loadFromFile) {
         FILE* fp = fopen("waveletNoiseTile.bin","rb"); 
         if(fp) {
-            fread(noise3, sizeof(Real), n3, fp); 
+            fread(noise3, sizeof(Real), n3d, fp); 
             fclose(fp);
             cout << "noise tile loaded from file! " << endl;
             mNoiseTile = noise3;
@@ -103,45 +104,47 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
         }
     }
 
-    cout << "generating " << n << "^3 noise tile " << endl;
-    Real *temp13 = new Real[n3];
-    Real *temp23 = new Real[n3];
+    cout << "generating 3x " << n << "^3 noise tile " << endl;
+    Real *temp13 = new Real[n3d];
+    Real *temp23 = new Real[n3d];
 
     // initialize
-    for (int i = 0; i < n3; i++) {
+    for (int i = 0; i < n3d; i++) {
         temp13[i] = temp23[i] =
             noise3[i] = 0.;
     }
 
     // Step 1. Fill the tile with random numbers in the range -1 to 1.
     RandomStream randStreamTile ( randomSeed );
-    for (int i = 0; i < n3; i++) {
+    for (int i = 0; i < n3d; i++) {
         //noise3[i] = (randStream.getFloat() + randStream2.getFloat()) -1.; // produces repeated values??
         noise3[i] = randStreamTile.getRandNorm(0,1);
     }
 
     // Steps 2 and 3. Downsample and upsample the tile
-    for (int iy = 0; iy < n; iy++) 
-        for (int iz = 0; iz < n; iz++) {
-            const int i = iy * n + iz*n*n;
-            downsample(&noise3[i], &temp13[i], n, 1);
-            upsample  (&temp13[i], &temp23[i], n, 1);
-        }
-    for (int ix = 0; ix < n; ix++) 
-        for (int iz = 0; iz < n; iz++) {
-            const int i = ix + iz*n*n;
-            downsample(&temp23[i], &temp13[i], n, n);
-            upsample  (&temp13[i], &temp23[i], n, n);
-        }
-    for (int ix = 0; ix < n; ix++) 
-        for (int iy = 0; iy < n; iy++) {
-            const int i = ix + iy*n;
-            downsample(&temp23[i], &temp13[i], n, n*n);
-            upsample  (&temp13[i], &temp23[i], n, n*n);
-        }
+    for (int tile=0; tile < 3; tile++) {
+        for (int iy = 0; iy < n; iy++) 
+            for (int iz = 0; iz < n; iz++) {
+                const int i = iy * n + iz*n*n + tile*n3;
+                downsample(&noise3[i], &temp13[i], n, 1);
+                upsample  (&temp13[i], &temp23[i], n, 1);
+            }
+        for (int ix = 0; ix < n; ix++) 
+            for (int iz = 0; iz < n; iz++) {
+                const int i = ix + iz*n*n + tile*n3;
+                downsample(&temp23[i], &temp13[i], n, n);
+                upsample  (&temp13[i], &temp23[i], n, n);
+            }
+        for (int ix = 0; ix < n; ix++) 
+            for (int iy = 0; iy < n; iy++) {
+                const int i = ix + iy*n + tile*n3;
+                downsample(&temp23[i], &temp13[i], n, n*n);
+                upsample  (&temp13[i], &temp23[i], n, n*n);
+            }
+    }
 
     // Step 4. Subtract out the coarse-scale contribution
-    for (int i = 0; i < n3; i++) { 
+    for (int i = 0; i < n3d; i++) { 
         noise3[i] -= temp23[i];
     }
 
@@ -152,14 +155,16 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
     if (n != 128) errMsg("WaveletNoise::Fast 128 mod used, change for non-128 resolution");
     
     int icnt=0;
-    for (int ix = 0; ix < n; ix++)
+    for (int tile=0; tile<3; tile++)
+        for (int ix = 0; ix < n; ix++)
         for (int iy = 0; iy < n; iy++)
-            for (int iz = 0; iz < n; iz++) { 
-                temp13[icnt] = noise3[modFast128(ix+offset) + modFast128(iy+offset)*n + modFast128(iz+offset)*n*n];
-                icnt++;
-            }
+        for (int iz = 0; iz < n; iz++) { 
+            temp13[icnt] = noise3[modFast128(ix+offset) + modFast128(iy+offset)*n + modFast128(iz+offset)*n*n + tile*n3];
+            icnt++;
+        }
 
-    for (int i = 0; i < n3; i++) {
+
+    for (int i = 0; i < n3d; i++) {
         noise3[i] += temp13[i];
     }
     
@@ -170,7 +175,7 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
     if(loadFromFile) {
         FILE* fp = fopen("waveletNoiseTile.bin","wb"); 
         if(fp) {
-            fwrite(noise3, sizeof(Real), n3, fp); 
+            fwrite(noise3, sizeof(Real), n3d, fp); 
             fclose(fp);
             cout << "saved to file! " << endl;
         }
