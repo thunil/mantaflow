@@ -27,7 +27,7 @@ using namespace std;
 
 namespace Manta {
 
-MainWnd::MainWnd() : mPaused(false), mRequestPause(false), mRequestClose(false), mStep(0), QMainWindow(0)
+MainWnd::MainWnd() : mPaused(true), mRequestPause(false), mRequestClose(false), mStep(0), QMainWindow(0)
 {
     // Frame info label
     mInfo = new QLabel;
@@ -87,6 +87,9 @@ MainWnd::MainWnd() : mPaused(false), mRequestPause(false), mRequestClose(false),
     mGlWidget->setFocus();
     this->raise();
     this->activateWindow();
+
+    // uncomment to start  paused
+    //emit pause();
 }
 
 void MainWnd::clickLine(QPoint pos, float p0, float p1,float p2, float q0, float q1, float q2) {

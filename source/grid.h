@@ -188,7 +188,9 @@ public:
         TypeEmpty = 4,
         TypeInflow = 8,
         TypeOutflow = 16,
-		TypeStick = 128
+		TypeStick = 128,
+        TypeReserved = 256
+        // 2^10 - 2^14 reserved for moving obstacles
 	};
         
     //! access for particles
@@ -228,7 +230,8 @@ public:
 // Implementation of inline functions
 
 inline void GridBase::checkIndex(int i, int j, int k) const {
-    if (i<0 || j<0  || i>=mSize.x || j>=mSize.y || (is3D() && (k<0|| k>= mSize.z))) {
+    //if (i<0 || j<0  || i>=mSize.x || j>=mSize.y || (is3D() && (k<0|| k>= mSize.z))) {
+    if (i<0 || j<0  || i>=mSize.x || j>=mSize.y || k<0|| k>= mSize.z ) {
         std::ostringstream s;
         s << "Grid " << mName << " dim " << mSize << " : index " << i << "," << j << "," << k << " out of bound ";
         errMsg(s.str());
@@ -244,35 +247,51 @@ inline void GridBase::checkIndex(int idx) const {
 }
 
 inline Vec3 MACGrid::getCentered(int i, int j, int k) const {
-    DEBUG_ONLY(checkIndex(i+1,j+1,k+1));
+    DEBUG_ONLY(checkIndex(i+1,j+1,k));
     const int idx = index(i,j,k);
-    return Vec3(0.5* (mData[idx].x + mData[idx+1].x),
-                0.5* (mData[idx].y + mData[idx+mSize.x].y),
-                0.5* (mData[idx].z + mData[idx+mStrideZ].z) );
+    Vec3 v = Vec3(0.5* (mData[idx].x + mData[idx+1].x),
+                  0.5* (mData[idx].y + mData[idx+mSize.x].y),
+                  0.);
+    if( this->is3D() ) {
+        DEBUG_ONLY(checkIndex(idx+mStrideZ));
+        v[2] =    0.5* (mData[idx].z + mData[idx+mStrideZ].z);
+    }
+    return v;
 }
 
 inline Vec3 MACGrid::getAtMACX(int i, int j, int k) const {
-    DEBUG_ONLY(checkIndex(i-1,j+1,k+1));
+    DEBUG_ONLY(checkIndex(i-1,j+1,k));
     const int idx = index(i,j,k);
-    return Vec3(      (mData[idx].x),
+    Vec3 v =  Vec3(   (mData[idx].x),
                 0.25* (mData[idx].y + mData[idx-1].y + mData[idx+mSize.x].y + mData[idx+mSize.x-1].y),
-                0.25* (mData[idx].z + mData[idx-1].z + mData[idx+mStrideZ].z + mData[idx+mStrideZ-1].z) );
+                0.);
+    if( this->is3D() ) {
+        DEBUG_ONLY(checkIndex(idx+mStrideZ-1));
+        v[2] = 0.25* (mData[idx].z + mData[idx-1].z + mData[idx+mStrideZ].z + mData[idx+mStrideZ-1].z);
+    }
+    return v;
 }
 
 inline Vec3 MACGrid::getAtMACY(int i, int j, int k) const {
-    DEBUG_ONLY(checkIndex(i+1,j-1,k+1));
+    DEBUG_ONLY(checkIndex(i+1,j-1,k));
     const int idx = index(i,j,k);
-    return Vec3(0.25* (mData[idx].x + mData[idx-mSize.x].x + mData[idx+1].x + mData[idx+1-mSize.x].x),
-                      (mData[idx].y),
-                0.25* (mData[idx].z + mData[idx-mSize.x].z + mData[idx+mStrideZ].z + mData[idx+mStrideZ-mSize.x].z) );
+    Vec3 v =  Vec3(0.25* (mData[idx].x + mData[idx-mSize.x].x + mData[idx+1].x + mData[idx+1-mSize.x].x),
+                         (mData[idx].y),   0. );
+    if( this->is3D() ) {
+        DEBUG_ONLY(checkIndex(idx+mStrideZ-mSize.x));
+        v[2] = 0.25* (mData[idx].z + mData[idx-mSize.x].z + mData[idx+mStrideZ].z + mData[idx+mStrideZ-mSize.x].z);
+    }
+    return v;
 }
 
 inline Vec3 MACGrid::getAtMACZ(int i, int j, int k) const {
-    DEBUG_ONLY(checkIndex(i+1,j+1,k-1));
     const int idx = index(i,j,k);
-    return Vec3(0.25* (mData[idx].x + mData[idx-mStrideZ].x + mData[idx+1].x + mData[idx+1-mStrideZ].x),
-                0.25* (mData[idx].y + mData[idx-mStrideZ].y + mData[idx+mSize.x].y + mData[idx+mSize.x-mStrideZ].y),
-                      (mData[idx].z) );
+    DEBUG_ONLY(checkIndex(idx-mStrideZ));
+    DEBUG_ONLY(checkIndex(idx+mSize.x-mStrideZ));
+    Vec3 v =  Vec3(0.25* (mData[idx].x + mData[idx-mStrideZ].x + mData[idx+1].x + mData[idx+1-mStrideZ].x),
+                   0.25* (mData[idx].y + mData[idx-mStrideZ].y + mData[idx+mSize.x].y + mData[idx+mSize.x-mStrideZ].y),
+                         (mData[idx].z) );
+    return v;
 }
 
 KERNEL(idx) template<class T> void gridAdd2 (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] + b[idx]; }

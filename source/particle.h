@@ -18,6 +18,7 @@
 #include "grid.h"
 #include "vectorbase.h"
 #include "integrator.h"
+#include "randomstream.h"
 namespace Manta {
 // fwd decl
 template<class T> class Grid;
@@ -25,7 +26,7 @@ template<class T> class Grid;
 //! Baseclass for particle systems. Does not implement any data
 PYTHON class ParticleBase : public PbClass {
 public:
-    enum SystemType { BASE=0, PARTICLE, VELPART, VORTEX, FILAMENT, FLIP, TRACER };
+    enum SystemType { BASE=0, PARTICLE, VELPART, VORTEX, FILAMENT, FLIP, TRACER, TURBULENCE };
     enum ParticleType {
         PNONE         = 0,
         PDELETE       = (1<<10), // mark as deleted, will be deleted in next compress() step
@@ -68,6 +69,9 @@ public:
             
     //! Advect particle in grid velocity field
     PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
+    
+    //! Project particles outside obstacles
+    PYTHON void projectOutside(Grid<Vec3>& gradient);
     
     virtual ParticleBase* clone();
     virtual std::string infoString();
@@ -164,6 +168,33 @@ template<class S>
 void ParticleSystem<S>::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode) {
     GridAdvectKernel<S> kernel(mData, vel, flaggrid, getParent()->getDt());
     integratePointSet(kernel, integrationMode);
+}
+
+KERNEL(pts, single) // no thread-safe random gen yet
+template<class S>
+void KnProjectParticles(ParticleSystem<S>& part, Grid<Vec3>& gradient) {
+    static RandomStream rand (3123984);
+    const double jlen = 0.1;
+    
+    if (part.isActive(i)) {
+        // project along levelset gradient
+        Vec3 p = part[i].pos;
+        if (gradient.isInBounds(p)) {
+            Vec3 n = gradient.getInterpolated(p);
+            Real dist = normalize(n);
+            Vec3 dx = n * (-dist + jlen * (1 + rand.getReal()));
+            p += dx;            
+        }
+        // clamp to outer boundaries (+jitter)
+        const double jlen = 0.1;
+        Vec3 jitter = jlen * rand.getVec3();
+        part[i].pos = clamp(p, Vec3(1,1,1)+jitter, toVec3(gradient.getSize()-1)-jitter);
+    }
+}
+
+template<class S>
+void ParticleSystem<S>::projectOutside(Grid<Vec3>& gradient) {
+    KnProjectParticles<S>(*this, gradient);
 }
 
 template<class S>

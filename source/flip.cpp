@@ -62,6 +62,25 @@ void FlipSystem::velocitiesToGrid(FlagGrid& flags, MACGrid& vel) {
     mOldVel = vel;
 }
 
+void FlipSystem::initialize(FlagGrid& flags, int discretization) {
+    clear();
+    Real jlen = 0.2 / discretization;
+    Vec3 disp (1.0 / discretization, 1.0 / discretization, 1.0/discretization);
+ 
+    FOR_IJK(flags) {
+        if (flags.isFluid(i,j,k)) {
+            Vec3 pos (i,j,k);
+            for (int dk=0; dk<discretization; dk++)
+            for (int dj=0; dj<discretization; dj++)
+            for (int di=0; di<discretization; di++) {
+                Vec3 subpos = pos + disp * Vec3(0.5+di, 0.5+dj, 0.5+dk);
+                subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
+                add(FlipData(subpos, Vec3::Zero));
+            }
+        }
+    }
+}
+
 void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, int maxParticles) {
     Grid<int> tmp(mParent);
     
@@ -86,7 +105,7 @@ void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, i
         if (flags.isFluid(i,j,k) && cnt < minParticles) {
             for (int m=cnt; m < minParticles; m++) { 
                 Vec3 rndPos (i + mRand.getReal(), j + mRand.getReal(), k + mRand.getReal());
-                add(FlipData(rndPos, vel.getInterpolated(rndPos.x)));                
+                add(FlipData(rndPos, vel.getInterpolated(rndPos)));
             }
         }
     }

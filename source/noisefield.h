@@ -11,6 +11,9 @@
  *
  ******************************************************************************/
  
+#ifndef _NOISEFIELD_H_
+#define _NOISEFIELD_H_
+
 #include "vectorbase.h"
 #include "pclass.h"
 
@@ -22,51 +25,72 @@ namespace Manta {
 PYTHON(name=NoiseField) 
 class WaveletNoiseField : public PbClass {
     public:     
-        PYTHON WaveletNoiseField(FluidSolver* parent);
-        ~WaveletNoiseField() {};
+        PYTHON WaveletNoiseField( FluidSolver* parent, int fixedSeed=-1 , int loadFromFile=false );
+        ~WaveletNoiseField() {
+            if(mNoiseTile) { delete mNoiseTile; mNoiseTile=NULL; }
+        };
 
         //! evaluate noise
-        inline Real evaluate(Vec3 pos);
+        inline Real evaluate(Vec3 pos, int tile=0);
         //! evaluate noise as a vector
-        inline Vec3 evaluateVec(Vec3 pos);
+        inline Vec3 evaluateVec(Vec3 pos, int tile=0);
+        //! evaluate curl noise
+        inline Vec3 evaluateCurl(Vec3 pos);
 
         //! direct data access
         float* data() { return mNoiseTile; }
         
+        //! compute wavelet decomposition of an input grid (stores residual coefficients)
+        static void computeCoefficients(Grid<Real>& input, Grid<Real>& tempIn1, Grid<Real>& tempIn2);
+
         // helper
         std::string toString();
         
         // texcoord position and scale
         PYTHON(name=posOffset) Vec3 mPosOffset;
-        PYTHON(name=posScale) Vec3 mPosScale;
+        PYTHON(name=posScale)  Vec3 mPosScale;
         // value offset & scale
         PYTHON(name=valOffset) Real mValOffset;
-        PYTHON(name=valScale) Real mValScale;
+        PYTHON(name=valScale)  Real mValScale;
         // clamp? (default 0-1)
-        PYTHON(name=clamp) bool mClamp;
-        PYTHON(name=clampNeg) Real mClampNeg;
-        PYTHON(name=clampPos) Real mClampPos;
+        PYTHON(name=clamp)     bool mClamp;
+        PYTHON(name=clampNeg)  Real mClampNeg;
+        PYTHON(name=clampPos)  Real mClampPos;
+        // animated over time
+        PYTHON(name=timeAnim)  Real mTimeAnim;
         
-        PYTHON(name=timeAnim) Real mTimeAnim;        
     protected:
-        static inline float WNoiseDx(Vec3 p, float *data);
-        static inline Vec3 WNoiseVec(const Vec3& p, float *data);
-        static inline float WNoise(const Vec3& p, float *data);
-        static void Downsample(float *from, float *to, int n, int stride);
-        static void Upsample(float *from, float *to, int n, int stride);
+        // noise evaluation functions
+        static inline float WNoiseDx (const Vec3& p, float *data);
+        static inline Vec3  WNoiseVec(const Vec3& p, float *data);
+        static inline float WNoise   (const Vec3& p, float *data);
+
+        // helpers for tile generation , for periodic 128 grids only
+        static void downsample(float *from, float *to, int n, int stride);
+        static void upsample  (float *from, float *to, int n, int stride);
+
+        // for grids with arbitrary sizes, and neumann boundary conditions
+        static void downsampleNeumann(const float *from, float *to, int n, int stride);
+        static void upsampleNeumann   (const float *from, float *to, int n, int stride);
+
         static inline int modSlow(int x, int n) { int m = x % n; return (m<0) ? m+n : m; }
         // warning - noiseTileSize has to be 128^3!
         #define modFast128(x)  ((x) & 127)
 
         inline Real getTime() { return mParent->getTime() * mParent->getDx() * mTimeAnim; }
-        void generateTile();
+
+        // pre-compute tile data for wavelet noise
+        void generateTile( int loadFromFile );
                 
         // animation over time
         // grid size normalization (inverse size)
         Real mGsInvX, mGsInvY, mGsInvZ;
+        // random offset into tile to simulate different random seeds
+        Vec3 mSeedOffset;
         
-        float* mNoiseTile;
-        static int seed;
+        static Real* mNoiseTile;
+        // global random seed storage
+        static int randomSeed;
 };
 
 
@@ -87,7 +111,7 @@ class WaveletNoiseField : public PbClass {
 //////////////////////////////////////////////////////////////////////////////////////////
 // derivatives of 3D noise - unrolled for performance
 //////////////////////////////////////////////////////////////////////////////////////////
-inline float WaveletNoiseField::WNoiseDx(Vec3 p, float *data) {
+inline float WaveletNoiseField::WNoiseDx(const Vec3& p, float *data) {
     float w[3][3], t, result = 0;
 
     // Evaluate quadratic B-spline basis functions
@@ -300,10 +324,11 @@ inline Vec3 WaveletNoiseField::WNoiseVec(const Vec3& p, float *data)
 #undef ADD_WEIGHTEDY
 #undef ADD_WEIGHTEDZ
 
-inline Real WaveletNoiseField::evaluate(Vec3 pos) { 
+inline Real WaveletNoiseField::evaluate(Vec3 pos, int tile) { 
     pos[0] *= mGsInvX;
     pos[1] *= mGsInvY;
     pos[2] *= mGsInvZ;
+    pos += mSeedOffset;
 
     // time anim
     pos += Vec3(getTime());
@@ -313,7 +338,8 @@ inline Real WaveletNoiseField::evaluate(Vec3 pos) {
     pos[2] *= mPosScale[2];
     pos += mPosOffset;
 
-    Real v = WNoise(pos, mNoiseTile);
+    const int n3 = square(NOISE_TILE_SIZE) * NOISE_TILE_SIZE;
+    Real v = WNoise(pos, &mNoiseTile[tile*n3]);
 
     v += mValOffset;
     v *= mValScale;
@@ -324,10 +350,11 @@ inline Real WaveletNoiseField::evaluate(Vec3 pos) {
     return v;
 }
 
-inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos) { 
+inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos, int tile) { 
     pos[0] *= mGsInvX;
     pos[1] *= mGsInvY;
     pos[2] *= mGsInvZ;
+    pos += mSeedOffset;
 
     // time anim
     pos += Vec3(getTime());
@@ -337,10 +364,12 @@ inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos) {
     pos[2] *= mPosScale[2];
     pos += mPosOffset;
 
-    Vec3 v = WNoiseVec(pos, mNoiseTile);
+    const int n3 = square(NOISE_TILE_SIZE) * NOISE_TILE_SIZE;
+    Vec3 v = WNoiseVec(pos, &mNoiseTile[tile*n3]);
 
     v += Vec3(mValOffset);
     v *= mValScale;
+    
     if (mClamp) {
         for(int i=0; i<3; i++) {
             if (v[i]< mClampNeg) v[i] = mClampNeg;
@@ -350,7 +379,15 @@ inline Vec3 WaveletNoiseField::evaluateVec(Vec3 pos) {
     return v;
 }
 
+inline Vec3 WaveletNoiseField::evaluateCurl(Vec3 pos) {
+    // gradients of w0-w2
+    Vec3 d0 = evaluateVec(pos,0), 
+         d1 = evaluateVec(pos,1), 
+         d2 = evaluateVec(pos,2);
+    
+    return Vec3(d0.y-d1.z, d2.z-d0.x, d1.x-d2.y);
+}
 
+} // namespace  
 
-} // namespace WAVELETNOISE 
-
+#endif

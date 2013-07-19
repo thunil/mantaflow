@@ -141,12 +141,13 @@ string createConverters(const string& name, const string& tb, const string& nl, 
 string gLocalReg, gParent;
 bool gFoundConstructor = false, gIsTemplated=false;
 
-string processPythonFunction(int lb, const string& name, const string& type, const ArgList& args, const string& initlist, bool isInline, bool isConst, const string& code, int) {
+string processPythonFunction(int lb, const string& name, const string& type, const ArgList& args, const string& initlist, bool isInline, bool isConst, bool isVirtual, const string& code, int) {
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = (gDebugMode) ? "\t" : "";
     
-    const string inlineS = isInline ? "inline " : "";
+    string inlineS = isInline ? "inline " : "";
+    if (isVirtual) inlineS += "virtual ";
     const string constS = isConst ? " const" : "";
     
     // is header file ?
@@ -395,7 +396,7 @@ string processPythonClass(int lb, const string& name, const ArgList& opts, const
     pclass += "class " + name + " : public " + baseclass + " {" + nl;
     pclass += newText + nl;
     if (!gDocMode) {
-        pclass += "protected:" + nl;
+        pclass += "public:" + nl;
         pclass += tb+"PbArgs _args;" + nl;
     }
     pclass += "};" + nl;

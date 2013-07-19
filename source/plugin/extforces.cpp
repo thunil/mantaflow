@@ -109,7 +109,7 @@ KERNEL(bnd=1) void KnSetLiquidBcs(FlagGrid& flags, MACGrid& vel) {
         vel(i+1,j,k).x = vel(i,j,k).x;
     if (flags.isEmpty(i,j+1,k)) 
         vel(i,j+1,k).y = vel(i,j,k).y;
-    if (flags.isEmpty(i,j,k+1)) 
+    if (flags.isEmpty(i,j,k+1) && flags.is3D() ) 
         vel(i,j,k+1).z = vel(i,j,k).z;
     
     // "left" sides of fluid - fluid cells neighboring
@@ -118,7 +118,7 @@ KERNEL(bnd=1) void KnSetLiquidBcs(FlagGrid& flags, MACGrid& vel) {
         vel(i,j,k).x = vel(i+1,j,k).x;
     if (flags.isEmpty(i,j-1,k) && flags.isFluid(i,j+1,k)) 
         vel(i,j,k).y = vel(i,j+1,k).y;
-    if (flags.isEmpty(i,j,k-1) && flags.isFluid(i,j,k+1)) 
+    if (flags.isEmpty(i,j,k-1) && flags.isFluid(i,j,k+1) && flags.is3D() ) 
         vel(i,j,k).z = vel(i,j,k+1).z;
 }
 
@@ -132,13 +132,14 @@ PYTHON void setLiquidBcs(FlagGrid& flags, MACGrid& vel) {
 
 //! Kernel: gradient norm operator
 KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
-    Vec3 grad = 0.5 * Vec3( grid(i+1,j,k)-grid(i-1,j,k), grid(i,j+1,k)-grid(i,j-1,k), grid(i,j,k+1)-grid(i,j,k-1));
+    Vec3 grad = 0.5 * Vec3(        grid(i+1,j,k)-grid(i-1,j,k), 
+                                   grid(i,j+1,k)-grid(i,j-1,k), 0.);
+    if(grid.is3D()) grad[2]= 0.5*( grid(i,j,k+1)-grid(i,j,k-1) );
     normalize(grad);
-    force(i,j,k) = str*cross(grad, curl(i,j,k));
+    force(i,j,k) = str * cross(grad, curl(i,j,k));
 }
 
 PYTHON void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
-    assertMsg(vel.is3D(), "Only 3D grids supported so far");
     Grid<Vec3> velCenter(parent), curl(parent), force(parent);
     Grid<Real> norm(parent);
     
@@ -149,5 +150,25 @@ PYTHON void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
     KnAddForceField(flags, vel, force);
 }
 
+//! enforce a constant inflow/outflow at the grid boundaries
+KERNEL void KnSetInflow(MACGrid& vel, int dim, int p0, const Vec3& val) {
+    Vec3i p(i,j,k);
+    if (p[dim] == p0 || p[dim] == p0+1)
+        vel(i,j,k) = val;
+}
+
+//! enforce a constant inflow/outflow at the grid boundaries
+PYTHON void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
+    for(size_t i=0; i<dir.size(); i++) {
+        if (dir[i] >= 'x' && dir[i] <= 'z') { 
+            int dim = dir[i]-'x';
+            KnSetInflow(vel,dim,0,value);
+        } else if (dir[i] >= 'X' && dir[i] <= 'Z') {
+            int dim = dir[i]-'X';
+            KnSetInflow(vel,dim,vel.getSize()[dim]-1,value);
+        } else 
+            errMsg("invalid character in direction string. Only [xyzXYZ] allowed.");
+    }
+}
 
 } // namespace

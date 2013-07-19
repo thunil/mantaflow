@@ -275,6 +275,61 @@ void readGridUni(const string& name, Grid<T>* grid) {
     gzclose(gzf);
 };
 
+
+template <class T>
+void writeGridVol(const string& name, Grid<T>* grid) {
+	cout << "writing grid " << grid->getName() << " to vol file " << name << endl;
+	errMsg("Type not yet supported!");
+}
+
+struct volHeader { 
+	char 	ID[3];
+	char 	version;
+	int		encoding;
+	int		dimX, dimY, dimZ;
+	int		channels;
+	Vec3	bboxMin, bboxMax;
+};
+
+template <>
+void writeGridVol<Real>(const string& name, Grid<Real>* grid) {
+    cout << "writing real grid " << grid->getName() << " to vol file " << name << endl;
+    
+	volHeader header;
+	header.ID[0] = 'V';
+	header.ID[1] = 'O';
+	header.ID[2] = 'L';
+	header.version  = 3;
+	header.encoding = 1; // float32 precision
+	header.dimX = grid->getSizeX();
+	header.dimY = grid->getSizeY();
+	header.dimZ = grid->getSizeZ();
+	header.channels = 1; // only 1 channel
+	header.bboxMin = Vec3(-0.5);
+	header.bboxMax = Vec3( 0.5);
+
+	FILE* fp = fopen( name.c_str(), "wb" );
+	if (fp == NULL) {
+		errMsg("Cannot open '" << name << "'");
+		return;
+	}
+
+	fwrite( &header, sizeof(volHeader), 1, fp );
+
+#	if FLOATINGPOINT_PRECISION==1
+	// for float, write one big chunk
+	fwrite( &(*grid)[0], sizeof(float), grid->getSizeX()*grid->getSizeY()*grid->getSizeZ(), fp );
+#	else
+	// explicitly convert each entry to float - we might have double precision in mantaflow
+	FOR_IDX(*grid) {
+		float value = (*grid)[idx];
+		fwrite( &value, sizeof(float), 1, fp );
+	}
+#	endif
+
+	fclose(fp);
+};
+
 // explicit instantiation
 template void writeGridRaw<int>(const string& name, Grid<int>* grid);
 template void writeGridRaw<Real>(const string& name, Grid<Real>* grid);
@@ -282,6 +337,8 @@ template void writeGridRaw<Vec3>(const string& name, Grid<Vec3>* grid);
 template void writeGridUni<int>(const string& name, Grid<int>* grid);
 template void writeGridUni<Real>(const string& name, Grid<Real>* grid);
 template void writeGridUni<Vec3>(const string& name, Grid<Vec3>* grid);
+template void writeGridVol<int>(const string& name, Grid<int>* grid);
+template void writeGridVol<Vec3>(const string& name, Grid<Vec3>* grid);
 template void readGridRaw<int>(const string& name, Grid<int>* grid);
 template void readGridRaw<Real>(const string& name, Grid<Real>* grid);
 template void readGridRaw<Vec3>(const string& name, Grid<Vec3>* grid);

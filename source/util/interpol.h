@@ -34,6 +34,14 @@ inline Vec3 hermiteSpline(const Vec3& p0, const Vec3& p1, const Vec3& m0, const 
     return (2.0*t3 - 3.0*t2 + 1.0)*p0 + (t3 - 2.0*t2 + t)*m0 + (-2.0*t3 + 3.0*t2)*p1 + (t3 - t2)*m1;
 }
 
+static inline void checkIndexInterpol(const Vec3i& size, int idx) {
+    if (idx<0 || idx > size.x * size.y * size.z) {
+        std::ostringstream s;
+        s << "Grid interpol dim " << size << " : index " << idx << " out of bound ";
+        errMsg(s.str());
+    }
+}
+
 
 // ----------------------------------------------------------------------
 // Grid interpolators
@@ -48,12 +56,12 @@ inline Vec3 hermiteSpline(const Vec3& p0, const Vec3& p1, const Vec3& m0, const 
     Real t1 = py-(Real)yi, t0 = 1.-t1; \
     Real f1 = pz-(Real)zi, f0 = 1.-f1; \
     /* clamp to border */ \
-    if (px < 0) { xi = 0; s0 = 1.0; s1 = 0.0; } \
-    if (py < 0) { yi = 0; t0 = 1.0; t1 = 0.0; } \
-    if (pz < 0) { zi = 0; f0 = 1.0; f1 = 0.0; } \
+    if (px < 0.) { xi = 0; s0 = 1.0; s1 = 0.0; } \
+    if (py < 0.) { yi = 0; t0 = 1.0; t1 = 0.0; } \
+    if (pz < 0.) { zi = 0; f0 = 1.0; f1 = 0.0; } \
     if (xi >= size.x-1) { xi = size.x-2; s0 = 0.0; s1 = 1.0; } \
     if (yi >= size.y-1) { yi = size.y-2; t0 = 0.0; t1 = 1.0; } \
-    if (zi >= size.z-1) { zi = size.z-2; f0 = 0.0; f1 = 1.0; } \
+    if (size.z>1) { if (zi >= size.z-1) { zi = size.z-2; f0 = 0.0; f1 = 1.0; } } \
     const int X = 1; \
     const int Y = size.x;    
         
@@ -61,6 +69,7 @@ template <class T>
 inline T interpol(const T* data, const Vec3i& size, const int Z, const Vec3& pos) {
     BUILD_INDEX
     int idx = xi + Y * yi + Z * zi;    
+    DEBUG_ONLY(checkIndexInterpol(size,idx)); DEBUG_ONLY(checkIndexInterpol(size,idx+X+Y+Z));
     
     return  ((data[idx]        *t0 + data[idx+Y]        *t1) * s0
            + (data[idx+X]*t0 + data[idx+X+Y]*t1) * s1) * f0
@@ -72,6 +81,7 @@ template <int c>
 inline Real interpolComponent(const Vec3* data, const Vec3i& size, const int Z, const Vec3& pos) {    
     BUILD_INDEX
     int idx = xi + Y * yi + Z * zi;    
+    DEBUG_ONLY(checkIndexInterpol(size,idx)); DEBUG_ONLY(checkIndexInterpol(size,idx+X+Y+Z));
     
     return  ((data[idx][c]        *t0 + data[idx+Y][c]        *t1) * s0
            + (data[idx+X][c]*t0 + data[idx+X+Y][c]*t1) * s1) * f0
@@ -84,6 +94,7 @@ inline void setInterpol(T* data, const Vec3i& size, const int Z, const Vec3& pos
 {
     BUILD_INDEX
     int idx = xi + Y * yi + Z * zi;    
+    DEBUG_ONLY(checkIndexInterpol(size,idx)); DEBUG_ONLY(checkIndexInterpol(size,idx+X+Y+Z));
     
     T* ref = &data[idx];
     Real* sum = &sumBuffer[idx];
@@ -111,11 +122,13 @@ inline void setInterpol(T* data, const Vec3i& size, const int Z, const Vec3& pos
     if (pos.z < 0) { s_zi = 0; s_f0 = 1.0; s_f1 = 0.0; } \
     if (s_xi >= size.x-1) { s_xi = size.x-2; s_s0 = 0.0; s_s1 = 1.0; } \
     if (s_yi >= size.y-1) { s_yi = size.y-2; s_t0 = 0.0; s_t1 = 1.0; } \
-    if (s_zi >= size.z-1) { s_zi = size.z-2; s_f0 = 0.0; s_f1 = 1.0; }
+    if (size.z>1) { if (s_zi >= size.z-1) { s_zi = size.z-2; s_f0 = 0.0; s_f1 = 1.0; } }
 
 inline Vec3 interpolMAC(const Vec3* data, const Vec3i& size, const int Z, const Vec3& pos) 
 {
     BUILD_INDEX_SHIFT
+    DEBUG_ONLY(checkIndexInterpol(size,(zi*size.y+yi)*size.x+xi)); 
+    DEBUG_ONLY(checkIndexInterpol(size,(s_zi*size.y+s_yi)*size.x+s_xi+X+Y+Z));
     
     // process individual components
     Vec3 ret(0.);
@@ -146,6 +159,8 @@ inline Vec3 interpolMAC(const Vec3* data, const Vec3i& size, const int Z, const 
 inline void setInterpolMAC(Vec3* data, const Vec3i& size, const int Z, const Vec3& pos, const Vec3& val, Vec3* sumBuffer) 
 {
     BUILD_INDEX_SHIFT
+    DEBUG_ONLY(checkIndexInterpol(size,(zi*size.y+yi)*size.x+xi)); 
+    DEBUG_ONLY(checkIndexInterpol(size,(s_zi*size.y+s_yi)*size.x+s_xi+X+Y+Z));
     
     // process individual components
     {   // X

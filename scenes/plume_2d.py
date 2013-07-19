@@ -34,7 +34,7 @@ for t in range(400):
     advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
     
     setWallBcs(flags=flags, vel=vel)    
-    addBuoyancy(density=density, vel=vel, gravity=vec3(0,-5e-4,0), flags=flags)
+    addBuoyancy(density=density, vel=vel, gravity=vec3(0,-4e-3,0), flags=flags)
     
     solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='Y')
     setWallBcs(flags=flags, vel=vel)

@@ -117,20 +117,23 @@ SET(PP_SOURCES
     source/mesh.cpp
     source/general.cpp
     source/flip.cpp
+    source/movingobs.cpp
     source/fileio.cpp   
     source/noisefield.cpp
     source/kernel.cpp
     source/vortexsheet.cpp
     source/vortexfilament.cpp
     source/vortexpart.cpp
+    source/turbulencepart.cpp
     source/edgecollapse.cpp
     source/plugin/pressure.cpp
     source/plugin/initplugins.cpp
     source/plugin/advection.cpp
     source/plugin/extforces.cpp
-    source/plugin/turbulence.cpp
+    source/plugin/kepsilon.cpp
     source/plugin/meshplugins.cpp
     source/plugin/vortexplugins.cpp
+    source/plugin/waveletturbulence.cpp
     source/python/defines.py
     source/test.cpp
 )
@@ -151,9 +154,11 @@ SET(PP_HEADERS
     source/general.h
     source/kernel.h
     source/flip.h
+    source/movingobs.h
     source/fileio.h
     source/edgecollapse.h
     source/vortexpart.h
+    source/turbulencepart.h
     #source/test.h    
 )
 

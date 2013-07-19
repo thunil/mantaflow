@@ -36,7 +36,7 @@ if (GUI):
 source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))
     
 #main loop
-for t in range(50):
+for t in range(250):
     if t<100:
         densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
         

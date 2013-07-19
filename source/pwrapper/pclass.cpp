@@ -82,12 +82,17 @@ void pbPreparePlugin(FluidSolver* parent, const string& name) {
 }
 
 void pbFinalizePlugin(FluidSolver *parent, const string& name) {
-    if (parent)
+    if (parent) {
         parent->pluginStop(name);
+    }
     
-    // GUI update
-    if (name != "FluidSolver::step")
-        updateQtGui(false, 0, name);
+    // GUI update, also print name of parent if there's more than one
+    if (name != "FluidSolver::step") {
+        std::ostringstream msg;
+        if(parent && (parent->getNumInstances()>0) )  msg << parent->getName() << string(".");
+        msg << name;
+        updateQtGui(false, 0, msg.str() );
+    }
     
     // name unnamed PbClass Objects from var name
     PbWrapperRegistry::instance().renameObjects();
@@ -402,7 +407,7 @@ PyObject* PbWrapperRegistry::createPyObject(const string& classname, const strin
     
     // create instance
     if (self->classdef->constructor(obj, args.linArgs(), nkw) < 0)
-        errMsg(""); // assume condition is already set
+        errMsg("error raised in constructor"); // assume condition is already set
     
     Py_DECREF(nkw);
     Py_DECREF(nocheck);

@@ -28,7 +28,7 @@ class ParticleBase;
     
 // simple iteration
 #define FOR_IJK_BND(grid, bnd) \
-    for(int k=bnd,__kmax=((grid).is3D() ? ((grid).getSizeZ()-bnd) : 1); k<__kmax; k++) \
+    for(int k=((grid).is3D() ? bnd : 0),__kmax=((grid).is3D() ? ((grid).getSizeZ()-bnd) : 1); k<__kmax; k++) \
         for(int j=bnd; j<(grid).getSizeY()-bnd; j++) \
             for(int i=bnd; i<(grid).getSizeX()-bnd; i++)
 

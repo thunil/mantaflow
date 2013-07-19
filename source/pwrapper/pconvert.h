@@ -109,7 +109,7 @@ public:
     
     PbArgs& operator=(const PbArgs& a); // dummy
     void copy(PbArgs& a);
-    
+    void clear();
     
     static PbArgs EMPTY;
     
