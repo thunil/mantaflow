@@ -32,7 +32,7 @@ void KnApplyNoiseVec(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noi
 	Real factor = 1;
 	if(weight) factor = (*weight)(i,j,k);
 
-	Vec3 noiseVec3 = noise.evaluateVec( Vec3(i,j,k) ) * scale * factor;
+	Vec3 noiseVec3 = noise.evaluateCurl( Vec3(i,j,k) ) * scale * factor;
 
 	target(i,j,k) += noiseVec3;
 }
