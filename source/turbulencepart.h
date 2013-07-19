@@ -37,6 +37,7 @@ public:
     PYTHON void resetTexCoords(int num, const Vec3& inflow);    
     PYTHON void seed(Shape* source, int num);
     PYTHON void synthesize(FlagGrid& flags, Grid<Real>& k, int octaves=2, Real switchLength=10.0, Real L0=0.1, Real scale=1.0, Vec3 inflowBias=_0);
+    PYTHON void deleteInObstacle(FlagGrid& flags);
         
     virtual ParticleBase* clone();
     

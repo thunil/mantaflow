@@ -64,7 +64,18 @@ PYTHON Grid<Vec3> obstacleGradient(FlagGrid& flags) {
     return gradient;
 }
 
-    
+PYTHON LevelsetGrid obstacleLevelset(FlagGrid& flags) {
+   LevelsetGrid levelset(parent,false);
+    Grid<Vec3> gradient(parent);
+
+    // rebuild obstacle levelset
+    FOR_IDX(levelset) {
+        levelset[idx] = flags.isObstacle(idx) ? -0.5 : 0.5;
+    }
+    levelset.reinitMarching(flags, 6.0, 0, true, false, FlagGrid::TypeReserved);
+
+    return levelset;
+}    
 
 
 } // namespace

@@ -178,7 +178,7 @@ void ParticlePainter::paint() {
         
     } else if(mLocal->getType() == ParticleBase::TURBULENCE) {
         TurbulenceParticleSystem* vp = (TurbulenceParticleSystem*) mLocal;
-        glPointSize(0.5);
+        glPointSize(2.5);
         glColor3f(0,1,0);
         glBegin(GL_POINTS);
         for(int i=0; i<(int)vp->size(); i++) {

@@ -55,12 +55,12 @@ void TurbulenceParticleSystem::resetTexCoords(int num, const Vec3& inflow ) {
 
 KERNEL(pts)
 void KnSynthesizeTurbulence(TurbulenceParticleSystem& p, FlagGrid& flags, WaveletNoiseField& noise, Grid<Real>& kGrid, 
-                            Real alpha, Real dt, int octaves, Real scale, Real invL0) {
+                            Real alpha, Real dt, int octaves, Real scale, Real invL0, Real kmin) {
     const Real PERSISTENCE = 0.56123f;
     
     const Vec3 pos(p[i].pos);
     if (flags.isInBounds(pos)) { // && !flags.isObstacle(pos)) {
-        Real k2 = kGrid.getInterpolated(pos);
+        Real k2 = kGrid.getInterpolated(pos)-kmin;
         Real ks = k2<0 ? 0.0 : sqrt(k2);
         
         // Wavelet noise lookup
@@ -104,7 +104,14 @@ void TurbulenceParticleSystem::synthesize(FlagGrid& flags, Grid<Real>& k, int oc
     if (alpha>1.0f) alpha=2.0f-alpha;
     alpha = 1.0;
         
-    KnSynthesizeTurbulence(*this, flags, noise, k, alpha, dt, octaves, scale, 1.0f/L0);
+    KnSynthesizeTurbulence(*this, flags, noise, k, alpha, dt, octaves, scale, 1.0f/L0, 1.5*square(0.1));
+}
+
+void TurbulenceParticleSystem::deleteInObstacle(FlagGrid& flags) {
+    for (int i=0; i<size(); i++)
+        if (flags.isObstacle(mData[i].pos))
+            mData[i].flag |= PDELETE;
+    compress();
 }
    
 

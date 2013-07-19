@@ -1,8 +1,5 @@
-#
-# Example scene for mesh-based smoke simulations using Vortex Sheets
-# ( http://graphics.ethz.ch/publications/papers/paperPfa12.php )
-#
-# This example requires CUDA to run
+# Turbulence modeling example
+# (k-epsilon model)
 
 from manta import *
 
@@ -45,13 +42,16 @@ for i in range(4):
         obs = s.create(Sphere, center=gs*vec3(0.2,(i+1)/5.0,(j+1)/5.0), radius=res*0.025)
         obs.applyToGrid(grid=flags,value=FlagObstacle)
 
-sdfgrad = obstacleGradient(flags);
+sdfgrad = obstacleGradient(flags)
+sdf = obstacleLevelset(flags)
+bgr = s.create(Mesh)
+sdf.createMesh(bgr)
 
 # particle inflow
-cyl = s.create(Cylinder, center = gs*vec3(0.05,0.5,0.5), radius=res*0.1, z=vec3(res*0.03,0,0))
+box = s.create(Box, center = gs*vec3(0.05,0.43,0.6), size=gs*vec3(0.01,0.01,0.05))
 
 # turbulence parameters
-L0 = 0.03
+L0 = 0.01
 mult = 0.1
 intensity = 0.1
 nu = 0.1
@@ -60,16 +60,14 @@ enableDiffuse = True
 
 if (GUI):
     gui = Gui()
+    gui.setBackgroundMesh(bgr)
     gui.show()
-    sliderL0 = gui.addControl(Slider, text='turbulent lengthscale', val=L0, min=0.01, max=2)
+    sliderL0 = gui.addControl(Slider, text='turbulent lengthscale', val=L0, min=0.001, max=0.5)
     sliderMult = gui.addControl(Slider, text='turbulent mult', val=mult, min=0, max=1)
     sliderProd = gui.addControl(Slider, text='production mult', val=prodMult, min=0.1, max=5)
-    checkDiff = gui.addControl(Checkbox, text='enable grad.diff', val=enableDiffuse)
+    checkDiff = gui.addControl(Checkbox, text='enable RANS', val=enableDiffuse)
 
 KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=True)
-
-#box=s.create(Box, p0=vec3(0,0,0), p1=gs*vec3(1,1,1))
-#turb.seed(box,10000)
 
 #main loop
 for t in range(10000):
@@ -79,11 +77,12 @@ for t in range(10000):
         enableDiffuse = checkDiff.get()
         prodMult = sliderProd.get()
     
-    turb.seed(cyl,60)
+    turb.seed(box,200)
     turb.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4)
-    turb.synthesize(flags=flags, octaves=2, k=k, switchLength=10, L0=L0, scale=mult, inflowBias=velInflow)
-    turb.projectOutside(sdfgrad)
-    
+    turb.synthesize(flags=flags, octaves=1, k=k, switchLength=5, L0=L0, scale=mult, inflowBias=velInflow)
+    #turb.projectOutside(sdfgrad)
+    turb.deleteInObstacle(flags)
+
     KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=False)
     advectSemiLagrange(flags=flags, vel=vel, grid=k, order=1)
     advectSemiLagrange(flags=flags, vel=vel, grid=eps, order=1)
