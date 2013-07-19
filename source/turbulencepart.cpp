@@ -5,7 +5,7 @@
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * http://www.ynu.org/licenses
  *
  * Turbulence particles
  *
@@ -32,15 +32,37 @@ ParticleBase* TurbulenceParticleSystem::clone() {
     return nm;
 }
 
+inline Vec3 hsv2rgb(Real h, Real s, Real v){
+    Real r, g, b;
+
+    int i = (int)(h * 6);
+    Real f = h * 6 - i;
+    Real p = v * (1 - s);
+    Real q = v * (1 - f * s);
+    Real t = v * (1 - (1 - f) * s);
+
+    switch(i % 6){
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+    }
+
+    return Vec3(r,g,b);
+}
+
 void TurbulenceParticleSystem::seed(Shape* shape, int num) {
     static RandomStream rand(34894231);
     Vec3 sz = shape->getExtent(), p0 = shape->getCenter() - sz*0.5;
     for (int i=0; i<num; i++) {
         Vec3 p;
         do {
-            p = rand.getVec3() * sz + p0;            
+            p = rand.getVec3() * sz + p0;
         } while(!shape->isInside(p));
-        add(TurbulenceParticleData(p));        
+        Real z = (p.z - p0.z)/sz.z;
+        add(TurbulenceParticleData(p,hsv2rgb(z,0.75,1.0)));
     }
 }
 

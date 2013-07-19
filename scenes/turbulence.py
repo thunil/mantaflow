@@ -48,7 +48,7 @@ bgr = s.create(Mesh)
 sdf.createMesh(bgr)
 
 # particle inflow
-box = s.create(Box, center = gs*vec3(0.05,0.43,0.6), size=gs*vec3(0.01,0.01,0.05))
+box = s.create(Box, center = gs*vec3(0.05,0.43,0.6), size=gs*vec3(0.02,0.005,0.07))
 
 # turbulence parameters
 L0 = 0.01
@@ -77,7 +77,7 @@ for t in range(10000):
         enableDiffuse = checkDiff.get()
         prodMult = sliderProd.get()
     
-    turb.seed(box,200)
+    turb.seed(box,500)
     turb.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4)
     turb.synthesize(flags=flags, octaves=1, k=k, switchLength=5, L0=L0, scale=mult, inflowBias=velInflow)
     #turb.projectOutside(sdfgrad)
@@ -101,6 +101,6 @@ for t in range(10000):
     setWallBcs(flags=flags, vel=vel)
     setInflowBcs(vel=vel,dir='xXyYzZ',value=velInflow)
     
-    #s.printTimings()
+    s.printTimings()
     s.step()
     
