@@ -82,12 +82,17 @@ void pbPreparePlugin(FluidSolver* parent, const string& name) {
 }
 
 void pbFinalizePlugin(FluidSolver *parent, const string& name) {
-    if (parent)
+    if (parent) {
         parent->pluginStop(name);
+    }
     
-    // GUI update
-    if (name != "FluidSolver::step")
-        updateQtGui(false, 0, name);
+    // GUI update, also print name of parent if there's more than one
+    if (name != "FluidSolver::step") {
+        std::ostringstream msg;
+        if(parent && (parent->getNumInstances()>0) )  msg << parent->getName() << string(".");
+        msg << name;
+        updateQtGui(false, 0, msg.str() );
+    }
     
     // name unnamed PbClass Objects from var name
     PbWrapperRegistry::instance().renameObjects();

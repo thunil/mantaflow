@@ -200,7 +200,6 @@ void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
             mData[idx] = 0.5;
     }
 }
-    
 
 // helper function
 inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {

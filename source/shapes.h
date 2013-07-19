@@ -40,13 +40,14 @@ public:
     PYTHON void collideMesh(Mesh& mesh);
     PYTHON virtual Vec3 getCenter() const { return Vec3::Zero; }
     PYTHON virtual void setCenter(const Vec3& center) {}
+    PYTHON virtual Vec3 getExtent() const { return Vec3::Zero; }
     
     //! Inside test of the shape
     virtual bool isInside(const Vec3& pos) const;
     inline bool isInsideGrid(int i, int j, int k) const { return isInside(Vec3(i+0.5,j+0.5,k+0.5)); };
     
     virtual void generateMesh(Mesh* mesh) {} ;    
-    virtual void generateLevelset(Grid<Real>& phi) {};
+    virtual void generateLevelset(Grid<Real>& phi) {};    
     
 protected:
     GridType mType;
@@ -74,6 +75,7 @@ public:
     inline Vec3 getP1() const { return mP1; }
     virtual void setCenter(const Vec3& center) { Vec3 dh=0.5*(mP1-mP0); mP0 = center-dh; mP1 = center+dh;}
     virtual Vec3 getCenter() const { return 0.5*(mP1+mP0); }
+    virtual Vec3 getExtent() const { return getSize(); }
     virtual bool isInside(const Vec3& pos) const;
     virtual void generateMesh(Mesh* mesh);
     virtual void generateLevelset(Grid<Real>& phi);
@@ -90,6 +92,7 @@ public:
     virtual void setCenter(const Vec3& center) { mCenter = center; }
     virtual Vec3 getCenter() const { return mCenter; }
     inline Real getRadius() const { return mRadius; }
+    virtual Vec3 getExtent() const { return Vec3(2.0*mRadius); }    
     virtual bool isInside(const Vec3& pos) const;
     virtual void generateMesh(Mesh* mesh);
     virtual void generateLevelset(Grid<Real>& phi);
@@ -111,6 +114,7 @@ public:
     virtual Vec3 getCenter() const { return mCenter; }
     inline Real getRadius() const { return mRadius; }
     inline Vec3 getZ() const { return mZ*mZDir; }
+    virtual Vec3 getExtent() const { return Vec3(2.0*sqrt(square(mZ)+square(mRadius))); }    
     virtual bool isInside(const Vec3& pos) const;
     virtual void generateMesh(Mesh* mesh);
     virtual void generateLevelset(Grid<Real>& phi);

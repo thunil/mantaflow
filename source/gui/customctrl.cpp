@@ -23,12 +23,30 @@ namespace Manta {
 CustomControl::CustomControl() : PbClass(0) {
 }
 
+CustomCheckbox::CustomCheckbox(string name, bool val) : mVal(val), mCheckbox(0), mSName(name) {
+}
+
+void CustomCheckbox::init(QBoxLayout* layout) {
+    mCheckbox = new TextCheckbox(mSName, mVal);
+    QObject::connect(mCheckbox, SIGNAL(stateChanged(int)), mCheckbox, SLOT(update(int)));
+    mCheckbox->attach(layout);
+}
+
+bool CustomCheckbox::get() {
+    if (!mCheckbox) throw Error("Slider is not attached yet!");
+    return mCheckbox->get();
+}
+void CustomCheckbox::set(bool v) {
+    if (!mCheckbox) throw Error("Slider is not attached yet!");
+    mCheckbox->set(v);
+}
+
 CustomSlider::CustomSlider(string name, float val, float min, float max) : 
     mMin(min), mMax(max), mVal(val), mSName(name), mSlider(0)
 {
 }
 
-void CustomSlider::init(QLayout* layout) {
+void CustomSlider::init(QBoxLayout* layout) {
     mSlider = new TextSlider(mSName, mVal, mMin, mMax);
     QObject::connect(mSlider, SIGNAL(valueChanged(int)), mSlider, SLOT(update(int)));
     mSlider->attach(layout);
@@ -55,7 +73,7 @@ TextSlider::TextSlider(const string& name, float val, float vmin, float vmax) :
     update(0);
  }
 
-void TextSlider::attach(QLayout* layout) {
+void TextSlider::attach(QBoxLayout* layout) {
     layout->addWidget(mLabel);
     layout->addWidget(this);    
 }
@@ -77,6 +95,35 @@ void TextSlider::set(float v) {
     va = (va - mMin) / (mMax-mMin) * mScale;
     setValue((int)(va+0.5));
 }
+
+TextCheckbox::TextCheckbox(const string& name, bool val) : 
+    QCheckBox(), mSName(name.c_str()), mVal(val)
+{
+    mLabel = new QLabel();
+    set(val);
+    mLabel->setText(mSName);
+ }
+
+void TextCheckbox::attach(QBoxLayout* layout) {
+    QLayout* lay = new QHBoxLayout;    
+    lay->setAlignment(Qt::AlignLeft);
+    lay->addWidget(this);
+    lay->addWidget(mLabel);
+    layout->addLayout(lay);
+}
+
+void TextCheckbox::update(int val) {
+}
+
+bool TextCheckbox::get() {
+    return isChecked();
+}
+
+void TextCheckbox::set(bool v) {
+    setChecked(v);
+}
+
+
     
 // **************************************************************************************
 // GUI class

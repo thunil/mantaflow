@@ -251,7 +251,7 @@ bool GridCg<APPLYMAT>::iterate() {
         // TODO test...
         mResNorm = mResidual.getMaxAbsValue();        
     }
-    if(mIterations % 10 == 9) debMsg("GridCg::Iteration i="<<mIterations<<", resNorm="<<mResNorm<<" accuracy="<<mAccuracy, 1);
+    //if(mIterations % 10 == 9) debMsg("GridCg::Iteration i="<<mIterations<<", resNorm="<<mResNorm<<" accuracy="<<mAccuracy, 1);
 
     // abort here to safe some work...
     if(mResNorm<mAccuracy) return false;

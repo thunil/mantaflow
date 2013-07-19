@@ -142,8 +142,8 @@ void doGenerate(int argc, char* argv[], bool docs) {
 			newText += "// This file is generated using the MantaFlow preprocessor (prep generate).";
 			newText += "\n\n\n\n\n";
             
-			// NT_DEBUG , always add? 
-			// TP: No -- PREP_DEBUG mode is meant to debug problems in the generated files, so errors should not be redirected to the sources
+			// Note - PREP_DEBUG mode is meant to debug problems in the generated files, so errors should not be redirected to the sources
+			// so dont always add this line...
 	        if (!gDebugMode) 
 				newText += "#line 1 \"" + infile + "\"\n";
         }

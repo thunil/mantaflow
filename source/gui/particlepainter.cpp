@@ -18,6 +18,7 @@
 #include "vortexpart.h"
 #include "vortexfilament.h"
 #include "flip.h"
+#include "turbulencepart.h"
 
 using namespace std;
 
@@ -77,10 +78,10 @@ void ParticlePainter::updateText() {
 static inline void glVertex(const Vec3& v, Real dx) {
     glVertex3f(v.x * dx, v.y * dx, v.z * dx);
 }
-/*
+
 static inline void glColor(const Vec3& color) {
     glColor3f(std::max(0.0f,std::min(1.0f,color.x)), std::max(0.0f,std::min(1.0f,color.y)), std::max(0.0f,std::min(1.0f,color.z)));
-}*/
+}
 
 void ParticlePainter::paint() {
     if (!mObject || mHide) return;
@@ -170,6 +171,19 @@ void ParticlePainter::paint() {
         for(int i=0; i<(int)vp->size(); i++) {
             Vec3 pos = (*vp)[i].pos;
             
+            glVertex(pos, dx);
+            
+        }   
+        glEnd();
+        
+    } else if(mLocal->getType() == ParticleBase::TURBULENCE) {
+        TurbulenceParticleSystem* vp = (TurbulenceParticleSystem*) mLocal;
+        glPointSize(2.5);
+        glColor3f(0,1,0);
+        glBegin(GL_POINTS);
+        for(int i=0; i<(int)vp->size(); i++) {
+            Vec3 pos = (*vp)[i].pos;
+            glColor((*vp)[i].color);
             glVertex(pos, dx);
             
         }   
