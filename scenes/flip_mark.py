@@ -1,4 +1,10 @@
+# This is a test file for the upcoming full FLIP with surface reconstruction kernels
+# It will not work with the current mantaflow version yet.
+#
+
 from manta import *
+
+assert(FULLFLIP)
 
 # solver params
 meshing = True

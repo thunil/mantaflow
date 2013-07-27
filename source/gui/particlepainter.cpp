@@ -11,10 +11,11 @@
  *
  ******************************************************************************/
 
+#include <ctime>
 #include "particlepainter.h"
-#include <QtOpenGL>
 #include <sstream>
 #include <iomanip>
+#include <QtOpenGL>
 #include "vortexpart.h"
 #include "vortexfilament.h"
 #include "flip.h"
