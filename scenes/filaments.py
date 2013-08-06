@@ -2,6 +2,8 @@
 # Filament test
 # don't use yet --- work in progress
 
+assert(FILAMENT_SUPPORT)
+
 from manta import *
 from math import *
 import random

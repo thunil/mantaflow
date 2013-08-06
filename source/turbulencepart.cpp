@@ -33,7 +33,7 @@ ParticleBase* TurbulenceParticleSystem::clone() {
 }
 
 inline Vec3 hsv2rgb(Real h, Real s, Real v){
-    Real r, g, b;
+    Real r=0, g=0, b=0;
 
     int i = (int)(h * 6);
     Real f = h * 6 - i;
@@ -48,6 +48,7 @@ inline Vec3 hsv2rgb(Real h, Real s, Real v){
         case 3: r = p, g = q, b = v; break;
         case 4: r = t, g = p, b = v; break;
         case 5: r = v, g = p, b = q; break;
+        default: break;
     }
 
     return Vec3(r,g,b);

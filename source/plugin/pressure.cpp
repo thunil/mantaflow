@@ -52,23 +52,27 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
     rhs(i,j,k) = set;
 }
 
+
 //! Kernel: Apply velocity update from poisson equation
 KERNEL(bnd=1) 
 void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
 {
-    // correct all faces between fluid-fluid and fluid-empty cells
-	// skip everything with obstacles...
-	if (flags.isObstacle(i,j,k))
-        return;
-    
-    // skip faces between two empty cells
-	const bool curEmpty = flags.isEmpty(i,j,k);
-    const Real p = pressure(i,j,k);
-
-    if (!curEmpty || !flags.isEmpty(i-1,j,k))     vel(i,j,k).x -= (p - pressure(i-1,j,k));
-    if (!curEmpty || !flags.isEmpty(i,j-1,k))     vel(i,j,k).y -= (p - pressure(i,j-1,k));
-    if(vel.is3D()) {
-        if (!curEmpty || !flags.isEmpty(i,j,k-1)) vel(i,j,k).z -= (p - pressure(i,j,k-1));
+    int idx = flags.index(i,j,k);
+    if (flags.isFluid(idx))
+    {
+        if (flags.isFluid(i-1,j,k)) vel[idx].x -= (pressure[idx] - pressure(i-1,j,k));
+        if (flags.isFluid(i,j-1,k)) vel[idx].y -= (pressure[idx] - pressure(i,j-1,k));
+        if (flags.is3D() && flags.isFluid(i,j,k-1)) vel[idx].z -= (pressure[idx] - pressure(i,j,k-1));
+ 
+        if (flags.isEmpty(i-1,j,k)) vel[idx].x -= pressure[idx];
+        if (flags.isEmpty(i,j-1,k)) vel[idx].y -= pressure[idx];
+        if (flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx].z -= pressure[idx];
+    }
+    else if (flags.isEmpty(idx))
+    {
+        if (flags.isFluid(i-1,j,k)) vel[idx].x += pressure(i-1,j,k);
+        if (flags.isFluid(i,j-1,k)) vel[idx].y += pressure(i,j-1,k);
+        if (flags.is3D() && flags.isFluid(i,j,k-1)) vel[idx].z += pressure(i,j,k-1);
     }
 }
 
@@ -109,72 +113,59 @@ KERNEL void SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<boo
 
 // *****************************************************************************
 // Ghost fluid helpers
-// TODO set sides individually?
 
-// iso surface level, usually zero
-static const int LEVELSET_ISOSURFACE = 0.;
+inline static Real thetaHelper(Real inside, Real outside)
+{
+    Real denom = inside-outside;
+    if (denom==0) return 0; // trust inside value
+    return std::max(Real(0), std::min(Real(1), inside/denom));
+}
 
-static inline Real getGhostMatrixAddition(Real a, Real b, const Real accuracy) {
-	Real ret = 0.f;
+// p should be a fluid cell
+inline static Real ghostFluidHelper(int idx, int offset, const Grid<Real> &phi, Real gfClamp)
+{
+    Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
 
-	if(a < 0 && b < 0)
-		ret = 1;
-	else if( (a >= 0) && (b < 0))
-		ret = b / (b - a);
-	else if ( (a < 0) && (b >= 0))
-		ret = a / (a - b);
-	else
-		ret = 0;
-
-	if(ret < accuracy)
-		ret = accuracy;
-
-	Real invret = 1./ret;
-	return invret;
+    if (alpha == 0) return gfClamp;
+    return std::max(gfClamp, std::min(Real(0), 1-1/alpha)); // ]clamp ; 0]
 }
 
 //! Kernel: Adapt A0 for ghost fluid
 KERNEL(bnd=1) 
-void ApplyGhostFluid (FlagGrid& flags, Grid<Real>& phi, Grid<Real>& A0, Real accuracy) 
+void ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<Real> &phi, Real gfClamp)
 {
-    if (!flags.isFluid(i,j,k))
-        return;
-    
-    const Real curPhi = phi(i,j,k);
-    
-    if (flags.isEmpty(i-1,j,k)) A0(i,j,k) += getGhostMatrixAddition( phi(i-1,j,k), curPhi, accuracy);
-    if (flags.isEmpty(i+1,j,k)) A0(i,j,k) += getGhostMatrixAddition( curPhi, phi(i+1,j,k), accuracy);
-    if (flags.isEmpty(i,j-1,k)) A0(i,j,k) += getGhostMatrixAddition( phi(i,j-1,k), curPhi, accuracy);
-    if (flags.isEmpty(i,j+1,k)) A0(i,j,k) += getGhostMatrixAddition( curPhi, phi(i,j+1,k), accuracy);
-    if (flags.is3D() && flags.isEmpty(i,j,k-1)) A0(i,j,k) += getGhostMatrixAddition( phi(i,j,k-1), curPhi, accuracy);
-    if (flags.is3D() && flags.isEmpty(i,j,k+1)) A0(i,j,k) += getGhostMatrixAddition( curPhi, phi(i,j,k+1), accuracy);
+    const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
+    int idx = flags.index(i,j,k);
+    if (!flags.isFluid(idx)) return;
+ 
+    if (flags.isEmpty(i-1,j,k)) A0[idx] -= ghostFluidHelper(idx, -X, phi, gfClamp);
+    if (flags.isEmpty(i+1,j,k)) A0[idx] -= ghostFluidHelper(idx, +X, phi, gfClamp);
+    if (flags.isEmpty(i,j-1,k)) A0[idx] -= ghostFluidHelper(idx, -Y, phi, gfClamp);
+    if (flags.isEmpty(i,j+1,k)) A0[idx] -= ghostFluidHelper(idx, +Y, phi, gfClamp);
+    if (flags.is3D()) {
+        if (flags.isEmpty(i,j,k-1)) A0[idx] -= ghostFluidHelper(idx, -Z, phi, gfClamp);
+        if (flags.isEmpty(i,j,k+1)) A0[idx] -= ghostFluidHelper(idx, +Z, phi, gfClamp);
+    }
 }
 
-//! Kernel: Correct velocities for ghost fluids
-KERNEL(bnd=1) 
-void CorrectVelGhostFluid (FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) //, Grid<Real>& phi)
+//! Kernel: Apply velocity update: ghost fluid contribution
+KERNEL(bnd=1)
+void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp)
 {
-    bool curFluid = flags.isFluid(i,j,k);
-    if (!curFluid && !flags.isEmpty(i,j,k))
-        return;
-    
-    const Real curPress = pressure(i,j,k);
-
-    //const Real curPhi = phi(i,j,k);
-	// TODO - include ghost fluid factor  NT_DEBUG
-    
-    // in contrast to old implementation:
-    // make sure to add gradient for all fluid-empty or fluid-fluid combinations
-    // of neighbors...
-
-    if (!flags.isObstacle(i-1,j,k) && (curFluid || flags.isFluid(i-1,j,k)))
-        vel(i,j,k).x -= curPress - pressure(i-1,j,k);
-    
-    if (!flags.isObstacle(i,j-1,k) && (curFluid || flags.isFluid(i,j-1,k)))
-        vel(i,j,k).y -= curPress - pressure(i,j-1,k);
-    
-    if (flags.is3D() && (!flags.isObstacle(i,j,k-1) && (curFluid || flags.isFluid(i,j,k-1))))
-        vel(i,j,k).z -= curPress - pressure(i,j,k-1);
+    const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
+    int idx = flags.index(i,j,k);
+    if (flags.isFluid(idx))
+    {
+        if (flags.isEmpty(i-1,j,k)) vel[idx][0] += pressure[idx] * ghostFluidHelper(idx, -X, phi, gfClamp);
+        if (flags.isEmpty(i,j-1,k)) vel[idx][1] += pressure[idx] * ghostFluidHelper(idx, -Y, phi, gfClamp);
+        if (flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx][2] += pressure[idx] * ghostFluidHelper(idx, -Z, phi, gfClamp);
+    }
+    else if (flags.isEmpty(idx))
+    {
+        if (flags.isFluid(i-1,j,k)) vel[idx][0] -= pressure(i-1,j,k) * ghostFluidHelper(idx-X, +X, phi, gfClamp);
+        if (flags.isFluid(i,j-1,k)) vel[idx][1] -= pressure(i,j-1,k) * ghostFluidHelper(idx-Y, +Y, phi, gfClamp);
+        if (flags.is3D() && flags.isFluid(i,j,k-1)) vel[idx][2] -= pressure(i,j,k-1) * ghostFluidHelper(idx-Z, +Z, phi, gfClamp);
+    }
 }
 
 inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bool>& up) {
@@ -193,18 +184,16 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0, 
-                     Real ghostAccuracy = 0, 
+                     Real gfClamp = -1e4,
                      Real cgMaxIterFac = 1.5,
                      Real cgAccuracy = 1e-3,
                      string openBound = "",
                      string outflow = "",
                      int outflowHeight = 1,
-                     int precondition = 0,
+                     bool precondition = true,
                      bool enforceCompatibility = false,
                      bool useResNorm = true )
 {
-    //assertMsg(vel.is3D(), "Only 3D grids supported so far");
-    
     // parse strings
     Vector3D<bool> loOpenBound, upOpenBound, loOutflow, upOutflow;
     convertDescToVec(openBound, loOpenBound, upOpenBound);
@@ -230,9 +219,8 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak);
     SetOpenBound (A0, Ai, Aj, Ak, vel, loOpenBound, upOpenBound);
     
-    if (ghostAccuracy > 0) {
-        if (!phi) errMsg("solve_pressure: if ghostAccuracy>0, need to specify levelset phi=xxx");
-        ApplyGhostFluid (flags, A0, *phi, ghostAccuracy);
+    if (phi) {
+        ApplyGhostFluidDiagonal(A0, flags, *phi, gfClamp);
     }
     
     // compute divergence and init right hand side
@@ -256,7 +244,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     gcg->setUseResNorm( useResNorm );
 
     // optional preconditioning
-    gcg->setPreconditioner( (GridCgInterface::PreconditionType)precondition, &pca0, &pca1, &pca2, &pca3);
+    gcg->setPreconditioner( precondition ? GridCgInterface::PC_mICP : GridCgInterface::PC_None, &pca0, &pca1, &pca2, &pca3);
 
     for (int iter=0; iter<maxIter; iter++) {
         if (!gcg->iterate()) iter=maxIter;
@@ -264,12 +252,8 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
     delete gcg;
     
-    if(ghostAccuracy<=0.) {
-        // ghost fluid off, normal correction
-        CorrectVelocity (flags, vel, pressure );
-    } else {        
-        CorrectVelGhostFluid (flags, vel, pressure);
-    }    
+    CorrectVelocity(flags, vel, pressure);
+    if (phi) CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);
 }
 
 } // end namespace

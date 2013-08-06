@@ -9,6 +9,8 @@ res = 64
 gs = vec3(res,res,res)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 0.25
+ghostFluid = True
+accuracy = 5e-5
 
 # prepare grids and particles
 flags = s.create(FlagGrid)
@@ -29,7 +31,7 @@ if (GUI):
     gui.show()
     
 #main loop
-for t in range(200):
+for t in range(2000):
     
     # update and advect levelset
     phi.reinitMarching(flags=flags, velTransport=vel) #, ignoreWalls=False)
@@ -41,10 +43,13 @@ for t in range(200):
     addGravity(flags=flags, vel=vel, gravity=vec3(0,-0.025,0))
     
     # pressure solve
-    setWallBcs(flags=flags, vel=vel)    
-    setLiquidBcs(flags=flags, vel=vel)
-    solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=0.005, useResNorm=False)
-    setLiquidBcs(flags=flags, vel=vel)    
+    setWallBcs(flags=flags, vel=vel)
+    #setLiquidBcs(flags=flags, vel=vel)
+    if ghostFluid:
+        solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False, phi=phi)
+    else:
+        solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False)
+    #setLiquidBcs(flags=flags, vel=vel)
     setWallBcs(flags=flags, vel=vel)
     
     # note: these meshes are created by fast marching only, should smooth

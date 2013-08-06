@@ -206,6 +206,9 @@ inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
     if (i > data.getSizeX()-2) i= data.getSizeX()-2;
     if (j > data.getSizeY()-2) j= data.getSizeY()-2;
     if (k > data.getSizeZ()-2) k= data.getSizeZ()-2;
+    if (i < 1) i = 1;
+    if (j < 1) j = 1;
+    if (k < 1) k = 1;
     return Vec3 (data(i-1,j  ,k  ) - data(i+1,j  ,k  ),
                  data(i  ,j-1,k  ) - data(i  ,j+1,k  ),
                  data(i  ,j  ,k-1) - data(i  ,j  ,k+1));
@@ -225,11 +228,11 @@ void LevelsetGrid::createMesh(Mesh& mesh) {
     Grid<int> edgeVY(mParent);
     Grid<int> edgeVZ(mParent);
     
-    for(int i=1; i<mSize.x-1; i++)
-    for(int j=1; j<mSize.y-1; j++)
-    for(int k=1; k<mSize.z-1; k++) {
+    for(int i=0; i<mSize.x-1; i++)
+    for(int j=0; j<mSize.y-1; j++)
+    for(int k=0; k<mSize.z-1; k++) {
          Real value[8] = { get(i,j,k),   get(i+1,j,k),   get(i+1,j+1,k),   get(i,j+1,k),
-                                get(i,j,k+1), get(i+1,j,k+1), get(i+1,j+1,k+1), get(i,j+1,k+1) };
+                           get(i,j,k+1), get(i+1,j,k+1), get(i+1,j+1,k+1), get(i,j+1,k+1) };
         
         // build lookup index, check for invalid times
         bool skip = false;
