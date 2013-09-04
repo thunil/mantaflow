@@ -66,7 +66,7 @@ inline Real FastMarch<COMP,TDIR>::calculateDistance(const Vec3i& idx) {
     Real bVal = calcWeights<1>(okcnt, invcnt, v, idx);
     Real cVal = 0.;
 	if (mLevelset.is3D())   cVal = calcWeights<2>(okcnt, invcnt, v, idx);
-	else					invcnt++;
+	else					{ invcnt++; mWeights[4] = mWeights[5] = 0.; }
 
     Real ret = InvalidTime();
     switch(invcnt) {

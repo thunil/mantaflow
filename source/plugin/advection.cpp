@@ -221,7 +221,6 @@ void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, Gr
     
     Real dt = parent->getDt();
     bool levelset = orig.getType() & GridBase::TypeLevelset;
-levelset=false; // NT_DBEUG
     
     // forward step
     GridType fwd(parent);

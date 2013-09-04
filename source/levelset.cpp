@@ -117,7 +117,6 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
         if(isAtInterface<true>(fmFlags, phi, p)) {
             // set value
             fmFlags(p) = FlagInited;
-			debMsg("found cell "<<p, 1);
             
             // add neighbors that are not at the interface
             for (int nb=0; nb<2*dim; nb++) {
@@ -127,7 +126,6 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
                 // check neighbors of neighbor
                 if (phi(pn) < 0 && !isAtInterface<true>(fmFlags, phi, pn)) {
                     marchIn.addToList(pn, p); 
-			debMsg("found nb "<<pn, 1);
                 }
             }            
         }
