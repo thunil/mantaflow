@@ -20,6 +20,17 @@ using namespace std;
 
 namespace Manta { 
 
+static inline bool isNotFluid(FlagGrid& flags, int i, int j, int k)
+{
+    if ( flags.isFluid(i,j,k)   ) return false;
+    if ( flags.isFluid(i-1,j,k) ) return false;
+    if ( flags.isFluid(i,j-1,k) ) return false; 
+	if ( flags.is3D() ) {
+    	if ( flags.isFluid(i,j,k-1) ) return false;
+	}
+	return true;
+}
+
 //! Semi-Lagrange interpolation kernel
 KERNEL(bnd=1) template<class T> 
 void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset) 
@@ -28,8 +39,7 @@ void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Re
         dst(i,j,k) = 0;
         return;
     }
-    if (!isLevelset && !flags.isFluid(i,j,k) && !flags.isFluid(i-1,j,k) && 
-        !flags.isFluid(i,j-1,k) && !flags.isFluid(i,j,k-1)) {
+    if (!isLevelset && isNotFluid(flags,i,j,k) ) {
         dst(i,j,k) = src(i,j,k);
         return;
     }
@@ -47,8 +57,7 @@ void SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, 
         dst(i,j,k) = 0;
         return;
     }
-    if (!flags.isFluid(i,j,k) && !flags.isFluid(i-1,j,k) && 
-        !flags.isFluid(i,j-1,k) && !flags.isFluid(i,j,k-1)) {
+    if ( isNotFluid(flags,i,j,k) ) {
         dst(i,j,k) = src(i,j,k);
         return;
     }
@@ -72,7 +81,7 @@ void MacCormackCorrect(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd
 {
     const int idx = flags.index(i,j,k);
     
-    if (!flags.isFluid(idx) && !flags.isFluid(i-1,j,k) && !flags.isFluid(i,j-1,k) && !flags.isFluid(i,j,k-1)) {
+    if ( isNotFluid(flags,i,j,k) ) {
         dst[idx] = isLevelSet ? fwd[idx] : (T)0.0;
         return;
     }
@@ -101,7 +110,7 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
 {
     if (flags.isObstacle(i,j,k))
         return;
-    if ((!flags.isFluid(i,j,k) && !flags.isFluid(i-1,j,k) && !flags.isFluid(i,j-1,k) && !flags.isFluid(i,j,k-1))) {
+    if ( isNotFluid(flags,i,j,k) ) {
         dst(i,j,k) = fwd(i,j,k);
         return;
     }
@@ -173,7 +182,7 @@ void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& o
 {
     if (flags.isObstacle(i,j,k))
         return;
-    if ((!flags.isFluid(i,j,k) && !flags.isFluid(i-1,j,k) && !flags.isFluid(i,j-1,k) && !flags.isFluid(i,j,k-1))) {
+    if ( isNotFluid(flags,i,j,k) ) {
         dst(i,j,k) = fwd(i,j,k);
         return;
     }
@@ -212,6 +221,7 @@ void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, Gr
     
     Real dt = parent->getDt();
     bool levelset = orig.getType() & GridBase::TypeLevelset;
+levelset=false; // NT_DBEUG
     
     // forward step
     GridType fwd(parent);

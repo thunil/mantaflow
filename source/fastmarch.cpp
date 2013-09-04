@@ -39,12 +39,12 @@ Real FastMarch<COMP,TDIR>::calcWeights(int& okcnt, int& invcnt, Real* v, const V
     idxMinus[C]--;
     
     mWeights[C*2] = mWeights[C*2+1] = 0.;
-    if(mFmFlags(idxPlus)==FlagInited) {
+    if (mFmFlags(idxPlus)==FlagInited) {
         // somewhat arbitrary - choose +1 value over -1 ...
         val = mLevelset(idxPlus);
         v[okcnt] = val; okcnt++;
         mWeights[C*2] = 1.;
-    } else if(mFmFlags(idxMinus)==FlagInited) {
+    } else if (mFmFlags(idxMinus)==FlagInited) {
         val = mLevelset(idxMinus);
         v[okcnt] = val; okcnt++;
         mWeights[C*2+1] = 1.;
@@ -64,7 +64,9 @@ inline Real FastMarch<COMP,TDIR>::calculateDistance(const Vec3i& idx) {
     
     Real aVal = calcWeights<0>(okcnt, invcnt, v, idx);
     Real bVal = calcWeights<1>(okcnt, invcnt, v, idx);
-    Real cVal = calcWeights<2>(okcnt, invcnt, v, idx);
+    Real cVal = 0.;
+	if (mLevelset.is3D())   cVal = calcWeights<2>(okcnt, invcnt, v, idx);
+	else					invcnt++;
 
     Real ret = InvalidTime();
     switch(invcnt) {
@@ -98,7 +100,6 @@ inline Real FastMarch<COMP,TDIR>::calculateDistance(const Vec3i& idx) {
         const Real csqrt = max(0. , 2.-(v[1]-v[0])*(v[1]-v[0]) );
         // clamp to make sure the sqrt is valid
         ret = 0.5*( v[0]+v[1]+ TDIR*sqrt(csqrt) );
-        //debMsg("RET","a="<<a<<" b="<<b<<" ret="<<ret );
 
         // weights needed for transport (transpTouch)
         mWeights[0] *= fabs(ret-aVal);
@@ -173,12 +174,16 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
 //! Enforce delta_phi = 0 on boundaries
 KERNEL(single)
 void SetLevelsetBoundaries (LevelsetGrid& phi) {
-    if (i==0) phi(i,j,k) = phi(1,j,k);
-    if (j==0) phi(i,j,k) = phi(i,1,k);
-    if (k==0) phi(i,j,k) = phi(i,j,1);
+    if (i==0)      phi(i,j,k) = phi(1,j,k);
     if (i==maxX-1) phi(i,j,k) = phi(i-1,j,k);
+
+    if (j==0)      phi(i,j,k) = phi(i,1,k);
     if (j==maxY-1) phi(i,j,k) = phi(i,j-1,k);
-    if (k==maxZ-1) phi(i,j,k) = phi(i,j,k-1);
+
+	if(phi.is3D()) {
+    	if (k==0)      phi(i,j,k) = phi(i,j,1);
+    	if (k==maxZ-1) phi(i,j,k) = phi(i,j,k-1);
+	}
 }
 
 /*****************************************************************************/
@@ -197,8 +202,10 @@ void FastMarch<COMP,TDIR>::performMarching() {
         addToList(Vec3i(p.x+1,p.y,p.z), p);
         addToList(Vec3i(p.x,p.y-1,p.z), p);
         addToList(Vec3i(p.x,p.y+1,p.z), p);
-        addToList(Vec3i(p.x,p.y,p.z-1), p);
-        addToList(Vec3i(p.x,p.y,p.z+1), p);        
+		if(mLevelset.is3D()) {
+        	addToList(Vec3i(p.x,p.y,p.z-1), p);
+        	addToList(Vec3i(p.x,p.y,p.z+1), p);        
+		}
     }
     
     // set boundary for plain array

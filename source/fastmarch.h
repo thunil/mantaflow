@@ -44,13 +44,17 @@ public:
         if(weights[1]>0.0) val += mpVel->get(x-1, y+0, z+0) * weights[1];
         if(weights[2]>0.0) val += mpVel->get(x+0, y+1, z+0) * weights[2];
         if(weights[3]>0.0) val += mpVel->get(x+0, y-1, z+0) * weights[3];
-        if(weights[4]>0.0) val += mpVel->get(x+0, y+0, z+1) * weights[4];
-        if(weights[5]>0.0) val += mpVel->get(x+0, y+0, z-1) * weights[5];
+		if(mpVel->is3D()) {
+        	if(weights[4]>0.0) val += mpVel->get(x+0, y+0, z+1) * weights[4];
+        	if(weights[5]>0.0) val += mpVel->get(x+0, y+0, z-1) * weights[5];
+		}
         
         // set velocity components if adjacent is empty
         if (mpFlags->isEmpty(x-1,y,z)) (*mpVel)(x,y,z).x = val.x;
         if (mpFlags->isEmpty(x,y-1,z)) (*mpVel)(x,y,z).y = val.y;
-        if (mpFlags->isEmpty(x,y,z-1)) (*mpVel)(x,y,z).z = val.z;            
+		if(mpVel->is3D()) {
+        	if (mpFlags->isEmpty(x,y,z-1)) (*mpVel)(x,y,z).z = val.z;            
+		}
     }; 
 
 protected:

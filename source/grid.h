@@ -52,9 +52,9 @@ public:
     //! Check if indices are within bounds, otherwise error
     inline void checkIndex(int idx) const;
     //! Check if index is within given boundaries
-    inline bool isInBounds(const Vec3i& p, int bnd) const { return (p.x >= bnd && p.y >= bnd && p.z >= bnd && p.x < mSize.x-bnd && p.y < mSize.y-bnd && p.z < mSize.z-bnd); }
+    inline bool isInBounds(const Vec3i& p, int bnd) const;
     //! Check if index is within given boundaries
-    inline bool isInBounds(const Vec3i& p) const { return (p.x >= 0 && p.y >= 0 && p.z >= 0 && p.x < mSize.x && p.y < mSize.y && p.z < mSize.z); }
+    inline bool isInBounds(const Vec3i& p) const;
     //! Check if index is within given boundaries
     inline bool isInBounds(const Vec3& p, int bnd = 0) const { return isInBounds(toVec3i(p), bnd); }
     
@@ -244,6 +244,18 @@ inline void GridBase::checkIndex(int idx) const {
         s << "Grid " << mName << " dim " << mSize << " : index " << idx << " out of bound ";
         errMsg(s.str());
     }
+}
+
+bool GridBase::isInBounds(const Vec3i& p) const { 
+	return (p.x >= 0 && p.y >= 0 && p.z >= 0 && p.x < mSize.x && p.y < mSize.y && p.z < mSize.z); 
+}
+
+bool GridBase::isInBounds(const Vec3i& p, int bnd) const { 
+	bool ret = (p.x >= bnd && p.y >= bnd && p.x < mSize.x-bnd && p.y < mSize.y-bnd);
+	if(this->is3D()) {
+		ret &= (p.z >= bnd && p.z < mSize.z-bnd); 
+	}
+	return ret;
 }
 
 inline Vec3 MACGrid::getCentered(int i, int j, int k) const {

@@ -97,7 +97,8 @@ void LevelsetGrid::join(const LevelsetGrid& o) {
 
 void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTransport, bool ignoreWalls, bool correctOuterLayer, int obstacleType)
 {
-    assertMsg(is3D(), "Only 3D grids supported so far");
+    //assertMsg(is3D(), "Only 3D grids supported so far");
+	const int dim = (is3D() ? 3 : 2);
     
     Grid<int> fmFlags(mParent);
     LevelsetGrid& phi = *this;
@@ -116,15 +117,17 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
         if(isAtInterface<true>(fmFlags, phi, p)) {
             // set value
             fmFlags(p) = FlagInited;
+			debMsg("found cell "<<p, 1);
             
             // add neighbors that are not at the interface
-            for (int nb=0; nb<6; nb++) {
+            for (int nb=0; nb<2*dim; nb++) {
                 const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
                 if ((flags.get(pn) & obstacleType) != 0) continue;
                 
                 // check neighbors of neighbor
                 if (phi(pn) < 0 && !isAtInterface<true>(fmFlags, phi, pn)) {
                     marchIn.addToList(pn, p); 
+			debMsg("found nb "<<pn, 1);
                 }
             }            
         }
@@ -146,7 +149,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
             const Vec3i p(i,j,k);
             
             // check nbs
-            for (int nb=0; nb<6; nb++) {
+            for (int nb=0; nb<2*dim; nb++) {
                 const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
                 
                 if (fmFlags(pn) != FlagInited) continue;
@@ -174,7 +177,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
                 fmFlags(p) = FlagInited;
                 
                 // add neighbors that are not at the interface
-                for (int nb=0; nb<6; nb++) {
+                for (int nb=0; nb<2*dim; nb++) {
                     const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
                     if ((flags.get(pn) & obstacleType) != 0) continue;
                 
