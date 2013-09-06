@@ -122,8 +122,8 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
     // clamp forward lookup to grid
     const int i0 = clamp(posFwd.x, 0, flags.getSizeX()-2);
     const int j0 = clamp(posFwd.y, 0, flags.getSizeY()-2);
-    const int k0 = clamp(posFwd.z, 0, flags.getSizeZ()-2);
-    const int i1 = i0+1, j1 = j0+1, k1=k0+1;
+    const int k0 = clamp(posFwd.z, 0, (flags.is3D() ? (flags.getSizeZ()-2) : 1) );
+    const int i1 = i0+1, j1 = j0+1, k1= (orig.is3D() ? (k0+1) : k0);
     
     if (orig.isInBounds(Vec3i(i0,j0,k0),1)) {           
         // find min/max around fwd pos
@@ -134,7 +134,7 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
         getMinMax(minv, maxv, orig(i0,j0,k1));
         getMinMax(minv, maxv, orig(i1,j0,k1));
         getMinMax(minv, maxv, orig(i0,j1,k1));
-        getMinMax(minv, maxv, orig(i1,j1,k1));
+        getMinMax(minv, maxv, orig(i1,j1,k1)); 
         
         // write clamped value
         dst(i,j,k) = clamp(dst(i,j,k), minv, maxv);
@@ -158,7 +158,7 @@ inline Real doClampComponent(const Vec3i& upperClamp, MACGrid& orig, Real dst, c
     const int i0 = clamp((int)posFwd.x, 0, upperClamp.x);
     const int j0 = clamp((int)posFwd.y, 0, upperClamp.y);
     const int k0 = clamp((int)posFwd.z, 0, upperClamp.z);
-    const int i1 = i0+1, j1 = j0+1, k1=k0+1;
+    const int i1 = i0+1, j1 = j0+1, k1= (orig.is3D() ? (k0+1) : k0);
     if (!orig.isInBounds(Vec3i(i0,j0,k0),1)) 
         return dst;
     

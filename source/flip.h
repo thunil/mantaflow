@@ -42,7 +42,7 @@ public:
     //! Mark cells with particles as fluid, otherwise empty
     PYTHON void markFluidCells(FlagGrid& flags);
     //! Initialize grid of particles + jitter. No surface alignment yet
-    PYTHON void initialize(FlagGrid& flags, int discretization=2);
+    PYTHON void initialize(FlagGrid& flags, int discretization=2, Real randomness=0.2 );
     
     virtual ParticleBase* clone();
 private:

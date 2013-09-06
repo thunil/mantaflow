@@ -45,41 +45,47 @@ void CopyVelocitiesToGrid(FlipSystem& p, FlagGrid& flags, MACGrid& vel, Grid<Vec
 }
 
 void FlipSystem::velocitiesFromGrid(FlagGrid& flags, MACGrid& vel, Real flipRatio) {
-    assertMsg(vel.is3D(), "Only 3D grids supported so far");
+    //assertMsg(vel.is3D(), "Only 3D grids supported so far");
     CopyVelocitiesFromGrid(*this, flags, vel, mOldVel, flipRatio);
 }
 
 void FlipSystem::velocitiesToGrid(FlagGrid& flags, MACGrid& vel) {
-    assertMsg(vel.is3D(), "Only 3D grids supported so far");
+    //assertMsg(vel.is3D(), "Only 3D grids supported so far");
     
     // interpol -> grid. tmpgrid for counting
     Grid<Vec3> tmp(mParent);
     vel.clear();
     CopyVelocitiesToGrid(*this, flags, vel, tmp);
+	// NT_DEBUG, note - stomp small values in tmp to zero? use Real grid?
     vel.safeDivide(tmp);
     
     // store diff
     mOldVel = vel;
 }
 
-void FlipSystem::initialize(FlagGrid& flags, int discretization) {
-    clear();
-    Real jlen = 0.2 / discretization;
+void FlipSystem::initialize(FlagGrid& flags, int discretization, Real randomness ) {
+	bool is3D = flags.is3D();
+    Real jlen = randomness / discretization;
     Vec3 disp (1.0 / discretization, 1.0 / discretization, 1.0/discretization);
  
+    clear(); 
     FOR_IJK(flags) {
         if (flags.isFluid(i,j,k)) {
             Vec3 pos (i,j,k);
-            for (int dk=0; dk<discretization; dk++)
+            for (int dk=0; dk<(is3D ? discretization : 1); dk++)
             for (int dj=0; dj<discretization; dj++)
             for (int di=0; di<discretization; di++) {
                 Vec3 subpos = pos + disp * Vec3(0.5+di, 0.5+dj, 0.5+dk);
                 subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
+				if(!is3D) subpos[2] = 0.5;
                 add(FlipData(subpos, Vec3::Zero));
             }
         }
     }
 }
+
+// NT_DEBUG
+//check adjust function below, make 2d!
 
 void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, int maxParticles) {
     Grid<int> tmp(mParent);
@@ -90,7 +96,8 @@ void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, i
             Vec3i p = toVec3i(mData[i].pos);
             int num = tmp(p);
             
-            if (!flags.isFluid(p) || num > maxParticles)
+            // dont delete particles in non fluid cells here, the particles are "always right"
+            if ( num > maxParticles)
                 mData[i].flag |= PDELETE;
             else
                 tmp(p) = num+1;
@@ -112,10 +119,14 @@ void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, i
 }
 
 void FlipSystem::markFluidCells(FlagGrid& flags) {
-    // kill all fluid cells
-    flags.fillGrid(FlagGrid::TypeEmpty);
+    // remove all fluid cells
+    FOR_IJK(flags) {
+        if (flags.isFluid(i,j,k)) {
+            flags(i,j,k) = (flags(i,j,k) | FlagGrid::TypeEmpty) & ~FlagGrid::TypeFluid;
+        }
+    }
     
-    // mark all particles in flaggrid
+    // mark all particles in flaggrid as fluid
     for(size_t i=0;i<mData.size();i++) {
         const Vec3i p = toVec3i(mData[i].pos);
         if (flags.isInBounds(p) && flags.isEmpty(p))
