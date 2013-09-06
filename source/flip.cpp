@@ -84,8 +84,6 @@ void FlipSystem::initialize(FlagGrid& flags, int discretization, Real randomness
     }
 }
 
-// NT_DEBUG
-//check adjust function below, make 2d!
 
 void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, int maxParticles) {
     Grid<int> tmp(mParent);
@@ -141,6 +139,64 @@ ParticleBase* FlipSystem::clone() {
     nm->mData = mData;
     nm->setName(getName());
     return nm;
+}
+
+
+// add simple extrapolation step
+PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4) {
+    Grid<int> tmp(flags);
+	int dim = (flags.is3D() ? 3:2);
+	Vec3i nb[6] = { 
+		Vec3i(1 ,0,0), Vec3i(-1,0,0),
+		Vec3i(0,1 ,0), Vec3i(0,-1,0),
+		Vec3i(0,0,1 ), Vec3i(0,0,-1) };
+
+	for(int c=0; c<dim; ++c) {
+		Vec3i dir = 0;
+		dir[c] = 1;
+		tmp.clear();
+
+		// remove all fluid cells
+		FOR_IJK_BND(flags,1) {
+			Vec3i p(i,j,k);
+			if (flags.isFluid(p) || flags.isFluid(p-dir) ) {
+				tmp(p) = 1;
+			}
+		}
+
+		// debug init! , enable for testing only...
+		/*FOR_IJK_BND(flags,1) {
+			if (tmp(i,j,k) == 0) continue;
+			vel(i,j,k)[c] = (i+j+k+c+1.)*0.1;
+		}*/
+		
+		// extrapolate for distance
+		for(int d=1; d<1+distance; ++d) {
+
+			FOR_IJK_BND(flags,1) {
+				if (tmp(i,j,k) != 0) continue;
+
+				// copy from initialized neighbors
+				Vec3i p(i,j,k);
+				int nbs = 0;
+				Real avgVel = 0.;
+				for (int n=0; n<2*dim; ++n) {
+					if (tmp(p+nb[n]) == d) {
+						//vel(p)[c] = (c+1.)*0.1;
+						avgVel += vel(p+nb[n])[c];
+						nbs++;
+					}
+				}
+
+				if(nbs>0) {
+					tmp(p)    = d+1;
+					vel(p)[c] = avgVel / nbs;
+				}
+			}
+
+		} // d
+
+	}
 }
 
 

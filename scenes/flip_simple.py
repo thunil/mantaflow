@@ -5,7 +5,7 @@
 from manta import *
 
 # solver params
-dim = 3
+dim = 2
 particleNumber = 2
 res = 64
 gs = vec3(res,res,res)
@@ -24,8 +24,9 @@ flip     = s.create(FlipSystem)
 
 # scene setup
 flags.initDomain(boundaryWidth=0)
-#fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1))
-fluidbox = s.create(Box, p0=gs*vec3(0.4,0.4,0.4), p1=gs*vec3(0.6,0.8,0.6))
+# enable one of the following
+fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1)) # breaking dam
+#fluidbox = s.create(Box, p0=gs*vec3(0.4,0.4,0.4), p1=gs*vec3(0.6,0.8,0.6)) # centered falling block
 phiInit = fluidbox.computeLevelset()
 flags.updateFromLevelset(phiInit)
 # phiInit is not needed from now on!
@@ -52,8 +53,11 @@ for t in range(2500):
     setWallBcs(flags=flags, vel=vel)    
     solvePressure(flags=flags, vel=vel, pressure=pressure)
     setWallBcs(flags=flags, vel=vel)
+
+    # we dont have any levelset, ie no extrapolation, so make sure the velocities are valid
+    extrapolateMACSimple( flags=flags , vel=vel )
     
-    # FLIP load
+    # FLIP velocity update
     flip.velocitiesFromGrid(vel=vel, flags=flags, flipRatio=0.97)
     
     #gui.screenshot( 'flipout_%04d.png' % t );
