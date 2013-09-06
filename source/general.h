@@ -24,7 +24,11 @@ namespace Manta {
 class Error : public std::exception
 {
 public:
-   Error(const std::string& s) : mS(s) {}
+   Error(const std::string& s) : mS(s) {
+#		ifdef DEBUG
+		*(int*)(0) = 1; // force crash in debug mode
+#		endif
+   }
    virtual ~Error() throw() {}
    virtual const char* what() const throw() { return mS.c_str(); }
 private:
