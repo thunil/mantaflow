@@ -26,7 +26,7 @@ using namespace std;
 namespace Manta {
 
 ParticlePainter::ParticlePainter(GridPainter<int>* gridRef, QWidget* par) 
-    : LockedObjPainter(par), mHide(false), mLocal(0), mGridRef(gridRef)
+    : LockedObjPainter(par), mMode(PaintVel), mLocal(0), mGridRef(gridRef)
 {    
     mInfo = new QLabel();
 }
@@ -59,7 +59,8 @@ void ParticlePainter::processKeyEvent(PainterEvent e, int param) {
     if (e == EventNextSystem)
         nextObject();
     else if (e == EventToggleParticles) {
-        mHide = !mHide;
+        mMode++; 
+		if(mMode>PaintVel) mMode=PaintOff;
     }
     else return;
         
@@ -69,7 +70,7 @@ void ParticlePainter::processKeyEvent(PainterEvent e, int param) {
 void ParticlePainter::updateText() {
     stringstream s;
     
-    if (mObject && !mHide) {
+    if (mObject && !(mMode==PaintOff) ) {
         s << mLocal->infoString() << endl;
     }
     mInfo->setText(s.str().c_str());    
@@ -85,7 +86,8 @@ static inline void glColor(const Vec3& color) {
 }
 
 void ParticlePainter::paint() {
-    if (!mObject || mHide) return;
+    if (!mObject) return;
+	if (mMode == PaintOff) return;
     float dx = mLocal->getParent()->getDx();
     
     Real scale = 0.4;
@@ -116,33 +118,40 @@ void ParticlePainter::paint() {
         }        
     } else if (mLocal->getType() == ParticleBase::FLIP) {
         FlipSystem* fp = (FlipSystem*) mLocal;
-        glColor3f(0,1,1);
-        glPointSize(1.0);
-        glBegin(GL_LINES);
+
+		if (mMode == PaintVel) {
+			glPointSize(1.0);
+			glBegin(GL_LINES);
+				
+			for(int i=0; i<fp->size(); i++) {
+				if (fp->isActive(i)) {
+					Vec3 pos = (*fp)[i].pos;
+					Vec3 vel = (*fp)[i].vel;
+				
+					if (pos[dim] >= plane && pos[dim] <= plane + 1.0f) {
+						glColor3f(0,0.5,1);
+						glVertex(pos, dx);
+						glColor3f(0,1,1);
+						glVertex(pos + vel * scale, dx);                    
+					}
+				}
+			}   
+			glEnd();
+		}
             
-        for(int i=0; i<fp->size(); i++) {
-            if (fp->isActive(i)) {
-                Vec3 pos = (*fp)[i].pos;
-                Vec3 vel = (*fp)[i].vel;
-            
-                if (pos[dim] >= plane && pos[dim] <= plane + 1.0f) {
-                    glVertex(pos, dx);
-                    glVertex(pos + vel * scale, dx);                    
-                }
-            }
-        }   
-        glEnd();
-        glPointSize(1.0);
-        glBegin(GL_POINTS);
-            
-        for(int i=0; i<fp->size(); i++) {
-            if (fp->isActive(i)) {
-                Vec3 pos = (*fp)[i].pos;
-                if (pos[dim] >= plane && pos[dim] <= plane + 1.0f)
-                    glVertex(pos, dx);
-            }
-        }   
-        glEnd();
+		if (1) { // always draw the origin, even in velocity mode
+			glColor3f(0.2,1,1);
+			glPointSize(1.0);
+			glBegin(GL_POINTS);
+			for(int i=0; i<fp->size(); i++) {
+				if (fp->isActive(i)) {
+					Vec3 pos = (*fp)[i].pos;
+					if (pos[dim] >= plane && pos[dim] <= plane + 1.0f)
+						glVertex(pos, dx);
+				}
+			}   
+			glEnd();
+		}
     } else if (mLocal->getType() == ParticleBase::FILAMENT) {
         VortexFilamentSystem* fp = (VortexFilamentSystem*) mLocal;
         glColor3f(1,1,0);

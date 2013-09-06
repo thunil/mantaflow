@@ -28,6 +28,8 @@ public:
     
     void paint();
     void attachWidget(QLayout* layout);
+
+	enum PaintModes { PaintOff=0, PaintPos=1, PaintVel=2 };
     
 protected:
     std::string getID();
@@ -38,7 +40,7 @@ protected:
     GridPainter<int>* mGridRef;
     ParticleBase* mLocal;
     QLabel* mInfo;
-    bool mHide;    
+    int mMode;    
 };    
     
 } // namespace

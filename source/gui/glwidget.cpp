@@ -29,6 +29,7 @@ GLWidget::GLWidget(QWidget* p): QGLWidget(QGLFormat(QGL::SampleBuffers), p), mRo
     mCamPos = Vec3(0, 0, -2);
     for (int i=0; i<MoveDirNum; i++) 
         mMoveState[i] = false;
+	mMoveFast = false;
     
     setAutoBufferSwap(true);
     setFocusPolicy(Qt::ClickFocus);
@@ -152,15 +153,17 @@ void GLWidget::wheelEvent(QWheelEvent* e)
 
 void GLWidget::timerEvent(QTimerEvent* e)
 {
-    const float speed = 0.005f;
     bool doRepaint = false;
+
+    float speed = 0.005f;
+	if (mMoveFast) speed *= 5.;
     
-    if (mMoveState[MoveLeft]) { mCamPos.x += speed; doRepaint = true; }
+    if (mMoveState[MoveLeft])  { mCamPos.x += speed; doRepaint = true; }
     if (mMoveState[MoveRight]) { mCamPos.x -= speed; doRepaint = true; }
-    if (mMoveState[MoveUp]) { mCamPos.y -= speed; doRepaint = true; }
-    if (mMoveState[MoveDown]) { mCamPos.y += speed; doRepaint = true; }
-    if (mMoveState[MoveOut]) { mCamPos.z -= speed; doRepaint = true; }
-    if (mMoveState[MoveIn]) { mCamPos.z += speed; doRepaint = true; }
+    if (mMoveState[MoveUp])    { mCamPos.y -= speed; doRepaint = true; }
+    if (mMoveState[MoveDown])  { mCamPos.y += speed; doRepaint = true; }
+    if (mMoveState[MoveOut])   { mCamPos.z -= speed; doRepaint = true; }
+    if (mMoveState[MoveIn])    { mCamPos.z += speed; doRepaint = true; }
     if (doRepaint) 
         updateGL();
 }
@@ -203,16 +206,16 @@ void GLWidget::keyReleaseEvent(QKeyEvent* e)
 
 bool GLWidget::keyProcess(int key, int modifier, bool down) 
 {
-    if      (key == Qt::Key_A) mMoveState[MoveLeft]  = down;
-    else if (key == Qt::Key_D) mMoveState[MoveRight] = down;
-    else if (key == Qt::Key_W) mMoveState[MoveIn]    = down;
-    else if (key == Qt::Key_S) mMoveState[MoveOut]   = down;
-    else if (key == Qt::Key_Q) mMoveState[MoveUp]    = down;
-    else if (key == Qt::Key_E) mMoveState[MoveDown]  = down;
+	bool shift = (modifier & Qt::ShiftModifier);
+    if      (key == Qt::Key_A) { mMoveState[MoveLeft]  = down; mMoveFast = shift; }
+    else if (key == Qt::Key_D) { mMoveState[MoveRight] = down; mMoveFast = shift; }
+    else if (key == Qt::Key_W) { mMoveState[MoveIn]    = down; mMoveFast = shift; }
+    else if (key == Qt::Key_S) { mMoveState[MoveOut]   = down; mMoveFast = shift; }
+    else if (key == Qt::Key_Q) { mMoveState[MoveUp]    = down; mMoveFast = shift; }
+    else if (key == Qt::Key_E) { mMoveState[MoveDown]  = down; mMoveFast = shift; }
     else if (down) 
 	{
         // only press events
-        bool shift = (modifier & Qt::ShiftModifier);
 		if      (key == Qt::Key_Z && shift)         { emit painterEvent(Painter::EventNextInt);  updatePlane(mPlane); }
 		else if (key == Qt::Key_Z)                  { emit painterEvent(Painter::EventNextReal); updatePlane(mPlane); }
 		else if (key == Qt::Key_X)                  { emit painterEvent(Painter::EventNextVec);  updatePlane(mPlane); }

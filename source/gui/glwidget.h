@@ -57,6 +57,7 @@ protected:
     enum MoveDir { None = 0, MoveLeft, MoveRight, MoveUp, MoveDown, MoveIn, MoveOut, MoveDirNum };
     
     bool mMoveState[MoveDirNum];
+	bool mMoveFast;
     QPoint mAnchor, mDownPos;
     Vec3 mCamPos;
     float mRotX, mRotY;
