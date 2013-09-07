@@ -214,6 +214,36 @@ template<class T> void Grid<T>::add(const Grid<T>& a, const Grid<T>& b) {
     gridAdd2<T>(*this, a, b);
 }
 
+// compute maximal diference of two cells in the grid
+// used for testing
+PYTHON Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2 )
+{
+	double maxVal = 0.;
+    FOR_IJK(g1) {
+		maxVal = std::max(maxVal, (double)fabs( g1(i,j,k)-g2(i,j,k) ));
+	}
+	return maxVal; 
+}
+PYTHON Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
+{
+	double maxVal = 0.;
+    FOR_IJK(g1) {
+		maxVal = std::max(maxVal, (double)fabs( norm(g1(i,j,k)-g2(i,j,k)) ));
+	}
+	return maxVal; 
+}
+PYTHON void setConstant(Grid<Real>& grid, Real value=0.) {
+    FOR_IJK(grid) {
+		grid(i,j,k) = value;
+	}
+}
+PYTHON void setConstantVec3(Grid<Vec3>& grid, Vec3 value=0.) {
+    FOR_IJK(grid) {
+		grid(i,j,k) = value;
+	}
+}
+
+
 //******************************************************************************
 // Specialization classes
 

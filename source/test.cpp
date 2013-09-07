@@ -129,5 +129,5 @@ PYTHON void setinflow(FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Real h) 
     }
 }
     
-
 } //namespace
+

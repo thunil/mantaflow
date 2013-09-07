@@ -26,7 +26,10 @@ class Error : public std::exception
 public:
    Error(const std::string& s) : mS(s) {
 #		ifdef DEBUG
-		*(int*)(0) = 1; // force crash in debug mode
+		// print error
+		std::cerr << "Aborting: "<< s <<" \n";
+		// then force immedieate crash in debug mode
+		*(int*)(0) = 1; 
 #		endif
    }
    virtual ~Error() throw() {}
