@@ -1,6 +1,13 @@
 #!/usr/bin/python
 #
 # Simple script to run all base tests
+# The test scripts are named test_XXXX_description.py
+# They are assumed to be in ascending order or complexity.
+#
+# Rough ordering:
+# 0xxx tests are very basic (mostly single operator calls)
+# 1xxx is for 2d sims
+# 2xxx for "real" 3d sims
 # 
 
 import os

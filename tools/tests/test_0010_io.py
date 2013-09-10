@@ -9,14 +9,8 @@ from helperInclude import *
 gs  = vec3(10, 20, 30)
 s   = Solver(name='main', gridSize = gs, dim=3)
 
-# flags not needed for now
-#flags   = s.create(FlagGrid)
-#flags.initDomain()
-#flags.fillGrid()
-
 
 # prepare grids
-
 density = s.create(RealGrid)
 vel     = s.create(MACGrid)
 

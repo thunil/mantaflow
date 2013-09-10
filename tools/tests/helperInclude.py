@@ -14,13 +14,25 @@ def referenceFilename( file, gridname ):
 	return file +"_"+ gridname + "_ref.uni" 
 
 
-def checkResult( name, result , thresh ):
+def checkResult( name, result , thresh, invertResult=False ):
 	print ("Checking '%s', result=%f , thresh=%f" % ( name , result , thresh) )
 
 	if ( ( result > 0) and (result < 1e-04) ):
 		print ("Debug, small difference: scaled output %f" % ( result * 100000.0 ) ) # debugging...
 
+	allGood = 0
 	if ( result <= thresh) :
+		allGood = 1
+
+	# for checks that should fail
+	if ( invertResult == True) :
+		if ( allGood == 0) :
+			allGood = 1
+		else:
+			allGood = 0
+
+	# now react on outcome...
+	if ( allGood == 1 ):
 		print "OK! Results for "+name+" match..."
 		return 0
 	else:
@@ -37,7 +49,7 @@ def getGenRefFileSetting( ):
 
 # note, typeId encode what type of grid we have - 
 # 
-def doTestGrid( file , name, solver , grid, threshold=1e-10  ):
+def doTestGrid( file , name, solver , grid, threshold=1e-10, invertResult=False  ):
 
 	# handle grid types that need conversion
 	#print "doTestGrid, incoming grid type :" + type(grid).__name__
@@ -82,42 +94,8 @@ def doTestGrid( file , name, solver , grid, threshold=1e-10  ):
 			errVal = gridMaxDiffVec3( grid, compareTmpGrid )
 
 		# finally, compare max error to allowed threshold, and return result
-		return checkResult( name, errVal , threshold )
+		return checkResult( name, errVal , threshold , invertResult )
 
-
-
-def _doTestReal( file , name, solver , grid, threshold=1e-10  ):
-	# create temp grid
-	tmp = solver.create(RealGrid)
-
-	genRefFiles = getGenRefFileSetting()
-	if (genRefFiles==1):
-		#grid.save( outputFilename( file, name ) )
-		#shutil.copyfile( outputFilename( file, name ) , referenceFilename( file, name ) )
-		grid.save( referenceFilename( file, name ) )
-		print "OK! Generated reference file '" + referenceFilename( file, name ) + "'"
-		return 0
-	else:
-		tmp.load( referenceFilename( file, name ) )
-		errVal = gridMaxDiff( grid, tmp )
-		return checkResult( name, errVal , threshold )
-
-
-def _doTestVec3( file , name, solver , grid , threshold=1e-10 ): 
-	# create temp grid , we need a different type here!
-	tmp = solver.create(MACGrid)
-
-	genRefFiles = getGenRefFileSetting()
-	if (genRefFiles==1):
-		#grid.save( outputFilename( file, name ) )
-		#shutil.copyfile( outputFilename( file, name ) , referenceFilename( file, name ) )
-		grid.save( referenceFilename( file, name ) )
-		print "OK! Generated reference file '" + referenceFilename( file, name ) + "'"
-		return 0
-	else:
-		tmp.load( referenceFilename( file, name ) )
-		errVal = gridMaxDiffVec3( grid, tmp )
-		return checkResult( name, errVal , threshold )
 
 
 
