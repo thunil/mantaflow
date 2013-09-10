@@ -12,6 +12,7 @@
  ******************************************************************************/
 
 #include "flip.h"
+#include "levelset.h"
 
 using namespace std;
 namespace Manta {
@@ -85,7 +86,9 @@ void FlipSystem::initialize(FlagGrid& flags, int discretization, Real randomness
 }
 
 
-void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, int maxParticles) {
+void FlipSystem::adjustNumber( MACGrid& vel, FlagGrid& flags, int minParticles, int maxParticles, LevelsetGrid* phi ) 
+{
+	const Real SURFACE_LS = -1.5; // which levelset to use as threshold
     Grid<int> tmp(mParent);
     
     // count particles in cells, and delete excess particles
@@ -93,11 +96,14 @@ void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, i
         if (isActive(i)) {
             Vec3i p = toVec3i(mData[i].pos);
             int num = tmp(p);
+
+			bool atSurface = false;
+			if( phi && (phi->getInterpolated(mData[i].pos) > SURFACE_LS) ) atSurface = true;
             
             // dont delete particles in non fluid cells here, the particles are "always right"
-            if ( num > maxParticles)
+            if ( num > maxParticles && (!atSurface) ) {
                 mData[i].flag |= PDELETE;
-            else
+			} else
                 tmp(p) = num+1;
         }
     }
@@ -107,6 +113,10 @@ void FlipSystem::adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles, i
     // seed new particles
     FOR_IJK(tmp) {
         int cnt = tmp(i,j,k);
+		
+		// skip surface
+		if( phi && ((*phi)(i,j,k) > SURFACE_LS) ) continue;
+
         if (flags.isFluid(i,j,k) && cnt < minParticles) {
             for (int m=cnt; m < minParticles; m++) { 
                 Vec3 rndPos (i + mRand.getReal(), j + mRand.getReal(), k + mRand.getReal());
@@ -142,63 +152,34 @@ ParticleBase* FlipSystem::clone() {
 }
 
 
-// add simple extrapolation step
-PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4) {
-    Grid<int> tmp(flags);
-	int dim = (flags.is3D() ? 3:2);
-	Vec3i nb[6] = { 
-		Vec3i(1 ,0,0), Vec3i(-1,0,0),
-		Vec3i(0,1 ,0), Vec3i(0,-1,0),
-		Vec3i(0,0,1 ), Vec3i(0,0,-1) };
+// compute simple levelset without interpolation (fast, low quality), to be used during simulation
+KERNEL(pts, single) 
+void ComputeUnionLevelset(FlipSystem& p, LevelsetGrid& phi, Real radius=1.) {
+    if (!p.isActive(i)) return;
 
-	for(int c=0; c<dim; ++c) {
-		Vec3i dir = 0;
-		dir[c] = 1;
-		tmp.clear();
+	const Vec3 pos = p[i].pos - Vec3(0.5); // offset for centered LS value
+	const Vec3i size = phi.getSize();
+    const int xi = (int)pos.x, yi = (int)pos.y, zi = (int)pos.z; 
 
-		// remove all fluid cells
-		FOR_IJK_BND(flags,1) {
-			Vec3i p(i,j,k);
-			if (flags.isFluid(p) || flags.isFluid(p-dir) ) {
-				tmp(p) = 1;
-			}
-		}
-
-		// debug init! , enable for testing only...
-		/*FOR_IJK_BND(flags,1) {
-			if (tmp(i,j,k) == 0) continue;
-			vel(i,j,k)[c] = (i+j+k+c+1.)*0.1;
-		}*/
-		
-		// extrapolate for distance
-		for(int d=1; d<1+distance; ++d) {
-
-			FOR_IJK_BND(flags,1) {
-				if (tmp(i,j,k) != 0) continue;
-
-				// copy from initialized neighbors
-				Vec3i p(i,j,k);
-				int nbs = 0;
-				Real avgVel = 0.;
-				for (int n=0; n<2*dim; ++n) {
-					if (tmp(p+nb[n]) == d) {
-						//vel(p)[c] = (c+1.)*0.1;
-						avgVel += vel(p+nb[n])[c];
-						nbs++;
-					}
-				}
-
-				if(nbs>0) {
-					tmp(p)    = d+1;
-					vel(p)[c] = avgVel / nbs;
-				}
-			}
-
-		} // d
-
+	int radiusInt  = int(2. * radius) + 1;
+	int radiusIntZ = phi.is3D() ? radiusInt : 0;
+	for(int zj=zi-radiusIntZ; zj<=zi+radiusIntZ; zj++) 
+	for(int yj=yi-radiusInt ; yj<=yi+radiusInt ; yj++) 
+	for(int xj=xi-radiusInt ; xj<=xi+radiusInt ; xj++) 
+	{
+		if (! phi.isInBounds(Vec3i(xj,yj,zj)) ) continue;
+		phi(xj,yj,zj) = std::min( phi(xj,yj,zj) , fabs( norm(Vec3(xj,yj,zj)-pos) )-radius );
 	}
 }
+PYTHON void unionParticleLevelset (FlipSystem& p, LevelsetGrid& phi, Real radiusFactor=1.) {
+	// make sure we cover at least 1 cell by default (1% safety margin)
+	Real radius = 0.5 * (phi.is3D() ? sqrt(3.) : sqrt(2.) ) * (radiusFactor+.01);
 
-
+	// reset
+	FOR_IJK(phi) {
+		phi(i,j,k) = radius + VECTOR_EPSILON;
+	} 
+	ComputeUnionLevelset(p, phi, radius);
+}
 
 } // namespace

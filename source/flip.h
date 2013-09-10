@@ -19,6 +19,8 @@
 #include "randomstream.h"
 
 namespace Manta {
+
+class LevelsetGrid;
     
 struct FlipData {
     FlipData() : pos(_0),vel(_0),flag(0) {}
@@ -38,7 +40,7 @@ public:
 	//! Write back velocities to grid
     PYTHON void velocitiesToGrid(FlagGrid& flags, MACGrid& vel);
 	//! Ensure minimum/maximum number of particles per cell
-    PYTHON void adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles=8, int maxParticles=12);
+    PYTHON void adjustNumber(MACGrid& vel, FlagGrid& flags, int minParticles=8, int maxParticles=12, LevelsetGrid* phi=NULL );
     //! Mark cells with particles as fluid, otherwise empty
     PYTHON void markFluidCells(FlagGrid& flags);
     //! Initialize grid of particles + jitter. No surface alignment yet

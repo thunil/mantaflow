@@ -60,6 +60,6 @@ for t in range(2500):
     # FLIP velocity update
     flip.velocitiesFromGrid(vel=vel, flags=flags, flipRatio=0.97)
     
-    #gui.screenshot( 'flipout_%04d.png' % t );
+    #gui.screenshot( 'flipt_2rk4_%04d.png' % t );
     s.step()
 

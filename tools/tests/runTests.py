@@ -9,6 +9,10 @@ import sys
 import re
 from subprocess import check_output
 
+# note - todo, right now this script assumes the test_X.py files are
+# in the current working directory... this should be changed at some 
+# point.
+
 # debugging, print outputs from all manta calls
 printAllOutpus = 0
 

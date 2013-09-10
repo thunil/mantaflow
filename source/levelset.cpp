@@ -133,7 +133,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
     marchIn.performMarching();     
     
     // set un initialized regions
-    SetUninitialized (fmFlags, phi, -maxTime); 
+    SetUninitialized (fmFlags, phi, -maxTime - 1.); 
     
     // done with inwards marching, now march out...    
     InitFmOut (flags, fmFlags, phi, ignoreWalls, obstacleType);
@@ -189,7 +189,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
     marchOut.performMarching();
     
     // set un initialized regions
-    SetUninitialized (fmFlags, phi, +maxTime);    
+    SetUninitialized (fmFlags, phi, +maxTime + 1.);    
     
 }
 
