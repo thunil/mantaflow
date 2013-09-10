@@ -214,6 +214,17 @@ template<class T> void Grid<T>::add(const Grid<T>& a, const Grid<T>& b) {
     gridAdd2<T>(*this, a, b);
 }
 
+PYTHON void setConstant(Grid<Real>& grid, Real value=0.) {
+    FOR_IJK(grid) {
+		grid(i,j,k) = value;
+	}
+}
+PYTHON void setConstantVec3(Grid<Vec3>& grid, Vec3 value=0.) {
+    FOR_IJK(grid) {
+		grid(i,j,k) = value;
+	}
+}
+
 // compute maximal diference of two cells in the grid
 // used for testing
 PYTHON Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2 )
@@ -232,14 +243,19 @@ PYTHON Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
 	}
 	return maxVal; 
 }
-PYTHON void setConstant(Grid<Real>& grid, Real value=0.) {
-    FOR_IJK(grid) {
-		grid(i,j,k) = value;
+
+// simple helper functions to convert mac to vec3 , and levelset to real grids
+PYTHON void convertMacToVec3 (MACGrid &source, Grid<Vec3>& target)
+{
+    FOR_IJK(target) {
+		target(i,j,k) = source(i,j,k);
 	}
 }
-PYTHON void setConstantVec3(Grid<Vec3>& grid, Vec3 value=0.) {
-    FOR_IJK(grid) {
-		grid(i,j,k) = value;
+
+PYTHON void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
+{
+    FOR_IJK(target) {
+		target(i,j,k) = source(i,j,k);
 	}
 }
 

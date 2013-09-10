@@ -22,6 +22,11 @@ print "Using mantaflow executable '" + manta + "' "
 files = os.popen("ls test_????_*.py").read() 
 #print files
 
+genRefFiles = int(os.getenv('MANTA_GEN_TEST_DATA', 0))
+if (genRefFiles==1):
+	print "\nNote - generating test data for all tests!"
+	print "Tests results will not be evaluated...\n"
+
 num = 0
 numOks = 0
 numFail = 0
@@ -51,15 +56,21 @@ for file in files:
 		print
 
 
+if (genRefFiles==1):
+	print "Test data generated"
+	exit(0)
+
 print
-print "Test summary, " +str(num) + " runs , " + str(numOks) + " passed, " + str(numFail) + " failed "
+print "Test summary, " +str(num) + " runs, " + str(numOks) + " passed, " + str(numFail) + " failed."
 
 if (numFail==0) and (numOks==0):
-	print "Failure, probably manta executable didnt work "
+	print "Failure! Perhaps manta executable didnt work, or runTests not called in test directory \n"
+	exit(1)
 elif (numFail==0) and (numOks>0):
-	print "All good :) "
+	print "All good :) \n"
+	exit(0)
 else:
-	print "Some tests failed :( "
+	print "Some tests failed :( \n"
+	exit(2)
 
-print
 

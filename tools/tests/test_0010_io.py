@@ -25,7 +25,7 @@ setConstant    ( density, 0.123 )
 setConstantVec3( vel    , vec3(0.1, 0.2, 0.3) )
 
 # verify
-doTestReal( __file__,"dens" , s, density  )
-doTestVec3( __file__,"vel"  , s, vel      )
+doTestGrid( __file__,"dens" , s, density  )
+doTestGrid( __file__,"vel"  , s, vel      )
 
 
