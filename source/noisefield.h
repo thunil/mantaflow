@@ -38,7 +38,7 @@ class WaveletNoiseField : public PbClass {
         inline Vec3 evaluateCurl(Vec3 pos);
 
         //! direct data access
-        float* data() { return mNoiseTile; }
+        Real* data() { return mNoiseTile; }
         
         //! compute wavelet decomposition of an input grid (stores residual coefficients)
         static void computeCoefficients(Grid<Real>& input, Grid<Real>& tempIn1, Grid<Real>& tempIn2);
@@ -61,17 +61,17 @@ class WaveletNoiseField : public PbClass {
         
     protected:
         // noise evaluation functions
-        static inline float WNoiseDx (const Vec3& p, float *data);
-        static inline Vec3  WNoiseVec(const Vec3& p, float *data);
-        static inline float WNoise   (const Vec3& p, float *data);
+        static inline Real WNoiseDx (const Vec3& p, Real *data);
+        static inline Vec3  WNoiseVec(const Vec3& p, Real *data);
+        static inline Real WNoise   (const Vec3& p, Real *data);
 
         // helpers for tile generation , for periodic 128 grids only
-        static void downsample(float *from, float *to, int n, int stride);
-        static void upsample  (float *from, float *to, int n, int stride);
+        static void downsample(Real *from, Real *to, int n, int stride);
+        static void upsample  (Real *from, Real *to, int n, int stride);
 
         // for grids with arbitrary sizes, and neumann boundary conditions
-        static void downsampleNeumann(const float *from, float *to, int n, int stride);
-        static void upsampleNeumann   (const float *from, float *to, int n, int stride);
+        static void downsampleNeumann(const Real *from, Real *to, int n, int stride);
+        static void upsampleNeumann   (const Real *from, Real *to, int n, int stride);
 
         static inline int modSlow(int x, int n) { int m = x % n; return (m<0) ? m+n : m; }
         // warning - noiseTileSize has to be 128^3!
@@ -111,8 +111,8 @@ class WaveletNoiseField : public PbClass {
 //////////////////////////////////////////////////////////////////////////////////////////
 // derivatives of 3D noise - unrolled for performance
 //////////////////////////////////////////////////////////////////////////////////////////
-inline float WaveletNoiseField::WNoiseDx(const Vec3& p, float *data) {
-    float w[3][3], t, result = 0;
+inline Real WaveletNoiseField::WNoiseDx(const Vec3& p, Real *data) {
+    Real w[3][3], t, result = 0;
 
     // Evaluate quadratic B-spline basis functions
     int midX = (int)ceil(p[0] - 0.5f); 
@@ -135,7 +135,7 @@ inline float WaveletNoiseField::WNoiseDx(const Vec3& p, float *data) {
 
     // Evaluate noise by weighting noise coefficients by basis function values
     int xC, yC, zC;
-    float weight = 1;
+    Real weight = 1;
 
     ADD_WEIGHTED(-1,-1, -1); ADD_WEIGHTED( 0,-1, -1); ADD_WEIGHTED( 1,-1, -1);
     ADD_WEIGHTED(-1, 0, -1); ADD_WEIGHTED( 0, 0, -1); ADD_WEIGHTED( 1, 0, -1);
@@ -152,8 +152,8 @@ inline float WaveletNoiseField::WNoiseDx(const Vec3& p, float *data) {
     return result;
 }
 
-inline float WaveletNoiseField::WNoise(const Vec3& p, float *data) {
-    float w[3][3], t, result = 0;
+inline Real WaveletNoiseField::WNoise(const Vec3& p, Real *data) {
+    Real w[3][3], t, result = 0;
 
     // Evaluate quadratic B-spline basis functions
     int midX = (int)ceilf(p[0] - 0.5f); 
@@ -176,7 +176,7 @@ inline float WaveletNoiseField::WNoise(const Vec3& p, float *data) {
 
     // Evaluate noise by weighting noise coefficients by basis function values
     int xC, yC, zC;
-    float weight = 1;
+    Real weight = 1;
 
     ADD_WEIGHTED(-1,-1, -1); ADD_WEIGHTED( 0,-1, -1); ADD_WEIGHTED( 1,-1, -1);
     ADD_WEIGHTED(-1, 0, -1); ADD_WEIGHTED( 0, 0, -1); ADD_WEIGHTED( 1, 0, -1);
@@ -210,25 +210,25 @@ inline float WaveletNoiseField::WNoise(const Vec3& p, float *data) {
 //////////////////////////////////////////////////////////////////////////////////////////
 // compute all derivatives in at once
 //////////////////////////////////////////////////////////////////////////////////////////
-inline Vec3 WaveletNoiseField::WNoiseVec(const Vec3& p, float *data)
+inline Vec3 WaveletNoiseField::WNoiseVec(const Vec3& p, Real *data)
 {
     Vec3 final(0.);
-    float w[3][3];
-    float dw[3][3];
-    float result = 0;
+    Real w[3][3];
+    Real dw[3][3];
+    Real result = 0;
     int xC, yC, zC;
-    float weight;
+    Real weight;
 
     int midX = (int)ceil(p[0] - 0.5f); 
     int midY = (int)ceil(p[1] - 0.5f); 
     int midZ = (int)ceil(p[2] - 0.5f);
 
-    float t0 =   midX - (p[0] - 0.5f);
-    float t1 =   midY - (p[1] - 0.5f);
-    float t2 =   midZ - (p[2] - 0.5f);
+    Real t0 =   midX - (p[0] - 0.5f);
+    Real t1 =   midY - (p[1] - 0.5f);
+    Real t2 =   midZ - (p[2] - 0.5f);
 
     // precache all the neighbors for fast access
-    float neighbors[3][3][3];
+    Real neighbors[3][3][3];
     for (int z = -1; z <=1; z++)
         for (int y = -1; y <= 1; y++)
             for (int x = -1; x <= 1; x++)

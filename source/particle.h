@@ -29,8 +29,9 @@ public:
     enum SystemType { BASE=0, PARTICLE, VELPART, VORTEX, FILAMENT, FLIP, TRACER, TURBULENCE };
     enum ParticleType {
         PNONE         = 0,
+        PNEW          = (1<<1),  // particles newly created in this step
         PDELETE       = (1<<10), // mark as deleted, will be deleted in next compress() step
-        PINVALID     = (1<<30), // unused
+        PINVALID      = (1<<30), // unused
     };
     
     PYTHON ParticleBase(FluidSolver* parent) : PbClass(parent) {}
@@ -56,7 +57,7 @@ public:
     PYTHON inline int size() const { return mData.size(); }
     std::vector<S>& getData() { return mData; }
     
-    // adding and deleting
+    // adding and deleting 
     inline void kill(int i) { mData[i].flag |= PDELETE; if (++mDeletes > mDeleteChunk) compress(); }
     inline bool isActive(int i) { return (mData[i].flag & PDELETE) == 0; }    
     int add(const S& data);

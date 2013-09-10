@@ -245,6 +245,7 @@ PYTHON Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
 }
 
 // simple helper functions to convert mac to vec3 , and levelset to real grids
+// (are assumed to be the same for running the test cases - in general they're not!)
 PYTHON void convertMacToVec3 (MACGrid &source, Grid<Vec3>& target)
 {
     FOR_IJK(target) {

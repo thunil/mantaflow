@@ -41,6 +41,7 @@ OPTION(TBB "Use multi-thread kernels using Intels TBB" OFF)
 OPTION(OPENMP "Use multi-thread kernels using OpenMP" OFF)
 OPTION(CUDA "Compile with CUDA plugins" OFF)
 OPTION(PREPDEBUG "Debug generated files" OFF) # This will beautify generated files, and link to them for compiler errors instead of the original sources
+OPTION(DOUBLEPRECISION "Compile with double floating point precision" OFF)
 
 #check consistency of MT options
 set(MT OFF)
@@ -78,6 +79,7 @@ MESSAGE(STATUS "Options - "
     " -DPREPDEBUG='${PREPDEBUG}' "
     " -DCUDA='${CUDA}' "
     )
+# done print: " -DDOUBLEPRECISION='${DOUBLEPRECISION}' "
 MESSAGE(STATUS "Multithreading type : ${MT_TYPE}")
 MESSAGE(STATUS "")
 
@@ -335,6 +337,11 @@ if(CUDA)
              set(CUDA_NVCC_FLAGS --pre-include;/usr/local/include/undef_atomics_int128.h;--use_fast_math;-DNDEBUG;--compiler-options;-Wall;-O3)       
         endif()    
     endif()  
+endif()
+
+# increase FP precision?
+if(DOUBLEPRECISION)
+    add_definitions(-DFLOATINGPOINT_PRECISION=2)
 endif()
 
 #******************************************************************************

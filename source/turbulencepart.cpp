@@ -118,9 +118,9 @@ void TurbulenceParticleSystem::synthesize(FlagGrid& flags, Grid<Real>& k, int oc
     inflow += inflowBias * dt;
     
     // alpha: hat function over time
-    Real oldAlpha = 2.0f*nmod(ctime/switchLength, 1.0f);        
+    Real oldAlpha = 2.0f*nmod(ctime/switchLength, Real(1.0) ); 
     ctime += dt;
-    Real alpha = 2.0f*nmod(ctime/switchLength, 1.0f);
+    Real alpha = 2.0f*nmod(ctime/switchLength, Real(1.0) );
     
     if (oldAlpha < 1.0f && alpha >= 1.0f) resetTexCoords(0, inflow);
     if (oldAlpha > alpha) resetTexCoords(1, inflow);
