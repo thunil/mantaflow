@@ -182,4 +182,57 @@ PYTHON void unionParticleLevelset (FlipSystem& p, LevelsetGrid& phi, Real radius
 	ComputeUnionLevelset(p, phi, radius);
 }
 
+
+// ----
+
+
+PbClass* FlipSystem::create(PbType t, const string& name) {        
+    _args.add("nocheck",true);
+    if (t.str == "")
+        errMsg("Specify particle data type to create");
+    
+    PbClass* pyObj = PbClass::createPyObject(t.str, name, _args, this->getParent() );
+
+	ParticleDataBase* pdata = dynamic_cast<ParticleDataBase*>(pyObj);
+	if(!pdata) {
+		errMsg("Unable to get particle data pointer from newly created object. Only create ParticleData type with a flipSystem.creat() call, eg, PdataReal, PdataVec3 etc.");
+		delete pyObj;
+		return NULL;
+	} else {
+		pdata->setParticleSys(this);
+		mPartData.push_back(pdata);
+		debMsg("ok! " << pdata->size() , 1);
+	}
+
+	return pyObj;
+}
+
+ParticleDataBase::ParticleDataBase(FluidSolver* parent) : 
+		PbClass(parent) , mpParticleSys(NULL) {
+};
+
+template<class T>
+ParticleDataImpl<T>::ParticleDataImpl(FluidSolver* parent) : ParticleDataBase(parent) {
+}
+
+template<class T>
+ParticleDataImpl<T>::~ParticleDataImpl() {
+}
+
+template<class T>
+int  ParticleDataImpl<T>::size() {
+	return mData.size();
+}
+template<class T>
+void ParticleDataImpl<T>::add() {
+}
+template<class T>
+void ParticleDataImpl<T>::kill(int i) {
+}
+
+// explicit instantiation
+template class ParticleDataImpl<int>;
+template class ParticleDataImpl<Real>;
+template class ParticleDataImpl<Vec3>;
+
 } // namespace
