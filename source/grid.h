@@ -83,9 +83,12 @@ protected:
 PYTHON template<class T>
 class Grid : public GridBase {
 public:
+	//! init new grid, values are set to zero
     PYTHON Grid(FluidSolver* parent, bool show = true);
-    virtual ~Grid();
+	//! create new & copy content from another grid
     Grid(const Grid<T>& a);
+	//! return memory to solver
+    virtual ~Grid();
     
     typedef T BASETYPE;
     
@@ -160,7 +163,8 @@ PYTHON alias Grid<Vec3> VecGrid;
 //! Special function for staggered grids
 PYTHON class MACGrid : public Grid<Vec3> {
 public:
-    PYTHON MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { mType = (GridType)(TypeMAC | TypeVec3); }
+    PYTHON MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { 
+		mType = (GridType)(TypeMAC | TypeVec3); }
     
     // specialized functions for interpolating MAC information
     inline Vec3 getCentered(int i, int j, int k) const;
@@ -178,7 +182,8 @@ protected:
 //! Special functions for FlagGrid
 PYTHON class FlagGrid : public Grid<int> {
 public:
-    PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show) { mType = (GridType)(TypeFlags | TypeInt); }
+    PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show) { 
+		mType = (GridType)(TypeFlags | TypeInt); }
     
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
     enum CellType { 

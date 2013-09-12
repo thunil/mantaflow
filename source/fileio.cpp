@@ -179,6 +179,19 @@ void readObjFile(const std::string& name, Mesh* mesh, bool append) {
 }
 
 template<class T>
+void writeGridTxt(const string& name, Grid<T>* grid) {
+    cout << "writing grid " << grid->getName() << " to text file " << name << endl;
+
+    ofstream ofs(name.c_str());
+    if (!ofs.good())
+        errMsg("can't open file!");
+	FOR_IJK(*grid) {
+		ofs << Vec3i(i,j,k) <<" = "<< (*grid)(i,j,k) <<"\n";
+	}
+    ofs.close();
+}
+
+template<class T>
 void writeGridRaw(const string& name, Grid<T>* grid) {
     cout << "writing grid " << grid->getName() << " to raw file " << name << endl;
     
@@ -339,6 +352,9 @@ template void writeGridUni<Real>(const string& name, Grid<Real>* grid);
 template void writeGridUni<Vec3>(const string& name, Grid<Vec3>* grid);
 template void writeGridVol<int>(const string& name, Grid<int>* grid);
 template void writeGridVol<Vec3>(const string& name, Grid<Vec3>* grid);
+template void writeGridTxt<int>(const string& name, Grid<int>* grid);
+template void writeGridTxt<Real>(const string& name, Grid<Real>* grid);
+template void writeGridTxt<Vec3>(const string& name, Grid<Vec3>* grid);
 template void readGridRaw<int>(const string& name, Grid<int>* grid);
 template void readGridRaw<Real>(const string& name, Grid<Real>* grid);
 template void readGridRaw<Vec3>(const string& name, Grid<Vec3>* grid);

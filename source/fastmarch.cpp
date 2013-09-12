@@ -220,7 +220,7 @@ template class FastMarch<FmHeapEntryOut, +1>;
 // a simple extrapolation step , used for cases where there's on levelset
 // (note, less accurate than fast marching extrapolation!)
 PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4) {
-    Grid<int> tmp(flags);
+    Grid<int> tmp( flags.getParent() );
 	int dim = (flags.is3D() ? 3:2);
 	Vec3i nb[6] = { 
 		Vec3i(1 ,0,0), Vec3i(-1,0,0),

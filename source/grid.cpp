@@ -37,9 +37,9 @@ GridBase::GridBase (FluidSolver* parent)
 
 // helpers to set type
 template<class T> inline GridBase::GridType typeList() { return GridBase::TypeNone; }
-template<> inline GridBase::GridType typeList<Real>() { return GridBase::TypeReal; }
-template<> inline GridBase::GridType typeList<int>() { return GridBase::TypeInt; }
-template<> inline GridBase::GridType typeList<Vec3>() { return GridBase::TypeVec3; }
+template<> inline GridBase::GridType typeList<Real>()  { return GridBase::TypeReal; }
+template<> inline GridBase::GridType typeList<int>()   { return GridBase::TypeInt;  }
+template<> inline GridBase::GridType typeList<Vec3>()  { return GridBase::TypeVec3; }
 
 template<class T>
 Grid<T>::Grid(FluidSolver* parent, bool show)
@@ -110,6 +110,8 @@ void Grid<T>::save(string name) {
 		writeGridUni(name, this);
 	else if (ext == ".vol")
 		writeGridVol(name, this);
+	else if (ext == ".txt")
+		writeGridTxt(name, this);
     else
         errMsg("file '" + name +"' filetype not supported");
 }

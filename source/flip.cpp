@@ -53,11 +53,11 @@ void FlipSystem::velocitiesFromGrid(FlagGrid& flags, MACGrid& vel, Real flipRati
 void FlipSystem::velocitiesToGrid(FlagGrid& flags, MACGrid& vel) {
     //assertMsg(vel.is3D(), "Only 3D grids supported so far");
     
-    // interpol -> grid. tmpgrid for counting
+    // interpol -> grid. tmpgrid for particle contribution weights
     Grid<Vec3> tmp(mParent);
     vel.clear();
     CopyVelocitiesToGrid(*this, flags, vel, tmp);
-	// NT_DEBUG, note - stomp small values in tmp to zero? use Real grid?
+	// NT_DEBUG, note - stomp small values in tmp to zero? 
     vel.safeDivide(tmp);
     
     // store diff
@@ -187,86 +187,10 @@ ParticleBase* FlipSystem::clone() {
 // ----
 FlipSystem::~FlipSystem() { };
 
-/*
-FlipSystem::~FlipSystem()
-{
-	// make sure data fields now parent system is deleted
-	for(int i=0; i<(int)mPartData.size(); ++i)
-		mPartData[i]->setParticleSys(NULL);
-	
-}
-
-
-PbClass* FlipSystem::create(PbType t, const string& name) {        
-    _args.add("nocheck",true);
-    if (t.str == "")
-        errMsg("Specify particle data type to create");
-    
-    PbClass* pyObj = PbClass::createPyObject(t.str, name, _args, this->getParent() );
-
-	ParticleDataBase* pdata = dynamic_cast<ParticleDataBase*>(pyObj);
-	if(!pdata) {
-		errMsg("Unable to get particle data pointer from newly created object. Only create ParticleData type with a flipSystem.creat() call, eg, PdataReal, PdataVec3 etc.");
-		delete pyObj;
-		return NULL;
-	} else {
-		this->addParticleData(pdata);
-	}
-
-	return pyObj;
-}
-
-void FlipSystem::addParticleData(ParticleDataBase* pdata) {
-	pdata->setParticleSys(this);
-	this->push_back(pdata);
-	debMsg("ok! " << pdata->size() <<" " , 1); // NT_DEBUG
-}
-
-ParticleDataBase::ParticleDataBase(FluidSolver* parent) : 
-		PbClass(parent) , mpParticleSys(NULL) {
-}
-
-ParticleDataBase::~ParticleDataBase()
-{
-	// notify parent of deletion 
-	if(mpParticleSys)
-		mpParticleSys->deregister(this);
-}
-
-template<class T>
-ParticleDataImpl<T>::ParticleDataImpl(FluidSolver* parent) : ParticleDataBase(parent) {
-}
-
-template<class T>
-ParticleDataImpl<T>::~ParticleDataImpl() {
-}
-
-template<class T>
-int ParticleDataImpl<T>::size() {
-	return mData.size();
-}
-template<class T>
-void ParticleDataImpl<T>::add() {
-	T tmp = 0;
-	return mData.push_back(tmp);
-}
-template<class T>
-void ParticleDataImpl<T>::kill(int i) {
-}
-template<class T>
-ParticleDataBase* ParticleDataImpl<T>::clone() {
-    ParticleDataImpl<T>* npd = new ParticleDataImpl<T>( getParent() );
-	return npd;
-}
-
-// explicit instantiation
-template class ParticleDataImpl<int>;
-template class ParticleDataImpl<Real>;
-template class ParticleDataImpl<Vec3>;
-*/
 
 //*****************************************************************************
 
+// NT_DEBUG , warning - duplicate functions for now, clean up at some point!
 
 // Set velocities on the grid from the particle system
 
@@ -275,28 +199,71 @@ void mapLinearVec3ToMACGrid( BasicParticleSystem& p, FlagGrid& flags, MACGrid& v
 	ParticleDataImpl<Vec3>& pvel ) 
 {
     unusedParameter(flags);
-    
     if (!p.isActive(i)) return;
-    
     vel.setInterpolated( p[i].pos, pvel[i], &tmp[0] );
-	//debMsg("v "<<pvel[i]<<", "<<i<<"/"<<pvel.size() , 1);
 }
 
 PYTHON void mapLinear_PartToMAC( FlagGrid& flags, MACGrid& vel , MACGrid& velOld , 
 		BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel ) 
 {
-    // interpol -> grid. tmpgrid for counting, only component 0 used
-    Grid<Vec3> tmp(vel);
+    // interpol -> grid. tmpgrid for particle contribution weights
+    Grid<Vec3> tmp(flags.getParent());
     vel.clear();
     mapLinearVec3ToMACGrid( parts, flags, vel, tmp, partVel );
 
 	// NT_DEBUG, note - stomp small values in tmp to zero? use Real grid?
-	// todo check??
     vel.safeDivide(tmp);
     
     // store original state
     velOld = vel;
 }
+
+
+KERNEL(pts, single) template<class T>
+void knMapLinear( BasicParticleSystem& p, FlagGrid& flags, Grid<T>& gdst, Grid<T>& gtmp, 
+	ParticleDataImpl<T>& psource ) 
+{
+    unusedParameter(flags);
+    if (!p.isActive(i)) return;
+	//debMsg("p "<<(i) <<": "<<p[i].pos <<" "<< psource[i] <<" ", 1); // debug
+    gdst.setInterpolated( p[i].pos, psource[i], gtmp );
+
+    /*FOR_IJK_BND(gdst, 0) {
+		if(gdst(i,j,k)!=0.) {
+			debMsg("at "<<Vec3i(i,j,k) <<": "<<gdst(i,j,k) <<" "<<gtmp(i,j,k) <<" ", 1); // debug
+		}
+	}*/
+}
+
+PYTHON void mapLinearReal( FlagGrid& flags, Grid<Real>& gdst , 
+		BasicParticleSystem& parts , ParticleDataImpl<Real>& partSrc ) 
+{
+    Grid<Real> tmp(flags.getParent());
+    gdst.clear();
+    knMapLinear<Real>( parts, flags, gdst, tmp, partSrc ); 
+
+	// debug out
+    /*FOR_IJK_BND(gdst, 0) {
+		if(gdst(i,j,k)!=0.) {
+			debMsg("at "<<Vec3i(i,j,k) <<": "<<gdst(i,j,k) <<" "<<tmp(i,j,k) <<" ", 1); // debug
+		}
+	}*/
+
+    gdst.safeDivide(tmp);
+}
+/*
+PYTHON template<class T>
+void mapLinear( FlagGrid& flags, Grid<T>& gdst , 
+		BasicParticleSystem& parts , ParticleDataImpl<T>& partSrc ) 
+{
+    Grid<T> tmp(gdst);
+    gdst.clear();
+    knMapLinear<T>( parts, flags, gdst, tmp, partSrc ); 
+    gdst.safeDivide(tmp);
+}
+
+template void mapLinear<Real>( FlagGrid& flags, Grid<Real>& gdst , BasicParticleSystem& parts , ParticleDataImpl<Real>& partVel );
+*/
 
 
 // Get velocities from grid
@@ -362,3 +329,4 @@ PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
 }
 
 } // namespace
+

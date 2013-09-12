@@ -285,6 +285,7 @@ void ParticlePainter::paint() {
 
 		mPdataInfo = infoStr.str(); 
 		// enforce refresh upon change
+std::cout<<"debLastPdata paint "<<mLastPdata<<" "<<pdataId <<"\n";  // NT_DEBUG
 		if(mLastPdata!=pdataId) {
 			mLastPdata = pdataId;
 			updateText();

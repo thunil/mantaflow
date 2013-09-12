@@ -148,7 +148,9 @@ template<class T>
 void ParticleDataImpl<T>::add() {
 	// add zero'ed entry
 	T tmp = T(0.);
-	//tmp = T(0.02 * mData.size()); // NT_DEBUG
+	// for debugging, force init:
+	//tmp = T(0.02 * mData.size()); // increasing
+	//tmp = T(1.); // constant 1
 	return mData.push_back(tmp);
 }
 template<class T>
