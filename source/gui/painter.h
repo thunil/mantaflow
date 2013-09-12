@@ -29,11 +29,13 @@ class PbClass;
 class Painter : public QObject {
     Q_OBJECT
 public:
-    enum PainterEvent { EventNone = 0, UpdateRequest, UpdateFull, UpdateStep,
-                        EventScaleVecUp, EventScaleVecDown, EventScaleRealUp, EventScaleRealDown, EventChangePlane, 
-                        EventSetPlane, EventSetDim, EventNextInt, EventNextReal, EventNextVec, EventToggleVels, EventToggleCentered,
-                        EventNextMesh, EventMeshMode, EventToggleGridDisplay, EventScaleMeshUp, EventScaleMeshDown, EventMeshColorMode,
-                        EventNextSystem, EventToggleParticles, EventToggleBackgroundMesh, EventSetMax};
+    enum PainterEvent { 
+		EventNone = 0, UpdateRequest, UpdateFull, UpdateStep,
+		EventScaleVecUp, EventScaleVecDown, EventScaleRealUp, EventScaleRealDown, EventChangePlane, 
+		EventSetPlane, EventSetDim, EventNextInt, EventNextReal, EventNextVec, EventToggleVels, EventToggleCentered,
+		EventNextMesh, EventMeshMode, EventToggleGridDisplay, EventScaleMeshUp, EventScaleMeshDown, EventMeshColorMode,
+		EventNextSystem, EventToggleParticles, EventToggleBackgroundMesh, EventSetMax,
+		EventScalePdataDown, EventScalePdataUp };
     
     Painter(QWidget* par = 0) : QObject(par) {}
     virtual ~Painter() {}

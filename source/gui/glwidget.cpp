@@ -236,6 +236,8 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
 		else if (key == Qt::Key_O && shift)           emit painterEvent(Painter::EventToggleBackgroundMesh); 
         else if (key == Qt::Key_B && shift)           emit painterEvent(Painter::EventToggleParticles);
         else if (key == Qt::Key_B)                    emit painterEvent(Painter::EventNextSystem);
+        else if (key == Qt::Key_ParenLeft)            emit painterEvent(Painter::EventScalePdataDown);
+        else if (key == Qt::Key_ParenRight)           emit painterEvent(Painter::EventScalePdataUp);
 
         else if (key == Qt::Key_Asterisk) {
             mPlaneDim = (mPlaneDim+1) % 3;            

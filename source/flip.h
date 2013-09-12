@@ -35,6 +35,7 @@ struct FlipData {
 PYTHON class FlipSystem : public ParticleSystem<FlipData> {
 public:
     PYTHON FlipSystem(FluidSolver* parent) : ParticleSystem<FlipData>(parent), mOldVel(parent), mRand(1238943) {}
+	virtual ~FlipSystem();
   
     //! Copy velocities from grid with given PIC/FLIP ratio
     PYTHON void velocitiesFromGrid(FlagGrid& flags, MACGrid& vel, Real flipRatio=0.95);
@@ -47,9 +48,7 @@ public:
     //! Initialize grid of particles + jitter. No surface alignment yet
     PYTHON void initialize(FlagGrid& flags, int discretization=2, Real randomness=0.2 );
 
-    //! create a particle data channel
-    PYTHON PbClass* create(PbType type, const std::string& name = "");
-    
+	//! clone me
     virtual ParticleBase* clone();
 
 protected:
@@ -57,46 +56,7 @@ protected:
 	MACGrid mOldVel;
 	//! random numbers...
     RandomStream mRand;
-	//! store particle data channels
-	std::vector<ParticleDataBase*> mPartData;
 };
-
-//! abstract interface for particle data
-PYTHON class ParticleDataBase : public PbClass {
-public:
-    PYTHON ParticleDataBase(FluidSolver* parent);
-	virtual ~ParticleDataBase() {};
-
-	// interface functions, using assert instead of pure virtual for python compatibility
-	virtual int  size()      { assertMsg( false , "do not call, override..."); return 0; }
-	virtual void add()       { assertMsg( false , "do not call, override..."); return;   }
-	virtual void kill(int i) { assertMsg( false , "do not call, override..."); return;   }
-
-	void setParticleSys(FlipSystem* set) { mpParticleSys = set; }
-
-protected:
-	FlipSystem* mpParticleSys;
-};
-
-//! abstract interface for particle data
-PYTHON template<class T>
-class ParticleDataImpl : public ParticleDataBase {
-public:
-	PYTHON ParticleDataImpl(FluidSolver* parent);
-	virtual ~ParticleDataImpl();
-
-	// particle data base interface
-	int  size();
-	void add();
-	void kill(int i);
-
-protected:
-	std::vector<T> mpData; // todo
-};
-
-PYTHON alias ParticleDataImpl<Real> PdataInt;
-PYTHON alias ParticleDataImpl<Real> PdataReal;
-PYTHON alias ParticleDataImpl<Real> PdataVec3;
 
 } // namespace
 

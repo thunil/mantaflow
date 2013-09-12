@@ -82,7 +82,7 @@ void VortexFilamentSystem::advectMesh(Mesh& mesh, Real scale, Real regularizatio
     integratePointSet( kernel, integrationMode);   
 }
 
-void VortexFilamentSystem::advectParticles(TracerParticleSystem& sys, Real scale, Real regularization, int integrationMode) {
+void VortexFilamentSystem::advectParticles(BasicParticleSystem& sys, Real scale, Real regularization, int integrationMode) {
     KnFilamentAdvectParts kernel(sys.getData(), mData, mSegments, regularization, 1e10, scale * getParent()->getDt());
     integratePointSet( kernel, integrationMode);   
 }

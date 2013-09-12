@@ -92,7 +92,7 @@ void FlipSystem::adjustNumber( MACGrid& vel, FlagGrid& flags, int minParticles, 
     Grid<int> tmp(mParent);
     
     // count particles in cells, and delete excess particles
-    for (size_t i=0; i<mData.size(); i++) {
+    for (int i=0; i<(int)mData.size(); i++) {
         if (isActive(i)) {
             Vec3i p = toVec3i(mData[i].pos);
             int num = tmp(p);
@@ -135,21 +135,13 @@ void FlipSystem::markFluidCells(FlagGrid& flags) {
     }
     
     // mark all particles in flaggrid as fluid
-    for(size_t i=0;i<mData.size();i++) {
+    for(int i=0;i<(int)mData.size();i++) {
         const Vec3i p = toVec3i(mData[i].pos);
         if (flags.isInBounds(p) && flags.isEmpty(p))
             flags(p) = (flags(p) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
     }
 }
 
-ParticleBase* FlipSystem::clone() {
-    FlipSystem* nm = new FlipSystem(getParent());
-    compress();
-    
-    nm->mData = mData;
-    nm->setName(getName());
-    return nm;
-}
 
 
 // compute simple levelset without interpolation (fast, low quality), to be used during simulation
@@ -158,7 +150,7 @@ void ComputeUnionLevelset(FlipSystem& p, LevelsetGrid& phi, Real radius=1.) {
     if (!p.isActive(i)) return;
 
 	const Vec3 pos = p[i].pos - Vec3(0.5); // offset for centered LS value
-	const Vec3i size = phi.getSize();
+	//const Vec3i size = phi.getSize();
     const int xi = (int)pos.x, yi = (int)pos.y, zi = (int)pos.z; 
 
 	int radiusInt  = int(2. * radius) + 1;
@@ -182,8 +174,27 @@ PYTHON void unionParticleLevelset (FlipSystem& p, LevelsetGrid& phi, Real radius
 	ComputeUnionLevelset(p, phi, radius);
 }
 
+ParticleBase* FlipSystem::clone() {
+    FlipSystem* nm = new FlipSystem(getParent());
+    compress();
+    
+    nm->mData = mData;
+    nm->setName(getName());
+	this->cloneParticleData(nm);
+    return nm;
+}
 
 // ----
+FlipSystem::~FlipSystem() { };
+
+/*
+FlipSystem::~FlipSystem()
+{
+	// make sure data fields now parent system is deleted
+	for(int i=0; i<(int)mPartData.size(); ++i)
+		mPartData[i]->setParticleSys(NULL);
+	
+}
 
 
 PbClass* FlipSystem::create(PbType t, const string& name) {        
@@ -199,17 +210,28 @@ PbClass* FlipSystem::create(PbType t, const string& name) {
 		delete pyObj;
 		return NULL;
 	} else {
-		pdata->setParticleSys(this);
-		mPartData.push_back(pdata);
-		debMsg("ok! " << pdata->size() , 1);
+		this->addParticleData(pdata);
 	}
 
 	return pyObj;
 }
 
+void FlipSystem::addParticleData(ParticleDataBase* pdata) {
+	pdata->setParticleSys(this);
+	this->push_back(pdata);
+	debMsg("ok! " << pdata->size() <<" " , 1); // NT_DEBUG
+}
+
 ParticleDataBase::ParticleDataBase(FluidSolver* parent) : 
 		PbClass(parent) , mpParticleSys(NULL) {
-};
+}
+
+ParticleDataBase::~ParticleDataBase()
+{
+	// notify parent of deletion 
+	if(mpParticleSys)
+		mpParticleSys->deregister(this);
+}
 
 template<class T>
 ParticleDataImpl<T>::ParticleDataImpl(FluidSolver* parent) : ParticleDataBase(parent) {
@@ -220,19 +242,123 @@ ParticleDataImpl<T>::~ParticleDataImpl() {
 }
 
 template<class T>
-int  ParticleDataImpl<T>::size() {
+int ParticleDataImpl<T>::size() {
 	return mData.size();
 }
 template<class T>
 void ParticleDataImpl<T>::add() {
+	T tmp = 0;
+	return mData.push_back(tmp);
 }
 template<class T>
 void ParticleDataImpl<T>::kill(int i) {
+}
+template<class T>
+ParticleDataBase* ParticleDataImpl<T>::clone() {
+    ParticleDataImpl<T>* npd = new ParticleDataImpl<T>( getParent() );
+	return npd;
 }
 
 // explicit instantiation
 template class ParticleDataImpl<int>;
 template class ParticleDataImpl<Real>;
 template class ParticleDataImpl<Vec3>;
+*/
+
+//*****************************************************************************
+
+
+// Set velocities on the grid from the particle system
+
+KERNEL(pts, single) 
+void mapLinearVec3ToMACGrid( BasicParticleSystem& p, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& tmp, 
+	ParticleDataImpl<Vec3>& pvel ) 
+{
+    unusedParameter(flags);
+    
+    if (!p.isActive(i)) return;
+    
+    vel.setInterpolated( p[i].pos, pvel[i], &tmp[0] );
+	//debMsg("v "<<pvel[i]<<", "<<i<<"/"<<pvel.size() , 1);
+}
+
+PYTHON void mapLinear_PartToMAC( FlagGrid& flags, MACGrid& vel , MACGrid& velOld , 
+		BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel ) 
+{
+    // interpol -> grid. tmpgrid for counting, only component 0 used
+    Grid<Vec3> tmp(vel);
+    vel.clear();
+    mapLinearVec3ToMACGrid( parts, flags, vel, tmp, partVel );
+
+	// NT_DEBUG, note - stomp small values in tmp to zero? use Real grid?
+	// todo check??
+    vel.safeDivide(tmp);
+    
+    // store original state
+    velOld = vel;
+}
+
+
+// Get velocities from grid
+
+KERNEL(pts) 
+void mapLinearMACGridToVec3( BasicParticleSystem& p, FlagGrid& flags, MACGrid& vel, ParticleDataImpl<Vec3>& pvel ) 
+{
+    if (!p.isActive(i)) return;
+    pvel[i] = vel.getInterpolated( p[i].pos );
+}
+
+PYTHON void mapLinear_MACToPart(FlagGrid& flags, MACGrid& vel , 
+		BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel ) {
+    mapLinearMACGridToVec3( parts, flags, vel, partVel );
+}
+
+// init
+
+PYTHON void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, BasicParticleSystem& parts, 
+		int discretization, Real randomness ) 
+{
+	bool is3D = phi.is3D();
+    Real jlen = randomness / discretization;
+    Vec3 disp (1.0 / discretization, 1.0 / discretization, 1.0/discretization);
+    RandomStream mRand(9832);
+ 
+    //clear(); 
+
+    FOR_IJK_BND(phi, 0) {
+        if ( flags.isObstacle(i,j,k) ) continue;
+        if ( phi(i,j,k) < 1.733 ) {
+            Vec3 pos (i,j,k);
+            for (int dk=0; dk<(is3D ? discretization : 1); dk++)
+            for (int dj=0; dj<discretization; dj++)
+            for (int di=0; di<discretization; di++) {
+                Vec3 subpos = pos + disp * Vec3(0.5+di, 0.5+dj, 0.5+dk);
+                subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
+				if(!is3D) subpos[2] = 0.5; 
+				if( phi.getInterpolated(subpos) > 0. ) continue; 
+                parts.add( BasicParticleData(subpos) );
+            }
+        }
+    }
+
+	debMsg(" NT_DEBUG "<< parts.debugInfoPdata() , 1);
+}
+
+PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
+    // remove all fluid cells
+    FOR_IJK(flags) {
+        if (flags.isFluid(i,j,k)) {
+            flags(i,j,k) = (flags(i,j,k) | FlagGrid::TypeEmpty) & ~FlagGrid::TypeFluid;
+        }
+    }
+    
+    // mark all particles in flaggrid as fluid
+    for(int i=0;i<parts.size();i++) {
+    	if (!parts.isActive(i)) continue;
+        const Vec3i p = toVec3i( parts.getPos(i) ); // NT_DEBUG, check -0.5 offset?
+        if (flags.isInBounds(p) && flags.isEmpty(p))
+            flags(p) = (flags(p) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
+    }
+}
 
 } // namespace

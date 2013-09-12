@@ -167,13 +167,12 @@ Real GridPainter<T>::getScale() {
     if (!mObject) return 0;
     
     if (mValScale.find(mObject) == mValScale.end()) {
+        // init new scale value
         Real s = 1.0;
-        // create new scale
         if (mLocalGrid->getType() & GridBase::TypeVec3)
             s = 0.4;
         else if (mLocalGrid->getType() & GridBase::TypeLevelset)
-            s = 1.0;
-        if (s==0) return 1.0;
+            s = 1.0; 
         mValScale[mObject] = s;
     }
     return mValScale[mObject];

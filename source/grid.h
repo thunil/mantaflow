@@ -254,6 +254,8 @@ bool GridBase::isInBounds(const Vec3i& p, int bnd) const {
 	bool ret = (p.x >= bnd && p.y >= bnd && p.x < mSize.x-bnd && p.y < mSize.y-bnd);
 	if(this->is3D()) {
 		ret &= (p.z >= bnd && p.z < mSize.z-bnd); 
+	} else {
+		ret &= (p.z == 0);
 	}
 	return ret;
 }

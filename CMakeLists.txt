@@ -118,6 +118,7 @@ SET(PP_SOURCES
     source/shapes.cpp
     source/mesh.cpp
     source/general.cpp
+    source/particle.cpp
     source/flip.cpp
     source/movingobs.cpp
     source/fileio.cpp   

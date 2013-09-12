@@ -29,10 +29,11 @@ public:
     void paint();
     void attachWidget(QLayout* layout);
 
-	enum PaintModes { PaintOff=0, PaintPos=1, PaintVel=2 };
+	enum PaintModes { PaintOff=0, PaintVel=1, PaintPos=2 };
     
 protected:
     std::string getID();
+    Real getScale();
     void update();
     void updateText();
     void processKeyEvent(PainterEvent e, int param);
@@ -41,6 +42,11 @@ protected:
     ParticleBase* mLocal;
     QLabel* mInfo;
     int mMode;    
+	int mLastPdata;
+	bool mHavePdata;
+	Real mMaxVal;
+	std::string mPdataInfo;
+    std::map<PbClass*, Real> mValScale;
 };    
     
 } // namespace
