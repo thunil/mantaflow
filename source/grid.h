@@ -68,7 +68,7 @@ public:
     //! Get index into the data
     inline int index(int i, int j, int k) const { DEBUG_ONLY(checkIndex(i,j,k)); return i + mSize.x * j + mStrideZ * k; }
     //! Get index into the data
-    inline int index(const Vec3i& pos) const { DEBUG_ONLY(checkIndex(pos.x,pos.y,pos.z)); return pos.x + mSize.x * pos.y + mStrideZ * pos.z; }
+    inline int index(const Vec3i& pos) const    { DEBUG_ONLY(checkIndex(pos.x,pos.y,pos.z)); return pos.x + mSize.x * pos.y + mStrideZ * pos.z; }
 protected:
     
     GridType mType;
@@ -98,26 +98,31 @@ public:
     //! set all cells to zero
     void clear();
     
+	//! all kinds of access functions, use grid(), grid[] or grid.get()
     //! access data
-    inline T get(int i,int j, int k) const { return mData[index(i,j,k)]; }
+    inline T get(int i,int j, int k) const         { return mData[index(i,j,k)]; }
     //! access data
-    inline T& get(int i,int j, int k) { return mData[index(i,j,k)]; }
+    inline T& get(int i,int j, int k)              { return mData[index(i,j,k)]; }
     //! access data
-    inline T get(int idx) const { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+    inline T get(int idx) const                    { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
     //! access data
-    inline T get(const Vec3i& pos) const { return mData[index(pos)]; }
+    inline T get(const Vec3i& pos) const           { return mData[index(pos)]; }
     //! access data
-    inline T& operator()(int i, int j, int k) { return mData[index(i, j, k)]; }
+    inline T& operator()(int i, int j, int k)      { return mData[index(i, j, k)]; }
     //! access data
     inline T operator()(int i, int j, int k) const { return mData[index(i, j, k)]; }
     //! access data
-    inline T& operator()(const Vec3i& pos) { return mData[index(pos)]; }
+    inline T& operator()(int idx)                  { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
     //! access data
-    inline T operator()(const Vec3i& pos) const { return mData[index(pos)]; }
+    inline T operator()(int idx) const             { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
     //! access data
-    inline T& operator[](int idx) { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+    inline T& operator()(const Vec3i& pos)         { return mData[index(pos)]; }
     //! access data
-    inline const T operator[](int idx) const { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+    inline T operator()(const Vec3i& pos) const    { return mData[index(pos)]; }
+    //! access data
+    inline T& operator[](int idx)                  { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+    //! access data
+    inline const T operator[](int idx) const       { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
     
     // interpolated access
     inline T getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
@@ -132,7 +137,7 @@ public:
     template<class S> Grid<T>& operator*=(const S& a);
     template<class S> Grid<T>& operator/=(const Grid<S>& a);
     template<class S> Grid<T>& operator/=(const S& a);
-    Grid<T>& operator=(const T& a);
+    //Grid<T>& operator=(const T& a);
     Grid<T>& operator=(const Grid<T>& a);
     Grid<T>& safeDivide(const Grid<T>& a);    
     PYTHON void add(const Grid<T>& a, const Grid<T>& b);
@@ -322,6 +327,11 @@ KERNEL(idx) template<class T> void gridSafeDiv (Grid<T>& me, const Grid<T>& othe
 KERNEL(idx) template<class T, class S> void gridAddScalar (Grid<T>& me, const S& other) { me[idx] += other; }
 KERNEL(idx) template<class T, class S> void gridMultScalar (Grid<T>& me, const S& other) { me[idx] *= other; }
 KERNEL(idx) template<class T> void gridScaleAdd (Grid<T>& me, const Grid<T>& other, const T& factor) { me[idx] += factor * other[idx]; }
+
+KERNEL(idx) template<class T>
+void knSetConst(Grid<T>& grid, T value) {
+	grid[idx] = value;
+}
 
 template<class T> template<class S> Grid<T>& Grid<T>::operator+= (const Grid<S>& a) {
     gridAdd<T,S> (*this, a);

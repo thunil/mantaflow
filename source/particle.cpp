@@ -61,7 +61,7 @@ PbClass* ParticleBase::create(PbType t, const string& name) {
     _args.add("nocheck",true);
     if (t.str == "")
         errMsg("Specify particle data type to create");
-	std::cerr<<"NT_DEBUG creating '"<< t.str <<"' \n";
+	//debMsg( "Pdata creating '"<< t.str , 5 );
     
     PbClass* pyObj = PbClass::createPyObject(t.str, name, _args, this->getParent() );
 
@@ -80,13 +80,11 @@ PbClass* ParticleBase::create(PbType t, const string& name) {
 void ParticleBase::addParticleData(ParticleDataBase* pdata) {
 	pdata->setParticleSys(this);
 	mPartData.push_back(pdata);
-	//debMsg("add_ok! " << pdata->size() <<" " , 1); // NT_DEBUG
 }
 
 void ParticleBase::addAllPdata() {
 	for(int i=0; i<(int)mPartData.size(); ++i) {
 		mPartData[i]->add();
-		// NT_DEBUG debMsg("paddt "<<i <<" "<<mPartData[i]->size() ,1);
 	} 
 }
 
@@ -181,6 +179,14 @@ ParticleDataBase::PdataType ParticleDataImpl<Vec3>::getType() const {
 template class ParticleDataImpl<int>;
 template class ParticleDataImpl<Real>;
 template class ParticleDataImpl<Vec3>;
+
+KERNEL(pts) template<class T>
+void knSetPdataConst(ParticleDataImpl<T>& pdata, T value) {
+	pdata[i] = value;
+}
+PYTHON void setConstPdata    (ParticleDataImpl<Real>& pd, Real value=0.) { knSetPdataConst<Real>(pd,value); }
+PYTHON void setConstPdataVec3(ParticleDataImpl<Vec3>& pd, Vec3 value=0.) { knSetPdataConst<Vec3>(pd,value); }
+PYTHON void setConstPdataInt (ParticleDataImpl<int >& pd, int  value=0.) { knSetPdataConst<int> (pd,value); }
 
 
 

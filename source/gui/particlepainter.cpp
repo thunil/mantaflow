@@ -219,8 +219,8 @@ void ParticlePainter::paint() {
 		if( pdataId==0 ) {
 			// dont draw data, only center below
 		} else if (vp->getNumPdata() > 0)  {
-			pdataId--; // start at 0
-			ParticleDataBase* pdb = vp->getPdata(pdataId);
+			int pdNum = pdataId-1; // start at 0
+			ParticleDataBase* pdb = vp->getPdata(pdNum);
 
 			switch (pdb->getType() ) {
 
@@ -238,7 +238,7 @@ void ParticlePainter::paint() {
 					glVertex(pos, dx); 
 				}   
 				glEnd();
-				infoStr << "Pdata "<<pdataId<<" 'real'\n";
+				infoStr << "Pdata "<<pdNum<<" 'real'\n";
 				} break;
 
 			case ParticleDataBase::DATA_INT: {
@@ -255,7 +255,7 @@ void ParticlePainter::paint() {
 					glVertex(pos, dx); 
 				}   
 				glEnd();
-				infoStr << "Pdata "<<pdataId<<" 'int'\n";
+				infoStr << "Pdata "<<pdNum<<" 'int'\n";
 				} break;
 
 			case ParticleDataBase::DATA_VEC3: {
@@ -274,7 +274,7 @@ void ParticlePainter::paint() {
 					glVertex(pos, dx); 
 				}   
 				glEnd();
-				infoStr << "Pdata "<<pdataId<<" 'vec3'\n";
+				infoStr << "Pdata "<<pdNum<<" 'vec3'\n";
 				} break;
 
 			default: {
@@ -285,7 +285,6 @@ void ParticlePainter::paint() {
 
 		mPdataInfo = infoStr.str(); 
 		// enforce refresh upon change
-std::cout<<"debLastPdata paint "<<mLastPdata<<" "<<pdataId <<"\n";  // NT_DEBUG
 		if(mLastPdata!=pdataId) {
 			mLastPdata = pdataId;
 			updateText();

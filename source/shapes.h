@@ -62,7 +62,7 @@ public:
     virtual void generateMesh(Mesh* mesh) {}
     
 protected:
-    virtual void generateLevelset(Grid<Real>& phi) { phi = 1000.0f; }
+    virtual void generateLevelset(Grid<Real>& phi) { knSetConst<Real>( phi , 1000.0f ); }
 };
 
 //! Box shape

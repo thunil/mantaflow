@@ -217,7 +217,7 @@ template class FastMarch<FmHeapEntryIn, -1>;
 template class FastMarch<FmHeapEntryOut, +1>;
 
 
-// a simple extrapolation step , used for cases where there's on levelset
+// a simple extrapolation step , used for cases where there's no levelset
 // (note, less accurate than fast marching extrapolation!)
 PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4) {
     Grid<int> tmp( flags.getParent() );
@@ -272,6 +272,62 @@ PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 
 	}
 }
 
+// same as extrapolateMACSimple, but uses weight vec3 grid instead of flags to check
+// for valid values (to be used in combination with mapPartsToMAC)
+// note - the weight grid values are destroyed! the function is necessary due to discrepancies
+// between velocity mapping on surface-levelset / fluid-flag creation. With this
+// extrapolation we make sure the fluid region is covered by initial velocities
+PYTHON void extrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance = 2) {
+	//todo
+    //Grid<int> tmp( flags.getParent() );
+	int dim = (vel.is3D() ? 3:2);
+	Vec3i nb[6] = { 
+		Vec3i(1 ,0,0), Vec3i(-1,0,0),
+		Vec3i(0,1 ,0), Vec3i(0,-1,0),
+		Vec3i(0,0,1 ), Vec3i(0,0,-1) };
 
+	for(int c=0; c<dim; ++c) {
+		Vec3i dir = 0;
+		dir[c] = 1;
+		//tmp.clear();
+
+		// reset weight values to 0 (uninitialized), and 1 (initialized inner values)
+		FOR_IJK_BND(vel,1) {
+			Vec3i p(i,j,k);
+			//if (flags.isFluid(p) || flags.isFluid(p-dir) ) { tmp(p) = 1; }
+			if(weight(p)[c]>0.) weight(p)[c] = 1.0;
+		}
+
+		// debug init! , enable for testing only - set varying velocities inside
+		//FOR_IJK_BND(flags,1) { if (tmp(i,j,k) == 0) continue; vel(i,j,k)[c] = (i+j+k+c+1.)*0.1; }
+		
+		// extrapolate for distance
+		for(int d=1; d<1+distance; ++d) {
+
+			FOR_IJK_BND(vel,1) {
+				if (weight(i,j,k)[c] != 0) continue;
+
+				// copy from initialized neighbors
+				Vec3i p(i,j,k);
+				int nbs = 0;
+				Real avgVel = 0.;
+				for (int n=0; n<2*dim; ++n) {
+					if (weight(p+nb[n])[c] == d) {
+						//vel(p)[c] = (c+1.)*0.1;
+						avgVel += vel(p+nb[n])[c];
+						nbs++;
+					}
+				}
+
+				if(nbs>0) {
+					weight(p)[c]    = d+1;
+					vel(p)[c] = avgVel / nbs;
+				}
+			}
+
+		} // d
+
+	}
+}
 
 } // namespace

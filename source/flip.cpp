@@ -57,7 +57,6 @@ void FlipSystem::velocitiesToGrid(FlagGrid& flags, MACGrid& vel) {
     Grid<Vec3> tmp(mParent);
     vel.clear();
     CopyVelocitiesToGrid(*this, flags, vel, tmp);
-	// NT_DEBUG, note - stomp small values in tmp to zero? 
     vel.safeDivide(tmp);
     
     // store diff
@@ -192,94 +191,6 @@ FlipSystem::~FlipSystem() { };
 
 // NT_DEBUG , warning - duplicate functions for now, clean up at some point!
 
-// Set velocities on the grid from the particle system
-
-KERNEL(pts, single) 
-void mapLinearVec3ToMACGrid( BasicParticleSystem& p, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& tmp, 
-	ParticleDataImpl<Vec3>& pvel ) 
-{
-    unusedParameter(flags);
-    if (!p.isActive(i)) return;
-    vel.setInterpolated( p[i].pos, pvel[i], &tmp[0] );
-}
-
-PYTHON void mapLinear_PartToMAC( FlagGrid& flags, MACGrid& vel , MACGrid& velOld , 
-		BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel ) 
-{
-    // interpol -> grid. tmpgrid for particle contribution weights
-    Grid<Vec3> tmp(flags.getParent());
-    vel.clear();
-    mapLinearVec3ToMACGrid( parts, flags, vel, tmp, partVel );
-
-	// NT_DEBUG, note - stomp small values in tmp to zero? use Real grid?
-    vel.safeDivide(tmp);
-    
-    // store original state
-    velOld = vel;
-}
-
-
-KERNEL(pts, single) template<class T>
-void knMapLinear( BasicParticleSystem& p, FlagGrid& flags, Grid<T>& gdst, Grid<T>& gtmp, 
-	ParticleDataImpl<T>& psource ) 
-{
-    unusedParameter(flags);
-    if (!p.isActive(i)) return;
-	//debMsg("p "<<(i) <<": "<<p[i].pos <<" "<< psource[i] <<" ", 1); // debug
-    gdst.setInterpolated( p[i].pos, psource[i], gtmp );
-
-    /*FOR_IJK_BND(gdst, 0) {
-		if(gdst(i,j,k)!=0.) {
-			debMsg("at "<<Vec3i(i,j,k) <<": "<<gdst(i,j,k) <<" "<<gtmp(i,j,k) <<" ", 1); // debug
-		}
-	}*/
-}
-
-PYTHON void mapLinearReal( FlagGrid& flags, Grid<Real>& gdst , 
-		BasicParticleSystem& parts , ParticleDataImpl<Real>& partSrc ) 
-{
-    Grid<Real> tmp(flags.getParent());
-    gdst.clear();
-    knMapLinear<Real>( parts, flags, gdst, tmp, partSrc ); 
-
-	// debug out
-    /*FOR_IJK_BND(gdst, 0) {
-		if(gdst(i,j,k)!=0.) {
-			debMsg("at "<<Vec3i(i,j,k) <<": "<<gdst(i,j,k) <<" "<<tmp(i,j,k) <<" ", 1); // debug
-		}
-	}*/
-
-    gdst.safeDivide(tmp);
-}
-/*
-PYTHON template<class T>
-void mapLinear( FlagGrid& flags, Grid<T>& gdst , 
-		BasicParticleSystem& parts , ParticleDataImpl<T>& partSrc ) 
-{
-    Grid<T> tmp(gdst);
-    gdst.clear();
-    knMapLinear<T>( parts, flags, gdst, tmp, partSrc ); 
-    gdst.safeDivide(tmp);
-}
-
-template void mapLinear<Real>( FlagGrid& flags, Grid<Real>& gdst , BasicParticleSystem& parts , ParticleDataImpl<Real>& partVel );
-*/
-
-
-// Get velocities from grid
-
-KERNEL(pts) 
-void mapLinearMACGridToVec3( BasicParticleSystem& p, FlagGrid& flags, MACGrid& vel, ParticleDataImpl<Vec3>& pvel ) 
-{
-    if (!p.isActive(i)) return;
-    pvel[i] = vel.getInterpolated( p[i].pos );
-}
-
-PYTHON void mapLinear_MACToPart(FlagGrid& flags, MACGrid& vel , 
-		BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel ) {
-    mapLinearMACGridToVec3( parts, flags, vel, partVel );
-}
-
 // init
 
 PYTHON void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, BasicParticleSystem& parts, 
@@ -307,8 +218,6 @@ PYTHON void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, Bas
             }
         }
     }
-
-	debMsg(" NT_DEBUG "<< parts.debugInfoPdata() , 1);
 }
 
 PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
@@ -322,10 +231,137 @@ PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
     // mark all particles in flaggrid as fluid
     for(int i=0;i<parts.size();i++) {
     	if (!parts.isActive(i)) continue;
-        const Vec3i p = toVec3i( parts.getPos(i) ); // NT_DEBUG, check -0.5 offset?
+        const Vec3i p = toVec3i( parts.getPos(i) ); 
         if (flags.isInBounds(p) && flags.isEmpty(p))
             flags(p) = (flags(p) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
     }
+}
+
+
+// grid interpolation functions
+
+KERNEL(idx) template<class T> 
+void knSafeDivReal(Grid<T>& me, const Grid<Real>& other, Real cutoff=VECTOR_EPSILON) { 
+	if(other[idx]<cutoff) {
+		me[idx] = 0.;
+	} else {
+		T div( other[idx] );
+		me[idx] = safeDivide(me[idx], div ); 
+	}
+}
+
+// Set velocities on the grid from the particle system
+
+KERNEL(idx)
+void knStompVec3PerComponent(Grid<Vec3>& grid, Real threshold) {
+	if(grid[idx][0] < threshold) grid[idx][0] = 0.;
+	if(grid[idx][1] < threshold) grid[idx][1] = 0.;
+	if(grid[idx][2] < threshold) grid[idx][2] = 0.;
+}
+
+KERNEL(pts, single) 
+void knMapLinearVec3ToMACGrid( BasicParticleSystem& p, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& tmp, 
+	ParticleDataImpl<Vec3>& pvel ) 
+{
+    unusedParameter(flags);
+    if (!p.isActive(i)) return;
+    vel.setInterpolated( p[i].pos, pvel[i], &tmp[0] );
+}
+
+// optionally , this function can use an existing vec3 grid to store the weights
+// this is useful in combination with the simple extrapolation function
+PYTHON void mapPartsToMAC( FlagGrid& flags, MACGrid& vel , MACGrid& velOld , 
+		BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel , Grid<Vec3>* weight=NULL ) 
+{
+    // interpol -> grid. tmpgrid for particle contribution weights
+	bool freeTmp = false;
+	if(!weight) {
+    	weight = new Grid<Vec3>(flags.getParent());
+		freeTmp = true;
+	}
+    vel.clear();
+    knMapLinearVec3ToMACGrid( parts, flags, vel, *weight, partVel );
+
+	// stomp small values in weight to zero to prevent roundoff errors
+	knStompVec3PerComponent( *weight, VECTOR_EPSILON );
+    vel.safeDivide(*weight);
+    
+    // store original state
+    velOld = vel;
+	if(freeTmp) delete weight;
+}
+
+
+KERNEL(pts, single) template<class T>
+void knMapLinear( BasicParticleSystem& p, FlagGrid& flags, Grid<T>& target, Grid<Real>& gtmp, 
+	ParticleDataImpl<T>& psource ) 
+{
+    unusedParameter(flags);
+    if (!p.isActive(i)) return;
+    target.setInterpolated( p[i].pos, psource[i], gtmp );
+} 
+template<class T>
+void mapLinearRealHelper( FlagGrid& flags, Grid<T>& target , 
+		BasicParticleSystem& parts , ParticleDataImpl<T>& source ) 
+{
+    Grid<Real> tmp(flags.getParent());
+    target.clear();
+    knMapLinear<T>( parts, flags, target, tmp, source ); 
+	knSafeDivReal<T>( target, tmp );
+}
+
+PYTHON void mapPartsToGrid    ( FlagGrid& flags, Grid<Real>& target , BasicParticleSystem& parts , ParticleDataImpl<Real>& source ) {
+	mapLinearRealHelper<Real>(flags,target,parts,source);
+}
+PYTHON void mapPartsToGridVec3( FlagGrid& flags, Grid<Vec3>& target , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& source ) {
+	mapLinearRealHelper<Vec3>(flags,target,parts,source);
+}
+// integers need "max" mode
+//PYTHON void mapPartsToGridInt ( FlagGrid& flags, Grid<int >& target , BasicParticleSystem& parts , ParticleDataImpl<int >& source ) {
+//	mapLinearRealHelper<int >(flags,target,parts,source);
+//}
+
+KERNEL(pts) template<class T>
+void knMapFromGrid( BasicParticleSystem& p, Grid<T>& gsrc, ParticleDataImpl<T>& target ) 
+{
+    if (!p.isActive(i)) return;
+    target[i] = gsrc.getInterpolated( p[i].pos );
+} 
+PYTHON void mapGridToParts    ( Grid<Real>& source , BasicParticleSystem& parts , ParticleDataImpl<Real>& target ) {
+	knMapFromGrid<Real>(parts, source, target);
+}
+PYTHON void mapGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& target ) {
+	knMapFromGrid<Vec3>(parts, source, target);
+}
+
+
+// Get velocities from grid
+
+KERNEL(pts) 
+void knMapLinearMACGridToVec3_PIC( BasicParticleSystem& p, FlagGrid& flags, MACGrid& vel, ParticleDataImpl<Vec3>& pvel ) 
+{
+    if (!p.isActive(i)) return;
+	// pure PIC
+    pvel[i] = vel.getInterpolated( p[i].pos );
+}
+PYTHON void mapMACToParts(FlagGrid& flags, MACGrid& vel , 
+		BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel ) {
+    knMapLinearMACGridToVec3_PIC( parts, flags, vel, partVel );
+}
+
+// with flip delta interpolation
+KERNEL(pts) 
+void knMapLinearMACGridToVec3_FLIP( BasicParticleSystem& p, FlagGrid& flags, MACGrid& vel, MACGrid& oldVel, ParticleDataImpl<Vec3>& pvel , Real flipRatio) 
+{
+    if (!p.isActive(i)) return; 
+    Vec3 v     =        vel.getInterpolated(p[i].pos);
+    Vec3 delta = v - oldVel.getInterpolated(p[i].pos); 
+    pvel[i] = flipRatio * (pvel[i] + delta) + (1.0 - flipRatio) * v;    
+}
+
+PYTHON void flipVelocityUpdate(FlagGrid& flags, MACGrid& vel , MACGrid& velOld , 
+		BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel , Real flipRatio ) {
+    knMapLinearMACGridToVec3_FLIP( parts, flags, vel, velOld, partVel, flipRatio );
 }
 
 } // namespace

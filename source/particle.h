@@ -316,7 +316,7 @@ void ParticleSystem<S>::compress() {
             nextRead--;
             mData[i] = mData[nextRead];
             mData[nextRead].flag = 0;           
-			// NT_DEBUG , handle data
+			// NT_DEBUG , todo handle data in compress...
         }
     }
     mData.resize(nextRead);

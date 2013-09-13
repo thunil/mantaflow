@@ -174,10 +174,10 @@ template<class T> Grid<T>& Grid<T>::operator= (const Grid<T>& a) {
     mType = a.mType; // copy type marker
     return *this;
 }
-template<class T> Grid<T>& Grid<T>::operator= (const T& a) {
+/*template<class T> Grid<T>& Grid<T>::operator= (const T& a) {
     FOR_IDX(*this) { mData[idx] = a; }
     return *this;
-}
+}*/
 template<class T> void Grid<T>::scaledAdd(const Grid<T>& a, const T& factor) {
     gridScaleAdd<T> (*this, a, factor);
 }
@@ -216,16 +216,9 @@ template<class T> void Grid<T>::add(const Grid<T>& a, const Grid<T>& b) {
     gridAdd2<T>(*this, a, b);
 }
 
-PYTHON void setConstant(Grid<Real>& grid, Real value=0.) {
-    FOR_IJK(grid) {
-		grid(i,j,k) = value;
-	}
-}
-PYTHON void setConstantVec3(Grid<Vec3>& grid, Vec3 value=0.) {
-    FOR_IJK(grid) {
-		grid(i,j,k) = value;
-	}
-}
+PYTHON void setConstant    (Grid<Real>& grid, Real value=0.) { knSetConst<Real>(grid,value); }
+PYTHON void setConstantVec3(Grid<Vec3>& grid, Vec3 value=0.) { knSetConst<Vec3>(grid,value); }
+PYTHON void setConstantInt (Grid<int >& grid, int  value=0.) { knSetConst<int>(grid,value); }
 
 // compute maximal diference of two cells in the grid
 // used for testing
