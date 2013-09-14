@@ -280,11 +280,15 @@ void GridCg<APPLYMAT>::solve(int maxIter) {
     return;
 }
 
+static bool gPrint2dWarning = true;
 template<class APPLYMAT>
 void GridCg<APPLYMAT>::setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak) {
     mPcMethod = method;
 	if( (!A0->is3D()) && (mPcMethod!=PC_None) ) {
-    	debMsg("Pre-conditioning only supported in 3D for now, disabling it.", 1);
+    	if(gPrint2dWarning) {
+			debMsg("Pre-conditioning only supported in 3D for now, disabling it.", 1);
+			gPrint2dWarning = false;
+		}
 		mPcMethod=PC_None;
 	}
     mpPCA0 = A0;

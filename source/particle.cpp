@@ -37,7 +37,7 @@ void ParticleBase::cloneParticleData(ParticleBase* nm) {
 	// clone additional data 
 	for(int i=0; i<(int)mPartData.size(); ++i) {
 		ParticleDataBase* pdata = mPartData[i]->clone();
-		nm->addParticleData(pdata);
+		nm->registerPdata(pdata);
 	} 
     //return nm;
 }
@@ -71,15 +71,24 @@ PbClass* ParticleBase::create(PbType t, const string& name) {
 		delete pyObj;
 		return NULL;
 	} else {
-		this->addParticleData(pdata);
+		this->registerPdata(pdata);
 	}
 
 	return pyObj;
 }
 
-void ParticleBase::addParticleData(ParticleDataBase* pdata) {
+void ParticleBase::registerPdata(ParticleDataBase* pdata) {
 	pdata->setParticleSys(this);
 	mPartData.push_back(pdata);
+
+	if( pdata->getType() == ParticleDataBase::DATA_VEC3 ) {
+		ParticleDataImpl<Vec3>* pd = dynamic_cast< ParticleDataImpl<Vec3>* >(pdata);
+		if(!pd) errMsg("Invalid pdata object posing as vec3!");
+		this->registerPdataVec3(pd);
+	}
+}
+void ParticleBase::registerPdataVec3(ParticleDataImpl<Vec3>* pd) {
+	mPdataVec3.push_back(pd);
 }
 
 void ParticleBase::addAllPdata() {
@@ -99,9 +108,14 @@ std::string ParticleBase::debugInfoPdata()
 	return sstr.str();
 }
 
+BasicParticleSystem::BasicParticleSystem(FluidSolver* parent)
+   	: ParticleSystem<BasicParticleData>(parent) {
+	this->mAllowCompress = false;
+}
+    
 std::string BasicParticleSystem::infoString() const { 
 	std::ostringstream s;
-    s << "ParticleSystem '" << getName() << "' [" << size() << " parts]";
+    s << "oParticleSystem '" << getName() << "' [" << size() << " parts]";
 	if( this->getNumPdata()>0) s << " Pdata: "<< this->getNumPdata() <<" " ; 
 	// NT_DEBUG, not working, check...
 	return s.str();
@@ -152,7 +166,12 @@ void ParticleDataImpl<T>::add() {
 	return mData.push_back(tmp);
 }
 template<class T>
-void ParticleDataImpl<T>::kill(int i) {
+void ParticleDataImpl<T>::resize(int s) {
+	mData.resize(s);
+}
+template<class T>
+void ParticleDataImpl<T>::copyValueSlow(int from, int to) {
+	this->copyValue(from,to);
 }
 template<class T>
 ParticleDataBase* ParticleDataImpl<T>::clone() {

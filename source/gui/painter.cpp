@@ -333,6 +333,7 @@ template<> void GridPainter<int>::paint() {
     
     bool rbox = true;
     bool lines = mLocalGrid->getSize().max() <= 40; 
+lines=true; // debug
     if (lines) {
         //glDepthFunc(GL_LESS);
         glBegin(GL_LINES);

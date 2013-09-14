@@ -24,19 +24,21 @@ namespace Manta {
 // fwd decl
 template<class T> class Grid;
 class ParticleDataBase;
+template<class T> class ParticleDataImpl;
 
 //! Baseclass for particle systems. Does not implement any data
 PYTHON class ParticleBase : public PbClass {
 public:
     enum SystemType { BASE=0, PARTICLE, VORTEX, FILAMENT, FLIP, TURBULENCE };
-    enum ParticleType {
+    
+    enum ParticleStatus {
         PNONE         = 0,
         PNEW          = (1<<1),  // particles newly created in this step
         PDELETE       = (1<<10), // mark as deleted, will be deleted in next compress() step
         PINVALID      = (1<<30), // unused
     };
-    
-    PYTHON ParticleBase(FluidSolver* parent) : PbClass(parent) {}
+
+    PYTHON ParticleBase(FluidSolver* parent) : PbClass(parent), mAllowCompress(true) {}
     virtual ~ParticleBase();
 
 	//! copy all the particle data thats registered with the other particle system to this one
@@ -54,7 +56,8 @@ public:
     //! create a particle data object
     PYTHON PbClass* create(PbType type, const std::string& name = "");
 	//! add a particle data field, set its parent particle-system pointer
-	void addParticleData(ParticleDataBase* pdata);
+	void registerPdata(ParticleDataBase* pdata);
+	void registerPdataVec3(ParticleDataImpl<Vec3>* pdata);
 	//! remove a particle data entry
 	void deregister(ParticleDataBase* pdata);
 	//! add one zero entry to all data fields
@@ -70,8 +73,12 @@ public:
 	std::string debugInfoPdata();
 
 protected:  
-	//! store particle data 
+	//! allow automatic compression / resize? disallowed for, eg, flip particle systems
+	bool mAllowCompress;
+	//! store particle data , each pointer has its own storage vector of a certain type (int, real, vec3)
 	std::vector<ParticleDataBase*> mPartData;
+	//! lists of different types, for fast operations w/o virtual function calls
+	std::vector< ParticleDataImpl<Vec3> *> mPdataVec3;
 };
 
 
@@ -91,12 +98,17 @@ public:
 	// slow virtual function of base class
 	virtual int getSizeSlow() const { return size(); }
     std::vector<S>& getData() { return mData; }
+
+	//! explicitly trigger compression from outside
+	void doCompress() { if ( mDeletes > mDeleteChunk) compress(); }
     
     // adding and deleting 
     inline void kill(int i);
-    inline bool isActive(int i);
     int add(const S& data);
     void clear();
+	// query status
+    inline bool isActive(int i);
+    inline int  getStatus(int i);
     
     //! safe accessor for python
     PYTHON void setPos(int idx, const Vec3& pos);
@@ -104,13 +116,13 @@ public:
     PYTHON Vec3 getPos(int idx);
             
     //! Advect particle in grid velocity field
-    PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
+    PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode, bool deleteInObstacle=true );
     
     //! Project particles outside obstacles
     PYTHON void projectOutside(Grid<Vec3>& gradient);
     
     virtual ParticleBase* clone();
-    virtual std::string infoString() const;
+    //virtual std::string infoString() const;
     
 protected:  
     virtual void compress();
@@ -133,8 +145,8 @@ public:
 
 PYTHON class BasicParticleSystem : public ParticleSystem<BasicParticleData> {
 public:
-    PYTHON BasicParticleSystem(FluidSolver* parent) : ParticleSystem<BasicParticleData>(parent) {}
-    
+    PYTHON BasicParticleSystem(FluidSolver* parent);
+
     virtual std::string infoString() const;
 
     PYTHON void addParticle(Vec3 pos) { add(BasicParticleData(pos)); }
@@ -174,9 +186,10 @@ public:
 	// interface functions, using assert instead of pure virtual for python compatibility
 	virtual int  size() const { assertMsg( false , "Dont use, override..."); return 0; } 
 	virtual void add()        { assertMsg( false , "Dont use, override..."); return;   }
-	virtual void kill(int i)  { assertMsg( false , "Dont use, override..."); return;   }
     virtual ParticleDataBase* clone() { assertMsg( false , "Dont use, override..."); return NULL; }
 	virtual PdataType getType() const { assertMsg( false , "Dont use, override..."); return UNKNOWN; } 
+	virtual void resize(int i)        { assertMsg( false , "Dont use, override..."); return;  }
+	virtual void copyValueSlow(int from, int to) { assertMsg( false , "Dont use, override..."); return;  }
 
 	//! set base pointer
 	void setParticleSys(ParticleBase* set) { mpParticleSys = set; }
@@ -197,19 +210,21 @@ public:
 	virtual ~ParticleDataImpl();
 
     //! access data
-    inline T get(int idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
-    //! access data
-    inline T& operator[](int idx) { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
-    //! access data
+    inline T& get(int idx)            { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
+    inline const T get(int idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
+    inline T& operator[](int idx)            { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
     inline const T operator[](int idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 
 	// particle data base interface
 	virtual int  size() const;
 	virtual void add();
-	virtual void kill(int i);
     virtual ParticleDataBase* clone();
 	virtual PdataType getType() const;
+	virtual void resize(int s);
+	virtual void copyValueSlow(int from, int to);
 
+	// fast inlined version
+	inline void copyValue(int from, int to) { get(to) = get(from); }
 protected:
 	std::vector<T> mData; // todo
 };
@@ -243,13 +258,18 @@ template<class S>
 inline void ParticleSystem<S>::kill(int idx)     { 
     assertMsg(idx>=0 && idx<size(), "Index out of bounds");
 	mData[idx].flag |= PDELETE; 
-	if (++mDeletes > mDeleteChunk) compress(); 
+	if ( (++mDeletes > mDeleteChunk) && (mAllowCompress) ) compress(); 
 }
 
 template<class S>
 inline bool ParticleSystem<S>::isActive(int idx) { 
     assertMsg(idx>=0 && idx<size(), "Index out of bounds");
 	return (mData[idx].flag & PDELETE) == 0; 
+}  
+template<class S>
+inline int ParticleSystem<S>::getStatus(int idx) { 
+    assertMsg(idx>=0 && idx<size(), "Index out of bounds");
+	return mData[idx].flag;
 }  
 
 template<class S> Vec3 ParticleSystem<S>::getPos(int idx) {
@@ -262,22 +282,27 @@ template<class S> void ParticleSystem<S>::setPos(int idx, const Vec3& pos) {
     mData[idx].pos = pos;
 }
 KERNEL(pts) template<class S> returns(std::vector<Vec3> u(size))
-std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flaggrid, Real dt)
+std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flaggrid, Real dt,
+		bool deleteInObstacle )
 {
-    if (p[i].flag & ParticleBase::PDELETE) 
+    if (p[i].flag & ParticleBase::PDELETE) {
         u[i] =_0;
-    else if (!flaggrid.isInBounds(p[i].pos,1) || flaggrid.isObstacle(p[i].pos)) {
-        p[i].flag |= ParticleBase::PDELETE;
+	} else if (!flaggrid.isInBounds(p[i].pos,1) || flaggrid.isObstacle(p[i].pos)) {
         u[i] = _0;
-    }        
-    else 
+
+		// for simple tracer particles, its convenient to delete particles right away
+		// eg for flip sim, its not a good idea
+		if(deleteInObstacle) 
+			p[i].flag |= ParticleBase::PDELETE;
+    } else {
         u[i] = vel.getInterpolated(p[i].pos) * dt;
+	}
 };
 
 // advection plugin
 template<class S>
-void ParticleSystem<S>::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode) {
-    GridAdvectKernel<S> kernel(mData, vel, flaggrid, getParent()->getDt());
+void ParticleSystem<S>::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode, bool deleteInObstacle ) {
+    GridAdvectKernel<S> kernel(mData, vel, flaggrid, getParent()->getDt(), deleteInObstacle );
     integratePointSet(kernel, integrationMode);
 }
 
@@ -316,10 +341,15 @@ void ParticleSystem<S>::compress() {
             nextRead--;
             mData[i] = mData[nextRead];
             mData[nextRead].flag = 0;           
-			// NT_DEBUG , todo handle data in compress...
+			for(int pd=0; pd<(int)mPdataVec3.size(); ++pd) mPdataVec3[pd]->copyValue(nextRead, i);
+			//for(int i=0; i<(int)mPartData.size(); ++i) mPartData[i]->copyValueSlow(nextRead, i);
         }
     }
     mData.resize(nextRead);
+	for(int i=0; i<(int)mPartData.size(); ++i)
+		mPartData[i]->resize(nextRead);
+
+	if(nextRead<mData.size()) debMsg("Deleted "<<(mData.size() - nextRead)<<" particles", 1); // debug info
     mDeletes = 0;
     mDeleteChunk = mData.size() / DELETE_PART;
 }
@@ -364,7 +394,7 @@ void ConnectedParticleSystem<DATA,CON>::compress() {
 template<class S>
 ParticleBase* ParticleSystem<S>::clone() {
     ParticleSystem<S>* nm = new ParticleSystem<S>(getParent());
-    compress();
+    if(this->mAllowCompress) compress();
     
     nm->mData = mData;
     nm->setName(getName());
@@ -375,7 +405,7 @@ ParticleBase* ParticleSystem<S>::clone() {
 template<class DATA,class CON>
 ParticleBase* ConnectedParticleSystem<DATA,CON>::clone() {
     ConnectedParticleSystem<DATA,CON>* nm = new ConnectedParticleSystem<DATA,CON>(this->getParent());
-    compress();
+    if(this->mAllowCompress) compress();
     
     nm->mData = this->mData;
     nm->mSegments = mSegments;
@@ -384,12 +414,12 @@ ParticleBase* ConnectedParticleSystem<DATA,CON>::clone() {
     return nm;
 }
 
-template<class S>
+/*template<class S>   NT_DEBUG
 std::string ParticleSystem<S>::infoString() const { 
     std::stringstream s;
     s << "ParticleSystem '" << getName() << "' [" << size() << " parts]";
     return s.str();
-}
+}*/
     
     
 inline void ParticleDataBase::checkPartIndex(int idx) const {

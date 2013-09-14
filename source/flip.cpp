@@ -193,6 +193,32 @@ FlipSystem::~FlipSystem() { };
 
 // init
 
+PYTHON void sampleFlagsWithParticles( FlagGrid& flags, BasicParticleSystem& parts, 
+		int discretization, Real randomness ) 
+{
+	bool is3D = flags.is3D();
+    Real jlen = randomness / discretization;
+    Vec3 disp (1.0 / discretization, 1.0 / discretization, 1.0/discretization);
+    RandomStream mRand(9832);
+ 
+    //clear(); 
+
+    FOR_IJK_BND(flags, 0) {
+        if ( flags.isObstacle(i,j,k) ) continue;
+        if ( flags.isFluid(i,j,k) ) {
+            Vec3 pos (i,j,k);
+            for (int dk=0; dk<(is3D ? discretization : 1); dk++)
+            for (int dj=0; dj<discretization; dj++)
+            for (int di=0; di<discretization; di++) {
+                Vec3 subpos = pos + disp * Vec3(0.5+di, 0.5+dj, 0.5+dk);
+                subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
+				if(!is3D) subpos[2] = 0.5; 
+                parts.add( BasicParticleData(subpos) );
+            }
+        }
+    }
+}
+
 PYTHON void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, BasicParticleSystem& parts, 
 		int discretization, Real randomness ) 
 {
@@ -237,6 +263,49 @@ PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
     }
 }
 
+PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& flags, 
+		int minParticles, int maxParticles, LevelsetGrid* phi ) 
+{
+	//const Real SURFACE_LS = -1.5; // which levelset to use as threshold
+    Grid<int> tmp( vel.getParent() );
+    
+    // count particles in cells, and delete excess particles
+    for (int i=0; i<(int)parts.size(); i++) {
+        if (parts.isActive(i)) {
+            Vec3i p = toVec3i( parts.getPos(i) );
+            int num = tmp(p);
+
+			bool atSurface = false;
+			// NT_DEBUG, check?
+			//if( phi && (phi->getInterpolated(mData[i].pos) > SURFACE_LS) ) atSurface = true;
+            
+            // dont delete particles in non fluid cells here, the particles are "always right"
+            if ( num > maxParticles && (!atSurface) ) {
+                parts.kill(i); //mData[i].flag |= PDELETE;
+			} else
+                tmp(p) = num+1;
+        }
+    }
+    parts.doCompress();
+
+   /* 
+    // seed new particles
+    FOR_IJK(tmp) {
+        int cnt = tmp(i,j,k);
+		
+		// skip surface
+		if( phi && ((*phi)(i,j,k) > SURFACE_LS) ) continue;
+
+        if (flags.isFluid(i,j,k) && cnt < minParticles) {
+            for (int m=cnt; m < minParticles; m++) { 
+                Vec3 rndPos (i + mRand.getReal(), j + mRand.getReal(), k + mRand.getReal());
+                add(FlipData(rndPos, vel.getInterpolated(rndPos)));
+            }
+        }
+    }*/
+}
+
+
 
 // grid interpolation functions
 
@@ -278,6 +347,8 @@ PYTHON void mapPartsToMAC( FlagGrid& flags, MACGrid& vel , MACGrid& velOld ,
 	if(!weight) {
     	weight = new Grid<Vec3>(flags.getParent());
 		freeTmp = true;
+	} else {
+		weight->clear(); // make sure we start with a zero grid!
 	}
     vel.clear();
     knMapLinearVec3ToMACGrid( parts, flags, vel, *weight, partVel );

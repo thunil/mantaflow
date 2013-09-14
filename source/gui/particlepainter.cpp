@@ -215,6 +215,7 @@ void ParticlePainter::paint() {
 		// draw other particle data, if available
 		int pdataId = mMode % (vp->getNumPdata() + 1);
 		std::ostringstream infoStr;
+		bool drewPoints = false;
 
 		if( pdataId==0 ) {
 			// dont draw data, only center below
@@ -228,6 +229,7 @@ void ParticlePainter::paint() {
 				ParticleDataImpl<Real>* pdi = dynamic_cast<ParticleDataImpl<Real>*>(pdb);
 				if(!pdi) break;
 				mHavePdata = true;
+				drewPoints = true;
 				glPointSize(1.5);
 				glBegin(GL_POINTS); 
 				for(int i=0; i<(int)vp->size(); i++) {
@@ -238,13 +240,14 @@ void ParticlePainter::paint() {
 					glVertex(pos, dx); 
 				}   
 				glEnd();
-				infoStr << "Pdata "<<pdNum<<" 'real'\n";
+				infoStr << "Pdata "<<pdi->getName()<<" "<<pdNum<<" 'real'\n";
 				} break;
 
 			case ParticleDataBase::DATA_INT: {
 				ParticleDataImpl<int>* pdi = dynamic_cast<ParticleDataImpl<int>*>(pdb);
 				if(!pdi) break;
 				mHavePdata = true;
+				drewPoints = true;
 				glPointSize(1.5);
 				glBegin(GL_POINTS); 
 				for(int i=0; i<(int)vp->size(); i++) {
@@ -255,7 +258,7 @@ void ParticlePainter::paint() {
 					glVertex(pos, dx); 
 				}   
 				glEnd();
-				infoStr << "Pdata "<<pdNum<<" 'int'\n";
+				infoStr << "Pdata "<<pdi->getName()<<" "<<pdNum<<" 'int'\n";
 				} break;
 
 			case ParticleDataBase::DATA_VEC3: {
@@ -274,7 +277,7 @@ void ParticlePainter::paint() {
 					glVertex(pos, dx); 
 				}   
 				glEnd();
-				infoStr << "Pdata "<<pdNum<<" 'vec3'\n";
+				infoStr << "Pdata "<<pdi->getName()<<" "<<pdNum<<" 'vec3'\n";
 				} break;
 
 			default: {
@@ -290,18 +293,26 @@ void ParticlePainter::paint() {
 			updateText();
 		}
 
-		// always draw center
-        glPointSize(0.5);
-        glColor3f(0,0.5,1);
-        glBegin(GL_POINTS);
+		// otherwise draw center
+		if(!drewPoints) {
+			glPointSize(0.5);
+			glBegin(GL_POINTS);
 
-        for(int i=0; i<(int)vp->size(); i++) {
-            Vec3 pos = (*vp)[i].pos;
-            
-            glVertex(pos, dx);
-            
-        }   
-        glEnd();
+			for(int i=0; i<(int)vp->size(); i++) {
+				Vec3 pos = (*vp)[i].pos;
+				
+				if(!vp->isActive(i) ) {
+					glColor3f(0.8, 0., 0.);
+				} else if(!vp->getStatus(i) & ParticleBase::PNEW ) {
+					glColor3f(1.0, 0.5, 1.);
+				} else {
+					glColor3f(0, 0.5, 1);
+				}
+				glVertex(pos, dx);
+				
+			}   
+			glEnd();
+		}
         
 		// draw basic part sys done
     }
