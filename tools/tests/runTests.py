@@ -31,7 +31,7 @@ manta = sys.argv[1]
 print "Using mantaflow executable '" + manta + "' " 
 
 files = os.popen("ls test_????_*.py").read() 
-#print files
+#print "Debug, found test files: "+files
 
 genRefFiles = int(os.getenv('MANTA_GEN_TEST_DATA', 0))
 if (genRefFiles==1):
