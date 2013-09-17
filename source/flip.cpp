@@ -189,8 +189,11 @@ FlipSystem::~FlipSystem() { };
 
 
 //*****************************************************************************
+//*****************************************************************************
+//*****************************************************************************
 
-// NT_DEBUG , warning - duplicate functions for now, clean up at some point!
+// FLIP functions for use with particle data field
+// warning - duplicate functions for now, clean up at some point!
 
 // init
 
@@ -262,6 +265,11 @@ PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
         if (flags.isInBounds(p) && flags.isEmpty(p))
             flags(p) = (flags(p) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
     }
+}
+
+// for testing purposes only...
+PYTHON void testInitGridWithPos(RealGrid &grid) {
+    FOR_IJK(grid) { grid(i,j,k) = norm( Vec3(i,j,k) ); }
 }
 
 // compute simple levelset without interpolation (fast, low quality), to be used during simulation
@@ -422,7 +430,7 @@ PYTHON void mapPartsToGrid    ( FlagGrid& flags, Grid<Real>& target , BasicParti
 PYTHON void mapPartsToGridVec3( FlagGrid& flags, Grid<Vec3>& target , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& source ) {
 	mapLinearRealHelper<Vec3>(flags,target,parts,source);
 }
-// integers need "max" mode
+// integers need "max" mode, not yet implemented
 //PYTHON void mapPartsToGridInt ( FlagGrid& flags, Grid<int >& target , BasicParticleSystem& parts , ParticleDataImpl<int >& source ) {
 //	mapLinearRealHelper<int >(flags,target,parts,source);
 //}
@@ -468,11 +476,6 @@ void knMapLinearMACGridToVec3_FLIP( BasicParticleSystem& p, FlagGrid& flags, MAC
 PYTHON void flipVelocityUpdate(FlagGrid& flags, MACGrid& vel , MACGrid& velOld , 
 		BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel , Real flipRatio ) {
     knMapLinearMACGridToVec3_FLIP( parts, flags, vel, velOld, partVel, flipRatio );
-}
-
-// for testing only...
-PYTHON void testInitGridWithPos(RealGrid &grid) {
-    FOR_IJK(grid) { grid(i,j,k) = norm( Vec3(i,j,k) ); }
 }
 
 

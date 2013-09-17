@@ -43,6 +43,7 @@ public:
     //! output performace statistics
     PYTHON void printTimings();
     PYTHON void saveMeanTimings(std::string filename);
+	PYTHON void printMemInfo();
     
     //! Advance the solver one timestep, update GUI if present
     PYTHON void step();

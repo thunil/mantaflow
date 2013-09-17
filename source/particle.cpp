@@ -19,28 +19,34 @@ using namespace std;
 namespace Manta {
 
 
-//template<class S>
+ParticleBase::ParticleBase(FluidSolver* parent) : 
+	PbClass(parent), mAllowCompress(true), mFreePdata(false) {
+}
+
 ParticleBase::~ParticleBase()
 {
 	// make sure data fields now parent system is deleted
 	for(int i=0; i<(int)mPartData.size(); ++i)
 		mPartData[i]->setParticleSys(NULL);
 	
+	if(mFreePdata) {
+		for(int i=0; i<(int)mPartData.size(); ++i)
+			delete mPartData[i];
+	}
+	
+}
+
+std::string ParticleBase::infoString() const { 
+	return "ParticleSystem " + mName + " <no info>"; 
 }
 
 void ParticleBase::cloneParticleData(ParticleBase* nm) {
-    /*ParticleBase* nm = new ParticleBase(getParent());
-    compress();
-    
-    nm->mData = mData;
-    nm->setName(getName());*/
-
-	// clone additional data 
+	// clone additional data , and make sure the copied particle system deletes it
+	nm->mFreePdata = true;
 	for(int i=0; i<(int)mPartData.size(); ++i) {
 		ParticleDataBase* pdata = mPartData[i]->clone();
 		nm->registerPdata(pdata);
 	} 
-    //return nm;
 }
 
 void ParticleBase::deregister(ParticleDataBase* pdata) {
@@ -119,30 +125,25 @@ std::string ParticleBase::debugInfoPdata()
 	return sstr.str();
 }
 
-
-//! basic particle system
-
+ 
 BasicParticleSystem::BasicParticleSystem(FluidSolver* parent)
-   	: ParticleSystem<BasicParticleData>(parent) {
-	this->mAllowCompress = false;
+       : ParticleSystem<BasicParticleData>(parent) {
+    this->mAllowCompress = false;
 }
-    
-std::string BasicParticleSystem::infoString() const { 
-	std::ostringstream s;
-    s << "oParticleSystem '" << getName() << "' [" << size() << " parts]";
-	if( this->getNumPdata()>0) s << " Pdata: "<< this->getNumPdata() <<" " ; 
-	// NT_DEBUG, not working, check...
-	return s.str();
-};
 
+// file io
 
-
-static void writeParticlesText(string name, BasicParticleSystem* p) {
+void BasicParticleSystem::writeParticlesText(string name) {
     ofstream ofs(name.c_str());
     if (!ofs.good())
         errMsg("can't open file!");
-	for(int i=0; i<p->size(); ++i) {
-		ofs << i<<": "<< p->getPos(i) <<" , "<< p->getStatus(i) <<"\n"; 
+	ofs << this->size()<<", pdata: "<< mPartData.size()<<" ("<<mPdataInt.size()<<","<<mPdataReal.size()<<","<<mPdataVec3.size()<<") \n";
+	for(int i=0; i<this->size(); ++i) {
+		ofs << i<<": "<< this->getPos(i) <<" , "<< this->getStatus(i) <<". "; 
+		for(int pd=0; pd<(int)mPdataInt.size() ; ++pd) ofs << mPdataInt [pd]->get(i)<<" ";
+		for(int pd=0; pd<(int)mPdataReal.size(); ++pd) ofs << mPdataReal[pd]->get(i)<<" ";
+		for(int pd=0; pd<(int)mPdataVec3.size(); ++pd) ofs << mPdataVec3[pd]->get(i)<<" ";
+		ofs << "\n"; 
 	}
     ofs.close();
 }
@@ -151,12 +152,9 @@ void BasicParticleSystem::load(string name) {
     if (name.find_last_of('.') == string::npos)
         errMsg("file '" + name + "' does not have an extension");
     string ext = name.substr(name.find_last_of('.'));
-    if (false) { // ext == ".txt")
-        //readParticlesText(name, this);
-	}
-    //else if (ext == ".uni")
-        //readGridUni(name, this);
-    else
+    /*if ( ext == ".txt")
+        readParticlesText(name, this);
+	} else */
         errMsg("particle '" + name +"' filetype not supported for loading");
 }
 
@@ -164,10 +162,8 @@ void BasicParticleSystem::save(string name) {
     if (name.find_last_of('.') == string::npos)
         errMsg("file '" + name + "' does not have an extension");
     string ext = name.substr(name.find_last_of('.'));
-    if (ext == ".txt")
-        writeParticlesText(name, this);
-	//else if (ext == ".uni")
-		//writeGridUni(name, this);
+    if (ext == ".txt") 
+        this->writeParticlesText(name);
     else
         errMsg("particle '" + name +"' filetype not supported for saving");
 }

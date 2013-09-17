@@ -40,3 +40,4 @@ for t in range(400):
     setWallBcs(flags=flags, vel=vel)
     
     s.step()
+

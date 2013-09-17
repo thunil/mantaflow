@@ -332,9 +332,9 @@ template<> void GridPainter<int>::paint() {
     glColor3f(0.5,0,0);
     
     bool rbox = true;
-    bool lines = mLocalGrid->getSize().max() <= 40; 
-lines=true; // debug
-    if (lines) {
+    bool skipFluid = mLocalGrid->getSize().max() > 40; 
+    bool drawLines = mLocalGrid->getSize().max() <= 80; 
+    if (drawLines) {
         //glDepthFunc(GL_LESS);
         glBegin(GL_LINES);
         FOR_P_SLICE(mLocalGrid, mDim, mPlane) {
@@ -349,6 +349,7 @@ lines=true; // debug
 			} else if (flag & FlagGrid::TypeEmpty) {
     			glColor3f(0.25,0,0);
 			} else if (flag & FlagGrid::TypeFluid) {
+				if(skipFluid) continue;
     			glColor3f(0,0,0.75);
 			} else {
     			glColor3f(0.5,0,0); // unknown
@@ -387,18 +388,51 @@ template<> void GridPainter<Real>::paint() {
     //glPolygonOffset(1.0,1.0);
     //glDepthFunc(GL_LESS);
 
-	/*FOR_P_SLICE(mLocalGrid, mDim, mPlane) { 
-		int flag = FlagGrid::TypeFluid;
-		if (flags && (mLocalGrid->getType() & GridBase::TypeLevelset) == 0) flag = flags->get(p);
-		if (flag & FlagGrid::TypeObstacle)
-			glColor3f(0.15,0.15,0.15);
-		else if (flag & FlagGrid::TypeOutflow)
-			glColor3f(0.3,0.0,0.0);
-		else if (flag & FlagGrid::TypeEmpty)
-			glColor3f(0.,0.2,0.);
-		else {
-			Real v = mLocalGrid->get(p) * scaler;
+	const bool useOldDrawStyle = false;
+	if(useOldDrawStyle) {
+		// original mantaflow drawing style
+
+		FOR_P_SLICE(mLocalGrid, mDim, mPlane) { 
+			int flag = FlagGrid::TypeFluid;
+			if (flags && (mLocalGrid->getType() & GridBase::TypeLevelset) == 0) flag = flags->get(p);
+			if (flag & FlagGrid::TypeObstacle)
+				glColor3f(0.15,0.15,0.15);
+			else if (flag & FlagGrid::TypeOutflow)
+				glColor3f(0.3,0.0,0.0);
+			else if (flag & FlagGrid::TypeEmpty)
+				glColor3f(0.,0.2,0.);
+			else {
+				Real v = mLocalGrid->get(p) * scaler;
+				
+				if (isLevelset) {
+					v = max(min(v*0.2, 1.0),-1.0);
+					if (v>=0)
+						glColor3f(v,0,0.5);
+					else
+						glColor3f(0.5, 1.0+v, 0.);
+				} else {
+					if (v>0)
+						glColor3f(v,0,0);
+					else
+						glColor3f(0,0,-v);
+				}
+			}
 			
+			if ((flag & FlagGrid::TypeEmpty) == 0) {
+				getCellCoordinates(p, box, mDim);
+				for (int n=0;n<4;n++) 
+					glVertex(box[n], dx);
+			}
+		}
+		glEnd();    
+	} else {
+		// "new" drawing style
+
+		// ignore flags, its a bit dangerous to skip outside info
+
+		FOR_P_SLICE(mLocalGrid, mDim, mPlane) 
+		{ 
+			Real v = mLocalGrid->get(p) * scaler; 
 			if (isLevelset) {
 				v = max(min(v*0.2, 1.0),-1.0);
 				if (v>=0)
@@ -411,40 +445,13 @@ template<> void GridPainter<Real>::paint() {
 				else
 					glColor3f(0,0,-v);
 			}
-		}
-		
-		if ((flag & FlagGrid::TypeEmpty) == 0) {
+
 			getCellCoordinates(p, box, mDim);
 			for (int n=0;n<4;n++) 
 				glVertex(box[n], dx);
 		}
+		glEnd();    
 	}
-	glEnd();    */
-
-	// ignore flags, its a bit dangerous :)
-
-	FOR_P_SLICE(mLocalGrid, mDim, mPlane) 
-	{ 
-		Real v = mLocalGrid->get(p) * scaler; 
-		if (isLevelset) {
-			v = max(min(v*0.2, 1.0),-1.0);
-			if (v>=0)
-				glColor3f(v,0,0.5);
-			else
-				glColor3f(0.5, 1.0+v, 0.);
-		} else {
-			if (v>0)
-				glColor3f(v,0,0);
-			else
-				glColor3f(0,0,-v);
-		}
-
-		getCellCoordinates(p, box, mDim);
-		for (int n=0;n<4;n++) 
-			glVertex(box[n], dx);
-	}
-	glEnd();    
-
     //glDepthFunc(GL_ALWAYS);    
     //glPolygonOffset(0,0);    
 }

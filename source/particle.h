@@ -38,14 +38,14 @@ public:
         PINVALID      = (1<<30), // unused
     };
 
-    PYTHON ParticleBase(FluidSolver* parent) : PbClass(parent), mAllowCompress(true) {}
+    PYTHON ParticleBase(FluidSolver* parent);
     virtual ~ParticleBase();
 
 	//! copy all the particle data thats registered with the other particle system to this one
     virtual void cloneParticleData(ParticleBase* nm);
 
     virtual SystemType getType() const { return BASE; }
-    virtual std::string infoString() const { return "ParticleSystem " + mName + " <no info>"; };
+    virtual std::string infoString() const; 
     virtual ParticleBase* clone() { assertMsg( false , "Dont use, override..."); return NULL; } 
 
 	// slow virtual function to query size, do not use in kernels! use size() instead
@@ -90,6 +90,8 @@ protected:
 	std::vector< ParticleDataImpl<Real> *> mPdataReal;
 	std::vector< ParticleDataImpl<Vec3> *> mPdataVec3;
 	std::vector< ParticleDataImpl<int> *>  mPdataInt;
+	//! indicate that pdata of this particle system is copied, and needs to be freed
+	bool mFreePdata;
 };
 
 
@@ -112,6 +114,8 @@ public:
 
 	//! explicitly trigger compression from outside
 	void doCompress() { if ( mDeletes > mDeleteChunk) compress(); }
+	//! insert buffered positions as new particles, update additional particle data
+	void insertBufferedParticles();
     
     // adding and deleting 
     inline void kill(int i);
@@ -133,16 +137,16 @@ public:
     PYTHON void projectOutside(Grid<Vec3>& gradient);
     
     virtual ParticleBase* clone();
-    //virtual std::string infoString() const;
-
-	//! insert buffered positions as new particles, update additional particle data
-	void insertBufferedParticles();
+    virtual std::string infoString() const;
     
 protected:  
-    virtual void compress();
-    
+   	//! deletion count , and interval for re-compressing 
     int mDeletes, mDeleteChunk;    
+	//! the particle data
     std::vector<S> mData;    
+
+	//! reduce storage , called by doCompress
+    virtual void compress(); 
 };
 
 //! Simplest data class for particle systems
@@ -161,10 +165,12 @@ PYTHON class BasicParticleSystem : public ParticleSystem<BasicParticleData> {
 public:
     PYTHON BasicParticleSystem(FluidSolver* parent);
     
+	//! file io
     PYTHON void save(std::string name);
     PYTHON void load(std::string name);
 
-    virtual std::string infoString() const;
+	// save to text file
+	void writeParticlesText(std::string name);
 
     PYTHON void addParticle(Vec3 pos) { add(BasicParticleData(pos)); }
 };
@@ -480,12 +486,13 @@ ParticleBase* ConnectedParticleSystem<DATA,CON>::clone() {
     return nm;
 }
 
-/*template<class S>   NT_DEBUG
+template<class S>  
 std::string ParticleSystem<S>::infoString() const { 
     std::stringstream s;
-    s << "ParticleSystem '" << getName() << "' [" << size() << " parts]";
+    s << "ParticleSys '" << getName() << "' [" << size() << " parts]";
+	if(this->getNumPdata()>0) s<< " Pdata: "<< this->getNumPdata();
     return s.str();
-}*/
+}
     
     
 inline void ParticleDataBase::checkPartIndex(int idx) const {
