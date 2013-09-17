@@ -142,15 +142,14 @@ void FlipSystem::markFluidCells(FlagGrid& flags) {
 }
 
 
-
 // compute simple levelset without interpolation (fast, low quality), to be used during simulation
 KERNEL(pts, single) 
-void ComputeUnionLevelset(FlipSystem& p, LevelsetGrid& phi, Real radius=1.) {
-    if (!p.isActive(i)) return;
+void ComputeUnionLevelsetOrg(FlipSystem& p, LevelsetGrid& phi, Real radius=1.) {
+	if (!p.isActive(i)) return;
 
 	const Vec3 pos = p[i].pos - Vec3(0.5); // offset for centered LS value
 	//const Vec3i size = phi.getSize();
-    const int xi = (int)pos.x, yi = (int)pos.y, zi = (int)pos.z; 
+	const int xi = (int)pos.x, yi = (int)pos.y, zi = (int)pos.z; 
 
 	int radiusInt  = int(2. * radius) + 1;
 	int radiusIntZ = phi.is3D() ? radiusInt : 0;
@@ -158,20 +157,22 @@ void ComputeUnionLevelset(FlipSystem& p, LevelsetGrid& phi, Real radius=1.) {
 	for(int yj=yi-radiusInt ; yj<=yi+radiusInt ; yj++) 
 	for(int xj=xi-radiusInt ; xj<=xi+radiusInt ; xj++) 
 	{
-		if (! phi.isInBounds(Vec3i(xj,yj,zj)) ) continue;
-		phi(xj,yj,zj) = std::min( phi(xj,yj,zj) , fabs( norm(Vec3(xj,yj,zj)-pos) )-radius );
+		   if (! phi.isInBounds(Vec3i(xj,yj,zj)) ) continue;
+		   phi(xj,yj,zj) = std::min( phi(xj,yj,zj) , fabs( norm(Vec3(xj,yj,zj)-pos) )-radius );
 	}
 }
-PYTHON void unionParticleLevelset (FlipSystem& p, LevelsetGrid& phi, Real radiusFactor=1.) {
+PYTHON void unionParticleLevelsetOrg (FlipSystem& p, LevelsetGrid& phi, Real radiusFactor=1.) {
 	// make sure we cover at least 1 cell by default (1% safety margin)
 	Real radius = 0.5 * (phi.is3D() ? sqrt(3.) : sqrt(2.) ) * (radiusFactor+.01);
 
 	// reset
 	FOR_IJK(phi) {
-		phi(i,j,k) = radius + VECTOR_EPSILON;
+		   phi(i,j,k) = radius + VECTOR_EPSILON;
 	} 
-	ComputeUnionLevelset(p, phi, radius);
+	ComputeUnionLevelsetOrg(p, phi, radius);
 }
+
+ 
 
 ParticleBase* FlipSystem::clone() {
     FlipSystem* nm = new FlipSystem(getParent());
@@ -263,10 +264,41 @@ PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
     }
 }
 
+// compute simple levelset without interpolation (fast, low quality), to be used during simulation
+KERNEL(pts, single) 
+void ComputeUnionLevelset(BasicParticleSystem& p, LevelsetGrid& phi, Real radius=1.) {
+    if (!p.isActive(i)) return;
+
+	const Vec3 pos = p[i].pos - Vec3(0.5); // offset for centered LS value
+	//const Vec3i size = phi.getSize();
+    const int xi = (int)pos.x, yi = (int)pos.y, zi = (int)pos.z; 
+
+	int radiusInt  = int(2. * radius) + 1;
+	int radiusIntZ = phi.is3D() ? radiusInt : 0;
+	for(int zj=zi-radiusIntZ; zj<=zi+radiusIntZ; zj++) 
+	for(int yj=yi-radiusInt ; yj<=yi+radiusInt ; yj++) 
+	for(int xj=xi-radiusInt ; xj<=xi+radiusInt ; xj++) 
+	{
+		if (! phi.isInBounds(Vec3i(xj,yj,zj)) ) continue;
+		phi(xj,yj,zj) = std::min( phi(xj,yj,zj) , fabs( norm(Vec3(xj,yj,zj)-pos) )-radius );
+	}
+}
+PYTHON void unionParticleLevelset (BasicParticleSystem& p, LevelsetGrid& phi, Real radiusFactor=1.) {
+	// make sure we cover at least 1 cell by default (1% safety margin)
+	Real radius = 0.5 * (phi.is3D() ? sqrt(3.) : sqrt(2.) ) * (radiusFactor+.01);
+
+	// reset
+	FOR_IJK(phi) {
+		phi(i,j,k) = radius + VECTOR_EPSILON;
+	} 
+	ComputeUnionLevelset(p, phi, radius);
+}
+
 PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& flags, 
-		int minParticles, int maxParticles, LevelsetGrid* phi ) 
+		int minParticles, int maxParticles, LevelsetGrid& phi ) 
 {
-	//const Real SURFACE_LS = -1.5; // which levelset to use as threshold
+	// which levelset to use as threshold, todo - make depend on particle radius
+	const Real SURFACE_LS = -1.5; 
     Grid<int> tmp( vel.getParent() );
     
     // count particles in cells, and delete excess particles
@@ -276,8 +308,8 @@ PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& fl
             int num = tmp(p);
 
 			bool atSurface = false;
-			// NT_DEBUG, check?
-			//if( phi && (phi->getInterpolated(mData[i].pos) > SURFACE_LS) ) atSurface = true;
+			if (phi.getInterpolated( parts.getPos(i) ) > SURFACE_LS) atSurface = true;
+			//debMsg("i"<<i<<" "<<num<<" s"<<atSurface<<" phi"<< phi.getInterpolated( parts.getPos(i) ),1);
             
             // dont delete particles in non fluid cells here, the particles are "always right"
             if ( num > maxParticles && (!atSurface) ) {
@@ -289,16 +321,16 @@ PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& fl
 
     // seed new particles
     RandomStream mRand(9832);
-    FOR_IJK(tmp) {
+	FOR_IJK(tmp) {
         int cnt = tmp(i,j,k);
 		
-		// skip surface
-		//if( phi && ((*phi)(i,j,k) > SURFACE_LS) ) continue;
+		// skip cells near surface
+		if (phi(i,j,k) > SURFACE_LS) continue;
 
         if (flags.isFluid(i,j,k) && cnt < minParticles) {
             for (int m=cnt; m < minParticles; m++) { 
-                //Vec3 rndPos (i + mRand.getReal(), j + mRand.getReal(), k + mRand.getReal());
-                Vec3 rndPos (i + 0.5, j + 0.5, k + 0.5);
+                Vec3 rndPos (i + mRand.getReal(), j + mRand.getReal(), k + mRand.getReal());
+                //Vec3 rndPos (i + 0.5, j + 0.5, k + 0.5); // cell center
                 parts.addBuffered( rndPos ); 
             }
         }

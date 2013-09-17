@@ -243,7 +243,6 @@ void ParticleDataImpl<T>::initNewValue(int idx, Vec3 pos) {
 		mData[idx] = 0; 
 	else {
 		mData[idx] = mpGridSource->getInterpolated(pos);
-		debMsg("iniAt "<<pos<<" "<< mData[idx] ,1);
 	}
 }
 // special handling needed for velocities

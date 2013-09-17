@@ -48,7 +48,7 @@ for t in range(2500):
 	flip.markFluidCells(flags=flags) # dont use levelset for flags!
 
 	# create simple surface, resample particles
-	unionParticleLevelset( flip, phi )
+	unionParticleLevelsetOrg( flip, phi )
 	phi.reinitMarching(flags=flags, maxTime=2 )
 	flip.adjustNumber( vel=vel, flags=flags, minParticles=minParticles, maxParticles=2*minParticles, phi=phi ) 
 	
