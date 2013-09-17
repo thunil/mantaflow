@@ -11,6 +11,7 @@
  *
  ******************************************************************************/
 
+#include <fstream>
 #include "particle.h"
 #include "levelset.h"
 
@@ -81,15 +82,25 @@ void ParticleBase::registerPdata(ParticleDataBase* pdata) {
 	pdata->setParticleSys(this);
 	mPartData.push_back(pdata);
 
-	if( pdata->getType() == ParticleDataBase::DATA_VEC3 ) {
+	if( pdata->getType() == ParticleDataBase::DATA_REAL ) {
+		ParticleDataImpl<Real>* pd = dynamic_cast< ParticleDataImpl<Real>* >(pdata);
+		if(!pd) errMsg("Invalid pdata object posing as real!");
+		this->registerPdataReal(pd);
+	}
+	else if( pdata->getType() == ParticleDataBase::DATA_VEC3 ) {
 		ParticleDataImpl<Vec3>* pd = dynamic_cast< ParticleDataImpl<Vec3>* >(pdata);
 		if(!pd) errMsg("Invalid pdata object posing as vec3!");
 		this->registerPdataVec3(pd);
 	}
+	else if( pdata->getType() == ParticleDataBase::DATA_INT ) {
+		ParticleDataImpl<int>* pd = dynamic_cast< ParticleDataImpl<int>* >(pdata);
+		if(!pd) errMsg("Invalid pdata object posing as int!");
+		this->registerPdataInt(pd);
+	}
 }
-void ParticleBase::registerPdataVec3(ParticleDataImpl<Vec3>* pd) {
-	mPdataVec3.push_back(pd);
-}
+void ParticleBase::registerPdataReal(ParticleDataImpl<Real>* pd) { mPdataReal.push_back(pd); }
+void ParticleBase::registerPdataVec3(ParticleDataImpl<Vec3>* pd) { mPdataVec3.push_back(pd); }
+void ParticleBase::registerPdataInt (ParticleDataImpl<int >* pd) { mPdataInt .push_back(pd); }
 
 void ParticleBase::addAllPdata() {
 	for(int i=0; i<(int)mPartData.size(); ++i) {
@@ -108,6 +119,9 @@ std::string ParticleBase::debugInfoPdata()
 	return sstr.str();
 }
 
+
+//! basic particle system
+
 BasicParticleSystem::BasicParticleSystem(FluidSolver* parent)
    	: ParticleSystem<BasicParticleData>(parent) {
 	this->mAllowCompress = false;
@@ -120,6 +134,43 @@ std::string BasicParticleSystem::infoString() const {
 	// NT_DEBUG, not working, check...
 	return s.str();
 };
+
+
+
+static void writeParticlesText(string name, BasicParticleSystem* p) {
+    ofstream ofs(name.c_str());
+    if (!ofs.good())
+        errMsg("can't open file!");
+	for(int i=0; i<p->size(); ++i) {
+		ofs << i<<": "<< p->getPos(i) <<" , "<< p->getStatus(i) <<"\n"; 
+	}
+    ofs.close();
+}
+
+void BasicParticleSystem::load(string name) {
+    if (name.find_last_of('.') == string::npos)
+        errMsg("file '" + name + "' does not have an extension");
+    string ext = name.substr(name.find_last_of('.'));
+    if (false) { // ext == ".txt")
+        //readParticlesText(name, this);
+	}
+    //else if (ext == ".uni")
+        //readGridUni(name, this);
+    else
+        errMsg("particle '" + name +"' filetype not supported for loading");
+}
+
+void BasicParticleSystem::save(string name) {
+    if (name.find_last_of('.') == string::npos)
+        errMsg("file '" + name + "' does not have an extension");
+    string ext = name.substr(name.find_last_of('.'));
+    if (ext == ".txt")
+        writeParticlesText(name, this);
+	//else if (ext == ".uni")
+		//writeGridUni(name, this);
+    else
+        errMsg("particle '" + name +"' filetype not supported for saving");
+}
 
 // particle data
 
@@ -138,13 +189,13 @@ ParticleDataBase::~ParticleDataBase()
 // actual data implementation
 
 template<class T>
-ParticleDataImpl<T>::ParticleDataImpl(FluidSolver* parent) : ParticleDataBase(parent) {
+ParticleDataImpl<T>::ParticleDataImpl(FluidSolver* parent) : 
+	ParticleDataBase(parent) , mpGridSource(NULL), mGridSourceMAC(false) {
 }
 
 template<class T>
 ParticleDataImpl<T>::ParticleDataImpl(FluidSolver* parent, ParticleDataImpl<T>* other) : 
-	ParticleDataBase(parent) 
-{
+	ParticleDataBase(parent) , mpGridSource(NULL), mGridSourceMAC(false) {
 	this->mData = other->mData;
 }
 
@@ -177,6 +228,35 @@ template<class T>
 ParticleDataBase* ParticleDataImpl<T>::clone() {
     ParticleDataImpl<T>* npd = new ParticleDataImpl<T>( getParent(), this );
 	return npd;
+}
+
+template<class T>
+void ParticleDataImpl<T>::setSource(Grid<T>* grid, bool isMAC ) {
+	mpGridSource = grid;
+	mGridSourceMAC = isMAC;
+	if(isMAC) assertMsg( dynamic_cast<MACGrid*>(grid) != NULL , "Given grid is not a valid MAC grid");
+}
+
+template<class T>
+void ParticleDataImpl<T>::initNewValue(int idx, Vec3 pos) {
+	if(!mpGridSource)
+		mData[idx] = 0; 
+	else {
+		mData[idx] = mpGridSource->getInterpolated(pos);
+		debMsg("iniAt "<<pos<<" "<< mData[idx] ,1);
+	}
+}
+// special handling needed for velocities
+template<>
+void ParticleDataImpl<Vec3>::initNewValue(int idx, Vec3 pos) {
+	if(!mpGridSource)
+		mData[idx] = 0;
+	else {
+		if(!mGridSourceMAC)
+			mData[idx] = mpGridSource->getInterpolated(pos);
+		else
+			mData[idx] = ((MACGrid*)mpGridSource)->getInterpolated(pos);
+	}
 }
 
 // specializations

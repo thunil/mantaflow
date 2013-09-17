@@ -11,7 +11,7 @@ res = 64
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
-	particleNumber = 2 # use more particles in 2d
+	particleNumber = 3 # use more particles in 2d
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.5
 
@@ -60,6 +60,6 @@ for t in range(250):
     # FLIP velocity update
     flip.velocitiesFromGrid(vel=vel, flags=flags, flipRatio=0.97)
     
-    gui.screenshot( 'flipt_2old_%04d.png' % t );
+    #gui.screenshot( 'flipt_2old_%04d.png' % t );
     s.step()
 

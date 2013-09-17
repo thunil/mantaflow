@@ -51,34 +51,45 @@ public:
 	// slow virtual function to query size, do not use in kernels! use size() instead
 	virtual int getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; } 
 
+	//! add a position as potential candidate for new particle (todo, make usable from parallel threads)
+	inline void addBuffered(const Vec3& pos);
+
+	//! debug info about pdata
+	std::string debugInfoPdata();
+
 	// particle data functions
 
     //! create a particle data object
     PYTHON PbClass* create(PbType type, const std::string& name = "");
 	//! add a particle data field, set its parent particle-system pointer
 	void registerPdata(ParticleDataBase* pdata);
+	void registerPdataReal(ParticleDataImpl<Real>* pdata);
 	void registerPdataVec3(ParticleDataImpl<Vec3>* pdata);
+	void registerPdataInt (ParticleDataImpl<int >* pdata);
 	//! remove a particle data entry
 	void deregister(ParticleDataBase* pdata);
 	//! add one zero entry to all data fields
 	void addAllPdata();
-	// note - deletion is handled in compress function
+	// note - deletion of pdata is handled in compress function
 
 	//! how many are there?
 	int getNumPdata() const { return mPartData.size(); }
 	//! access one of the fields
 	ParticleDataBase* getPdata(int i) { return mPartData[i]; }
 
-	//! debug info about pdata
-	std::string debugInfoPdata();
-
 protected:  
+	//! new particle candidates
+	std::vector<Vec3> mNewBuffer;
+
 	//! allow automatic compression / resize? disallowed for, eg, flip particle systems
 	bool mAllowCompress;
+
 	//! store particle data , each pointer has its own storage vector of a certain type (int, real, vec3)
 	std::vector<ParticleDataBase*> mPartData;
-	//! lists of different types, for fast operations w/o virtual function calls
+	//! lists of different types, for fast operations w/o virtual function calls (all calls necessary per particle)
+	std::vector< ParticleDataImpl<Real> *> mPdataReal;
 	std::vector< ParticleDataImpl<Vec3> *> mPdataVec3;
+	std::vector< ParticleDataImpl<int> *>  mPdataInt;
 };
 
 
@@ -123,6 +134,9 @@ public:
     
     virtual ParticleBase* clone();
     //virtual std::string infoString() const;
+
+	//! insert buffered positions as new particles, update additional particle data
+	void insertBufferedParticles();
     
 protected:  
     virtual void compress();
@@ -146,6 +160,9 @@ public:
 PYTHON class BasicParticleSystem : public ParticleSystem<BasicParticleData> {
 public:
     PYTHON BasicParticleSystem(FluidSolver* parent);
+    
+    PYTHON void save(std::string name);
+    PYTHON void load(std::string name);
 
     virtual std::string infoString() const;
 
@@ -215,6 +232,9 @@ public:
     inline T& operator[](int idx)            { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
     inline const T operator[](int idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 
+	//! set grid from which to get data...
+	PYTHON void setSource(Grid<T>* grid, bool isMAC=false );
+
 	// particle data base interface
 	virtual int  size() const;
 	virtual void add();
@@ -223,10 +243,17 @@ public:
 	virtual void resize(int s);
 	virtual void copyValueSlow(int from, int to);
 
-	// fast inlined version
-	inline void copyValue(int from, int to) { get(to) = get(from); }
+	// fast inlined functions for per particle operations
+	inline void copyValue(int from, int to) { get(to) = get(from); } 
+	void initNewValue(int idx, Vec3 pos);
 protected:
-	std::vector<T> mData; // todo
+	//! data storage
+	std::vector<T> mData; 
+
+	//! optionally , we might have an associated grid from which to grab new data
+	Grid<T>* mpGridSource;
+	//! unfortunately , we need to distinguish mac vs regular vec3
+	bool mGridSourceMAC;
 };
 
 PYTHON alias ParticleDataImpl<int>  PdataInt;
@@ -239,6 +266,10 @@ PYTHON alias ParticleDataImpl<Vec3> PdataVec3;
 //******************************************************************************
 
 const int DELETE_PART = 20; // chunk size for compression
+
+void ParticleBase::addBuffered(const Vec3& pos) {
+	mNewBuffer.push_back(pos);
+}
    
 template<class S>
 void ParticleSystem<S>::clear() {
@@ -340,19 +371,54 @@ void ParticleSystem<S>::compress() {
         while ((mData[i].flag & PDELETE) != 0) {
             nextRead--;
             mData[i] = mData[nextRead];
-            mData[nextRead].flag = 0;           
+			// ugly, but prevent virtual function calls here:
+			for(int pd=0; pd<(int)mPdataReal.size(); ++pd) mPdataReal[pd]->copyValue(nextRead, i);
 			for(int pd=0; pd<(int)mPdataVec3.size(); ++pd) mPdataVec3[pd]->copyValue(nextRead, i);
-			//for(int i=0; i<(int)mPartData.size(); ++i) mPartData[i]->copyValueSlow(nextRead, i);
+			for(int pd=0; pd<(int)mPdataInt .size(); ++pd) mPdataInt [pd]->copyValue(nextRead, i);
+            mData[nextRead].flag = PINVALID;
         }
     }
+	if(nextRead<(int)mData.size()) debMsg("Deleted "<<((int)mData.size() - nextRead)<<" particles", 1); // debug info
+
     mData.resize(nextRead);
 	for(int i=0; i<(int)mPartData.size(); ++i)
 		mPartData[i]->resize(nextRead);
 
-	if(nextRead<mData.size()) debMsg("Deleted "<<(mData.size() - nextRead)<<" particles", 1); // debug info
     mDeletes = 0;
     mDeleteChunk = mData.size() / DELETE_PART;
 }
+
+//! insert buffered positions as new particles, update additional particle data
+template<class S>
+void ParticleSystem<S>::insertBufferedParticles() {
+	if(mNewBuffer.size()==0) return;
+	int newCnt = mData.size();
+
+	// resize all buffers to target size in 1 go
+    mData.resize(newCnt + mNewBuffer.size());
+	for(int i=0; i<(int)mPartData.size(); ++i)
+		mPartData[i]->resize(newCnt + mNewBuffer.size());
+
+	// clear new flag everywhere
+	for(int i=0; i<(int)mData.size(); ++i) mData[i].flag &= ~PNEW;
+
+	for(int i=0; i<(int)mNewBuffer.size(); ++i) {
+		// note, other fields are not initialized here...
+		mData[newCnt].pos  = mNewBuffer[i];
+		mData[newCnt].flag = PNEW;
+		// now init pdata fields from associated grids...
+		for(int pd=0; pd<(int)mPdataReal.size(); ++pd) 
+			mPdataReal[pd]->initNewValue(newCnt, mNewBuffer[i] );
+		for(int pd=0; pd<(int)mPdataVec3.size(); ++pd) 
+			mPdataVec3[pd]->initNewValue(newCnt, mNewBuffer[i] );
+		for(int pd=0; pd<(int)mPdataInt.size(); ++pd) 
+			mPdataInt[pd]->initNewValue(newCnt, mNewBuffer[i] );
+		newCnt++;
+	}
+	if(mNewBuffer.size()>0) debMsg("Added & initialized "<<(int)mNewBuffer.size()<<" particles", 1); // debug info
+	mNewBuffer.clear();
+}
+
 
 template<class DATA, class CON>
 void ConnectedParticleSystem<DATA,CON>::compress() {

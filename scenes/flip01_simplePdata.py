@@ -11,7 +11,7 @@ res = 64
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
-	particleNumber = 2 # use more particles in 2d
+	particleNumber = 3 # use more particles in 2d
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.5
 
@@ -22,7 +22,7 @@ velOld   = s.create(MACGrid)
 pressure = s.create(RealGrid)
 tmpVec3  = s.create(VecGrid)
 pp       = s.create(BasicParticleSystem) 
-
+# add velocity data to particles
 pVel     = pp.create(PdataVec3) 
 
 # scene setup
@@ -30,15 +30,12 @@ flags.initDomain(boundaryWidth=0)
 # enable one of the following
 fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1)) # breaking dam
 #fluidbox = s.create(Box, p0=gs*vec3(0.4,0.72,0.4), p1=gs*vec3(0.6,0.92,0.6)) # centered falling block
-#fluidbox = s.create(Box, p0=gs*vec3(0.5,0.5,0.5), p1=gs*vec3(0.6,0.6,0.6)) # tiny
 phiInit = fluidbox.computeLevelset()
 flags.updateFromLevelset(phiInit)
 # phiInit is not needed from now on!
 
 # note, there's no resamplig here, so we need _LOTS_ of particles...
-#flip.initialize( flags=flags, discretization=particleNumber, randomness=0.2 )
 sampleFlagsWithParticles( flags=flags, parts=pp, discretization=particleNumber, randomness=0.2 )
-#sampleLevelsetWithParticles( phi=phiInit, flags=flags, parts=pp, discretization=particleNumber, randomness=0.2 )
 
     
 if (GUI):
@@ -47,14 +44,12 @@ if (GUI):
     gui.pause()
     
 #main loop
-for t in range(250):
+for t in range(2500):
     
     # FLIP 
-    pp.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False )
-
+    pp.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False ) 
     mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=tmpVec3 ) 
-    extrapolateMACFromWeight( vel=vel , distance=2, weight=tmpVec3 )
-
+    extrapolateMACFromWeight( vel=vel , distance=2, weight=tmpVec3 ) 
     markFluidCells( parts=pp, flags=flags )
 
     addGravity(flags=flags, vel=vel, gravity=(0,-0.002,0))
@@ -70,6 +65,6 @@ for t in range(250):
     # FLIP velocity update
     flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97 )
     
-    gui.screenshot( 'flipt_3n_%04d.png' % t );
+    #gui.screenshot( 'flipt_%04d.png' % t );
     s.step()
 

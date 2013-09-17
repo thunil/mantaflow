@@ -210,18 +210,18 @@ void ParticlePainter::paint() {
         glEnd();
         
     } else if(mLocal->getType() == ParticleBase::PARTICLE) {
-        BasicParticleSystem* vp = (BasicParticleSystem*) mLocal;
+        BasicParticleSystem* bp = (BasicParticleSystem*) mLocal;
 
 		// draw other particle data, if available
-		int pdataId = mMode % (vp->getNumPdata() + 1);
+		int pdataId = mMode % (bp->getNumPdata() + 1);
 		std::ostringstream infoStr;
 		bool drewPoints = false;
 
 		if( pdataId==0 ) {
 			// dont draw data, only center below
-		} else if (vp->getNumPdata() > 0)  {
+		} else if (bp->getNumPdata() > 0)  {
 			int pdNum = pdataId-1; // start at 0
-			ParticleDataBase* pdb = vp->getPdata(pdNum);
+			ParticleDataBase* pdb = bp->getPdata(pdNum);
 
 			switch (pdb->getType() ) {
 
@@ -232,8 +232,9 @@ void ParticlePainter::paint() {
 				drewPoints = true;
 				glPointSize(1.5);
 				glBegin(GL_POINTS); 
-				for(int i=0; i<(int)vp->size(); i++) {
-					Vec3 pos = (*vp)[i].pos; 
+				for(int i=0; i<(int)bp->size(); i++) {
+            		if (!bp->isActive(i)) continue;
+					Vec3 pos = (*bp)[i].pos; 
 					Real val = pdi->get(i) * scale;
 					mMaxVal = std::max( val, mMaxVal );
 					glColor3f(0,val,0);
@@ -250,8 +251,9 @@ void ParticlePainter::paint() {
 				drewPoints = true;
 				glPointSize(1.5);
 				glBegin(GL_POINTS); 
-				for(int i=0; i<(int)vp->size(); i++) {
-					Vec3 pos = (*vp)[i].pos; 
+				for(int i=0; i<(int)bp->size(); i++) {
+            		if (!bp->isActive(i)) continue;
+					Vec3 pos = (*bp)[i].pos; 
 					Real val = pdi->get(i) * scale;
 					mMaxVal = std::max( val, mMaxVal );
 					glColor3f(0,val,0);
@@ -266,8 +268,9 @@ void ParticlePainter::paint() {
 				if(!pdi) break;
 				mHavePdata = true;
 				glBegin(GL_LINES); 
-				for(int i=0; i<(int)vp->size(); i++) {
-					Vec3 pos = (*vp)[i].pos; 
+				for(int i=0; i<(int)bp->size(); i++) {
+            		if (!bp->isActive(i)) continue;
+					Vec3 pos = (*bp)[i].pos; 
 					Vec3 val = pdi->get(i) * scale;
 					mMaxVal = std::max( norm(val), mMaxVal );
 					glColor3f(0.5,0.0,0);
@@ -295,18 +298,18 @@ void ParticlePainter::paint() {
 
 		// otherwise draw center
 		if(!drewPoints) {
-			glPointSize(0.5);
+			glPointSize(1.5);
 			glBegin(GL_POINTS);
 
-			for(int i=0; i<(int)vp->size(); i++) {
-				Vec3 pos = (*vp)[i].pos;
+			for(int i=0; i<(int)bp->size(); i++) {
+				Vec3 pos = (*bp)[i].pos;
 				
-				if(!vp->isActive(i) ) {
-					glColor3f(0.8, 0., 0.);
-				} else if(!vp->getStatus(i) & ParticleBase::PNEW ) {
-					glColor3f(1.0, 0.5, 1.);
+				if(!bp->isActive(i) ) {
+					glColor3f(1.0, 0., 0.); // deleted, red
+				} else if(bp->getStatus(i) & ParticleBase::PNEW ) {
+					glColor3f(0.0, 1.0, 0.); // new, greem
 				} else {
-					glColor3f(0, 0.5, 1);
+					glColor3f(0, 0.0, 1.0); // regular, blue
 				}
 				glVertex(pos, dx);
 				

@@ -257,7 +257,7 @@ PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
     // mark all particles in flaggrid as fluid
     for(int i=0;i<parts.size();i++) {
     	if (!parts.isActive(i)) continue;
-        const Vec3i p = toVec3i( parts.getPos(i) ); 
+        Vec3i p = toVec3i( parts.getPos(i) );
         if (flags.isInBounds(p) && flags.isEmpty(p))
             flags(p) = (flags(p) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
     }
@@ -281,28 +281,31 @@ PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& fl
             
             // dont delete particles in non fluid cells here, the particles are "always right"
             if ( num > maxParticles && (!atSurface) ) {
-                parts.kill(i); //mData[i].flag |= PDELETE;
+                parts.kill(i); 
 			} else
                 tmp(p) = num+1;
         }
     }
-    parts.doCompress();
 
-   /* 
     // seed new particles
+    RandomStream mRand(9832);
     FOR_IJK(tmp) {
         int cnt = tmp(i,j,k);
 		
 		// skip surface
-		if( phi && ((*phi)(i,j,k) > SURFACE_LS) ) continue;
+		//if( phi && ((*phi)(i,j,k) > SURFACE_LS) ) continue;
 
         if (flags.isFluid(i,j,k) && cnt < minParticles) {
             for (int m=cnt; m < minParticles; m++) { 
-                Vec3 rndPos (i + mRand.getReal(), j + mRand.getReal(), k + mRand.getReal());
-                add(FlipData(rndPos, vel.getInterpolated(rndPos)));
+                //Vec3 rndPos (i + mRand.getReal(), j + mRand.getReal(), k + mRand.getReal());
+                Vec3 rndPos (i + 0.5, j + 0.5, k + 0.5);
+                parts.addBuffered( rndPos ); 
             }
         }
-    }*/
+    }
+
+    parts.doCompress();
+	parts.insertBufferedParticles();
 }
 
 
@@ -434,6 +437,12 @@ PYTHON void flipVelocityUpdate(FlagGrid& flags, MACGrid& vel , MACGrid& velOld ,
 		BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel , Real flipRatio ) {
     knMapLinearMACGridToVec3_FLIP( parts, flags, vel, velOld, partVel, flipRatio );
 }
+
+// for testing only...
+PYTHON void testInitGridWithPos(RealGrid &grid) {
+    FOR_IJK(grid) { grid(i,j,k) = norm( Vec3(i,j,k) ); }
+}
+
 
 } // namespace
 
