@@ -18,7 +18,6 @@
 #include <QtOpenGL>
 #include "vortexpart.h"
 #include "vortexfilament.h"
-#include "flip.h"
 #include "turbulencepart.h"
 
 using namespace std;
@@ -138,43 +137,6 @@ void ParticlePainter::paint() {
                 glEnd();
             }
         }        
-    } else if (mLocal->getType() == ParticleBase::FLIP) {
-        FlipSystem* fp = (FlipSystem*) mLocal;
-		int mode = mMode%(int)(PaintVel+1);
-
-		if (mode == PaintVel) {
-			glPointSize(1.0);
-			glBegin(GL_LINES);
-				
-			for(int i=0; i<fp->size(); i++) {
-				if (fp->isActive(i)) {
-					Vec3 pos = (*fp)[i].pos;
-					Vec3 vel = (*fp)[i].vel;
-				
-					if (pos[dim] >= plane && pos[dim] <= plane + 1.0f) {
-						glColor3f(0,0.5,1);
-						glVertex(pos, dx);
-						glColor3f(0,1,1);
-						glVertex(pos + vel * scale, dx);                    
-					}
-				}
-			}   
-			glEnd();
-		}
-            
-		if (1) { // always draw the origin, even in velocity mode
-			glColor3f(0.2,1,1);
-			glPointSize(1.0);
-			glBegin(GL_POINTS);
-			for(int i=0; i<fp->size(); i++) {
-				if (fp->isActive(i)) {
-					Vec3 pos = (*fp)[i].pos;
-					if (pos[dim] >= plane && pos[dim] <= plane + 1.0f)
-						glVertex(pos, dx);
-				}
-			}   
-			glEnd();
-		}
     } else if (mLocal->getType() == ParticleBase::FILAMENT) {
         VortexFilamentSystem* fp = (VortexFilamentSystem*) mLocal;
         glColor3f(1,1,0);

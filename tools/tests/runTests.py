@@ -49,6 +49,7 @@ for file in files:
 	num += 1
 	print "Running '" + file + "' "
 	result = os.popen(manta + " " + file + " 2>&1 ").read() 
+	#print result # print full output, debug only
 
 	oks = re.findall(r"OK!", result)
 	#print oks
