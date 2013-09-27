@@ -137,11 +137,9 @@ public:
     template<class S> Grid<T>& operator*=(const S& a);
     template<class S> Grid<T>& operator/=(const Grid<S>& a);
     template<class S> Grid<T>& operator/=(const S& a);
-    //Grid<T>& operator=(const T& a);
     Grid<T>& operator=(const Grid<T>& a);
     Grid<T>& safeDivide(const Grid<T>& a);    
     PYTHON void add(const Grid<T>& a, const Grid<T>& b);
-    PYTHON void scale(T a) { (*this) *= a; }
     PYTHON void copyFrom(const Grid<T>& a) { *this = a; }
     
     // common compound operators
@@ -234,6 +232,61 @@ public:
     PYTHON void updateFromLevelset(LevelsetGrid& levelset);    
     PYTHON void fillGrid(int type=TypeFluid);
 };
+
+
+//******************************************************************************
+// enable compilation of a more complicated test data type
+// for grids... note - this also enables code parts in fileio.cpp!
+// the code below is meant only as an example for a grid with a more complex data type
+// and illustrates which functions need to be implemented; it's not needed
+// to run any simulations in mantaflow!
+#define ENABLE_GRID_TEST_DATATYPE 0
+
+#if ENABLE_GRID_TEST_DATATYPE==1
+
+typedef std::vector<int> nbVectorBaseType;
+class nbVector : public nbVectorBaseType {
+	public: 
+		inline nbVector() : nbVectorBaseType() {};
+		inline ~nbVector() {};
+
+		inline const nbVector& operator+= ( const nbVector &v1 ) {
+			assertMsg(false,"Never call!"); return *this; 
+		}
+		inline const nbVector& operator*= ( const nbVector &v1 ) {
+			assertMsg(false,"Never call!"); return *this; 
+		}
+};
+
+template<> inline nbVector* FluidSolver::getGridPointer<nbVector>() {
+    return new nbVector[mGridSize.x * mGridSize.y * mGridSize.z];
+}
+template<> inline void FluidSolver::freeGridPointer<nbVector>(nbVector* ptr) {
+    return delete[] ptr;
+}
+
+inline nbVector operator+ ( const nbVector &v1, const nbVector &v2 ) {
+	assertMsg(false,"Never call!"); return nbVector(); 
+}
+inline nbVector operator* ( const nbVector &v1, const nbVector &v2 ) {
+	assertMsg(false,"Never call!"); return nbVector(); 
+}
+template<class S>
+inline nbVector operator* ( const nbVector& v, S s ) {
+	assertMsg(false,"Never call!"); return nbVector(); 
+} 
+template<class S> 
+inline nbVector operator* ( S s, const nbVector& v ) {
+	assertMsg(false,"Never call!"); return nbVector(); 
+}
+
+template<> inline nbVector safeDivide<nbVector>(const nbVector &a, const nbVector& b) { 
+	assertMsg(false,"Never call!"); return nbVector(); 
+}
+
+// make data type known to python
+PYT HON alias Grid<nbVector> TestDataGrid;
+#endif // ENABLE_GRID_TEST_DATATYPE
 
 
 //******************************************************************************
@@ -366,6 +419,8 @@ template<class T> template<class S> Grid<T>& Grid<T>::operator/= (const S& a) {
     gridMultScalar<T,S> (*this, rez);
     return *this;
 }
+
+
 
 } //namespace
 #endif

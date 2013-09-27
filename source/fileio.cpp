@@ -362,5 +362,16 @@ template void readGridUni<int>(const string& name, Grid<int>* grid);
 template void readGridUni<Real>(const string& name, Grid<Real>* grid);
 template void readGridUni<Vec3>(const string& name, Grid<Vec3>* grid);
 
+#if ENABLE_GRID_TEST_DATATYPE==1
+// dummy functions for test datatype - not really supported right now!
+// but we need some function body for linking
+template<> void writeGridRaw<nbVector>(const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
+template<> void writeGridUni<nbVector>(const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
+template<> void writeGridVol<nbVector>(const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
+template<> void writeGridTxt<nbVector>(const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
+template<> void readGridRaw<nbVector> (const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
+template<> void readGridUni<nbVector> (const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
+#endif // ENABLE_GRID_TEST_DATATYPE
+
 
 } //namespace

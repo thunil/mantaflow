@@ -298,4 +298,10 @@ template class Grid<int>;
 template class Grid<Real>;
 template class Grid<Vec3>;
 
+#if ENABLE_GRID_TEST_DATATYPE==1
+// instantiate test datatype , not really required for simulations, mostly here for demonstration purposes
+template class Grid<nbVector>;
+#endif // ENABLE_GRID_TEST_DATATYPE
+
+
 } //namespace
