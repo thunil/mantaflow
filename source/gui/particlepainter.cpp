@@ -87,8 +87,8 @@ void ParticlePainter::updateText() {
     
     if (mObject && !(mMode==PaintOff) ) {
         s << mLocal->infoString() << endl;
+		s << mPdataInfo;
 		if(mHavePdata) {
-			s << mPdataInfo;
         	s << "-> Max " << fixed << setprecision(2) << mMaxVal << "  Scale " << getScale() << endl;
 		}
     }
@@ -175,14 +175,19 @@ void ParticlePainter::paint() {
         BasicParticleSystem* bp = (BasicParticleSystem*) mLocal;
 
 		// draw other particle data, if available
-		int pdataId = mMode % (bp->getNumPdata() + 1);
+		int pdataId = mMode % (bp->getNumPdata() + 2);
 		std::ostringstream infoStr;
 		bool drewPoints = false;
 
 		if( pdataId==0 ) {
-			// dont draw data, only center below
+			// dont draw any points
+			infoStr << "Off\n";
+			drewPoints = true;
+		} else if( pdataId==1 ) {
+			// dont draw data, only flags with center below
+			infoStr << "Drawing center & flags\n";
 		} else if (bp->getNumPdata() > 0)  {
-			int pdNum = pdataId-1; // start at 0
+			int pdNum = pdataId-2; // start at 0
 			ParticleDataBase* pdb = bp->getPdata(pdNum);
 
 			switch (pdb->getType() ) {
@@ -204,7 +209,7 @@ void ParticlePainter::paint() {
 					glVertex(pos, dx); 
 				}   
 				glEnd();
-				infoStr << "Pdata "<<pdi->getName()<<" "<<pdNum<<" 'real'\n";
+				infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", real\n";
 				} break;
 
 			case ParticleDataBase::DATA_INT: {
@@ -224,7 +229,7 @@ void ParticlePainter::paint() {
 					glVertex(pos, dx); 
 				}   
 				glEnd();
-				infoStr << "Pdata "<<pdi->getName()<<" "<<pdNum<<" 'int'\n";
+				infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", int\n";
 				} break;
 
 			case ParticleDataBase::DATA_VEC3: {
@@ -245,7 +250,7 @@ void ParticlePainter::paint() {
 					glVertex(pos, dx); 
 				}   
 				glEnd();
-				infoStr << "Pdata "<<pdi->getName()<<" "<<pdNum<<" 'vec3'\n";
+				infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", vec3\n";
 				} break;
 
 			default: {
