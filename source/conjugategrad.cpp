@@ -262,13 +262,10 @@ bool GridCg<APPLYMAT>::iterate() {
     // search =  tmp + beta * search
     UpdateSearchVec (mSearch, mTmp, beta);
 
-    debMsg("PB-Cg::iter2 i="<<mIterations<<" sigma="<<mSigma<<" alpha="<<alpha<<" beta="<<beta<<" ", CG_DEBUGLEVEL);
+    debMsg("PB-Cg::iter i="<<mIterations<<" sigma="<<mSigma<<" alpha="<<alpha<<" beta="<<beta<<" ", CG_DEBUGLEVEL);
     mSigma = sigmaNew;
     
-    /* debMsg("PB-CG-Norms::p"<<sqrt( DDF::GridOpNormNosqrt(mpDst, mpFlags).getValue() ) <<" search"<<sqrt( DDF::GridOpNormNosqrt(mpSearch, mpFlags).getValue(), CG_DEBUGLEVEL ) 
-            <<" res"<<sqrt( DDF::GridOpNormNosqrt(mpResidual, mpFlags).getValue() ) <<" tmp"<<sqrt( DDF::GridOpNormNosqrt(mpTmp, mpFlags).getValue() ), CG_DEBUGLEVEL ); // debug
-    if(CG_DEBUG) debMsg("PB-CG-Norms","p"<<( DDF::GridOpNormNosqrt(mpDst, mpFlags).getValue() ) <<" search"<<( DDF::GridOpNormNosqrt(mpSearch, mpFlags).getValue(), CG_DEBUGLEVEL ) 
-            <<" res"<<( DDF::GridOpNormNosqrt(mpResidual, mpFlags).getValue() ) <<" tmp"<<( DDF::GridOpNormNosqrt(mpTmp, mpFlags).getValue() ), CG_DEBUGLEVEL ); // debug, no sqrt!*/
+    //debMsg("PB-CG-Norms::p"<<sqrt( GridOpNormNosqrt(mpDst, mpFlags).getValue() ) <<" search"<<sqrt( GridOpNormNosqrt(mpSearch, mpFlags).getValue(), CG_DEBUGLEVEL ) <<" res"<<sqrt( GridOpNormNosqrt(mpResidual, mpFlags).getValue() ) <<" tmp"<<sqrt( GridOpNormNosqrt(mpTmp, mpFlags).getValue() ), CG_DEBUGLEVEL ); // debug
     return true;
 }
 

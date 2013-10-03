@@ -25,13 +25,16 @@ KernelBase::KernelBase(const GridBase* base, int bnd) :
     X (base->getStrideX()),
     Y (base->getStrideY()),
     Z (base->getStrideZ()),
-    maxCells (base->getSizeX() * base->getSizeY() * base->getSizeZ()) {}
+    maxCells (base->getSizeX() * base->getSizeY() * base->getSizeZ()),
+	threadId(0),threadNum(1) {}
     
 KernelBase::KernelBase(int _maxX, int _maxY, int _maxZ, int _maxC, int _minZ, int _X, int _Y, int _Z) :
-    maxX(_maxX), maxY(_maxY), maxZ(_maxZ), maxCells(_maxC), minZ(_minZ), X(_X), Y(_Y), Z(_Z) {}
+    maxX(_maxX), maxY(_maxY), maxZ(_maxZ), maxCells(_maxC), minZ(_minZ), X(_X), Y(_Y), Z(_Z),
+	threadId(0),threadNum(1)	{}
     
 ParticleKernelBase::ParticleKernelBase(int sz) :
-    size(sz) {}
+    size(sz),
+	threadId(0),threadNum(1)	{}
     
     
 } // namespace
