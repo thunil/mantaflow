@@ -290,7 +290,7 @@ PYTHON void mapMACToParts(FlagGrid& flags, MACGrid& vel ,
     knMapLinearMACGridToVec3_PIC( parts, flags, vel, partVel );
 }
 
-// with flip delta interpolation
+// with flip delta interpolation 
 KERNEL(pts) 
 void knMapLinearMACGridToVec3_FLIP( BasicParticleSystem& p, FlagGrid& flags, MACGrid& vel, MACGrid& oldVel, ParticleDataImpl<Vec3>& pvel , Real flipRatio) 
 {
