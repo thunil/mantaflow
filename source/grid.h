@@ -143,8 +143,6 @@ public:
     PYTHON void copyFrom(const Grid<T>& a) { *this = a; }
     
     // common compound operators
-    //! Grid += a*factor
-    void scaledAdd(const Grid<T>& a, const T& factor);
     //! get absolute max value in grid (only Real grids)
     Real getMaxAbsValue();
     //! get max value in grid (only Real grids)
@@ -371,20 +369,17 @@ inline Vec3 MACGrid::getAtMACZ(int i, int j, int k) const {
     return v;
 }
 
-KERNEL(idx) template<class T> void gridAdd2 (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] + b[idx]; }
-KERNEL(idx) template<class T, class S> void gridAdd (Grid<T>& me, const Grid<S>& other) { me[idx] += other[idx]; }
-KERNEL(idx) template<class T, class S> void gridSub (Grid<T>& me, const Grid<S>& other) { me[idx] -= other[idx]; }
+KERNEL(idx) template<class T, class S> void gridAdd (Grid<T>& me, const Grid<S>& other)  { me[idx] += other[idx]; }
+KERNEL(idx) template<class T, class S> void gridSub (Grid<T>& me, const Grid<S>& other)  { me[idx] -= other[idx]; }
 KERNEL(idx) template<class T, class S> void gridMult (Grid<T>& me, const Grid<S>& other) { me[idx] *= other[idx]; }
-KERNEL(idx) template<class T, class S> void gridDiv (Grid<T>& me, const Grid<S>& other) { me[idx] /= other[idx]; }
-KERNEL(idx) template<class T> void gridSafeDiv (Grid<T>& me, const Grid<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
-KERNEL(idx) template<class T, class S> void gridAddScalar (Grid<T>& me, const S& other) { me[idx] += other; }
+KERNEL(idx) template<class T, class S> void gridDiv (Grid<T>& me, const Grid<S>& other)  { me[idx] /= other[idx]; }
+KERNEL(idx) template<class T, class S> void gridAddScalar (Grid<T>& me, const S& other)  { me[idx] += other; }
 KERNEL(idx) template<class T, class S> void gridMultScalar (Grid<T>& me, const S& other) { me[idx] *= other; }
-KERNEL(idx) template<class T> void gridScaleAdd (Grid<T>& me, const Grid<T>& other, const T& factor) { me[idx] += factor * other[idx]; }
+KERNEL(idx) template<class T, class S> void gridScaledAdd (Grid<T>& me, const Grid<T>& other, const S& factor) { me[idx] += factor * other[idx]; }
 
-KERNEL(idx) template<class T>
-void knSetConst(Grid<T>& grid, T value) {
-	grid[idx] = value;
-}
+KERNEL(idx) template<class T> void gridAdd2 (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] + b[idx]; }
+KERNEL(idx) template<class T> void gridSafeDiv (Grid<T>& me, const Grid<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
+KERNEL(idx) template<class T> void gridSetConst(Grid<T>& grid, T value) { grid[idx] = value; }
 
 template<class T> template<class S> Grid<T>& Grid<T>::operator+= (const Grid<S>& a) {
     gridAdd<T,S> (*this, a);

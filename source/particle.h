@@ -29,7 +29,7 @@ template<class T> class ParticleDataImpl;
 //! Baseclass for particle systems. Does not implement any data
 PYTHON class ParticleBase : public PbClass {
 public:
-    enum SystemType { BASE=0, PARTICLE, VORTEX, FILAMENT, FLIP, TURBULENCE };
+    enum SystemType { BASE=0, PARTICLE, VORTEX, FILAMENT, FLIP, TURBULENCE, INDEX };
     
     enum ParticleStatus {
         PNONE         = 0,
@@ -105,12 +105,20 @@ public:
     virtual SystemType getType() const { return S::getType(); };
     
     // accessors
-    inline S& operator[](int i) { return mData[i]; }
-    inline const S& operator[](int i) const { return mData[i]; }
+    inline S& operator[](int idx)             { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
+    inline const S& operator[](int idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
+	// return size of container
     PYTHON inline int size() const { return mData.size(); }
-	// slow virtual function of base class
+	// slow virtual function of base class, also returns size
 	virtual int getSizeSlow() const { return size(); }
-    std::vector<S>& getData() { return mData; }
+
+	// query status
+    inline int  getStatus(int idx) { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].flag; }
+    inline bool isActive(int idx)  { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PDELETE) == 0; }
+    
+    //! safe accessor for python
+    PYTHON void setPos(int idx, const Vec3& pos) { DEBUG_ONLY(checkPartIndex(idx)); mData[idx].pos = pos; }
+    PYTHON Vec3 getPos(int idx)                  { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].pos; }
 
 	//! explicitly trigger compression from outside
 	void doCompress() { if ( mDeletes > mDeleteChunk) compress(); }
@@ -118,17 +126,9 @@ public:
 	void insertBufferedParticles();
     
     // adding and deleting 
-    inline void kill(int i);
+    inline void kill(int idx);
     int add(const S& data);
     void clear();
-	// query status
-    inline bool isActive(int i);
-    inline int  getStatus(int i);
-    
-    //! safe accessor for python
-    PYTHON void setPos(int idx, const Vec3& pos);
-    //! safe accessor for python
-    PYTHON Vec3 getPos(int idx);
             
     //! Advect particle in grid velocity field
     PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode, bool deleteInObstacle=true );
@@ -138,6 +138,9 @@ public:
     
     virtual ParticleBase* clone();
     virtual std::string infoString() const;
+
+	//! debugging
+	inline void checkPartIndex(int idx) const;
     
 protected:  
    	//! deletion count , and interval for re-compressing 
@@ -149,6 +152,8 @@ protected:
     virtual void compress(); 
 };
 
+//******************************************************************************
+
 //! Simplest data class for particle systems
 struct BasicParticleData {
 public:
@@ -158,7 +163,7 @@ public:
 
 	//! data
     Vec3 pos;
-    int flag;
+    int  flag;
 };
 
 PYTHON class BasicParticleSystem : public ParticleSystem<BasicParticleData> {
@@ -172,11 +177,38 @@ public:
 	// save to text file
 	void writeParticlesText(std::string name);
 
+	// add particles in python
     PYTHON void addParticle(Vec3 pos) { add(BasicParticleData(pos)); }
+
+	// dangerous, get low level access - avoid usage, only used in vortex filament advection for now
+    std::vector<BasicParticleData>& getData() { return mData; }
+};
+
+
+//******************************************************************************
+
+//! Index into other particle system
+struct ParticleIndexData {
+public:
+    ParticleIndexData() : otherIndex(0), pos(0.) {}
+    static ParticleBase::SystemType getType() { return ParticleBase::INDEX; }
+
+    int  otherIndex;
+    Vec3 pos; // more for debugging, should not be necessary...
+	static int flag; // unused 
+};
+
+PYTHON class ParticleIndexSystem : public ParticleSystem<ParticleIndexData> {
+public:
+    PYTHON ParticleIndexSystem(FluidSolver* parent) : ParticleSystem<ParticleIndexData>(parent) {};
+    
+	//! we only need a resize function...
+	void resize(int size) { mData.resize(size); }
 };
 
 
 
+//******************************************************************************
 
 //! Particle set with connectivity
 PYTHON template<class DATA, class CON> 
@@ -197,6 +229,7 @@ protected:
     virtual void compress();    
 };
 
+//******************************************************************************
 
 //! abstract interface for particle data
 PYTHON class ParticleDataBase : public PbClass {
@@ -211,7 +244,7 @@ public:
 	virtual void add()        { assertMsg( false , "Dont use, override..."); return;   }
     virtual ParticleDataBase* clone() { assertMsg( false , "Dont use, override..."); return NULL; }
 	virtual PdataType getType() const { assertMsg( false , "Dont use, override..."); return UNKNOWN; } 
-	virtual void resize(int i)        { assertMsg( false , "Dont use, override..."); return;  }
+	virtual void resize(int size)     { assertMsg( false , "Dont use, override..."); return;  }
 	virtual void copyValueSlow(int from, int to) { assertMsg( false , "Dont use, override..."); return;  }
 
 	//! set base pointer
@@ -223,6 +256,7 @@ public:
 protected:
 	ParticleBase* mpParticleSys;
 };
+
 
 //! abstract interface for particle data
 PYTHON template<class T>
@@ -298,26 +332,6 @@ inline void ParticleSystem<S>::kill(int idx)     {
 	if ( (++mDeletes > mDeleteChunk) && (mAllowCompress) ) compress(); 
 }
 
-template<class S>
-inline bool ParticleSystem<S>::isActive(int idx) { 
-    assertMsg(idx>=0 && idx<size(), "Index out of bounds");
-	return (mData[idx].flag & PDELETE) == 0; 
-}  
-template<class S>
-inline int ParticleSystem<S>::getStatus(int idx) { 
-    assertMsg(idx>=0 && idx<size(), "Index out of bounds");
-	return mData[idx].flag;
-}  
-
-template<class S> Vec3 ParticleSystem<S>::getPos(int idx) {
-    assertMsg(idx>=0 && idx<size(), "Index out of bounds");
-    return mData[idx].pos;
-}
-
-template<class S> void ParticleSystem<S>::setPos(int idx, const Vec3& pos) {
-    assertMsg(idx>=0 && idx<size(), "Index out of bounds");
-    mData[idx].pos = pos;
-}
 KERNEL(pts) template<class S> returns(std::vector<Vec3> u(size))
 std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flaggrid, Real dt,
 		bool deleteInObstacle )
@@ -495,6 +509,13 @@ std::string ParticleSystem<S>::infoString() const {
     return s.str();
 }
     
+template<class S>  
+inline void ParticleSystem<S>::checkPartIndex(int idx) const {
+	int mySize = this->size();
+    if (idx<0 || idx > mySize ) {
+        errMsg( "ParticleBase " << " size " << mySize << " : index " << idx << " out of bound " );
+    }
+}
     
 inline void ParticleDataBase::checkPartIndex(int idx) const {
 	int mySize = this->size();

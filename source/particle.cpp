@@ -269,6 +269,10 @@ ParticleDataBase::PdataType ParticleDataImpl<Vec3>::getType() const {
 	return ParticleDataBase::DATA_VEC3;
 }
 
+// note, we need a flag value for functions such as advection
+// ideally, this value should never be modified
+int ParticleIndexData::flag = 0; 
+
 // explicit instantiation
 template class ParticleDataImpl<int>;
 template class ParticleDataImpl<Real>;

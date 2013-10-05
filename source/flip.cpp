@@ -108,11 +108,11 @@ void ComputeUnionLevelset(BasicParticleSystem& p, LevelsetGrid& phi, Real radius
 	//const Vec3i size = phi.getSize();
     const int xi = (int)pos.x, yi = (int)pos.y, zi = (int)pos.z; 
 
-	int radiusInt  = int(2. * radius) + 1;
-	int radiusIntZ = phi.is3D() ? radiusInt : 0;
-	for(int zj=zi-radiusIntZ; zj<=zi+radiusIntZ; zj++) 
-	for(int yj=yi-radiusInt ; yj<=yi+radiusInt ; yj++) 
-	for(int xj=xi-radiusInt ; xj<=xi+radiusInt ; xj++) 
+	int r  = int(2. * radius) + 1;
+	int rZ = phi.is3D() ? r : 0;
+	for(int zj=zi-rZ; zj<=zi+rZ; zj++) 
+	for(int yj=yi-r ; yj<=yi+r ; yj++) 
+	for(int xj=xi-r ; xj<=xi+r ; xj++) 
 	{
 		if (! phi.isInBounds(Vec3i(xj,yj,zj)) ) continue;
 		phi(xj,yj,zj) = std::min( phi(xj,yj,zj) , fabs( norm(Vec3(xj,yj,zj)-pos) )-radius );
@@ -124,7 +124,8 @@ PYTHON void unionParticleLevelset (BasicParticleSystem& p, LevelsetGrid& phi, Re
 
 	// reset
 	FOR_IJK(phi) {
-		phi(i,j,k) = radius + VECTOR_EPSILON;
+		//phi(i,j,k) = radius + VECTOR_EPSILON;
+		phi(i,j,k) = 1e10;
 	} 
 	ComputeUnionLevelset(p, phi, radius);
 }
@@ -175,7 +176,92 @@ PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& fl
 	parts.insertBufferedParticles();
 }
 
+// simple and slow helper conversion to show contents of int grids like a real grid in the ui
+PYTHON void debugIntToReal( Grid<int>& source, Grid<Real>& dest, Real factor=1. )
+{
+	FOR_IJK( source ) { dest(i,j,k) = (Real)source(i,j,k) * factor; }
+}
 
+PYTHON void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
+		FlagGrid& flags, Grid<int>& index, Grid<int>* counter=NULL) 
+{
+	bool delCounter = false;
+    if(!counter) { counter = new Grid<int>(  flags.getParent() ); delCounter=true; }
+	else         { counter->clear(); }
+    
+    // count particles in cells, and delete excess particles
+	index.clear();
+	int inactive = 0;
+    for (int i=0; i<(int)parts.size(); i++) {
+        if (parts.isActive(i)) {
+			// check index for validity...
+			Vec3i p = toVec3i( parts.getPos(i) );
+			if (! index.isInBounds(p)) { inactive++; continue; }
+
+            index(p)++;
+        } else {
+			inactive++;
+		}
+    }
+
+	//ParticleIndexSystem* indexSys = new ParticleIndexSystem( parts.getParent() );
+	// note - this one might be smaller...
+	indexSys.resize( parts.size()-inactive );
+
+	// convert per cell number to continuous index
+	int idx=0;
+	FOR_IJK( index ) {
+		//if( index(i,j,k) ) debMsg("IDDX "<<Vec3i(i,j,k)<<" "<<idx<<"  "<< index(i,j,k) ,1); // NT_DEBUG
+		int num = index(i,j,k);
+		index(i,j,k) = idx;
+		idx += num;
+	}
+
+	// add particles to indexed array, we still need a per cell particle counter
+    for (int i=0; i<(int)parts.size(); i++) {
+        if (!parts.isActive(i)) continue;
+        Vec3i p = toVec3i( parts.getPos(i) );
+		if (! index.isInBounds(p)) { continue; }
+
+		// initialize position and index into original array
+		indexSys[ index(p)+(*counter)(p) ].pos        = parts[i].pos;
+		indexSys[ index(p)+(*counter)(p) ].otherIndex = i;
+		(*counter)(p)++;
+    }
+
+	if(delCounter) delete counter;
+}
+
+KERNEL
+void ComputeUnionLevelset2(BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
+		Grid<int>& index, LevelsetGrid& phi, Real radius=1.) 
+{
+	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5);
+	Real phiv = 1e10; 
+
+	int r  = int(radius) + 1;
+	int rZ = phi.is3D() ? r : 0;
+	for(int zj=k-rZ; zj<=k+rZ; zj++) 
+	for(int yj=j-r ; yj<=j+r ; yj++) 
+	for(int xj=i-r ; xj<=i+r ; xj++) {
+		if ( (!phi.isInBounds(Vec3i(xj-1,yj,zj))) || (!phi.isInBounds(Vec3i(xj,yj,zj))) ) continue;
+
+		for(int p=index(xj-1,yj,zj); p<index(xj,yj,zj); ++p) {
+			const Vec3 pos = indexSys[p].pos; // - Vec3(0.5); // offset for centered LS value
+
+			phiv = std::min( phiv , fabs( norm(gridPos-pos) )-radius );
+			//debMsg("at "<<Vec3i(xj,yj,zj)<<" "<<p<<" "<<gridPos<<" "<< pos   <<"  "<<phiv ,1);
+		}
+	}
+	phi(i,j,k) = phiv;
+}
+
+PYTHON void unionParticleLevelset2( BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
+		FlagGrid& flags, Grid<int>& index, LevelsetGrid& phi, Real radiusFactor=1. ) 
+{
+	Real radius = 0.5 * (phi.is3D() ? sqrt(3.) : sqrt(2.) ) * (radiusFactor+.01);
+	ComputeUnionLevelset2(parts, indexSys, index, phi, radius);
+}
 
 // grid interpolation functions
 

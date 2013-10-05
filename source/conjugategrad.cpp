@@ -234,8 +234,8 @@ bool GridCg<APPLYMAT>::iterate() {
     Real alpha = 0.;
     if(fabs(dp)>0.) alpha = mSigma / (Real)dp;
     
-    mDst.scaledAdd(mSearch, alpha);    // dst += search * alpha
-    mResidual.scaledAdd(mTmp, -alpha); // residual += tmp * -alpha
+    gridScaledAdd<Real,Real>(mDst, mSearch, alpha);    // dst += search * alpha
+    gridScaledAdd<Real,Real>(mResidual, mTmp, -alpha); // residual += tmp * -alpha
     
     if (mPcMethod == PC_ICP)
         ApplyPreconditionIncompCholesky(mTmp, mResidual, mFlags, *mpPCA0, *mpPCAi, *mpPCAj, *mpPCAk, *mpA0, *mpAi, *mpAj, *mpAk);
