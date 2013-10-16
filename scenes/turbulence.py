@@ -78,7 +78,7 @@ for t in range(10000):
         prodMult = sliderProd.get()
     
     turb.seed(box,500)
-    turb.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4)
+    turb.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4)
     turb.synthesize(flags=flags, octaves=1, k=k, switchLength=5, L0=L0, scale=mult, inflowBias=velInflow)
     #turb.projectOutside(sdfgrad)
     turb.deleteInObstacle(flags)

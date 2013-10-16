@@ -47,7 +47,7 @@ if (GUI):
 for t in range(2500):
     
     # FLIP 
-    pp.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False ) 
+    pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False ) 
     mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=tmpVec3 ) 
     extrapolateMACFromWeight( vel=vel , distance=2, weight=tmpVec3 ) 
     markFluidCells( parts=pp, flags=flags )

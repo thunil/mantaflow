@@ -131,7 +131,7 @@ public:
     void clear();
             
     //! Advect particle in grid velocity field
-    PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode, bool deleteInObstacle=true );
+    PYTHON void advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle=true );
     
     //! Project particles outside obstacles
     PYTHON void projectOutside(Grid<Vec3>& gradient);
@@ -332,17 +332,18 @@ inline void ParticleSystem<S>::kill(int idx)     {
 	if ( (++mDeletes > mDeleteChunk) && (mAllowCompress) ) compress(); 
 }
 
+// check for deletion/invalid position, otherwise return velocity
 KERNEL(pts) template<class S> returns(std::vector<Vec3> u(size))
-std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flaggrid, Real dt,
+std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flags, Real dt,
 		bool deleteInObstacle )
 {
     if (p[i].flag & ParticleBase::PDELETE) {
         u[i] =_0;
-	} else if (!flaggrid.isInBounds(p[i].pos,1) || flaggrid.isObstacle(p[i].pos)) {
+	} else if (!flags.isInBounds(p[i].pos,1) || flags.isObstacle(p[i].pos)) {
         u[i] = _0;
 
 		// for simple tracer particles, its convenient to delete particles right away
-		// eg for flip sim, its not a good idea
+		// for other sim types, eg flip, we can try to fix positions later on
 		if(deleteInObstacle) 
 			p[i].flag |= ParticleBase::PDELETE;
     } else {
@@ -350,11 +351,41 @@ std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const
 	}
 };
 
+// final check after advection to make sure particles haven't escaped
+// (similar to particle advection kernel)
+KERNEL(pts) template<class S>
+void KnDeleteInObstacle(std::vector<S>& p, const FlagGrid& flags) {
+    if (p[i].flag & ParticleBase::PDELETE) return;
+	if (!flags.isInBounds(p[i].pos,1) || flags.isObstacle(p[i].pos)) {
+		p[i].flag |= ParticleBase::PDELETE;
+    } 
+}
+// at least make sure all particles are inside domain
+KERNEL(pts) template<class S>
+void KnClampPositions(std::vector<S>& p, const FlagGrid& flags) {
+    if (p[i].flag & ParticleBase::PDELETE) return;
+	if (!flags.isInBounds(p[i].pos,0) ) {
+		p[i].pos = clamp( p[i].pos, Vec3(0.), toVec3(flags.getSize())-Vec3(1.) );
+    } 
+}
+
 // advection plugin
 template<class S>
-void ParticleSystem<S>::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode, bool deleteInObstacle ) {
-    GridAdvectKernel<S> kernel(mData, vel, flaggrid, getParent()->getDt(), deleteInObstacle );
+void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle ) {
+    GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle );
     integratePointSet(kernel, integrationMode);
+	/*for(int i=133400; i<std::min((int)mData.size(),133600); ++i) {
+		std::cout<<"PPPa"<<i<<" "<<mData[i].pos <<" "<<mData[i].flag << " "<<
+			flags.isInBounds(mData[i].pos,0) <<
+			"\n";
+	} NT_DEBUG */
+	if(deleteInObstacle) KnDeleteInObstacle<S>( mData, flags);
+	else                 KnClampPositions<S>  ( mData, flags);
+	/*for(int i=133400; i<std::min((int)mData.size(),133600); ++i) {
+		std::cout<<"PPPb"<<i<<" "<<mData[i].pos <<" "<<mData[i].flag << " "<<
+			flags.isInBounds(mData[i].pos,0) <<
+			"\n";
+	} NT_DEBUG */
 }
 
 KERNEL(pts, single) // no thread-safe random gen yet

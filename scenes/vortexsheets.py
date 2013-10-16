@@ -63,7 +63,7 @@ for t in range(180):
 
     # advect mesh in large-scale grid
     mesh.calcCirculation()        
-    mesh.advectInGrid(vel=vel, flaggrid=flags, integrationMode=IntRK4)  
+    mesh.advectInGrid(vel=vel, flags=flags, integrationMode=IntRK4)  
     mesh.calcVorticity()
     
     # vortex sheet integration

@@ -58,8 +58,8 @@ if 0 and (GUI):
 #main loop
 for t in range(25):
     
-    # FLIP 
-    pp.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False )
+    # FLIP  ,  as a test, delete particles in obstacles here
+    pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=True )
 
     # make sure we have velocities throught liquid region
     mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=tmpVec3 ) 
