@@ -310,9 +310,14 @@ list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 
 # Z compression
 include(FindZLIB)
-LIST(APPEND F_LIBS ${ZLIB_LIBRARIES})
-if(ZLIB_INCLUDE_DIR)
-	LIST(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
+if(ZLIB_FOUND) # NT_DEBUG
+	LIST(APPEND F_LIBS ${ZLIB_LIBRARIES})
+	if(ZLIB_INCLUDE_DIR)
+		LIST(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
+	endif()
+else()
+    ADD_DEFINITIONS( -DNO_ZLIB=1 )
+	MESSAGE(STATUS "Warning - no zlib, some mantaflow loading/saving some file formats will not work")
 endif()
 
 # CUDA
