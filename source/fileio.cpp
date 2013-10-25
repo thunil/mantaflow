@@ -14,7 +14,9 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
+#if NO_ZLIB!=1
 #include <zlib.h>
+#endif
 #include "fileio.h"
 #include "grid.h"
 #include "mesh.h"
@@ -38,6 +40,7 @@ void writeObjFile(const string& name, Mesh* mesh) {
 
 void writeBobjFile(const string& name, Mesh* mesh) {
     cout << "writing mesh file " << name << endl;
+#	if NO_ZLIB!=1
     const Real dx = mesh->getParent()->getDx();
     const Vec3i gs = mesh->getParent()->getGridSize();
     
@@ -121,6 +124,9 @@ void writeBobjFile(const string& name, Mesh* mesh) {
     }
 
     gzclose( gzf );    
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
 }
 
 void readObjFile(const std::string& name, Mesh* mesh, bool append) {
@@ -195,16 +201,21 @@ template<class T>
 void writeGridRaw(const string& name, Grid<T>* grid) {
     cout << "writing grid " << grid->getName() << " to raw file " << name << endl;
     
+#	if NO_ZLIB!=1
     gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
     if (!gzf) errMsg("can't open file");
     gzwrite(gzf, &((*grid)[0]), sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ());
     gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
 }
 
 template<class T>
 void readGridRaw(const string& name, Grid<T>* grid) {
     cout << "reading grid " << grid->getName() << " from raw file " << name << endl;
     
+#	if NO_ZLIB!=1
     gzFile gzf = gzopen(name.c_str(), "rb");
     if (!gzf) errMsg("can't open file");
     
@@ -212,6 +223,9 @@ void readGridRaw(const string& name, Grid<T>* grid) {
     int readBytes = gzread(gzf, &((*grid)[0]), bytes);
     assertMsg(bytes==readBytes, "can't read raw file, stream length does not match");
     gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
 }
 
 
@@ -229,6 +243,7 @@ template <class T>
 void writeGridUni(const string& name, Grid<T>* grid) {
     cout << "writing grid " << grid->getName() << " to uni file " << name << endl;
     
+#	if NO_ZLIB!=1
     char ID[5] = "MNT1";
     UniHeader head;
 	head.dimX = grid->getSizeX();
@@ -253,12 +268,16 @@ void writeGridUni(const string& name, Grid<T>* grid) {
     gzwrite(gzf, &head, sizeof(UniHeader));
     gzwrite(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
     gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
 };
 
 template <class T>
 void readGridUni(const string& name, Grid<T>* grid) {
     cout << "reading grid " << grid->getName() << " from uni file " << name << endl;
     
+#	if NO_ZLIB!=1
     gzFile gzf = gzopen(name.c_str(), "rb");
     if (!gzf) errMsg("can't open file");
     
@@ -286,6 +305,9 @@ void readGridUni(const string& name, Grid<T>* grid) {
         gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
     }
     gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
 };
 
 
