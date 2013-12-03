@@ -20,6 +20,13 @@
 
 namespace Manta {
 
+// activate debug mode if _DEBUG is defined (eg for windows)
+#ifndef DEBUG
+#ifdef _DEBUG
+#define DEBUG 1
+#endif _DEBUG
+#endif DEBUG
+
 // Standard exception
 class Error : public std::exception
 {
@@ -45,7 +52,7 @@ private:
 extern int gDebugLevel;
 
 #define MSGSTREAM std::ostringstream msg; msg.precision(7); msg.width(9);
-#define debMsg(mStr, level)     if (_chklevel(level)) { MSGSTREAM; msg << mStr << std::endl; std::cout << msg.str(); }
+#define debMsg(mStr, level)     if (_chklevel(level)) { MSGSTREAM; msg << mStr; std::cout << msg.str()  << std::endl; }
 inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 
 // error and assertation macros

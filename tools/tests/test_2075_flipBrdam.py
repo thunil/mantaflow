@@ -2,6 +2,7 @@
 # More complex flip setup, breaking dam with resampling and
 # additional particle data fields
 # 
+import sys
 from manta import *
 from helperInclude import *
 
@@ -96,8 +97,8 @@ for t in range(25):
     
     s.step()
 
-doTestGrid( __file__,"dens" , s, dens   )
-doTestGrid( __file__,"dens2", s, dens2  )
-doTestGrid( __file__,"vel"  , s, vel    )
+doTestGrid( sys.argv[0],"dens" , s, dens   )
+doTestGrid( sys.argv[0],"dens2", s, dens2  )
+doTestGrid( sys.argv[0],"vel"  , s, vel    )
 
 

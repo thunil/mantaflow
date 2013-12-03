@@ -1,7 +1,7 @@
 #
 # Simple example scene for a 2D simulation
 # Simulation of a buoyant smoke density plume
-
+import sys
 from manta import *
 from helperInclude import *
 
@@ -43,6 +43,6 @@ for t in range(50):
     s.step()
 
 # check final state
-doTestGrid( __file__,"dens" , s, density  )
-doTestGrid( __file__,"vel"  , s, vel      )
+doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.005 )
+doTestGrid( sys.argv[0],"vel"  , s, vel     , threshold=0.01  )
 

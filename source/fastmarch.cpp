@@ -134,8 +134,7 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
     if (!mFlags.isInBounds(p,1)) return;
     const int idx = mFlags.index(p);
     
-    // already known value?
-    // value alreay set to valid value?
+    // already known value, value alreay set to valid value? skip cell...
     if(mFmFlags[idx] == FlagInited) return;
 
     // discard by source time now , TODO do instead before calling all addtolists?
@@ -161,14 +160,18 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
     if (mVelTransport.isInitialized())
         mVelTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
 
-    if(!found) {
+    if(!found) // old: (!found) , new always add, might lead to  duplicate
+		  // entries, but the earlier will be handled earlier, the second one will skip to the FlagInited check above
+	{
         // add list entry with source value
         COMP entry;
-        entry.p = p;
-        entry.time  = &mLevelset[idx];
+        entry.p    = p;
+        entry.time = mLevelset[idx];
 
         mHeap.push( entry );
-    }
+		// debug info std::cout<<"push "<< entry.p <<","<< entry.time <<"\n";
+    }	
+
 }
 
 //! Enforce delta_phi = 0 on boundaries
@@ -197,7 +200,8 @@ void FastMarch<COMP,TDIR>::performMarching() {
         Vec3i p = ce.p; 
         mFmFlags(p) = FlagInited;
         mHeap.pop();
-        
+   		// debug info std::cout<<"pop "<< ce.p <<","<< ce.time <<"\n";
+
         addToList(Vec3i(p.x-1,p.y,p.z), p);
         addToList(Vec3i(p.x+1,p.y,p.z), p);
         addToList(Vec3i(p.x,p.y-1,p.z), p);

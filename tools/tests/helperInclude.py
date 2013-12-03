@@ -7,6 +7,8 @@ import os
 import shutil
 
 
+
+
 def outputFilename( file, gridname ):
 	return file +"_"+ gridname + "_out.uni" 
 
@@ -33,17 +35,17 @@ def checkResult( name, result , thresh, invertResult=False ):
 
 	# now react on outcome...
 	if ( allGood == 1 ):
-		print "OK! Results for "+name+" match..."
+		print("OK! Results for "+name+" match...")
 		return 0
 	else:
-		print "FAIL! Allowed "+name+" threshold "+str(thresh)+", results differ by "+str(result)
+		print("FAIL! Allowed "+name+" threshold "+str(thresh)+", results differ by "+str(result))
 		return 1
 
 
 def getGenRefFileSetting( ):
 	# check env var for generate data setting
 	ret = int(os.getenv('MANTA_GEN_TEST_DATA', 0))
-	# print "Gen-data-setting: " + str(ret)
+	# print("Gen-data-setting: " + str(ret))
 	return ret
 
 
@@ -52,7 +54,7 @@ def getGenRefFileSetting( ):
 def doTestGrid( file , name, solver , grid, threshold=1e-10, invertResult=False  ):
 
 	# handle grid types that need conversion
-	#print "doTestGrid, incoming grid type :" + type(grid).__name__
+	#print( "doTestGrid, incoming grid type :" + type(grid).__name__)
 	if ( type(grid).__name__ == "MACGrid" ):
 		gridTmpMac = solver.create(VecGrid)
 		convertMacToVec3(grid , gridTmpMac )
@@ -62,7 +64,7 @@ def doTestGrid( file , name, solver , grid, threshold=1e-10, invertResult=False 
 		convertLevelsetToReal(grid , gridTmpLs )
 		return doTestGrid( file, name, solver, gridTmpLs  , threshold)
 	if ( type(grid).__name__ == "IntGrid" ):
-		print "Error doTestGrid - int grids not yet supported..."
+		print( "Error doTestGrid - int grids not yet supported...")
 		return 1
 
 	# now we should only have real & vec3 grids
@@ -73,7 +75,7 @@ def doTestGrid( file , name, solver , grid, threshold=1e-10, invertResult=False 
 	elif ( type(grid).__name__ == "VecGrid" ):
 		compareTmpGrid = solver.create(VecGrid)
 	else:
-		print "Error doTestGrid - unknown grid type " + type(grid).__name__ 
+		print( "Error doTestGrid - unknown grid type " + type(grid).__name__ )
 		return 1
 
 	genRefFiles = getGenRefFileSetting()
@@ -82,7 +84,7 @@ def doTestGrid( file , name, solver , grid, threshold=1e-10, invertResult=False 
 		#grid.save( outputFilename( file, name ) )
 		#shutil.copyfile( outputFilename( file, name ) , referenceFilename( file, name ) )
 		grid.save( referenceFilename( file, name ) )
-		print "OK! Generated reference file '" + referenceFilename( file, name ) + "'"
+		print( "OK! Generated reference file '" + referenceFilename( file, name ) + "'")
 		return 0
 	else:
 		compareTmpGrid.load( referenceFilename( file, name ) )

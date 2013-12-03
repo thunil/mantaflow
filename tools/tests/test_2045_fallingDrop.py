@@ -2,6 +2,7 @@
 # Simple example for free-surface simulation, falling drop
 # that shouldnt hit the floor and give straight down velocities
 
+import sys
 from manta import *
 from helperInclude import *
 
@@ -57,6 +58,6 @@ for t in range(18):
 
 
 # check final state
-doTestGrid( __file__,"phi"  , s, phi    )
-doTestGrid( __file__,"vel"  , s, vel    )
+doTestGrid( sys.argv[0],"phi"  , s, phi    )
+doTestGrid( sys.argv[0],"vel"  , s, vel    )
 

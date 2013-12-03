@@ -139,7 +139,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
     InitFmOut (flags, fmFlags, phi, ignoreWalls, obstacleType);
     
     // by default, correctOuterLayer is on
-    if (correctOuterLayer) {    
+    if (correctOuterLayer) {
         // normal version, inwards march is done, now add all outside values (0..2] to list
         // note, this might move the interface a bit! but keeps a nice signed distance field...        
         FOR_IJK_BND(flags, 1) {

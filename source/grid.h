@@ -96,7 +96,7 @@ public:
     PYTHON void load(std::string name);
     
     //! set all cells to zero
-    void clear();
+    PYTHON void clear();
     
 	//! all kinds of access functions, use grid(), grid[] or grid.get()
     //! access data
@@ -140,9 +140,16 @@ public:
     //Grid<T>& operator=(const T& a);
     Grid<T>& operator=(const Grid<T>& a);
     Grid<T>& safeDivide(const Grid<T>& a);    
+
+	// python helper functions to work with grids in scene files
+	//! set content to added/subtracted values of other two grids
     PYTHON void add(const Grid<T>& a, const Grid<T>& b);
+    PYTHON void sub(const Grid<T>& a, const Grid<T>& b);
     PYTHON void scale(T a) { (*this) *= a; }
     PYTHON void copyFrom(const Grid<T>& a) { *this = a; }
+
+	//! debugging helper, print grid from python
+	PYTHON void print(int zSlice=-1,  bool printIndex=false); 
     
     // common compound operators
     //! Grid += a*factor
@@ -318,7 +325,6 @@ inline Vec3 MACGrid::getAtMACZ(int i, int j, int k) const {
     return v;
 }
 
-KERNEL(idx) template<class T> void gridAdd2 (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] + b[idx]; }
 KERNEL(idx) template<class T, class S> void gridAdd (Grid<T>& me, const Grid<S>& other) { me[idx] += other[idx]; }
 KERNEL(idx) template<class T, class S> void gridSub (Grid<T>& me, const Grid<S>& other) { me[idx] -= other[idx]; }
 KERNEL(idx) template<class T, class S> void gridMult (Grid<T>& me, const Grid<S>& other) { me[idx] *= other[idx]; }

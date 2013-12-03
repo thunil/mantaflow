@@ -2,6 +2,7 @@
 # Inverted test, this should "fail", ie give a large difference...
 # 
 
+import sys
 from manta import *
 from helperInclude import *
 
@@ -20,8 +21,8 @@ setConstant    ( dummy  , -25.00 )
 
 # verify , note - this should fail!
 if (getGenRefFileSetting()==1):
-	doTestGrid( __file__, "dens" , s, density )
+	doTestGrid( sys.argv[0], "dens" , s, density )
 else:
-	doTestGrid( __file__, "dens" , s, dummy , threshold=50. , invertResult=True )
+	doTestGrid( sys.argv[0], "dens" , s, dummy , threshold=50. , invertResult=True )
 
 

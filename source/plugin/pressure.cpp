@@ -184,7 +184,7 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0, 
-                     Real gfClamp = -1e4,
+                     Real gfClamp = 1e-04,
                      Real cgMaxIterFac = 1.5,
                      Real cgAccuracy = 1e-3,
                      string openBound = "",

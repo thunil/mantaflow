@@ -8,6 +8,7 @@
 # 0xxx tests are very basic (mostly single operator calls)
 # 1xxx is for 2d sims
 # 2xxx for "real" 3d sims
+# xl... larger 3d sims (similar to 2xxx cases)
 # 
 
 import os
@@ -22,6 +23,7 @@ from subprocess import check_output
 
 # debugging, print outputs from all manta calls
 printAllOutpus = 0
+filePrefix = "test_"
 
 if(len(sys.argv)<2):
 	print "Usage runTests.py <manta-executable>"
@@ -30,7 +32,18 @@ if(len(sys.argv)<2):
 manta = sys.argv[1]
 print "Using mantaflow executable '" + manta + "' " 
 
-files = os.popen("ls test_????_*.py").read() 
+# check parameters:
+# xl - whether complex/large tests should be run
+if(len(sys.argv)>2):
+	for i in range(2, len(sys.argv)):
+		if(sys.argv[i].lower() == "xl"):
+			print "Running XL tests! This can take a while..."
+			filePrefix = "xltest_"
+		else:
+			print "Error: unknown parameter '" + sys.argv[i] +"' "
+			exit(1);
+
+files = os.popen("ls "+str(filePrefix)+"????_*.py").read() 
 #print "Debug, found test files: "+files
 
 genRefFiles = int(os.getenv('MANTA_GEN_TEST_DATA', 0))

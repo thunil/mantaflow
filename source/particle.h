@@ -116,11 +116,14 @@ public:
 	void doCompress() { if ( mDeletes > mDeleteChunk) compress(); }
 	//! insert buffered positions as new particles, update additional particle data
 	void insertBufferedParticles();
+	//! resize data vector, and all pdata fields
+	void resizeAll(int newsize);
     
     // adding and deleting 
     inline void kill(int i);
     int add(const S& data);
-    void clear();
+	// remove all particles, init 0 length arrays (also pdata)
+    PYTHON void clear();
 	// query status
     inline bool isActive(int i);
     inline int  getStatus(int i);
@@ -171,6 +174,9 @@ public:
 
 	// save to text file
 	void writeParticlesText(std::string name);
+	// other output formats
+	void writeParticlesRawPositionsGz(std::string name);
+	void writeParticlesRawVelocityGz(std::string name);
 
     PYTHON void addParticle(Vec3 pos) { add(BasicParticleData(pos)); }
 };
@@ -238,6 +244,9 @@ public:
     inline T& operator[](int idx)            { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
     inline const T operator[](int idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 
+	// set all values to 0, note - different from particleSystem::clear! doesnt modify size of array (has to stay in sync with parent system)
+    PYTHON void clear();
+
 	//! set grid from which to get data...
 	PYTHON void setSource(Grid<T>* grid, bool isMAC=false );
 
@@ -252,6 +261,10 @@ public:
 	// fast inlined functions for per particle operations
 	inline void copyValue(int from, int to) { get(to) = get(from); } 
 	void initNewValue(int idx, Vec3 pos);
+    
+	//! file io
+    PYTHON void save(std::string name);
+    PYTHON void load(std::string name);
 protected:
 	//! data storage
 	std::vector<T> mData; 
@@ -280,7 +293,7 @@ void ParticleBase::addBuffered(const Vec3& pos) {
 template<class S>
 void ParticleSystem<S>::clear() {
     mDeleteChunk = mDeletes = 0;
-    mData.clear();
+	this->resizeAll(0); // instead of mData.clear
 }
 
 template<class S>
@@ -371,6 +384,14 @@ void ParticleSystem<S>::projectOutside(Grid<Vec3>& gradient) {
 }
 
 template<class S>
+void ParticleSystem<S>::resizeAll(int size) {
+	// resize all buffers to target size in 1 go
+    mData.resize(size);
+	for(int i=0; i<(int)mPartData.size(); ++i)
+		mPartData[i]->resize(size);
+}
+
+template<class S>
 void ParticleSystem<S>::compress() {
     int nextRead = mData.size();
     for (int i=0; i<(int)mData.size(); i++) {
@@ -386,10 +407,7 @@ void ParticleSystem<S>::compress() {
     }
 	if(nextRead<(int)mData.size()) debMsg("Deleted "<<((int)mData.size() - nextRead)<<" particles", 1); // debug info
 
-    mData.resize(nextRead);
-	for(int i=0; i<(int)mPartData.size(); ++i)
-		mPartData[i]->resize(nextRead);
-
+	resizeAll(nextRead);
     mDeletes = 0;
     mDeleteChunk = mData.size() / DELETE_PART;
 }
@@ -399,11 +417,7 @@ template<class S>
 void ParticleSystem<S>::insertBufferedParticles() {
 	if(mNewBuffer.size()==0) return;
 	int newCnt = mData.size();
-
-	// resize all buffers to target size in 1 go
-    mData.resize(newCnt + mNewBuffer.size());
-	for(int i=0; i<(int)mPartData.size(); ++i)
-		mPartData[i]->resize(newCnt + mNewBuffer.size());
+	resizeAll(newCnt + mNewBuffer.size());
 
 	// clear new flag everywhere
 	for(int i=0; i<(int)mData.size(); ++i) mData[i].flag &= ~PNEW;
@@ -504,6 +518,13 @@ inline void ParticleDataBase::checkPartIndex(int idx) const {
         errMsg( "ParticleData " << " size " << mySize << " does not match parent! (" << mpParticleSys->getSizeSlow() << ") " );
     }
 }
+
+// set contents to zero, as for a grid
+template<class T>
+void ParticleDataImpl<T>::clear() {
+	for(int i=0; i<(int)mData.size(); ++i) mData[i] = 0.;
+}
+
 
 } // namespace
 

@@ -1,6 +1,7 @@
 #
 # 2d flip test
 # 
+import sys
 from manta import *
 from helperInclude import *
 
@@ -73,6 +74,6 @@ for t in range(60):
     s.step()
 
 
-doTestGrid( __file__,"dens" , s, dens    )
-doTestGrid( __file__,"vel"  , s, vel    )
+doTestGrid( sys.argv[0],"dens" , s, dens  , threshold=0.0001 )
+doTestGrid( sys.argv[0],"vel"  , s, vel   , threshold=0.001  )
 

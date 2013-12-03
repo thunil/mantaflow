@@ -102,13 +102,13 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
         if(fp) {
             fread(noise3, sizeof(Real), n3d, fp); 
             fclose(fp);
-            cout << "noise tile loaded from file! " << endl;
+            debMsg("noise tile loaded from file! " , 1);
             mNoiseTile = noise3;
             return;
         }
     }
 
-    cout << "generating 3x " << n << "^3 noise tile " << endl;
+    debMsg("generating 3x " << n << "^3 noise tile " , 1);
     Real *temp13 = new Real[n3d];
     Real *temp23 = new Real[n3d];
 
@@ -181,7 +181,7 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
         if(fp) {
             fwrite(noise3, sizeof(Real), n3d, fp); 
             fclose(fp);
-            cout << "saved to file! " << endl;
+            debMsg( "saved to file! " , 1);
         }
     }
 }

@@ -2,6 +2,7 @@
 # 3d pressure solve
 # 
 
+import sys
 from manta import *
 from helperInclude import *
 
@@ -40,5 +41,5 @@ for t in range(1):
 
 
 # check final state
-doTestGrid( __file__, "pressure" , s, pressure , invertResult=False )
+doTestGrid( sys.argv[0], "pressure" , s, pressure , threshold=1e-04, invertResult=False )
 

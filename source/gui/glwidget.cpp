@@ -186,12 +186,8 @@ void GLWidget::setViewport(const Vec3i& gridsize) {
 
 void GLWidget::keyPressEvent(QKeyEvent* e)
 {
-    if(!keyProcess(e->key(), e->modifiers(), true)) {        
-        std::string k = e->text().toAscii().data();
-        /*if (k.size() == 1)
-            ddfKeyPressHandler(k[0]);*/
+    if(!keyProcess(e->key(), e->modifiers(), true)) 
         QGLWidget::keyPressEvent(e);
-    }
     else 
         updateGL();
 }
@@ -220,9 +216,13 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
 		else if (key == Qt::Key_Z)                  { emit painterEvent(Painter::EventNextReal); updatePlane(mPlane); }
 		else if (key == Qt::Key_X)                  { emit painterEvent(Painter::EventNextVec);  updatePlane(mPlane); }
 
-        else if (key == Qt::Key_BraceLeft && shift)   emit painterEvent(Painter::EventScaleVecDown);
+		// vector scaling can be used with two key combinations (the second one is for international keyboards)
+        else if (key == Qt::Key_BraceLeft )            emit painterEvent(Painter::EventScaleVecDown);
+        else if (key == Qt::Key_BraceRight)            emit painterEvent(Painter::EventScaleVecUp);
+        else if (key == Qt::Key_BracketLeft  && shift) emit painterEvent(Painter::EventScaleVecDown);
+        else if (key == Qt::Key_BracketRight && shift) emit painterEvent(Painter::EventScaleVecUp);
+
         else if (key == Qt::Key_BracketLeft)          emit painterEvent(Painter::EventScaleRealDown);
-        else if (key == Qt::Key_BraceRight && shift)  emit painterEvent(Painter::EventScaleVecUp);
         else if (key == Qt::Key_BracketRight)         emit painterEvent(Painter::EventScaleRealUp);
         else if (key == Qt::Key_V && shift)           emit painterEvent(Painter::EventToggleCentered);
         else if (key == Qt::Key_V)                    emit painterEvent(Painter::EventToggleVels);
@@ -234,6 +234,7 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
         else if (key == Qt::Key_Comma)                emit painterEvent(Painter::EventScaleMeshDown);
         else if (key == Qt::Key_Backslash)            emit painterEvent(Painter::EventMeshColorMode);
 		else if (key == Qt::Key_O && shift)           emit painterEvent(Painter::EventToggleBackgroundMesh); 
+
         else if (key == Qt::Key_B && shift)           emit painterEvent(Painter::EventToggleParticles);
         else if (key == Qt::Key_B)                    emit painterEvent(Painter::EventNextSystem);
         else if (key == Qt::Key_ParenLeft)            emit painterEvent(Painter::EventScalePdataDown);

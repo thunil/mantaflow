@@ -37,7 +37,9 @@ public:
      void screenshot(QString file);
 
 public slots:
-     void setViewport(const Vec3i& gridsize);
+    void setViewport(const Vec3i& gridsize);
+	void keyPressEvent(QKeyEvent* e);
+    void keyReleaseEvent(QKeyEvent* e);
      
 signals:
     void paintSub();
@@ -46,8 +48,6 @@ signals:
      
 protected:
     bool keyProcess(int key, int mod, bool down);
-    void keyPressEvent(QKeyEvent* e);
-    void keyReleaseEvent(QKeyEvent* e);
     void timerEvent(QTimerEvent* e);
     void initializeGL();
     void resizeGL(int w, int h);

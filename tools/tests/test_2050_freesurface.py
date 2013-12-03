@@ -2,6 +2,7 @@
 # Simple example for free-surface simulation
 # with MacCormack advection
 
+import sys
 from manta import *
 from helperInclude import *
 
@@ -68,6 +69,6 @@ for t in range(50):
 
 
 # check final state
-doTestGrid( __file__,"phi"  , s, phi    )
-doTestGrid( __file__,"vel"  , s, vel    )
+doTestGrid( sys.argv[0],"phi"  , s, phi    )
+doTestGrid( sys.argv[0],"vel"  , s, vel    )
 

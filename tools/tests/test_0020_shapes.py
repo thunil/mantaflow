@@ -2,6 +2,7 @@
 # Testing shapes
 # 
 
+import sys
 from manta import *
 from helperInclude import *
 
@@ -26,8 +27,8 @@ velVal = vec3(0.1,0.1,0.4)
 sph2 = s.create(Sphere, center=gs*vec3(0.6,0.5,0.4), radius=res*0.25)
 sph2.applyToGrid(grid=vel, value=velVal )
 
-doTestGrid( __file__, "densSph" , s, density  )
-doTestGrid( __file__, "velSph"  , s, vel      )
+doTestGrid( sys.argv[0], "densSph" , s, density  )
+doTestGrid( sys.argv[0], "velSph"  , s, vel      )
 
 
 # sphere
@@ -42,8 +43,8 @@ velVal = vec3(0.5,0.1,0.1)
 box2 = s.create(Box, p0=gs*vec3(0.2,0.2,0.3), p1=gs*vec3(0.9,0.8,0.9) )
 box2.applyToGrid(grid=vel, value=velVal )
 
-doTestGrid( __file__, "densBox" , s, density  )
-doTestGrid( __file__, "velBox"  , s, vel      )
+doTestGrid( sys.argv[0], "densBox" , s, density  )
+doTestGrid( sys.argv[0], "velBox"  , s, vel      )
 
 
 # cylinder
@@ -58,7 +59,7 @@ velVal = vec3(0.4,0.3,0.2)
 cyl2 = s.create(Cylinder, center=gs*vec3(0.5,0.5,0.5), radius=res*0.2, z=gs*vec3(0, 0.3, 0))
 cyl2.applyToGrid(grid=vel, value=velVal )
 
-doTestGrid( __file__, "densCyl" , s, density  )
-doTestGrid( __file__, "velCyl"  , s, vel      )
+doTestGrid( sys.argv[0], "densCyl" , s, density  )
+doTestGrid( sys.argv[0], "velCyl"  , s, vel      )
 
 

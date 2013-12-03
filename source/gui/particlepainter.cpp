@@ -236,8 +236,8 @@ void ParticlePainter::paint() {
             		if (!bp->isActive(i)) continue;
 					Vec3 pos = (*bp)[i].pos; 
 					if (pos[dim] < plane || pos[dim] > plane + 1.0f) continue;
+					mMaxVal = std::max( pdi->get(i), mMaxVal );
 					Real val = pdi->get(i) * scale;
-					mMaxVal = std::max( val, mMaxVal );
 					glColor3f(0,val,0);
 					glVertex(pos, dx); 
 				}   
@@ -256,8 +256,9 @@ void ParticlePainter::paint() {
             		if (!bp->isActive(i)) continue;
 					Vec3 pos = (*bp)[i].pos; 
 					if (pos[dim] < plane || pos[dim] > plane + 1.0f) continue;
-					Real val = pdi->get(i) * scale;
+					Real val = pdi->get(i);
 					mMaxVal = std::max( val, mMaxVal );
+					val *= scale;
 					glColor3f(0,val,0);
 					glVertex(pos, dx); 
 				}   
@@ -274,8 +275,8 @@ void ParticlePainter::paint() {
             		if (!bp->isActive(i)) continue;
 					Vec3 pos = (*bp)[i].pos; 
 					if (pos[dim] < plane || pos[dim] > plane + 1.0f) continue;
+					mMaxVal = std::max( norm(pdi->get(i)), mMaxVal );
 					Vec3 val = pdi->get(i) * scale;
-					mMaxVal = std::max( norm(val), mMaxVal );
 					glColor3f(0.5,0.0,0);
 					glVertex(pos, dx); 
 					pos += val;

@@ -61,18 +61,19 @@ protected:
     MACGrid* mpVel;
     FlagGrid* mpFlags;
 };
+
 class FmHeapEntryOut {
 public:
     Vec3i p;
     // quick time access for sorting
-    Real *time;
+    Real time;
     static inline bool compare(const Real x, const Real y) { 
         return x > y;
     }
 
     inline bool operator< (const FmHeapEntryOut& o) const {
-        const Real d = fabs((*time) - (*(o.time)));
-        if (d > 1e-4) return (*time) > (*(o.time)); 
+        const Real d = fabs((time) - ((o.time)));
+        if (d > 0.) return (time) > ((o.time)); 
         if (p.z != o.p.z) return p.z > o.p.z;
         if (p.y != o.p.y) return p.y > o.p.y;
         return p.x > o.p.x;
@@ -84,14 +85,14 @@ class FmHeapEntryIn {
 public:
     Vec3i p;
     // quick time access for sorting
-    Real *time;
+    Real time;
     static inline bool compare(const Real x, const Real y) { 
         return x < y;
     }
 
     inline bool operator< (const FmHeapEntryIn& o) const {
-        const Real d = fabs((*time) - (*(o.time)));
-        if (d > 1e-4) return (*time) < (*(o.time)); 
+        const Real d = fabs((time) - ((o.time)));
+        if (d > 0.) return (time) < ((o.time)); 
         if (p.z != o.p.z) return p.z < o.p.z;
         if (p.y != o.p.y) return p.y < o.p.y;
         return p.x < o.p.x;
@@ -139,7 +140,7 @@ protected:
     Real mMaxTime;
 
     //! fast marching list
-    std::priority_queue<T> mHeap;
+    std::priority_queue<T, std::vector<T>, std::less<T> > mHeap;
     Real mReheapVal;
 
     //! weights for touching points

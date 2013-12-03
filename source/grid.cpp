@@ -212,8 +212,13 @@ template<> Real Grid<int>::getMaxAbsValue() {
     int amax = CompMaxInt (*this);
     return max( fabs((Real)amin), fabs((Real)amax));
 }
+KERNEL(idx) template<class T> void gridAddSameType (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] + b[idx]; }
 template<class T> void Grid<T>::add(const Grid<T>& a, const Grid<T>& b) {
-    gridAdd2<T>(*this, a, b);
+    gridAddSameType<T>(*this, a, b);
+}
+KERNEL(idx) template<class T> void gridSubSameType (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] - b[idx]; }
+template<class T> void Grid<T>::sub(const Grid<T>& a, const Grid<T>& b) {
+    gridSubSameType<T>(*this, a, b);
 }
 
 PYTHON void setConstant    (Grid<Real>& grid, Real value=0.) { knSetConst<Real>(grid,value); }
@@ -253,6 +258,21 @@ PYTHON void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
     FOR_IJK(target) {
 		target(i,j,k) = source(i,j,k);
 	}
+}
+
+template<class T> void Grid<T>::print(int zSlice, bool printIndex) {
+	std::ostringstream out;
+	out << std::endl;
+	FOR_IJK_BND(*this,1) {
+		int idx = (*this).index(i,j,k);
+		if(zSlice>=0 && k==zSlice) { 
+			out << " ";
+			if(printIndex) out << "  "<<i<<","<<j<<","<<k <<":";
+			out << (*this)[idx]; 
+			if(i==(*this).getSizeX()-1 -2) out << std::endl; 
+		}
+	}
+	out << endl; debMsg("Printing " << this->getName() << out.str().c_str() , 1);
 }
 
 

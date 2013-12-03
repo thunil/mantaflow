@@ -2,6 +2,7 @@
 # Very simple flip without level set
 # and without any particle resampling, falling drop only
 # 
+import sys
 from manta import *
 from helperInclude import *
 
@@ -64,6 +65,6 @@ for t in range(18):
     s.step()
 
 # only check velocity here...
-doTestGrid( __file__,"vel"  , s, vel    )
+doTestGrid( sys.argv[0],"vel"  , s, vel  , threshold=1e-05 )
 
 

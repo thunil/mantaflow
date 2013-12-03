@@ -106,7 +106,9 @@ void FlipSystem::adjustNumber( MACGrid& vel, FlagGrid& flags, int minParticles, 
                 tmp(p) = num+1;
         }
     }
-    
+
+	// NT_DEBUG , old - todo remove this function
+
     compress();
     
     // seed new particles
@@ -308,22 +310,28 @@ PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& fl
 	// which levelset to use as threshold, todo - make depend on particle radius
 	const Real SURFACE_LS = -1.5; 
     Grid<int> tmp( vel.getParent() );
-    
+	std::ostringstream out;
+
     // count particles in cells, and delete excess particles
     for (int i=0; i<(int)parts.size(); i++) {
         if (parts.isActive(i)) {
             Vec3i p = toVec3i( parts.getPos(i) );
+			if (!tmp.isInBounds(p) ) {
+                parts.kill(i); // out of domain, remove
+				continue;
+			}
             int num = tmp(p);
 
 			bool atSurface = false;
-			if (phi.getInterpolated( parts.getPos(i) ) > SURFACE_LS) atSurface = true;
-			//debMsg("i"<<i<<" "<<num<<" s"<<atSurface<<" phi"<< phi.getInterpolated( parts.getPos(i) ),1);
+			Real phiv = phi.getInterpolated( parts.getPos(i) );
+			if (phiv > SURFACE_LS) atSurface = true;
             
             // dont delete particles in non fluid cells here, the particles are "always right"
             if ( num > maxParticles && (!atSurface) ) {
-                parts.kill(i); 
-			} else
+                parts.kill(i);
+			} else {
                 tmp(p) = num+1;
+			}
         }
     }
 

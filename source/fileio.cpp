@@ -15,7 +15,9 @@
 #include <fstream>
 #include <cstdlib>
 #if NO_ZLIB!=1
+extern "C" { 
 #include <zlib.h>
+}
 #endif
 #include "fileio.h"
 #include "grid.h"
@@ -221,7 +223,7 @@ void readGridRaw(const string& name, Grid<T>* grid) {
     
     int bytes = sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ();
     int readBytes = gzread(gzf, &((*grid)[0]), bytes);
-    assertMsg(bytes==readBytes, "can't read raw file, stream length does not match");
+    assertMsg(bytes==readBytes, "can't read raw file, stream length does not match"<<bytes<<" vs "<<readBytes);
     gzclose(gzf);
 #	else
     cout << "file format not supported without zlib" << endl;
@@ -280,9 +282,9 @@ void readGridUni(const string& name, Grid<T>* grid) {
 #	if NO_ZLIB!=1
     gzFile gzf = gzopen(name.c_str(), "rb");
     if (!gzf) errMsg("can't open file");
-    
+
     char ID[5]={0,0,0,0,0};
-    gzread(gzf, ID, 4);
+	gzread(gzf, ID, 4);
     
     if (!strcmp(ID, "DDF2")) {
         // legacy file format
