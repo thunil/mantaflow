@@ -24,8 +24,8 @@ namespace Manta {
 #ifndef DEBUG
 #ifdef _DEBUG
 #define DEBUG 1
-#endif _DEBUG
-#endif DEBUG
+#endif // _DEBUG
+#endif // DEBUG
 
 // Standard exception
 class Error : public std::exception

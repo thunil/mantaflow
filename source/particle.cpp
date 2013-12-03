@@ -17,6 +17,7 @@
 #endif
 #include "particle.h"
 #include "levelset.h"
+#include  <cstring>
 
 using namespace std;
 namespace Manta {
