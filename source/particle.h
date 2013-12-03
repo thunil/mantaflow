@@ -387,18 +387,8 @@ template<class S>
 void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle ) {
     GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle );
     integratePointSet(kernel, integrationMode);
-	/*for(int i=133400; i<std::min((int)mData.size(),133600); ++i) {
-		std::cout<<"PPPa"<<i<<" "<<mData[i].pos <<" "<<mData[i].flag << " "<<
-			flags.isInBounds(mData[i].pos,0) <<
-			"\n";
-	} NT_DEBUG */
 	if(deleteInObstacle) KnDeleteInObstacle<S>( mData, flags);
 	else                 KnClampPositions<S>  ( mData, flags);
-	/*for(int i=133400; i<std::min((int)mData.size(),133600); ++i) {
-		std::cout<<"PPPb"<<i<<" "<<mData[i].pos <<" "<<mData[i].flag << " "<<
-			flags.isInBounds(mData[i].pos,0) <<
-			"\n";
-	} NT_DEBUG */
 }
 
 KERNEL(pts, single) // no thread-safe random gen yet

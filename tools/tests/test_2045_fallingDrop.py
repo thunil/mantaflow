@@ -17,10 +17,10 @@ s.timestep = 0.6
 accuracy = 5e-5
 
 # prepare grids and particles
-flags = s.create(FlagGrid)
-vel = s.create(MACGrid)
+flags    = s.create(FlagGrid)
+vel      = s.create(MACGrid)
 pressure = s.create(RealGrid)
-mesh = s.create(Mesh)
+mesh     = s.create(Mesh)
 
 # scene setup
 flags.initDomain(boundaryWidth=0)
@@ -57,7 +57,7 @@ for t in range(18):
 	#gui.screenshot( 'screenOn_%04d.png' % t );
 
 
-# check final state
-doTestGrid( sys.argv[0],"phi"  , s, phi    )
-doTestGrid( sys.argv[0],"vel"  , s, vel    )
+# check final state , eg 32bit and 64bit windows version can have slightly different results...
+doTestGrid( sys.argv[0], "phi" , s, phi  , 1e-05  )
+doTestGrid( sys.argv[0], "vel" , s, vel  , 1e-05  )
 
