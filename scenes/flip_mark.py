@@ -42,7 +42,7 @@ if (GUI):
 for t in range(400):
     
     # FLIP advect and writeback
-    flip.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4)
+    flip.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4)
     mov.projectOutside(flags=flags,flip=flip)
     flip.velocitiesToGrid(vel=vel, flags=flags)
     flip.markFluidCells(flags=flags)

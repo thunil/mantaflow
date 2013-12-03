@@ -178,8 +178,14 @@ template<class T> Grid<T>& Grid<T>::operator= (const Grid<T>& a) {
     FOR_IDX(*this) { mData[idx] = a; }
     return *this;
 }*/
-template<class T> void Grid<T>::scaledAdd(const Grid<T>& a, const T& factor) {
-    gridScaleAdd<T> (*this, a, factor);
+
+//! Grid a += b*factor (note, shouldnt be part of the grid class! can cause problems with python instantiation)
+// also the python integration doesnt support templated functions for now (only classes)
+PYTHON void scaledAddReal(Grid<Real>& a, const Grid<Real>& b, const Real& factor) {
+    gridScaledAdd<Real,Real> (a, b, factor);
+}
+PYTHON void scaledAddVec3(Grid<Vec3>& a, const Grid<Vec3>& b, const Vec3& factor) {
+    gridScaledAdd<Vec3,Vec3> (a, b, factor);
 }
 template<> Real Grid<Real>::getMaxValue() {
     return CompMaxReal (*this);
@@ -221,9 +227,9 @@ template<class T> void Grid<T>::sub(const Grid<T>& a, const Grid<T>& b) {
     gridSubSameType<T>(*this, a, b);
 }
 
-PYTHON void setConstant    (Grid<Real>& grid, Real value=0.) { knSetConst<Real>(grid,value); }
-PYTHON void setConstantVec3(Grid<Vec3>& grid, Vec3 value=0.) { knSetConst<Vec3>(grid,value); }
-PYTHON void setConstantInt (Grid<int >& grid, int  value=0.) { knSetConst<int>(grid,value); }
+PYTHON void setConstant    (Grid<Real>& grid, Real value=0.) { gridSetConst<Real>(grid,value); }
+PYTHON void setConstantVec3(Grid<Vec3>& grid, Vec3 value=0.) { gridSetConst<Vec3>(grid,value); }
+PYTHON void setConstantInt (Grid<int >& grid, int  value=0.) { gridSetConst<int>(grid,value); }
 
 // compute maximal diference of two cells in the grid
 // used for testing
@@ -317,5 +323,13 @@ void FlagGrid::fillGrid(int type) {
 template class Grid<int>;
 template class Grid<Real>;
 template class Grid<Vec3>;
+
+//template void scaledAdd<Real,Real>(const Grid<Real>& a, const Grid<Real>& b, const Real& factor);
+
+#if ENABLE_GRID_TEST_DATATYPE==1
+// instantiate test datatype , not really required for simulations, mostly here for demonstration purposes
+template class Grid<nbVector>;
+#endif // ENABLE_GRID_TEST_DATATYPE
+
 
 } //namespace

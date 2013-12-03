@@ -234,8 +234,8 @@ bool GridCg<APPLYMAT>::iterate() {
     Real alpha = 0.;
     if(fabs(dp)>0.) alpha = mSigma / (Real)dp;
     
-    mDst.scaledAdd(mSearch, alpha);    // dst += search * alpha
-    mResidual.scaledAdd(mTmp, -alpha); // residual += tmp * -alpha
+    gridScaledAdd<Real,Real>(mDst, mSearch, alpha);    // dst += search * alpha
+    gridScaledAdd<Real,Real>(mResidual, mTmp, -alpha); // residual += tmp * -alpha
     
     if (mPcMethod == PC_ICP)
         ApplyPreconditionIncompCholesky(mTmp, mResidual, mFlags, *mpPCA0, *mpPCAi, *mpPCAj, *mpPCAk, *mpA0, *mpAi, *mpAj, *mpAk);
@@ -262,13 +262,10 @@ bool GridCg<APPLYMAT>::iterate() {
     // search =  tmp + beta * search
     UpdateSearchVec (mSearch, mTmp, beta);
 
-    debMsg("PB-Cg::iter2 i="<<mIterations<<" sigma="<<mSigma<<" alpha="<<alpha<<" beta="<<beta<<" ", CG_DEBUGLEVEL);
+    debMsg("PB-Cg::iter i="<<mIterations<<" sigma="<<mSigma<<" alpha="<<alpha<<" beta="<<beta<<" ", CG_DEBUGLEVEL);
     mSigma = sigmaNew;
     
-    /* debMsg("PB-CG-Norms::p"<<sqrt( DDF::GridOpNormNosqrt(mpDst, mpFlags).getValue() ) <<" search"<<sqrt( DDF::GridOpNormNosqrt(mpSearch, mpFlags).getValue(), CG_DEBUGLEVEL ) 
-            <<" res"<<sqrt( DDF::GridOpNormNosqrt(mpResidual, mpFlags).getValue() ) <<" tmp"<<sqrt( DDF::GridOpNormNosqrt(mpTmp, mpFlags).getValue() ), CG_DEBUGLEVEL ); // debug
-    if(CG_DEBUG) debMsg("PB-CG-Norms","p"<<( DDF::GridOpNormNosqrt(mpDst, mpFlags).getValue() ) <<" search"<<( DDF::GridOpNormNosqrt(mpSearch, mpFlags).getValue(), CG_DEBUGLEVEL ) 
-            <<" res"<<( DDF::GridOpNormNosqrt(mpResidual, mpFlags).getValue() ) <<" tmp"<<( DDF::GridOpNormNosqrt(mpTmp, mpFlags).getValue() ), CG_DEBUGLEVEL ); // debug, no sqrt!*/
+    //debMsg("PB-CG-Norms::p"<<sqrt( GridOpNormNosqrt(mpDst, mpFlags).getValue() ) <<" search"<<sqrt( GridOpNormNosqrt(mpSearch, mpFlags).getValue(), CG_DEBUGLEVEL ) <<" res"<<sqrt( GridOpNormNosqrt(mpResidual, mpFlags).getValue() ) <<" tmp"<<sqrt( GridOpNormNosqrt(mpTmp, mpFlags).getValue() ), CG_DEBUGLEVEL ); // debug
     return true;
 }
 

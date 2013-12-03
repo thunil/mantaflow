@@ -1,74 +1,89 @@
 #
-# Slightly more complicated flip setup
-# uses levelset surface, resampling, and ghost fluid BCs
+# Simple flip with level set and basic resampling
 # 
 from manta import *
 
 # solver params
-dim = 3
-res = 44
+dim = 2
+res = 64
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.5
+minParticles = pow(2,dim)
 
 # prepare grids and particles
 flags    = s.create(FlagGrid)
-vel      = s.create(MACGrid)
-pressure = s.create(RealGrid)
 phi      = s.create(LevelsetGrid)
 
-flip     = s.create(FlipSystem) 
+vel      = s.create(MACGrid)
+velOld   = s.create(MACGrid)
+pressure = s.create(RealGrid)
+tmpVec3  = s.create(VecGrid)
+tstGrid  = s.create(RealGrid)
+
+pp       = s.create(BasicParticleSystem) 
+pVel     = pp.create(PdataVec3) 
+# test real value, not necessary for simulation
+pTest    = pp.create(PdataReal) 
 mesh     = s.create(Mesh)
 
 # scene setup
 flags.initDomain(boundaryWidth=0)
 # enable one of the following
-#fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1)) # breaking dam
-#fluidbox = s.create(Box, p0=gs*vec3(0.4,0.4,0.4), p1=gs*vec3(0.6,0.8,0.6)) # centered falling block
-fluidbox = s.create(Box, p0=gs*vec3(0.3,0.4,0.3), p1=gs*vec3(0.7,0.8,0.7)) # centered falling block
+fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1)) # breaking dam
+#fluidbox = s.create(Box, p0=gs*vec3(0.4,0.72,0.4), p1=gs*vec3(0.6,0.92,0.6)) # centered falling block
 phi = fluidbox.computeLevelset()
 flags.updateFromLevelset(phi)
 
-flip.initialize( flags=flags, discretization=2, randomness=0.2 )
-minParticles = pow(2,dim)
+sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.2 )
 
+# testing the real channel while resampling - original particles
+# will have a value of 0.1, new particle will get a value from the tstGrid
+testInitGridWithPos(tstGrid)
+setConstPdata( pTest , 0.1 )
+    
 if (GUI):
-	gui = Gui()
-	gui.show()
-	gui.pause()
-
+    gui = Gui()
+    gui.show()
+    gui.pause()
+    
 #main loop
 for t in range(2500):
-	
-	# FLIP 
-	flip.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4)
-	flip.velocitiesToGrid(vel=vel, flags=flags)
-	flip.markFluidCells(flags=flags) # dont use levelset for flags!
+    
+    # FLIP 
+    pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False )
 
-	# create simple surface, resample particles
-	unionParticleLevelsetOrg( flip, phi )
-	phi.reinitMarching(flags=flags, maxTime=2 )
-	flip.adjustNumber( vel=vel, flags=flags, minParticles=minParticles, maxParticles=2*minParticles, phi=phi ) 
-	
-	addGravity(flags=flags, vel=vel, gravity=(0.0,-0.002,0))
-	
-	# pressure solve
-	setWallBcs(flags=flags, vel=vel) 
-	# with ghost fluid
-	solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi)
-	setWallBcs(flags=flags, vel=vel)
-	extrapolateMACSimple( flags=flags , vel=vel )
-	
-	# FLIP velocity update
-	flip.velocitiesFromGrid(vel=vel, flags=flags, flipRatio=0.97)
+    # make sure we have velocities throught liquid region
+    mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=tmpVec3 ) 
+    extrapolateMACFromWeight( vel=vel , distance=2, weight=tmpVec3 ) 
+    markFluidCells( parts=pp, flags=flags )
 
-	if (dim==3):
-		phi.createMesh(mesh)
-		#mesh.save('phi%04d.bobj.gz' % t)
-	
-	#s.printTimings()
-	#gui.screenshot( 'flipt_%04d.png' % t );
-	s.step()
+	# create approximate surface level set, resample particles
+    # note - this is slow right now, and could be optimized by only computing a narrow band
+    unionParticleLevelset( pp, phi )
+    phi.reinitMarching(flags=flags, maxTime=2 )
+    pVel.setSource( vel, isMAC=True )
+    pTest.setSource( tstGrid );
+    adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi ) 
+
+	# forces & pressure solve
+    addGravity(flags=flags, vel=vel, gravity=(0,-0.001,0))
+    setWallBcs(flags=flags, vel=vel)    
+    solvePressure(flags=flags, vel=vel, pressure=pressure)
+    setWallBcs(flags=flags, vel=vel)
+
+    # make sure we have proper velocities
+    extrapolateMACSimple( flags=flags, vel=vel )
+    
+    flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97 )
+
+    if (dim==3):
+        phi.createMesh(mesh)
+    
+    #gui.screenshot( 'flipt_%04d.png' % t );
+    #s.printMemInfo()
+    #pp.save( 'parts_%04d.txt' % t );
+    s.step()
 

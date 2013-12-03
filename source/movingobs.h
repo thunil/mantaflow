@@ -15,7 +15,7 @@
 #define _MOVINGOBS_H
 
 #include "shapes.h"
-#include "flip.h"
+#include "particle.h"
 
 namespace Manta {
 
@@ -28,7 +28,7 @@ public:
     //! If t in [t0,t1], apply linear motion path from p0 to p1
     PYTHON void moveLinear(Real t, Real t0, Real t1, Vec3 p0, Vec3 p1, FlagGrid& flags, MACGrid& vel, bool smooth=true);
     //! Compute levelset, and project FLIP particles outside obstacles
-    PYTHON void projectOutside(FlagGrid& flags, FlipSystem& flip);
+    PYTHON void projectOutside(FlagGrid& flags, BasicParticleSystem& flip);
     
 protected:
     std::vector<Shape*> mShapes;

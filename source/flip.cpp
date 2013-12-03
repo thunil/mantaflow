@@ -8,194 +8,20 @@
  * http://www.gnu.org/licenses
  *
  * FLIP (fluid implicit particles)
+ * for use with particle data fields
  *
  ******************************************************************************/
 
-#include "flip.h"
+#include "particle.h"
+#include "grid.h"
+#include "randomstream.h"
 #include "levelset.h"
 
 using namespace std;
 namespace Manta {
 
-//! Set velocities from grid with given PIC/FLIP mixture
-KERNEL(pts) 
-void CopyVelocitiesFromGrid(FlipSystem& p, FlagGrid& flags, MACGrid& vel, MACGrid& oldVel, Real flipRatio) {
-    unusedParameter(flags);
-    
-    if (!p.isActive(i)) return;
-    
-    /*if (!flags.isFluid(p[i].pos)) {
-        p[i].flag |= ParticleBase::PDELETE;
-        return;
-    }*/
-    
-    Vec3 v = vel.getInterpolated(p[i].pos);
-    Vec3 delta = v - oldVel.getInterpolated(p[i].pos);
-    
-    p[i].vel = flipRatio * (p[i].vel + delta) + (1.0f - flipRatio) * v;    
-}
-
-//! Set velocities on the grid from the particle system
-KERNEL(pts, single) 
-void CopyVelocitiesToGrid(FlipSystem& p, FlagGrid& flags, MACGrid& vel, Grid<Vec3>& tmp) {
-    unusedParameter(flags);
-    
-    if (!p.isActive(i)) return;
-    
-    vel.setInterpolated(p[i].pos, p[i].vel, &tmp[0]);
-}
-
-void FlipSystem::velocitiesFromGrid(FlagGrid& flags, MACGrid& vel, Real flipRatio) {
-    //assertMsg(vel.is3D(), "Only 3D grids supported so far");
-    CopyVelocitiesFromGrid(*this, flags, vel, mOldVel, flipRatio);
-}
-
-void FlipSystem::velocitiesToGrid(FlagGrid& flags, MACGrid& vel) {
-    //assertMsg(vel.is3D(), "Only 3D grids supported so far");
-    
-    // interpol -> grid. tmpgrid for particle contribution weights
-    Grid<Vec3> tmp(mParent);
-    vel.clear();
-    CopyVelocitiesToGrid(*this, flags, vel, tmp);
-    vel.safeDivide(tmp);
-    
-    // store diff
-    mOldVel = vel;
-}
-
-void FlipSystem::initialize(FlagGrid& flags, int discretization, Real randomness ) {
-	bool is3D = flags.is3D();
-    Real jlen = randomness / discretization;
-    Vec3 disp (1.0 / discretization, 1.0 / discretization, 1.0/discretization);
- 
-    clear(); 
-    FOR_IJK(flags) {
-        if (flags.isFluid(i,j,k)) {
-            Vec3 pos (i,j,k);
-            for (int dk=0; dk<(is3D ? discretization : 1); dk++)
-            for (int dj=0; dj<discretization; dj++)
-            for (int di=0; di<discretization; di++) {
-                Vec3 subpos = pos + disp * Vec3(0.5+di, 0.5+dj, 0.5+dk);
-                subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
-				if(!is3D) subpos[2] = 0.5;
-                add(FlipData(subpos, Vec3::Zero));
-            }
-        }
-    }
-}
 
 
-void FlipSystem::adjustNumber( MACGrid& vel, FlagGrid& flags, int minParticles, int maxParticles, LevelsetGrid* phi ) 
-{
-	const Real SURFACE_LS = -1.5; // which levelset to use as threshold
-    Grid<int> tmp(mParent);
-    
-    // count particles in cells, and delete excess particles
-    for (int i=0; i<(int)mData.size(); i++) {
-        if (isActive(i)) {
-            Vec3i p = toVec3i(mData[i].pos);
-            int num = tmp(p);
-
-			bool atSurface = false;
-			if( phi && (phi->getInterpolated(mData[i].pos) > SURFACE_LS) ) atSurface = true;
-            
-            // dont delete particles in non fluid cells here, the particles are "always right"
-            if ( num > maxParticles && (!atSurface) ) {
-                mData[i].flag |= PDELETE;
-			} else
-                tmp(p) = num+1;
-        }
-    }
-
-	// NT_DEBUG , old - todo remove this function
-
-    compress();
-    
-    // seed new particles
-    FOR_IJK(tmp) {
-        int cnt = tmp(i,j,k);
-		
-		// skip surface
-		if( phi && ((*phi)(i,j,k) > SURFACE_LS) ) continue;
-
-        if (flags.isFluid(i,j,k) && cnt < minParticles) {
-            for (int m=cnt; m < minParticles; m++) { 
-                Vec3 rndPos (i + mRand.getReal(), j + mRand.getReal(), k + mRand.getReal());
-                add(FlipData(rndPos, vel.getInterpolated(rndPos)));
-            }
-        }
-    }
-}
-
-void FlipSystem::markFluidCells(FlagGrid& flags) {
-    // remove all fluid cells
-    FOR_IJK(flags) {
-        if (flags.isFluid(i,j,k)) {
-            flags(i,j,k) = (flags(i,j,k) | FlagGrid::TypeEmpty) & ~FlagGrid::TypeFluid;
-        }
-    }
-    
-    // mark all particles in flaggrid as fluid
-    for(int i=0;i<(int)mData.size();i++) {
-        const Vec3i p = toVec3i(mData[i].pos);
-        if (flags.isInBounds(p) && flags.isEmpty(p))
-            flags(p) = (flags(p) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
-    }
-}
-
-
-// compute simple levelset without interpolation (fast, low quality), to be used during simulation
-KERNEL(pts, single) 
-void ComputeUnionLevelsetOrg(FlipSystem& p, LevelsetGrid& phi, Real radius=1.) {
-	if (!p.isActive(i)) return;
-
-	const Vec3 pos = p[i].pos - Vec3(0.5); // offset for centered LS value
-	//const Vec3i size = phi.getSize();
-	const int xi = (int)pos.x, yi = (int)pos.y, zi = (int)pos.z; 
-
-	int radiusInt  = int(2. * radius) + 1;
-	int radiusIntZ = phi.is3D() ? radiusInt : 0;
-	for(int zj=zi-radiusIntZ; zj<=zi+radiusIntZ; zj++) 
-	for(int yj=yi-radiusInt ; yj<=yi+radiusInt ; yj++) 
-	for(int xj=xi-radiusInt ; xj<=xi+radiusInt ; xj++) 
-	{
-		   if (! phi.isInBounds(Vec3i(xj,yj,zj)) ) continue;
-		   phi(xj,yj,zj) = std::min( phi(xj,yj,zj) , fabs( norm(Vec3(xj,yj,zj)-pos) )-radius );
-	}
-}
-PYTHON void unionParticleLevelsetOrg (FlipSystem& p, LevelsetGrid& phi, Real radiusFactor=1.) {
-	// make sure we cover at least 1 cell by default (1% safety margin)
-	Real radius = 0.5 * (phi.is3D() ? sqrt(3.) : sqrt(2.) ) * (radiusFactor+.01);
-
-	// reset
-	FOR_IJK(phi) {
-		   phi(i,j,k) = radius + VECTOR_EPSILON;
-	} 
-	ComputeUnionLevelsetOrg(p, phi, radius);
-}
-
- 
-
-ParticleBase* FlipSystem::clone() {
-    FlipSystem* nm = new FlipSystem(getParent());
-    compress();
-    
-    nm->mData = mData;
-    nm->setName(getName());
-	this->cloneParticleData(nm);
-    return nm;
-}
-
-// ----
-FlipSystem::~FlipSystem() { };
-
-
-//*****************************************************************************
-//*****************************************************************************
-//*****************************************************************************
-
-// FLIP functions for use with particle data field
-// warning - duplicate functions for now, clean up at some point!
 
 // init
 
@@ -283,11 +109,11 @@ void ComputeUnionLevelset(BasicParticleSystem& p, LevelsetGrid& phi, Real radius
 	//const Vec3i size = phi.getSize();
     const int xi = (int)pos.x, yi = (int)pos.y, zi = (int)pos.z; 
 
-	int radiusInt  = int(2. * radius) + 1;
-	int radiusIntZ = phi.is3D() ? radiusInt : 0;
-	for(int zj=zi-radiusIntZ; zj<=zi+radiusIntZ; zj++) 
-	for(int yj=yi-radiusInt ; yj<=yi+radiusInt ; yj++) 
-	for(int xj=xi-radiusInt ; xj<=xi+radiusInt ; xj++) 
+	int r  = int(2. * radius) + 1;
+	int rZ = phi.is3D() ? r : 0;
+	for(int zj=zi-rZ; zj<=zi+rZ; zj++) 
+	for(int yj=yi-r ; yj<=yi+r ; yj++) 
+	for(int xj=xi-r ; xj<=xi+r ; xj++) 
 	{
 		if (! phi.isInBounds(Vec3i(xj,yj,zj)) ) continue;
 		phi(xj,yj,zj) = std::min( phi(xj,yj,zj) , fabs( norm(Vec3(xj,yj,zj)-pos) )-radius );
@@ -299,7 +125,8 @@ PYTHON void unionParticleLevelset (BasicParticleSystem& p, LevelsetGrid& phi, Re
 
 	// reset
 	FOR_IJK(phi) {
-		phi(i,j,k) = radius + VECTOR_EPSILON;
+		//phi(i,j,k) = radius + VECTOR_EPSILON;
+		phi(i,j,k) = 1e10;
 	} 
 	ComputeUnionLevelset(p, phi, radius);
 }
@@ -356,7 +183,92 @@ PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& fl
 	parts.insertBufferedParticles();
 }
 
+// simple and slow helper conversion to show contents of int grids like a real grid in the ui
+PYTHON void debugIntToReal( Grid<int>& source, Grid<Real>& dest, Real factor=1. )
+{
+	FOR_IJK( source ) { dest(i,j,k) = (Real)source(i,j,k) * factor; }
+}
 
+PYTHON void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
+		FlagGrid& flags, Grid<int>& index, Grid<int>* counter=NULL) 
+{
+	bool delCounter = false;
+    if(!counter) { counter = new Grid<int>(  flags.getParent() ); delCounter=true; }
+	else         { counter->clear(); }
+    
+    // count particles in cells, and delete excess particles
+	index.clear();
+	int inactive = 0;
+    for (int i=0; i<(int)parts.size(); i++) {
+        if (parts.isActive(i)) {
+			// check index for validity...
+			Vec3i p = toVec3i( parts.getPos(i) );
+			if (! index.isInBounds(p)) { inactive++; continue; }
+
+            index(p)++;
+        } else {
+			inactive++;
+		}
+    }
+
+	//ParticleIndexSystem* indexSys = new ParticleIndexSystem( parts.getParent() );
+	// note - this one might be smaller...
+	indexSys.resize( parts.size()-inactive );
+
+	// convert per cell number to continuous index
+	int idx=0;
+	FOR_IJK( index ) {
+		//if( index(i,j,k) ) debMsg("IDDX "<<Vec3i(i,j,k)<<" "<<idx<<"  "<< index(i,j,k) ,1); // NT_DEBUG
+		int num = index(i,j,k);
+		index(i,j,k) = idx;
+		idx += num;
+	}
+
+	// add particles to indexed array, we still need a per cell particle counter
+    for (int i=0; i<(int)parts.size(); i++) {
+        if (!parts.isActive(i)) continue;
+        Vec3i p = toVec3i( parts.getPos(i) );
+		if (! index.isInBounds(p)) { continue; }
+
+		// initialize position and index into original array
+		indexSys[ index(p)+(*counter)(p) ].pos        = parts[i].pos;
+		indexSys[ index(p)+(*counter)(p) ].otherIndex = i;
+		(*counter)(p)++;
+    }
+
+	if(delCounter) delete counter;
+}
+
+KERNEL
+void ComputeUnionLevelset2(BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
+		Grid<int>& index, LevelsetGrid& phi, Real radius=1.) 
+{
+	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5);
+	Real phiv = 1e10; 
+
+	int r  = int(radius) + 1;
+	int rZ = phi.is3D() ? r : 0;
+	for(int zj=k-rZ; zj<=k+rZ; zj++) 
+	for(int yj=j-r ; yj<=j+r ; yj++) 
+	for(int xj=i-r ; xj<=i+r ; xj++) {
+		if ( (!phi.isInBounds(Vec3i(xj-1,yj,zj))) || (!phi.isInBounds(Vec3i(xj,yj,zj))) ) continue;
+
+		for(int p=index(xj-1,yj,zj); p<index(xj,yj,zj); ++p) {
+			const Vec3 pos = indexSys[p].pos; // - Vec3(0.5); // offset for centered LS value
+
+			phiv = std::min( phiv , fabs( norm(gridPos-pos) )-radius );
+			//debMsg("at "<<Vec3i(xj,yj,zj)<<" "<<p<<" "<<gridPos<<" "<< pos   <<"  "<<phiv ,1);
+		}
+	}
+	phi(i,j,k) = phiv;
+}
+
+PYTHON void unionParticleLevelset2( BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
+		FlagGrid& flags, Grid<int>& index, LevelsetGrid& phi, Real radiusFactor=1. ) 
+{
+	Real radius = 0.5 * (phi.is3D() ? sqrt(3.) : sqrt(2.) ) * (radiusFactor+.01);
+	ComputeUnionLevelset2(parts, indexSys, index, phi, radius);
+}
 
 // grid interpolation functions
 
@@ -471,7 +383,7 @@ PYTHON void mapMACToParts(FlagGrid& flags, MACGrid& vel ,
     knMapLinearMACGridToVec3_PIC( parts, flags, vel, partVel );
 }
 
-// with flip delta interpolation
+// with flip delta interpolation 
 KERNEL(pts) 
 void knMapLinearMACGridToVec3_FLIP( BasicParticleSystem& p, FlagGrid& flags, MACGrid& vel, MACGrid& oldVel, ParticleDataImpl<Vec3>& pvel , Real flipRatio) 
 {

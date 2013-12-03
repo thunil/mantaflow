@@ -337,6 +337,8 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
             for (size_t i=0; i<args.size(); i++) mCallList += ", m_" + args[i].name;
             for (size_t i=0; i<returnArg.size(); i++) mCallList += ", _loc_" + returnArg[i].name;
         }
+		// init kernel thread info fields
+		preDir += tb3 + "this->threadId = omp_get_thread_num(); this->threadNum = omp_get_num_threads();" + nl;
         
         kclass += tb+ "void run() {" + nl;
         if (pts) {
