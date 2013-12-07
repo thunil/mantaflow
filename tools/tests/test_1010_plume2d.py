@@ -43,6 +43,6 @@ for t in range(50):
     s.step()
 
 # check final state
-doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.005 )
-doTestGrid( sys.argv[0],"vel"  , s, vel     , threshold=0.01  )
+doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.005 , thresholdStrict=1e-08 )
+doTestGrid( sys.argv[0],"vel"  , s, vel     , threshold=0.01  , thresholdStrict=1e-08 )
 

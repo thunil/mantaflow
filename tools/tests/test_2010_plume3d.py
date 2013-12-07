@@ -56,6 +56,6 @@ for t in range(25):
 
 
 # check final state
-doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.01 )
-doTestGrid( sys.argv[0],"vel"  , s, vel     , threshold=0.08 )
+doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.01 , thresholdStrict=1e-08 )
+doTestGrid( sys.argv[0],"vel"  , s, vel     , threshold=0.08 , thresholdStrict=1e-08 )
 

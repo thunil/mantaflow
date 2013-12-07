@@ -41,5 +41,5 @@ for t in range(1):
 
 
 # check final state
-doTestGrid( sys.argv[0], "pressure" , s, pressure , threshold=1e-04, invertResult=False )
+doTestGrid( sys.argv[0], "pressure" , s, pressure , threshold=1e-04, thresholdStrict=1e-10, invertResult=False )
 

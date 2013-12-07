@@ -58,6 +58,6 @@ for t in range(18):
 
 
 # check final state , eg 32bit and 64bit windows version can have slightly different results...
-doTestGrid( sys.argv[0], "phi" , s, phi  , 1e-05  )
-doTestGrid( sys.argv[0], "vel" , s, vel  , 1e-05  )
+doTestGrid( sys.argv[0], "phi" , s, phi  , 1e-05  , thresholdStrict=1e-10 )
+doTestGrid( sys.argv[0], "vel" , s, vel  , 1e-05  , thresholdStrict=1e-10 )
 

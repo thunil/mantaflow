@@ -8,20 +8,20 @@ from helperInclude import *
 
 # solver params
 dim = 3
-res = 45
+res = 52
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
 
-basename1 = "test_2045_fallingDrop_v01.py"
+basename1 = "test_2050_freesurfaceOld.py"
 #basename2 = basename1 # optionally, make different
-basename2 = "test_2045_fallingDrop_v02.py"
+basename2 = "test_2050_freesurface.py"
 
 s = Solver(name='main', gridSize = gs, dim=dim)
 flags    = s.create(FlagGrid)
 real1    = s.create(RealGrid)
 real2    = s.create(RealGrid)
-realErr   = s.create(RealGrid)
+realErr  = s.create(RealGrid)
 
 #ls1      = s.create(LevelsetGrid)
 #ls2      = s.create(LevelsetGrid)
@@ -64,22 +64,22 @@ partErrMax = 0
 #main loop
 for t in range(150):
 
-	if(0):
-		tryToLoad( real1, basename1, ("dens_%04d"  % t) )
-		tryToLoad( real2, basename2, ("dens_%04d"  % t) )
+	if(1):
+		tryToLoad( real1, basename1, ("phi"))#_%04d"  % t) )
+		tryToLoad( real2, basename2, ("phi"))#_%04d"  % t) )
 		realErr.sub(real1,real2);
 		realErrMax = gridMaxDiff(real1, real2)
 	
-		realErr.print(zSlice=15) 
+		#realErr.print(zSlice=15) 
 		print("Max difference in step " +str(t) + " = "+ str(realErrMax) )
 
-	if(1):
+	if(0):
 		tryToLoad( mac1, basename1, ("vel" ) ) #  % t
 		tryToLoad( mac2, basename2, ("vel" ) ) #  % t
 		macErr.sub(mac1,mac2);
 		macErrMax = gridMaxDiffVec3(mac1, mac2)
 	
-		macErr.print(zSlice=15) 
+		#macErr.print(zSlice=15) 
 		print("Max vec3 difference in step " +str(t) + " = "+ str(macErrMax) )
 
 	# load particles

@@ -218,7 +218,7 @@ PYTHON void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem& 
 	// convert per cell number to continuous index
 	int idx=0;
 	FOR_IJK( index ) {
-		//if( index(i,j,k) ) debMsg("IDDX "<<Vec3i(i,j,k)<<" "<<idx<<"  "<< index(i,j,k) ,1); // NT_DEBUG
+		//if( index(i,j,k) ) debMsg("IDDX "<<Vec3i(i,j,k)<<" "<<idx<<"  "<< index(i,j,k) ,1); // debug entries
 		int num = index(i,j,k);
 		index(i,j,k) = idx;
 		idx += num;

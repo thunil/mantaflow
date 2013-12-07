@@ -74,6 +74,6 @@ for t in range(60):
     s.step()
 
 
-doTestGrid( sys.argv[0],"dens" , s, dens  , threshold=0.0001 )
-doTestGrid( sys.argv[0],"vel"  , s, vel   , threshold=0.001  )
+doTestGrid( sys.argv[0],"dens" , s, dens  , threshold=0.0001 , thresholdStrict=1e-08 )
+doTestGrid( sys.argv[0],"vel"  , s, vel   , threshold=0.001  , thresholdStrict=1e-08 )
 

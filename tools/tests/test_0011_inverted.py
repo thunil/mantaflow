@@ -23,6 +23,6 @@ setConstant    ( dummy  , -25.00 )
 if (getGenRefFileSetting()==1):
 	doTestGrid( sys.argv[0], "dens" , s, density )
 else:
-	doTestGrid( sys.argv[0], "dens" , s, dummy , threshold=50. , invertResult=True )
+	doTestGrid( sys.argv[0], "dens" , s, dummy , threshold=50., thresholdStrict=50. , invertResult=True )
 
 
