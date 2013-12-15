@@ -77,4 +77,46 @@ ostream& operator<<(ostream& os, const MuTime& t) {
     return os;
 }
 
+std::string buildInfoString() {
+	std::ostringstream infoStr;
+	infoStr << "mantaflow";
+	// TODO , include hg branch info
+
+	// os
+#	ifdef WIN32
+		infoStr << " win";
+#	endif
+#	ifdef __APPLE__
+		infoStr << " mac";
+#	endif
+#	ifdef LINUX
+		infoStr << " linux";
+#	endif
+
+	// 32/64
+#	ifdef USE64
+		infoStr << " 64bit";
+#	else
+		infoStr << " 32bit";
+#	endif
+
+	// fp precision
+#	if FLOATINGPOINT_PRECISION==2
+		infoStr << " fp2";
+#	else
+		infoStr << " fp1";
+#	endif
+
+	// other compile switches
+#	ifdef DEBUG
+		infoStr << " debug";
+#	endif 
+#	ifdef OPENMP
+		infoStr << " omp";
+#	endif
+
+	infoStr << " from "<< __DATE__<<", "<<__TIME__;
+	return infoStr.str();
+}
+
 } // namespace

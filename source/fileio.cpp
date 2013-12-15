@@ -230,7 +230,7 @@ void readGridRaw(const string& name, Grid<T>* grid) {
 #	endif
 }
 
-
+//! legacy headers for reading old files
 typedef struct {
     int dimX, dimY, dimZ;
     int frames, elements, elementType, bytesPerElement, bytesPerFrame;
@@ -239,20 +239,84 @@ typedef struct {
 typedef struct {
     int dimX, dimY, dimZ;
     int gridType, elementType, bytesPerElement;
+} UniLegacyHeader2;
+
+//! uni file header 
+typedef struct {
+    int dimX, dimY, dimZ; // grid size
+    int gridType, elementType, bytesPerElement; // data type info
+	char info[256]; // mantaflow build information
+    unsigned long timestamp; // creation time
 } UniHeader;
+
+//! for test run debugging
+PYTHON void printUniFileInfoString(const string& name) {
+#	if NO_ZLIB!=1
+    gzFile gzf = gzopen(name.c_str(), "rb");
+    if (gzf) { 
+		char ID[5]={0,0,0,0,0};
+		gzread(gzf, ID, 4); 
+		if (!strcmp(ID, "MNT2")) {
+			UniHeader head;
+        	assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no header present"); 
+			gzclose(gzf);
+			debMsg("File '"<<name<<"' info: "<< head.info ,1);
+			return; // all good!
+		}
+		gzclose(gzf);
+	}
+#	endif
+	debMsg("File '"<<name<<"', no valid info string found",1);
+}
+
+template <class T>
+void convertDoubleAndWrite(Grid<T>& grid, void* ptr, gzFile& gzf, UniHeader& head) {
+	errMsg("unknown type, not yet supported");
+}
+
+template <>
+void convertDoubleAndWrite(Grid<int>& grid, void* ptr, gzFile& gzf, UniHeader& head) {
+    gzwrite(gzf, &head, sizeof(UniHeader));
+    gzwrite(gzf, ptr, sizeof(int)*head.dimX*head.dimY*head.dimZ);
+}
+
+template <>
+void convertDoubleAndWrite(Grid<double>& grid, void* ptr, gzFile& gzf, UniHeader& head) {
+	head.bytesPerElement = sizeof(float);
+    gzwrite(gzf, &head, sizeof(UniHeader));
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i,++ptrf) {
+		*ptrf = (float)grid[i];
+	} 
+    gzwrite(gzf, ptr, sizeof(float)* head.dimX*head.dimY*head.dimZ);
+}
+
+template <>
+void convertDoubleAndWrite(Grid<Vector3D<double> >& grid, void* ptr, gzFile& gzf, UniHeader& head) {
+	head.bytesPerElement = sizeof(Vector3D<float>);
+    gzwrite(gzf, &head, sizeof(UniHeader));
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i) {
+		for(int c=0; c<3; ++c) { *ptrf = (float)grid[i][c]; ptrf++; }
+	} 
+    gzwrite(gzf, ptr, sizeof(float)*3 *head.dimX*head.dimY*head.dimZ);
+}
 
 template <class T>
 void writeGridUni(const string& name, Grid<T>* grid) {
     cout << "writing grid " << grid->getName() << " to uni file " << name << endl;
     
 #	if NO_ZLIB!=1
-    char ID[5] = "MNT1";
+    char ID[5] = "MNT2";
     UniHeader head;
 	head.dimX = grid->getSizeX();
     head.dimY = grid->getSizeY();
     head.dimZ = grid->getSizeZ();
     head.gridType = grid->getType();
     head.bytesPerElement = sizeof(T);
+	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
+	MuTime stamp; stamp.get();
+	head.timestamp = stamp.time;
     
     if (grid->getType() & GridBase::TypeInt)
         head.elementType = 0;
@@ -267,18 +331,60 @@ void writeGridUni(const string& name, Grid<T>* grid) {
     if (!gzf) errMsg("can't open file");
     
     gzwrite(gzf, ID, 4);
+	void* ptr = &((*grid)[0]);
+#	if FLOATINGPOINT_PRECISION!=1
+	// always write float values, even if compiled with double precision...
+	Grid<T> temp(grid->getParent());
+	// "misuse" temp grid as storage for floating point values (we have double, so it will always fit)
+	//ptr = &(temp[0]);
+	//float* ptrf = (float*)ptr;
+	convertDoubleAndWrite( *grid, &(temp[0]), gzf, head);
+#	endif
     gzwrite(gzf, &head, sizeof(UniHeader));
-    gzwrite(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
+    gzwrite(gzf, ptr, sizeof(T)*head.dimX*head.dimY*head.dimZ);
     gzclose(gzf);
 #	else
     cout << "file format not supported without zlib" << endl;
 #	endif
 };
 
+// grid conversion functions for double precision
+template <class T>
+void convertFloatGridToDouble(Grid<T>& grid, void* ptr, int bytesPerElement) {
+	errMsg("unknown type, not yet supported");
+}
+
+template <>
+void convertFloatGridToDouble<int>(Grid<int>& grid, void* ptr, int bytesPerElement) {
+	assertMsg (bytesPerElement == sizeof(int), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(int) );
+	// easy, nothing to do for ints
+    memcpy(ptr, &(grid[0]), sizeof(int) * grid.getSizeX()*grid.getSizeY()*grid.getSizeZ() );
+}
+
+template <>
+void convertFloatGridToDouble<double>(Grid<double>& grid, void* ptr, int bytesPerElement) {
+	assertMsg (bytesPerElement == sizeof(float), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(float) );
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i,++ptrf) {
+		grid[i] = (double)(*ptrf);
+	} 
+}
+
+template <>
+void convertFloatGridToDouble<Vec3>(Grid<Vec3>& grid, void* ptr, int bytesPerElement) {
+	assertMsg (bytesPerElement == sizeof(Vector3D<float>), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(Vector3D<float>) );
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i) {
+		Vec3 v;
+		for(int c=0; c<3; ++c) { v[c] = double(*ptrf); ptrf++; }
+		grid[i] = v;
+	} 
+}
+
 template <class T>
 void readGridUni(const string& name, Grid<T>* grid) {
     cout << "reading grid " << grid->getName() << " from uni file " << name << endl;
-    
+
 #	if NO_ZLIB!=1
     gzFile gzf = gzopen(name.c_str(), "rb");
     if (!gzf) errMsg("can't open file");
@@ -299,20 +405,36 @@ void readGridUni(const string& name, Grid<T>* grid) {
         gzread(gzf, &((*grid)[0]), sizeof(T)*numEl);
     } 
     else if (!strcmp(ID, "MNT1")) {
+        // legacy file format 2
+        UniLegacyHeader2 head;
+        assertMsg (gzread(gzf, &head, sizeof(UniLegacyHeader2)) == sizeof(UniLegacyHeader2), "can't read file, no header present");
+		assertMsg (head.dimX == grid->getSizeX() && head.dimY == grid->getSizeY() && head.dimZ == grid->getSizeZ(), "grid dim doesn't match, "<< Vec3(head.dimX,head.dimY,head.dimZ)<<" vs "<< grid->getSize() );
+		assertMsg (head.gridType == grid->getType(), "grid type doesn't match "<< head.gridType<<" vs "<< grid->getType() );
+		assertMsg (head.bytesPerElement == sizeof(T), "grid element size doesn't match "<< head.bytesPerElement <<" vs "<< sizeof(T) );
+        gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
+    }
+    else if (!strcmp(ID, "MNT2")) {
         // current file format
         UniHeader head;
         assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no header present");
 		assertMsg (head.dimX == grid->getSizeX() && head.dimY == grid->getSizeY() && head.dimZ == grid->getSizeZ(), "grid dim doesn't match, "<< Vec3(head.dimX,head.dimY,head.dimZ)<<" vs "<< grid->getSize() );
 		assertMsg (head.gridType == grid->getType(), "grid type doesn't match "<< head.gridType<<" vs "<< grid->getType() );
+#		if FLOATINGPOINT_PRECISION!=1
+		// convert float to double
+		Grid<T> temp(grid->getParent());
+		void*  ptr  = &(temp[0]);
+        gzread(gzf, ptr, sizeof(T)*head.dimX*head.dimY*head.dimZ);
+		convertFloatGridToDouble<T>(*grid, ptr, head.bytesPerElement);
+#		else
 		assertMsg (head.bytesPerElement == sizeof(T), "grid element size doesn't match "<< head.bytesPerElement <<" vs "<< sizeof(T) );
         gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
+#		endif
     }
     gzclose(gzf);
 #	else
     cout << "file format not supported without zlib" << endl;
 #	endif
 };
-
 
 template <class T>
 void writeGridVol(const string& name, Grid<T>* grid) {

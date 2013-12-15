@@ -182,9 +182,12 @@ void BasicParticleSystem::writeParticlesRawVelocityGz(string name) {
 #	endif
 }
 
+//! in line with grid uni header
 typedef struct {
-    int dim;
-    int elementType, bytesPerElement;
+    int dim; // number of partilces
+    int elementType, bytesPerElement; // type id and byte size
+	char info[256]; // mantaflow build information
+    unsigned long timestamp; // creation time
 } UniPartHeader;
 
 template <class T>
@@ -197,6 +200,9 @@ void writeParticlesUni(const string& name, BasicParticleSystem* parts ) {
 	head.dim      = parts->size();
     head.bytesPerElement = sizeof(T);
     head.elementType = 0; // 0 for base data
+	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
+	MuTime stamp; stamp.get();
+	head.timestamp = stamp.time;
     
     gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
     if (!gzf) errMsg("can't open file");
@@ -225,7 +231,7 @@ void readParticlesUni(const string& name, BasicParticleSystem* parts ) {
         // current file format
         UniPartHeader head;
         assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
-        assertMsg (head.bytesPerElement == sizeof(T), "particle type doesn't match");
+        assertMsg ( ((head.bytesPerElement == sizeof(T)) && (head.elementType==0) ), "particle type doesn't match");
 
 		// re-allocate all data
 		parts->resizeAll( head.dim );
@@ -366,6 +372,9 @@ void writePdataUni(const string& name, ParticleDataImpl<T>* pdata ) {
 	head.dim      = pdata->size();
     head.bytesPerElement = sizeof(T);
     head.elementType = 1; // 1 for particle data, todo - add sub types?
+	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
+	MuTime stamp; stamp.get();
+	head.timestamp = stamp.time;
     
     gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
     if (!gzf) errMsg("can't open file");
@@ -393,7 +402,7 @@ void readPdataUni(const string& name, ParticleDataImpl<T>* pdata ) {
     if (!strcmp(ID, "PD01")) {
         UniPartHeader head;
         assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
-        assertMsg (head.bytesPerElement == sizeof(T), "pdata type doesn't match");
+        assertMsg ( ((head.bytesPerElement == sizeof(T)) && (head.elementType==1) ), "pdata type doesn't match");
         assertMsg (head.dim == pdata->size() , "pdata size doesn't match");
     	int bytes = sizeof(T)*head.dim;
         int readBytes = gzread(gzf, &(pdata->get(0)), sizeof(T)*head.dim);

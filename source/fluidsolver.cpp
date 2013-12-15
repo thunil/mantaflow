@@ -147,6 +147,10 @@ void FluidSolver::printMemInfo() {
 	printf("%s\n", msg.str().c_str() );
 }
 
+PYTHON void printBuildInfo() {
+	debMsg( "Build info: "<<buildInfoString().c_str()<<" ",1);
+}
+
 void FluidSolver::saveMeanTimings(string filename) {
     ofstream ofs(filename.c_str());
     if (!ofs.good())

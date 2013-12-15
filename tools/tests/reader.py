@@ -7,16 +7,21 @@ from manta import *
 from helperInclude import *
 
 # solver params
-dim = 3
-res = 52
+dim = 2
+res = 64
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
+gs = vec3(50,75,1)
 
-basename1 = "test_2050_freesurfaceOld.py"
-#basename2 = basename1 # optionally, make different
-basename2 = "test_2050_freesurface.py"
+# input file prefixes
+basename1 = "test1"
+basename2 = "test2"
 
+# print info about running build, and those used to create data files?
+buildInfo=1
+
+# solver setup
 s = Solver(name='main', gridSize = gs, dim=dim)
 flags    = s.create(FlagGrid)
 real1    = s.create(RealGrid)
@@ -51,9 +56,14 @@ def tryToLoad( grid, basename, suffix ):
 	print("Trying to load " + rfile)
 	if(os.path.isfile(rfile)):
 		grid.load(rfile)
+		if(buildInfo==1):
+			printUniFileInfoString(rfile) # more detailed build info
 	else:
 		grid.clear()
 	return 1
+
+if(buildInfo==1):
+	printBuildInfo() # more detailed build info , about what's running
 
 # to be initialized later on...
 realErrMax = 0
@@ -64,19 +74,18 @@ partErrMax = 0
 #main loop
 for t in range(150):
 
-	if(1):
-		tryToLoad( real1, basename1, ("phi"))#_%04d"  % t) )
-		tryToLoad( real2, basename2, ("phi"))#_%04d"  % t) )
+	if(0):
+		tryToLoad( real1, basename1, ("dens_%04d"  % t) )
+		tryToLoad( real2, basename2, ("dens_%04d"  % t) )
 		realErr.sub(real1,real2);
 		realErrMax = gridMaxDiff(real1, real2)
 	
 		#realErr.print(zSlice=15) 
 		print("Max difference in step " +str(t) + " = "+ str(realErrMax) )
 
-	# load vec3/mac grid
-	if(0):
-		tryToLoad( mac1, basename1, ("vel" ) ) #  % t
-		tryToLoad( mac2, basename2, ("vel" ) ) #  % t
+	if(1):
+		tryToLoad( mac1, basename1, ("vel_%04d"  % t) )
+		tryToLoad( mac2, basename2, ("vel_%04d"  % t) )
 		macErr.sub(mac1,mac2);
 		macErrMax = gridMaxDiffVec3(mac1, mac2)
 	

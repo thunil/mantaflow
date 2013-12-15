@@ -22,7 +22,7 @@ from subprocess import check_output
 # point.
 
 # debugging, print outputs from all manta calls
-printAllOutpus = 1
+printAllOutpus = 0
 filePrefix = "test_"
 
 if(len(sys.argv)<2):

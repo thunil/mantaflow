@@ -86,6 +86,8 @@ struct MuTime {
 };
 std::ostream& operator<< (std::ostream& os, const MuTime& t);
     
+//! generate a string with infos about the current mantaflow build
+std::string buildInfoString();
 
 // Some commonly used math helpers
 template<class T> inline T square(T a) {

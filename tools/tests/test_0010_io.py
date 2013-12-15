@@ -20,9 +20,10 @@ vel     = s.create(MACGrid)
 # set some value != 0
 setConstant    ( density, 0.123 )
 setConstantVec3( vel    , vec3(0.1, 0.2, 0.3) )
+#density.printGrid( zSlice=15 )
 
 # verify
-doTestGrid( sys.argv[0], "dens" , s, density  )
-doTestGrid( sys.argv[0], "vel"  , s, vel      )
+doTestGrid( sys.argv[0], "dens" , s, density  , threshold=1e-08 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "vel"  , s, vel      , threshold=1e-08 , thresholdStrict=1e-14  )
 
 

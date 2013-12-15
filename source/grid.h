@@ -147,7 +147,7 @@ public:
     PYTHON void copyFrom(const Grid<T>& a) { *this = a; }
 
 	//! debugging helper, print grid from python
-	PYTHON void print(int zSlice=-1,  bool printIndex=false); 
+	PYTHON void printGrid(int zSlice=-1,  bool printIndex=false); 
     
     // common compound operators
     //! get absolute max value in grid (only Real grids)

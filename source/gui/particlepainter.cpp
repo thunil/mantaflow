@@ -111,7 +111,7 @@ void ParticlePainter::paint() {
 	mHavePdata = false;
 	mMaxVal = 0.;
     
-    Real scale = getScale(); // 0.4;
+    Real scale = getScale(); 
     
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);

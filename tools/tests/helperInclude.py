@@ -60,7 +60,7 @@ def getGenRefFileSetting( ):
 def getStrictSetting( ):
 	# check env var whether strict mode enabled
 	ret = int(os.getenv('MANTA_TEST_STRICT', 0))
-	print("Strict-test-setting: " + str(ret))
+	#print("Strict-test-setting: " + str(ret))
 	if(ret>0):
 		return 1
 	return 0
