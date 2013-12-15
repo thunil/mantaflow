@@ -224,8 +224,7 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
 
         else if (key == Qt::Key_BracketLeft)          emit painterEvent(Painter::EventScaleRealDown);
         else if (key == Qt::Key_BracketRight)         emit painterEvent(Painter::EventScaleRealUp);
-        else if (key == Qt::Key_V && shift)           emit painterEvent(Painter::EventToggleCentered);
-        else if (key == Qt::Key_V)                    emit painterEvent(Painter::EventToggleVels);
+        else if (key == Qt::Key_V)                    emit painterEvent(Painter::EventNextVelDisplayMode);
 		else if (key == Qt::Key_G)                    emit painterEvent(Painter::EventToggleGridDisplay);
 
         else if (key == Qt::Key_M)                    emit painterEvent(Painter::EventMeshMode);

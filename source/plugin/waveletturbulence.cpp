@@ -22,28 +22,85 @@ using namespace std;
 namespace Manta {
 
 
-//! Apply vector noise to grid
+//! helper to compute grid size conversion factor
+static inline Vec3 gridSizeFactor(Vec3i s1, Vec3i s2) {
+	return Vec3( Real(s1[0])/s2[0], Real(s1[1])/s2[1], Real(s1[2])/s2[2] );
+}
+
+//! Apply vector noise to grid, this is a simplified version - no position scaling or UVs
 KERNEL 
-void KnApplyNoiseVec(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
+void knApplySimpleNoiseVec(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
 					  Real scale, Grid<Real>* weight ) 
+{
+	if ( !flags.isFluid(i,j,k) ) return; 
+	Real factor = 1;
+	if(weight) factor = (*weight)(i,j,k);
+	target(i,j,k) += noise.evaluateCurl( Vec3(i,j,k) ) * scale * factor;
+}
+PYTHON void applySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
+							Real scale=1.0 , Grid<Real>* weight=NULL )
+{
+    // note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
+	knApplySimpleNoiseVec(flags, target, noise, scale , weight );
+}
+
+
+
+//! Apply vector-based wavelet noise to target grid
+//! This is the version with more functionality - supports uv grids, and on-the-fly interpolation
+//! of input grids.
+KERNEL 
+void knApplyNoiseVec(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
+					  Real scale, Real scaleSpatial, Grid<Real>* weight, Grid<Vec3>* uv, bool uvInterpol, const Vec3& sourceFactor ) 
 {
 	if ( !flags.isFluid(i,j,k) ) return;
 
-	Real factor = 1;
-	if(weight) factor = (*weight)(i,j,k);
+	// get weighting, interpolate if necessary
+	Real w = 1;
+	if(weight) {
+		if(!uvInterpol) {
+			w = (*weight)(i,j,k);
+		} else {
+			w = weight->getInterpolated( Vec3(i,j,k) * sourceFactor );
+		}
+	}
 
-	Vec3 noiseVec3 = noise.evaluateCurl( Vec3(i,j,k) ) * scale * factor;
+	// compute position where to evaluate the noise
+	Vec3 pos = Vec3(i,j,k);
+	if(uv) {
+		if(!uvInterpol) {
+			pos = (*uv)(i,j,k);
+		} else {
+			pos = uv->getInterpolated( Vec3(i,j,k) * sourceFactor );
+			// uv coordinates are in local space - so we need to adjust the values of the positions
+			pos /= sourceFactor;
+		}
+	}
+	pos *= scaleSpatial;
 
+	Vec3 noiseVec3 = noise.evaluateCurl( pos ) * scale * w; 
+	//noiseVec3=pos; // debug , show interpolated positions
 	target(i,j,k) += noiseVec3;
-}
-
-//! Apply vector-based wavelet noise to target grid
+} 
 PYTHON void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
-							Real scale=1.0 , Grid<Real>* weight=NULL )
+							Real scale=1.0 , Real scaleSpatial=1.0 , Grid<Real>* weight=NULL , Grid<Vec3>* uv=NULL )
 {
-    // note - passing a MAC grid here is slightly inaccurate, we should
-    // evaluate each component separately
-	KnApplyNoiseVec(flags, target, noise, scale , weight );
+	// check whether the uv grid has a different resolution
+	bool uvInterpol = false; 
+	// and pre-compute conversion (only used if uvInterpol==true)
+	// used for both uv and weight grid...
+	Vec3 sourceFactor = Vec3(1.);
+	if(uv) {
+		uvInterpol = (target.getSize() != uv->getSize());
+		sourceFactor = gridSizeFactor( uv->getSize(), target.getSize() );
+	} else if(weight) {
+	   	uvInterpol = (target.getSize() != weight->getSize());
+		sourceFactor = gridSizeFactor( weight->getSize(), target.getSize() );
+	}
+	if(uv && weight) assertMsg( uv->getSize() == weight->getSize(), "UV and weight grid have to match!");
+
+    // note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
+	knApplyNoiseVec(flags, target, noise, scale, scaleSpatial, weight , uv,uvInterpol,sourceFactor );
 }
 
 
@@ -72,16 +129,13 @@ KERNEL
 void KnInterpolateGrid(Grid<Real>& target, Grid<Real>& source, const Vec3& sourceFactor)
 {
 	Vec3 pos = Vec3(i,j,k) * sourceFactor;
-    if(!source.is3D()) pos[2] = 0;
+    if(!source.is3D()) pos[2] = 0; // allow 2d -> 3d
 	target(i,j,k) = source.getInterpolated(pos);
 }
 
 PYTHON void interpolateGrid( Grid<Real>& target, Grid<Real>& source )
 {
-	Vec3 sourceFactor = Vec3( 
-		Real(source.getSizeX())/target.getSizeX(), 
-		Real(source.getSizeY())/target.getSizeY(), 
-		Real(source.getSizeZ())/target.getSizeZ() );
+	Vec3 sourceFactor = gridSizeFactor( source.getSize(), target.getSize() );
 
 	// a brief note on a mantaflow specialty: the target grid has to be the first argument here!
 	// the parent fluidsolver object is taken from the first grid, and it determines the size of the
@@ -108,10 +162,7 @@ void KnInterpolateMACGrid(MACGrid& target, MACGrid& source, const Vec3& sourceFa
 
 PYTHON void interpolateMACGrid(MACGrid& target, MACGrid& source)
 {
-	Vec3 sourceFactor = Vec3( 
-		Real(source.getSizeX())/target.getSizeX(), 
-		Real(source.getSizeY())/target.getSizeY(), 
-		Real(source.getSizeZ())/target.getSizeZ() );
+	Vec3 sourceFactor = gridSizeFactor( source.getSize(), target.getSize() );
 
 	// see interpolateGrid for why the target grid needs to come first in the parameters!
 
@@ -132,8 +183,7 @@ PYTHON void computeVorticity(MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* no
     if(norm) GridNorm( *norm, vorticity);
 }
 
-
-// note - similar to KnComputeProductionStrain
+// note - very similar to KnComputeProductionStrain, but for use as wavelet turb weighting
 KERNEL(bnd=1) 
 void KnComputeStrainRateMag(const MACGrid& vel, const Grid<Vec3>& velCenter, Grid<Real>& prod ) 
 {
@@ -154,8 +204,6 @@ void KnComputeStrainRateMag(const MACGrid& vel, const Grid<Vec3>& velCenter, Gri
         2.0*square(S12) + 2.0*square(S13) + 2.0*square(S23);
     prod(i,j,k) = S2;
 }
-
-
 PYTHON void computeStrainRateMag(MACGrid& vel, Grid<Real>& mag) {
     Grid<Vec3> velCenter(parent);
     GetCentered(velCenter, vel);

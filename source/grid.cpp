@@ -245,7 +245,14 @@ PYTHON Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
 {
 	double maxVal = 0.;
     FOR_IJK(g1) {
-		maxVal = std::max(maxVal, (double)fabs( norm(g1(i,j,k)-g2(i,j,k)) ));
+		// accumulate differences with double precision
+		// note - don't use norm here! should be as precise as possible...
+		double d = 0.;
+		for(int c=0; c<3; ++c) { 
+			d += fabs( (double)g1(i,j,k)[c] - (double)g2(i,j,k)[c] );
+		}
+		maxVal = std::max(maxVal, d );
+		//maxVal = std::max(maxVal, (double)fabs( norm(g1(i,j,k)-g2(i,j,k)) ));
 	}
 	return maxVal; 
 }
@@ -266,21 +273,74 @@ PYTHON void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
 	}
 }
 
-template<class T> void Grid<T>::print(int zSlice, bool printIndex) {
+
+template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 	std::ostringstream out;
 	out << std::endl;
-	FOR_IJK_BND(*this,1) {
+	const int bnd = 1;
+	FOR_IJK_BND(*this,bnd) {
 		int idx = (*this).index(i,j,k);
 		if(zSlice>=0 && k==zSlice) { 
 			out << " ";
 			if(printIndex) out << "  "<<i<<","<<j<<","<<k <<":";
 			out << (*this)[idx]; 
-			if(i==(*this).getSizeX()-1 -2) out << std::endl; 
+			if(i==(*this).getSizeX()-1 -bnd) out << std::endl; 
 		}
 	}
 	out << endl; debMsg("Printing " << this->getName() << out.str().c_str() , 1);
 }
 
+// helper functions for UV grid data (stored grid coordinates as Vec3 values, and uv weight in entry zero)
+
+// make uv weight accesible in python
+PYTHON Real getUvWeight (Grid<Vec3> &uv) { return uv[0][0]; }
+
+// note - right now the UV grids have 0 values at the border after advection... could be fixed with an extrapolation step...
+
+// compute normalized modulo interval
+static inline Real computeUvGridTime(Real t, Real resetTime) {
+	return fmod( (t / resetTime), (Real)1. );
+}
+// create ramp function in 0..1 range with half frequency
+static inline Real computeUvRamp(Real t) {
+	Real uvWeight = 2. * t; 
+	if (uvWeight>1.) uvWeight=2.-uvWeight;
+	return uvWeight;
+}
+
+KERNEL void knResetUvGrid (Grid<Vec3>& target) { target(i,j,k) = Vec3((Real)i,(Real)j,(Real)k); }
+
+PYTHON void resetUvGrid (Grid<Vec3> &target)
+{
+	knResetUvGrid reset(target); // note, llvm complains about anonymous declaration here... ?
+}
+PYTHON void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv , bool info=false)
+{
+	const Real t   = parent->getTime();
+	Real  timeOff  = resetTime/(Real)numUvs;
+
+	Real lastt = computeUvGridTime(t +(Real)index*timeOff - parent->getDt(), resetTime);
+	Real currt = computeUvGridTime(t +(Real)index*timeOff                  , resetTime);
+	Real uvWeight = computeUvRamp(currt);
+
+	// normalize the uvw weights , note: this is a bit wasteful...
+	Real uvWTotal = 0.;
+	for(int i=0; i<numUvs; ++i) {
+		uvWTotal += computeUvRamp( computeUvGridTime(t +(Real)i*timeOff , resetTime) );
+	}
+	if(uvWTotal<=VECTOR_EPSILON) { uvWeight =  uvWTotal = 1.; }
+	else                           uvWeight /= uvWTotal;
+
+	// check for reset
+	if( currt < lastt ) 
+		knResetUvGrid reset( uv );
+
+	// write new weight value to grid
+	uv[0] = Vec3( uvWeight, 0.,0.);
+
+	// print info about uv weights?
+	if(info) debMsg("Uv grid "<<index<<"/"<<numUvs<< " t="<<currt<<" w="<<uvWeight<<", reset:"<<(int)(currt<lastt) , 1);
+}
 
 //******************************************************************************
 // Specialization classes

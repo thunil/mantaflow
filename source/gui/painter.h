@@ -32,10 +32,12 @@ public:
     enum PainterEvent { 
 		EventNone = 0, UpdateRequest, UpdateFull, UpdateStep,
 		EventScaleVecUp, EventScaleVecDown, EventScaleRealUp, EventScaleRealDown, EventChangePlane, 
-		EventSetPlane, EventSetDim, EventNextInt, EventNextReal, EventNextVec, EventToggleVels, EventToggleCentered,
+		EventSetPlane, EventSetDim, EventNextInt, EventNextReal, EventNextVec, EventNextVelDisplayMode,
 		EventNextMesh, EventMeshMode, EventToggleGridDisplay, EventScaleMeshUp, EventScaleMeshDown, EventMeshColorMode,
 		EventNextSystem, EventToggleParticles, EventToggleBackgroundMesh, EventSetMax,
 		EventScalePdataDown, EventScalePdataUp };
+
+    enum VelDisplayModes { VelDispOff=0, VelDispCentered, VelDispStaggered, VelDispUv, NumVelDispModes };
     
     Painter(QWidget* par = 0) : QObject(par) {}
     virtual ~Painter() {}
@@ -55,7 +57,7 @@ public slots:
 class LockedObjPainter : public Painter {
     Q_OBJECT
 public:
-    LockedObjPainter(QWidget* par = 0) : Painter(par), mRequestUpdate(false), mObjIndex(-1), mObject(NULL) {}
+    LockedObjPainter(QWidget* par = 0) : Painter(par), mRequestUpdate(false), mObject(NULL), mObjIndex(-1) {}
 
     void doEvent(int e, int param=0); // don't overload, use processKeyEvent and update instead
     
@@ -65,9 +67,9 @@ protected:
     virtual void update() = 0;
     virtual void processKeyEvent(PainterEvent e, int param) = 0;
     
-    bool mRequestUpdate;
+    bool     mRequestUpdate;
     PbClass* mObject;
-    int mObjIndex;
+    int      mObjIndex;
 };
 
 //! Painter object for int,Real,Vec3 grids
@@ -81,8 +83,8 @@ public:
     void attachWidget(QLayout* layout);
     Grid<T>** getGridPtr() { return &mLocalGrid; }
     int getPlane() { return mPlane; }
-    int getDim() { return mDim; }
-    int getMax() { return mMax; }
+    int getDim()   { return mDim; }
+    int getMax()   { return mMax; }
     virtual std::string clickLine(const Vec3& p0, const Vec3& p1);
 
 protected:
@@ -94,12 +96,13 @@ protected:
     void processSpecificKeyEvent(PainterEvent e, int param);
     //void paintGridLines(bool lines, bool box);
     
-    Real mMaxVal;
-    int mDim, mPlane, mMax;
-    Grid<T>* mLocalGrid;
-    FlagGrid** mFlags;
-    QLabel* mInfo;
-    bool mHide, mCentered, mHideLocal;
+    Real        mMaxVal;
+    int         mDim, mPlane, mMax;
+    Grid<T>*    mLocalGrid;
+    FlagGrid**  mFlags;
+    QLabel*     mInfo;
+    bool        mHide, mHideLocal;
+	int         mVelMode;
     std::map<PbClass*, Real> mValScale;
 };
 
