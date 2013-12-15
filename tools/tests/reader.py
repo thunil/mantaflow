@@ -73,6 +73,7 @@ for t in range(150):
 		#realErr.print(zSlice=15) 
 		print("Max difference in step " +str(t) + " = "+ str(realErrMax) )
 
+	# load vec3/mac grid
 	if(0):
 		tryToLoad( mac1, basename1, ("vel" ) ) #  % t
 		tryToLoad( mac2, basename2, ("vel" ) ) #  % t
