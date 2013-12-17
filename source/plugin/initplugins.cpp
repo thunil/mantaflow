@@ -14,6 +14,7 @@
 #include "vectorbase.h"
 #include "shapes.h"
 #include "commonkernels.h"
+#include "particle.h"
 #include "noisefield.h"
 
 using namespace std;
@@ -38,6 +39,19 @@ PYTHON void densityInflow(FlagGrid& flags, Grid<Real>& density, WaveletNoiseFiel
     Grid<Real> sdf = shape->computeLevelset();
     KnApplyNoise(flags, density, noise, sdf, scale, sigma);
 }
+
+//! sample noise field and set pdata with its values (for convenience, scale the noise values)
+KERNEL(pts) template<class T>
+void knSetPdataNoise(BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale) {
+	pdata[i] = noise.evaluate( parts.getPos(i) ) * scale;
+}
+KERNEL(pts) template<class T>
+void knSetPdataNoiseVec(BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale) {
+	pdata[i] = noise.evaluateVec( parts.getPos(i) ) * scale;
+}
+PYTHON void setNoisePdata    (BasicParticleSystem& parts, ParticleDataImpl<Real>& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoise<Real>(parts, pd,noise,scale); }
+PYTHON void setNoisePdataVec3(BasicParticleSystem& parts, ParticleDataImpl<Vec3>& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoiseVec<Vec3>(parts, pd,noise,scale); }
+PYTHON void setNoisePdataInt (BasicParticleSystem& parts, ParticleDataImpl<int >& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoise<int> (parts, pd,noise,scale); }
 
 //! SDF gradient from obstacle flags
 PYTHON Grid<Vec3> obstacleGradient(FlagGrid& flags) {

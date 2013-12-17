@@ -47,7 +47,7 @@ files = os.popen("ls "+str(filePrefix)+"????_*.py").read()
 #print "Debug, found test files: "+files
 
 genRefFiles = int(os.getenv('MANTA_GEN_TEST_DATA', 0))
-if (genRefFiles==1):
+if (genRefFiles>0):
 	print "\nNote - generating test data for all tests!"
 	print "Tests results will not be evaluated...\n"
 

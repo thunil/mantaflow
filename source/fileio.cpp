@@ -23,22 +23,16 @@ extern "C" {
 #include "grid.h"
 #include "mesh.h"
 #include "vortexsheet.h"
+#include "particle.h"
 #include  <cstring>
 
 using namespace std;
 
 namespace Manta {
-/*
-void trim(string& s) {
-    size_t pl = s.find_first_not_of("\t\r ");
-    if (pl != string::npos) s=s.substr(pl);
-    size_t pr = s.find_last_not_of("\t\r ");
-    if (pr != string::npos) s=s.substr(0,pr);
-}*/
 
-void writeObjFile(const string& name, Mesh* mesh) {
-    errMsg("obj exporter not yet implemented");
-}
+//*****************************************************************************
+// mesh data
+//*****************************************************************************
 
 void writeBobjFile(const string& name, Mesh* mesh) {
     cout << "writing mesh file " << name << endl;
@@ -185,6 +179,14 @@ void readObjFile(const std::string& name, Mesh* mesh, bool append) {
     }
     ifs.close();    
 }
+
+void writeObjFile(const string& name, Mesh* mesh) {
+    errMsg("obj exporter not yet implemented");
+}
+
+//*****************************************************************************
+// grid data
+//*****************************************************************************
 
 template<class T>
 void writeGridTxt(const string& name, Grid<T>* grid) {
@@ -490,24 +492,156 @@ void writeGridVol<Real>(const string& name, Grid<Real>* grid) {
 	fclose(fp);
 };
 
+
+//*****************************************************************************
+// particle data
+//*****************************************************************************
+
+//! in line with grid uni header
+typedef struct {
+    int dim; // number of partilces
+    int elementType, bytesPerElement; // type id and byte size
+	char info[256]; // mantaflow build information
+    unsigned long timestamp; // creation time
+} UniPartHeader;
+
+template <class T>
+void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
+    cout << "writing particles " << parts->getName() << " to uni file " << name << endl;
+    
+#	if NO_ZLIB!=1
+    char ID[5] = "PB01";
+    UniPartHeader head;
+	head.dim      = parts->size();
+    head.bytesPerElement = sizeof(T);
+    head.elementType = 0; // 0 for base data
+	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
+	MuTime stamp; stamp.get();
+	head.timestamp = stamp.time;
+    
+    gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
+    if (!gzf) errMsg("can't open file");
+    
+    gzwrite(gzf, ID, 4);
+    gzwrite(gzf, &head, sizeof(UniPartHeader));
+    gzwrite(gzf, &(parts->getData()[0]), sizeof(T)*head.dim);
+    gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
+};
+
+template <class T>
+void readParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
+    cout << "reading particles " << parts->getName() << " from uni file " << name << endl;
+    
+#	if NO_ZLIB!=1
+    gzFile gzf = gzopen(name.c_str(), "rb");
+    if (!gzf) errMsg("can't open file");
+
+    char ID[5]={0,0,0,0,0};
+	gzread(gzf, ID, 4);
+    
+    if (!strcmp(ID, "PB01")) {
+        // current file format
+        UniPartHeader head;
+        assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
+        assertMsg ( ((head.bytesPerElement == sizeof(T)) && (head.elementType==0) ), "particle type doesn't match");
+
+		// re-allocate all data
+		parts->resizeAll( head.dim );
+
+        assertMsg (head.dim == parts->size() , "particle size doesn't match");
+    	int bytes = sizeof(T)*head.dim;
+        int readBytes = gzread(gzf, &(parts->getData()[0]), sizeof(T)*head.dim);
+    	assertMsg(bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
+    }
+    gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
+};
+
+template <class T>
+void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
+    cout << "writing particle data " << pdata->getName() << " to uni file " << name << endl;
+    
+#	if NO_ZLIB!=1
+    char ID[5] = "PD01";
+    UniPartHeader head;
+	head.dim      = pdata->size();
+    head.bytesPerElement = sizeof(T);
+    head.elementType = 1; // 1 for particle data, todo - add sub types?
+	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
+	MuTime stamp; stamp.get();
+	head.timestamp = stamp.time;
+    
+    gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
+    if (!gzf) errMsg("can't open file");
+    
+    gzwrite(gzf, ID, 4);
+    gzwrite(gzf, &head, sizeof(UniPartHeader));
+    gzwrite(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
+    gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
+};
+
+template <class T>
+void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
+    cout << "reading particle data " << pdata->getName() << " from uni file " << name << endl;
+    
+#	if NO_ZLIB!=1
+    gzFile gzf = gzopen(name.c_str(), "rb");
+    if (!gzf) errMsg("can't open file");
+
+    char ID[5]={0,0,0,0,0};
+	gzread(gzf, ID, 4);
+    
+    if (!strcmp(ID, "PD01")) {
+        UniPartHeader head;
+        assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
+        assertMsg ( ((head.bytesPerElement == sizeof(T)) && (head.elementType==1) ), "pdata type doesn't match");
+        assertMsg (head.dim == pdata->size() , "pdata size doesn't match");
+    	int bytes = sizeof(T)*head.dim;
+        int readBytes = gzread(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
+    	assertMsg(bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
+    }
+    gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
+}
+
 // explicit instantiation
-template void writeGridRaw<int>(const string& name, Grid<int>* grid);
+template void writeGridRaw<int> (const string& name, Grid<int>*  grid);
 template void writeGridRaw<Real>(const string& name, Grid<Real>* grid);
 template void writeGridRaw<Vec3>(const string& name, Grid<Vec3>* grid);
-template void writeGridUni<int>(const string& name, Grid<int>* grid);
+template void writeGridUni<int> (const string& name, Grid<int>*  grid);
 template void writeGridUni<Real>(const string& name, Grid<Real>* grid);
 template void writeGridUni<Vec3>(const string& name, Grid<Vec3>* grid);
-template void writeGridVol<int>(const string& name, Grid<int>* grid);
+template void writeGridVol<int> (const string& name, Grid<int>*  grid);
 template void writeGridVol<Vec3>(const string& name, Grid<Vec3>* grid);
-template void writeGridTxt<int>(const string& name, Grid<int>* grid);
+template void writeGridTxt<int> (const string& name, Grid<int>*  grid);
 template void writeGridTxt<Real>(const string& name, Grid<Real>* grid);
 template void writeGridTxt<Vec3>(const string& name, Grid<Vec3>* grid);
-template void readGridRaw<int>(const string& name, Grid<int>* grid);
-template void readGridRaw<Real>(const string& name, Grid<Real>* grid);
-template void readGridRaw<Vec3>(const string& name, Grid<Vec3>* grid);
-template void readGridUni<int>(const string& name, Grid<int>* grid);
-template void readGridUni<Real>(const string& name, Grid<Real>* grid);
-template void readGridUni<Vec3>(const string& name, Grid<Vec3>* grid);
+template void readGridRaw<int>  (const string& name, Grid<int>*  grid);
+template void readGridRaw<Real> (const string& name, Grid<Real>* grid);
+template void readGridRaw<Vec3> (const string& name, Grid<Vec3>* grid);
+template void readGridUni<int>  (const string& name, Grid<int>*  grid);
+template void readGridUni<Real> (const string& name, Grid<Real>* grid);
+template void readGridUni<Vec3> (const string& name, Grid<Vec3>* grid);
+
+template void writeParticlesUni<BasicParticleData>(const std::string& name, BasicParticleSystem* parts );
+template void readParticlesUni<BasicParticleData> (const std::string& name, BasicParticleSystem* parts );
+
+template void writePdataUni<int> (const std::string& name, ParticleDataImpl<int>* pdata );
+template void writePdataUni<Real>(const std::string& name, ParticleDataImpl<Real>* pdata );
+template void writePdataUni<Vec3>(const std::string& name, ParticleDataImpl<Vec3>* pdata );
+template void readPdataUni<int>  (const std::string& name, ParticleDataImpl<int>* pdata );
+template void readPdataUni<Real> (const std::string& name, ParticleDataImpl<Real>* pdata );
+template void readPdataUni<Vec3> (const std::string& name, ParticleDataImpl<Vec3>* pdata );
 
 #if ENABLE_GRID_TEST_DATATYPE==1
 // dummy functions for test datatype - not really supported right now!

@@ -17,6 +17,7 @@
 #endif
 #include "particle.h"
 #include "levelset.h"
+#include "fileio.h"
 #include  <cstring>
 
 using namespace std;
@@ -182,71 +183,6 @@ void BasicParticleSystem::writeParticlesRawVelocityGz(string name) {
 #	endif
 }
 
-//! in line with grid uni header
-typedef struct {
-    int dim; // number of partilces
-    int elementType, bytesPerElement; // type id and byte size
-	char info[256]; // mantaflow build information
-    unsigned long timestamp; // creation time
-} UniPartHeader;
-
-template <class T>
-void writeParticlesUni(const string& name, BasicParticleSystem* parts ) {
-    cout << "writing particles " << parts->getName() << " to uni file " << name << endl;
-    
-#	if NO_ZLIB!=1
-    char ID[5] = "PB01";
-    UniPartHeader head;
-	head.dim      = parts->size();
-    head.bytesPerElement = sizeof(T);
-    head.elementType = 0; // 0 for base data
-	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
-	MuTime stamp; stamp.get();
-	head.timestamp = stamp.time;
-    
-    gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-    if (!gzf) errMsg("can't open file");
-    
-    gzwrite(gzf, ID, 4);
-    gzwrite(gzf, &head, sizeof(UniPartHeader));
-    gzwrite(gzf, &(parts->getData()[0]), sizeof(T)*head.dim);
-    gzclose(gzf);
-#	else
-    cout << "file format not supported without zlib" << endl;
-#	endif
-};
-
-template <class T>
-void readParticlesUni(const string& name, BasicParticleSystem* parts ) {
-    cout << "reading particles " << parts->getName() << " from uni file " << name << endl;
-    
-#	if NO_ZLIB!=1
-    gzFile gzf = gzopen(name.c_str(), "rb");
-    if (!gzf) errMsg("can't open file");
-
-    char ID[5]={0,0,0,0,0};
-	gzread(gzf, ID, 4);
-    
-    if (!strcmp(ID, "PB01")) {
-        // current file format
-        UniPartHeader head;
-        assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
-        assertMsg ( ((head.bytesPerElement == sizeof(T)) && (head.elementType==0) ), "particle type doesn't match");
-
-		// re-allocate all data
-		parts->resizeAll( head.dim );
-
-        assertMsg (head.dim == parts->size() , "particle size doesn't match");
-    	int bytes = sizeof(T)*head.dim;
-        int readBytes = gzread(gzf, &(parts->getData()[0]), sizeof(T)*head.dim);
-    	assertMsg(bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
-    }
-    gzclose(gzf);
-#	else
-    cout << "file format not supported without zlib" << endl;
-#	endif
-};
-
 
 void BasicParticleSystem::load(string name) {
     if (name.find_last_of('.') == string::npos)
@@ -359,59 +295,6 @@ void ParticleDataImpl<Vec3>::initNewValue(int idx, Vec3 pos) {
 		else
 			mData[idx] = ((MACGrid*)mpGridSource)->getInterpolated(pos);
 	}
-}
-
-
-template <class T>
-void writePdataUni(const string& name, ParticleDataImpl<T>* pdata ) {
-    cout << "writing particle data " << pdata->getName() << " to uni file " << name << endl;
-    
-#	if NO_ZLIB!=1
-    char ID[5] = "PD01";
-    UniPartHeader head;
-	head.dim      = pdata->size();
-    head.bytesPerElement = sizeof(T);
-    head.elementType = 1; // 1 for particle data, todo - add sub types?
-	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
-	MuTime stamp; stamp.get();
-	head.timestamp = stamp.time;
-    
-    gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-    if (!gzf) errMsg("can't open file");
-    
-    gzwrite(gzf, ID, 4);
-    gzwrite(gzf, &head, sizeof(UniPartHeader));
-    gzwrite(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
-    gzclose(gzf);
-#	else
-    cout << "file format not supported without zlib" << endl;
-#	endif
-};
-
-template <class T>
-void readPdataUni(const string& name, ParticleDataImpl<T>* pdata ) {
-    cout << "reading particle data " << pdata->getName() << " from uni file " << name << endl;
-    
-#	if NO_ZLIB!=1
-    gzFile gzf = gzopen(name.c_str(), "rb");
-    if (!gzf) errMsg("can't open file");
-
-    char ID[5]={0,0,0,0,0};
-	gzread(gzf, ID, 4);
-    
-    if (!strcmp(ID, "PD01")) {
-        UniPartHeader head;
-        assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
-        assertMsg ( ((head.bytesPerElement == sizeof(T)) && (head.elementType==1) ), "pdata type doesn't match");
-        assertMsg (head.dim == pdata->size() , "pdata size doesn't match");
-    	int bytes = sizeof(T)*head.dim;
-        int readBytes = gzread(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
-    	assertMsg(bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
-    }
-    gzclose(gzf);
-#	else
-    cout << "file format not supported without zlib" << endl;
-#	endif
 }
 
 template<typename T>
