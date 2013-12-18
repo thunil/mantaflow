@@ -46,6 +46,7 @@ if(len(sys.argv)>2):
 files = os.popen("ls "+str(filePrefix)+"????_*.py").read() 
 #print "Debug, found test files: "+files
 
+
 genRefFiles = int(os.getenv('MANTA_GEN_TEST_DATA', 0))
 if (genRefFiles>0):
 	print "\nNote - generating test data for all tests!"
@@ -62,15 +63,16 @@ for file in files:
 	num += 1
 	print "Running '" + file + "' "
 	result = os.popen(manta + " " + file + " 2>&1 ").read() 
-	#print result # print full output, debug only
+	print result # print full output, debug only
 
-	oks = re.findall(r"OK!", result)
+	oks = re.findall(r"\nOK!", result)
 	#print oks
 	numOks += len(oks)
 
-	fails = re.findall(r"FAIL!", result)
+	fails = re.findall(r"\nFAIL!", result)
 	# also check for "Errors"
 	if (len(fails)==0) :
+		# note - if there are errors, the overall count of tests won't be valid anymore... 
 		fails = re.findall(r"Error", result) 
 	#print fails
 	numFail += len(fails)
