@@ -211,5 +211,119 @@ PYTHON void computeStrainRateMag(MACGrid& vel, Grid<Real>& mag) {
 }
 
 
+// extrapolate a real grid into a flagged region (based on initial flags)
+// by default extrapolates from fluid to obstacle cells
+PYTHON void _extrapolateSimpleFlags (FlagGrid& flags, Grid<Real>& val, int distance = 4, 
+									int flagFrom=FlagGrid::TypeFluid, int flagTo=FlagGrid::TypeObstacle ) 
+{
+    Grid<int> tmp( flags.getParent() );
+	int dim = (flags.is3D() ? 3:2);
+	Vec3i nb[6] = { 
+		Vec3i(1 ,0,0), Vec3i(-1,0,0),
+		Vec3i(0,1 ,0), Vec3i(0,-1,0),
+		Vec3i(0,0,1 ), Vec3i(0,0,-1) };
+
+	// remove all fluid cells (set to 1)
+	tmp.clear();
+	FOR_IJK_BND(flags,1) {
+		if (flags(i,j,k) & flagFrom) 
+			tmp( Vec3i(i,j,k) ) = 1;
+	}
+
+	// extrapolate for given distance
+	for(int d=1; d<1+distance; ++d) {
+
+		// TODO, parallelize
+		FOR_IJK_BND(flags,1) {
+			if (tmp(i,j,k) != 0)          continue;
+			if (!(flags(i,j,k) & flagTo)) continue;
+
+			// copy from initialized neighbors
+			Vec3i p(i,j,k);
+			int nbs = 0;
+			Real avgVel = 0.;
+			for (int n=0; n<2*dim; ++n) {
+				if (tmp(p+nb[n]) == d) {
+					avgVel += val(p+nb[n]);
+					nbs++;
+				}
+			}
+
+			if(nbs>0) {
+				tmp(p)    = d+1;
+				val(p) = avgVel / nbs;
+			}
+		}
+
+	} // distance 
+}
+
+template<class T> 
+void extrapolSimpleFlagsHelper (FlagGrid& flags, Grid<T>& val, int distance = 4, 
+									int flagFrom=FlagGrid::TypeFluid, int flagTo=FlagGrid::TypeObstacle ) 
+{
+    Grid<int> tmp( flags.getParent() );
+	int dim = (flags.is3D() ? 3:2);
+	const Vec3i nb[6] = { 
+		Vec3i(1 ,0,0), Vec3i(-1,0,0),
+		Vec3i(0,1 ,0), Vec3i(0,-1,0),
+		Vec3i(0,0,1 ), Vec3i(0,0,-1) };
+
+	// remove all fluid cells (set to 1)
+	tmp.clear();
+	bool foundTarget = false;
+	FOR_IJK_BND(flags,0) {
+		if (flags(i,j,k) & flagFrom) 
+			tmp( Vec3i(i,j,k) ) = 1;
+		if (!foundTarget && (flags(i,j,k) & flagTo)) foundTarget=true;
+	}
+	// optimization, skip extrapolation if we dont have any cells to extrapolate to
+	if(!foundTarget) {
+		debMsg("DKIPPPP NT_DEBUG",1);
+		return;
+	}
+
+	// extrapolate for given distance
+	for(int d=1; d<1+distance; ++d) {
+
+		// TODO, parallelize
+		FOR_IJK_BND(flags,1) {
+			if (tmp(i,j,k) != 0)          continue;
+			if (!(flags(i,j,k) & flagTo)) continue;
+
+			// copy from initialized neighbors
+			Vec3i p(i,j,k);
+			int nbs = 0;
+			T avgVal = 0.;
+			for (int n=0; n<2*dim; ++n) {
+				if (tmp(p+nb[n]) == d) {
+					avgVal += val(p+nb[n]);
+					nbs++;
+				}
+			}
+
+			if(nbs>0) {
+				tmp(p) = d+1;
+				val(p) = avgVal / nbs;
+			}
+		}
+
+	} // distance 
+}
+PYTHON void extrapolateSimpleFlags (FlagGrid& flags, GridBase* val, int distance = 4, 
+									int flagFrom=FlagGrid::TypeFluid, int flagTo=FlagGrid::TypeObstacle ) 
+{
+    if (val->getType() & GridBase::TypeReal) {
+        extrapolSimpleFlagsHelper<Real>(flags,*((Grid<Real>*) val),distance,flagFrom,flagTo);
+    }
+    else if (val->getType() & GridBase::TypeInt) {    
+        extrapolSimpleFlagsHelper<int >(flags,*((Grid<int >*) val),distance,flagFrom,flagTo);
+    }
+    else if (val->getType() & GridBase::TypeVec3) {    
+        extrapolSimpleFlagsHelper<Vec3>(flags,*((Grid<Vec3>*) val),distance,flagFrom,flagTo);
+    }
+    else
+        errMsg("extrapolateSimpleFlags: Grid Type is not supported (only int, Real, Vec3)");    
+}
 
 } // namespace

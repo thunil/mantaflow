@@ -248,6 +248,7 @@ PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 
 		//FOR_IJK_BND(flags,1) { if (tmp(i,j,k) == 0) continue; vel(i,j,k)[c] = (i+j+k+c+1.)*0.1; }
 		
 		// extrapolate for distance
+		// TODO, parallelize
 		for(int d=1; d<1+distance; ++d) {
 
 			FOR_IJK_BND(flags,1) {
