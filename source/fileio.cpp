@@ -360,7 +360,7 @@ template <>
 void convertFloatGridToDouble<int>(Grid<int>& grid, void* ptr, int bytesPerElement) {
 	assertMsg (bytesPerElement == sizeof(int), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(int) );
 	// easy, nothing to do for ints
-    memcpy(ptr, &(grid[0]), sizeof(int) * grid.getSizeX()*grid.getSizeY()*grid.getSizeZ() );
+    memcpy(&(grid[0]), ptr, sizeof(int) * grid.getSizeX()*grid.getSizeY()*grid.getSizeZ() );
 }
 
 template <>

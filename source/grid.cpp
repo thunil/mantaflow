@@ -241,6 +241,14 @@ PYTHON Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2 )
 	}
 	return maxVal; 
 }
+PYTHON Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2 )
+{
+	double maxVal = 0.;
+    FOR_IJK(g1) {
+		maxVal = std::max(maxVal, (double)fabs( (double)g1(i,j,k)-g2(i,j,k) ));
+	}
+	return maxVal; 
+}
 PYTHON Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
 {
 	double maxVal = 0.;

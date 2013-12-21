@@ -95,9 +95,6 @@ def doTestGrid( file , name, solver , grid, threshold=0, thresholdStrict=0, inve
 		gridTmpLs = solver.create(RealGrid)
 		convertLevelsetToReal(grid , gridTmpLs )
 		return doTestGrid( file, name, solver, gridTmpLs  , threshold, thresholdStrict)
-	if ( type(grid).__name__ == "IntGrid" ):
-		print( "Error doTestGrid - int grids not yet supported...")
-		return 1
 
 	# now we should only have real & vec3 grids
 
@@ -106,6 +103,8 @@ def doTestGrid( file , name, solver , grid, threshold=0, thresholdStrict=0, inve
 		compareTmpGrid = solver.create(RealGrid)
 	elif ( type(grid).__name__ == "VecGrid" ):
 		compareTmpGrid = solver.create(VecGrid)
+	elif ( type(grid).__name__ == "IntGrid" ):
+		compareTmpGrid = solver.create(IntGrid)
 	else:
 		print( "Error doTestGrid - unknown grid type " + type(grid).__name__ )
 		return 1
@@ -126,6 +125,8 @@ def doTestGrid( file , name, solver , grid, threshold=0, thresholdStrict=0, inve
 			errVal = gridMaxDiff    ( grid, compareTmpGrid )
 		elif ( type(grid).__name__ == "VecGrid" ):
 			errVal = gridMaxDiffVec3( grid, compareTmpGrid )
+		elif ( type(grid).__name__ == "IntGrid" ):
+			errVal = gridMaxDiffInt ( grid, compareTmpGrid )
 
 		# finally, compare max error to allowed threshold, and return result
 		return checkResult( name, errVal , threshold , thresholdStrict, invertResult )
