@@ -27,7 +27,7 @@ obstacle2 = s.create(Box, p0=gs*vec3(0.0,0.8,0.0), p1=gs*vec3(0.4,0.9,0.4) )
 obstacle1.applyToGrid( grid=flags, value=FlagObstacle)
 obstacle2.applyToGrid( grid=flags, value=FlagObstacle)
 
-if 1 and (GUI):
+if 0 and (GUI):
     gui = Gui()
     gui.show(); gui.pause()
     

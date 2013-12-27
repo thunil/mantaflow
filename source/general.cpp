@@ -7,7 +7,7 @@
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Globally used macros and functions
+ * Globally used macros and functions                 
  *
  ******************************************************************************/
 
@@ -21,6 +21,8 @@
 #else
 #   include <sys/time.h>
 #endif
+
+#include "hginfo.h"
 
 using namespace std;
 
@@ -114,6 +116,12 @@ std::string buildInfoString() {
 #	ifdef OPENMP
 		infoStr << " omp";
 #	endif
+
+	// repository info
+#	ifndef MANTA_HG_VERSION
+#	define MANTA_HG_VERSION "<unknown>"
+#	endif
+	infoStr << " hg "<< MANTA_HG_VERSION;
 
 	infoStr << " from "<< __DATE__<<", "<<__TIME__;
 	return infoStr.str();

@@ -95,6 +95,7 @@ void runScript(vector<string>& args) {
 }
 
 int main(int argc,char* argv[]) {
+	debMsg("Version: "<< buildInfoString() , 1);
 
 #ifdef GUI
     guiMain(argc, argv);    

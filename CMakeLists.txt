@@ -230,6 +230,7 @@ SET(INCLUDE_PATHS
 
 # 64 bit config , not for windows
 if (USE64)
+	add_definitions(-DUSE64) 
 	IF(NOT WIN32)
 		SET(F_LINKADD "${F_LINKADD} -m64 ")
 		ADD_DEFINITIONS( -m64 )
@@ -299,6 +300,8 @@ if(DOXYGEN_FOUND)
     )
 endif(DOXYGEN_FOUND)
 
+
+
 #******************************************************************************
 # Link libraries
 
@@ -310,7 +313,7 @@ list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 
 # Z compression
 include(FindZLIB)
-if(ZLIB_FOUND) # NT_DEBUG
+if(ZLIB_FOUND) 
 	LIST(APPEND F_LIBS ${ZLIB_LIBRARIES})
 	if(ZLIB_INCLUDE_DIR)
 		LIST(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
@@ -349,6 +352,18 @@ endif()
 if(DOUBLEPRECISION)
     add_definitions(-DFLOATINGPOINT_PRECISION=2)
 endif()
+
+
+#******************************************************************************
+# generate repository info
+
+# TEST! NT_DEBUG 
+set(HGINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/hginfo.h")
+MESSAGE(STATUS "Hg info target header ${HGINFO}")
+add_custom_command(OUTPUT ${HGINFO}
+				   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tools/makeHgVersion.py" "${HGINFO}"
+				   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${QT_HEADERS} ${NOPP_HEADERS}
+				   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} )
 
 #******************************************************************************
 # apply preprocessor
@@ -463,7 +478,7 @@ else()
 		add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${PP_SOURCES} ${PP_HEADERS})
 		source_group(Generated FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})		
 	else()
-    	add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY})
+    	add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${HGINFO})
 	endif()
 	target_link_libraries( ${EXECCMD} ${F_LIBS} )
 endif()
