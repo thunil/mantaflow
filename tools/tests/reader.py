@@ -12,11 +12,11 @@ res = 64
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
-gs = vec3(60,75,60)
+gs = vec3(52,52,52)
 
 # input file prefixes
-basename1 = "test_2010a.py"
-basename2 = "test_2010b.py"
+basename1 = "t01a.py"
+basename2 = "t01b.py"
 
 # print info about running build, and those used to create data files?
 buildInfo=1
