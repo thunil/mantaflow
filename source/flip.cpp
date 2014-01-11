@@ -172,9 +172,10 @@ PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& fl
 
         if (flags.isFluid(i,j,k) && cnt < minParticles) {
             for (int m=cnt; m < minParticles; m++) { 
-                Vec3 rndPos (i + mRand.getReal(), j + mRand.getReal(), k + mRand.getReal());
-                //Vec3 rndPos (i + 0.5, j + 0.5, k + 0.5); // cell center
-                parts.addBuffered( rndPos ); 
+                Vec3 pos(i,j,k);
+				for(int c=0; c<3; ++c) pos[c] += mRand.getReal();
+                //Vec3 pos (i + 0.5, j + 0.5, k + 0.5); // cell center
+                parts.addBuffered( pos ); 
             }
         }
     }
