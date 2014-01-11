@@ -22,7 +22,7 @@ from subprocess import check_output
 # point.
 
 # debugging, print outputs from all manta calls
-printAllOutpus = 0
+printAllOutpus = 1
 filePrefix = "test_"
 
 if(len(sys.argv)<2):
@@ -63,7 +63,6 @@ for file in files:
 	num += 1
 	print "Running '" + file + "' "
 	result = os.popen(manta + " " + file + " 2>&1 ").read() 
-	print result # print full output, debug only
 
 	oks = re.findall(r"\nOK!", result)
 	#print oks

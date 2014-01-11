@@ -7,16 +7,16 @@ from manta import *
 from helperInclude import *
 
 # solver params
-dim = 2
+dim = 3
 res = 64
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
-gs = vec3(50,75,1)
+gs = vec3(60,75,60)
 
 # input file prefixes
-basename1 = "test1"
-basename2 = "test2"
+basename1 = "test_2010a.py"
+basename2 = "test_2010b.py"
 
 # print info about running build, and those used to create data files?
 buildInfo=1
@@ -50,8 +50,12 @@ if 1 and (GUI):
 	gui.show()
 	gui.pause()
     
+# use numbered files? or just base name?
+appendNumber = False
 # try to load uni file if it exists
-def tryToLoad( grid, basename, suffix ):
+def tryToLoad( grid, basename, suffix, number ):
+	if(appendNumber==True):
+		suffix = suffix+("_04d" % number )
 	rfile = referenceFilename( basename, suffix ) 
 	print("Trying to load " + rfile)
 	if(os.path.isfile(rfile)):
@@ -74,18 +78,18 @@ partErrMax = 0
 #main loop
 for t in range(150):
 
-	if(0):
-		tryToLoad( real1, basename1, ("dens_%04d"  % t) )
-		tryToLoad( real2, basename2, ("dens_%04d"  % t) )
+	if(1):
+		tryToLoad( real1, basename1, "dens"  , t )
+		tryToLoad( real2, basename2, "dens"  , t )
 		realErr.sub(real1,real2);
 		realErrMax = gridMaxDiff(real1, real2)
 	
 		#realErr.print(zSlice=15) 
 		print("Max difference in step " +str(t) + " = "+ str(realErrMax) )
 
-	if(1):
-		tryToLoad( mac1, basename1, ("vel_%04d"  % t) )
-		tryToLoad( mac2, basename2, ("vel_%04d"  % t) )
+	if(0):
+		tryToLoad( mac1, basename1, "vel"  , t )
+		tryToLoad( mac2, basename2, "vel"  , t )
 		macErr.sub(mac1,mac2);
 		macErrMax = gridMaxDiffVec3(mac1, mac2)
 	
@@ -94,8 +98,8 @@ for t in range(150):
 
 	# load particles
 	if(0):
-		tryToLoad( parts1 , basename1, ("parts_%04d"  % t) )
-		tryToLoad( parts2 , basename2, ("parts_%04d"  % t) )
+		tryToLoad( parts1 , basename1, "parts"  , t )
+		tryToLoad( parts2 , basename2, "parts"  , t )
 
 	#tryToLoad( pDens1 , basename1, ("pdens_%04d"  % t) )
 

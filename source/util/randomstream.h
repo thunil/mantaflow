@@ -347,28 +347,29 @@ inline std::istream& operator>>( std::istream& is, MTRand& mtrand )
 class RandomStream
 {
 public:
-  inline RandomStream(long seed) : mtr(seed) {} ;
-  ~RandomStream() {}
+	inline RandomStream(long seed) : mtr(seed) {} ;
+	~RandomStream() {}
 
 	/*! get a random number from the stream */
 	inline double getDouble( void ) { return mtr.rand(); };
-	inline float getFloat( void ) { return (float)mtr.rand(); };
-	inline float getFloat( float min, float max ) { return mtr.rand(max-min) + min; };
-	inline float getRandNorm( float mean, float var) { return mtr.randNorm(mean, var); };
-	inline Vec3 getVec3 () { return Vec3(getReal(), getReal(), getReal()); }
-	inline Vec3 getVec3Norm () { Vec3 a=getVec3(); normalize(a); return a; }
+	inline float  getFloat ( void ) { return (float)mtr.rand(); };
+
+	inline float  getFloat( float min, float max ) { return mtr.rand(max-min) + min; };
+	inline float  getRandNorm( float mean, float var) { return mtr.randNorm(mean, var); };
 
 	#if FLOATINGPOINT_PRECISION==1
-	inline Real getReal() { return getFloat(); }
+	inline Real getReal()           { return getFloat(); }
 
 	#else
-	inline Real getReal() { return getDouble(); }
+	inline Real getReal()           { return getDouble(); }
 	#endif
+
+	inline Vec3   getVec3 ()        { Real a=getReal(), b=getReal(), c=getReal(); return Vec3(a,b,c); }
+	inline Vec3   getVec3Norm ()    { Vec3 a=getVec3(); normalize(a); return a; }
 
 private: 
 	MTRand mtr; 
 };
-
 
 
 } // namespace
