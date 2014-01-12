@@ -278,7 +278,7 @@ endif()
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
     set(DX_PATH "doxy")
-    foreach(it ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${QT_HEADERS} ${NOPP_HEADERS})
+    foreach(it ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS})
         get_filename_component(CURPATH ${it} PATH)
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${DX_PATH}/${CURPATH}")
         set(CURDX "${DX_PATH}/${it}")
@@ -362,7 +362,7 @@ set(HGINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/hginfo.h")
 MESSAGE(STATUS "Hg info target header ${HGINFO}")
 add_custom_command(OUTPUT ${HGINFO}
 				   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tools/makeHgVersion.py" "${HGINFO}"
-				   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${QT_HEADERS} ${NOPP_HEADERS}
+				   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS}
 				   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} )
 
 #******************************************************************************
@@ -485,9 +485,9 @@ endif()
 
 if(WIN32)
 	# add no-build target to create nice MSVC folder
-	add_custom_target(SourceFiles SOURCES ${PP_SOURCES} ${PP_HEADERS} ${QT_HEADERS} ${NOPP_HEADERS} ${NOPP_SOURCES})
+	add_custom_target(SourceFiles SOURCES ${PP_SOURCES} ${PP_HEADERS} ${QT_SOURCES} ${QT_HEADERS} ${NOPP_HEADERS} ${NOPP_SOURCES})
 	source_group(Headers FILES ${PP_HEADERS} ${NOPP_HEADERS} ${QT_HEADERS})
-	source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES})	
+	source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES} ${QT_SOURCES})	
 endif()
 
 # debug
