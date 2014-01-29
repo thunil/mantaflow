@@ -1,14 +1,14 @@
 #
 # Simple example scene for a 2D simulation
 # Simulation of a buoyant smoke density plume
-
+#
 from manta import *
 
 # solver params
 res = 64
 gs = vec3(res,res,1)
 s = Solver(name='main', gridSize = gs, dim=2)
-s.timestep = 1.0
+s.timestep = 2.0
 
 # prepare grids
 flags = s.create(FlagGrid)

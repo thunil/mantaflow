@@ -1,22 +1,24 @@
 #
-# Smoke simulation with added wavelet turbulence using uv coordinates
+# Complexer smoke simulation with wavlet turbulence plus
+# - obstacle handling
+# - and uv coordinates
 # 
 
 from manta import *
 import os, shutil, math, sys
 
 # dimension two/three d
-dim = 3
+dim = 2
 
 # how much to upres the XL sim?
 # set to zero to disable the second one completely
-upres = 2
+upres = 4
  
 # overall wavelet noise strength
 wltStrength = 1.0
 
 # how many grids of uv coordinates to use (more than 2 usually dont pay off here)
-uvs = 0
+uvs = 1
 
 # and how many octaves of wavelet turbulence? could be set manually, but ideally given by upres factor (round)
 octaves = 0
@@ -46,7 +48,7 @@ noise.timeAnim = 0.3
 
 # helper objects
 source    = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))
-sourceVel = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15, z=gs*vec3(0.15, 0, 0))
+sourceVel = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15 , z=gs*vec3(0.15 , 0, 0))
 
 # larger solver, recompute sizes...
 if(upres>0):
@@ -96,14 +98,19 @@ energy    = sm.create(RealGrid)
 tempFlag  = sm.create(FlagGrid)
 
 # wavelet turbulence noise field
-wltnoise = sm.create(NoiseField, loadFromFile=True)
+xl_wltnoise = sm.create(NoiseField, loadFromFile=True)
 # scale according to lowres sim , smaller numbers mean larger vortices
-wltnoise.posScale = vec3( int(0.5*gs.x) ) * 0.5
-wltnoise.timeAnim = 0.1
+xl_wltnoise.posScale = vec3( int(1.0*gs.x) ) * 0.5
+xl_wltnoise.timeAnim = 0.1
+if(upres>0):
+	# the noise will be used on the up'resed grid, so due to the local coordinates 
+	# we need to adapt its scaling, to make sure it connects to the original grid
+	# ie, octave 0 should be on the order of the low-res grid irrespective of the xl resolution
+	xl_wltnoise.posScale = xl_wltnoise.posScale * (1./upres)
 
 
 
-if (0 and GUI):
+if (1 and GUI):
 	gui = Gui()
 	gui.show()
 	gui.pause()
@@ -113,7 +120,6 @@ for t in range(100):
 	curt = t * sm.timestep
 	#sys.stdout.write( "Current sim time " + str(curt) +" \n" )
 	
-	#source.applyToGrid(grid=vel, value=velInflow)
 	advectSemiLagrange(flags=flags, vel=vel, grid=density,  order=2)	
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel,      order=2)
 
@@ -138,7 +144,12 @@ for t in range(100):
 		cgMaxIterFac=1.0, cgAccuracy=0.01 )
    	setWallBcs(flags=flags, vel=vel)
 	
+	# determine weighting
 	computeEnergy(flags=flags, vel=vel, energy=energy)
+	# alternatives:
+	#computeVorticity( vel=vel, vorticity=vort, norm=energy);
+	#computeStrainRateMag( vel=vel, vorticity=vort, mag=energy);
+
 	# mark outer obstacle region by extrapolating flags for 2 layers
 	tempFlag.copyFrom(flags)
 	extrapolateSimpleFlags( flags=flags, val=tempFlag, distance=2, flagFrom=FlagObstacle, flagTo=FlagFluid );
@@ -146,9 +157,6 @@ for t in range(100):
 	extrapolateSimpleFlags( flags=tempFlag, val=energy, distance=6, flagFrom=FlagFluid, flagTo=FlagObstacle ); 
 	computeWaveletCoeffs(energy)
 
-	#computeVorticity( vel=vel, vorticity=vort, norm=energy);
-	#computeStrainRateMag( vel=vel, vorticity=vort, mag=energy);
-	
 	#density.save('densitySm_%04d.vol' % t)
 	sm.printTimings()    
 	sm.step()
@@ -158,19 +166,19 @@ for t in range(100):
 		interpolateMACGrid( source=vel, target=xl_vel )
 		
 		# add all necessary octaves
-		sStr = 1.0 * wltStrength
+		sStr = 1.0 * wltStrength 
 		sPos = 2.0 
 		for o in range(octaves):
 			# add wavelet noise for each grid of uv coordinates 
 			#xl_vel.clear() # debug , show only noise eval 
 			for i in range(uvs):
 				uvWeight = getUvWeight(uv[i]) 
-				applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , 
+				applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , 
 					weight=energy, uv=uv[i] )
-			#print "Octave "+str(o)+", ss="+str(sStr)+" sp="+str(sPos) 
+			#print "Octave "+str(o)+", ss="+str(sStr)+" sp="+str(sPos)+" uvs="+str(uvs) # debug
 
 			# update octave parameters for next iteration
-			sStr *= 0.6 # magic kolmogorov factor
+			sStr *= 0.06 # magic kolmogorov factor
 			sPos *= 2.0 
 		
 		# now advect
@@ -181,9 +189,9 @@ for t in range(100):
 		if (applyInflow):
 			 densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 )
 		
-		#xl_density.save('densityXl08_%04d.vol' % t) 
+		#xl_density.save('densityXl_%04d.vol' % t) 
 		xl.printTimings()    
 		xl.step()    
 
-	#gui.screenshot( 't08_%04d.png' % t );
+	#gui.screenshot( 'testWlt_%04d.png' % t );
 

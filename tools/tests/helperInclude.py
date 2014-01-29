@@ -132,5 +132,11 @@ def doTestGrid( file , name, solver , grid, threshold=0, thresholdStrict=0, inve
 		return checkResult( name, errVal , threshold , thresholdStrict, invertResult )
 
 
+# for xl test, load test data afterwards to keep sims in sync
+def doTestDataLoad( file , name, solver , grid ):
+	genRefFiles = getGenRefFileSetting()
 
+	if (genRefFiles!=1):
+		print( "Loading %s" % referenceFilename( file, name ) )
+		grid.load( referenceFilename( file, name ) )
 

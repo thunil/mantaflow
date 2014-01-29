@@ -143,8 +143,8 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
     // test if lookups point out of grid or into obstacle
     if (posFwd.x < 0 || posFwd.y < 0 || posFwd.z < 0 ||
         posBwd.x < 0 || posBwd.y < 0 || posBwd.z < 0 ||
-        posFwd.x >= flags.getSizeX()-1 || posFwd.y >= flags.getSizeY()-1 || posFwd.z >= flags.getSizeZ()-1 ||
-        posBwd.x >= flags.getSizeX()-1 || posBwd.y >= flags.getSizeY()-1 || posBwd.z >= flags.getSizeZ()-1 ||
+        posFwd.x >= flags.getSizeX()-1 || posFwd.y >= flags.getSizeY()-1 || ((posFwd.z >= flags.getSizeZ()-1)&&flags.is3D()) ||
+        posBwd.x >= flags.getSizeX()-1 || posBwd.y >= flags.getSizeY()-1 || ((posBwd.z >= flags.getSizeZ()-1)&&flags.is3D()) ||
         flags.isObstacle(posFwd) || flags.isObstacle(posBwd) ) 
     {        
         dst(i,j,k) = fwd(i,j,k);

@@ -78,8 +78,8 @@ MESSAGE(STATUS "Options - "
     " -DOPENMP='${OPENMP}' "
     " -DPREPDEBUG='${PREPDEBUG}' "
     " -DCUDA='${CUDA}' "
+    " -DDOUBLEPRECISION='${DOUBLEPRECISION}' "
     )
-# done print: " -DDOUBLEPRECISION='${DOUBLEPRECISION}' "
 MESSAGE(STATUS "Multithreading type : ${MT_TYPE}")
 MESSAGE(STATUS "")
 
