@@ -12,7 +12,6 @@ res = 64
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
-gs = vec3(52,52,52)
 
 # input file prefixes
 basename1 = "t01a.py"
