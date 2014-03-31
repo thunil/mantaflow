@@ -25,13 +25,13 @@ string buildline(int lb) {
 }
 
 enum FunctionType { FtPlugin, FtMember, FtConstructor };
-void createPythonWrapper(const ArgList& args, const string& fname, const string& totalname, FunctionType ftype, string& header, string& footer, string& callList, bool isClass) {
+void createPythonWrapper(const ArgList& args, const string& fname, const string& totalname, FunctionType ftype, string& header, string& footer, string& callList, bool isClass, bool hasParent) {
     // beautify code for debug mode
-    string nl = (gDebugMode && ftype != FtConstructor) ? "\n" : " ";
-    string tb = (gDebugMode && ftype != FtConstructor) ? (isClass ? "\t\t" : "\t") : "";
+    string nl  = (gDebugMode && ftype != FtConstructor) ? "\n" : " ";
+    string tb  = (gDebugMode && ftype != FtConstructor) ? (isClass ? "\t\t" : "\t") : "";
     string tb1 = (gDebugMode && ftype != FtConstructor) ? (isClass ? "\t" : "") : "";
     string tb2 = tb1+tb;
-    
+
     const string argstr = (ftype == FtMember) ? "__args" : "_args";
     // load arguments from python
     callList = "";
@@ -87,8 +87,9 @@ void createPythonWrapper(const ArgList& args, const string& fname, const string&
     if (ftype == FtMember)
         header += tb2+ "PyObject *_retval = NULL;" + nl;
     if (ftype == FtPlugin) {
-        header += tb2+ "FluidSolver *parent = _args.obtainParent();" + nl;
-        header += tb2+ "pbPreparePlugin(parent, \""+totalname+"\");" + nl;
+		if(hasParent) header += tb2+ "FluidSolver *parent = _args.obtainParent();" + nl;
+		else          header += tb2+ "FluidSolver *parent = NULL;" + nl;
+        header += tb2+ "pbPreparePlugin(parent, \""+totalname+"\" );" + nl;
         header += tb2+ "PyObject *_retval = NULL;" + nl;
     } else if (ftype == FtMember)
         header += tb2+ "pbPreparePlugin(this->mParent, \""+totalname+"\");" + nl;        
@@ -112,7 +113,7 @@ void createPythonWrapper(const ArgList& args, const string& fname, const string&
         footer += tb2+ "return _retval;" + nl;    
     } else if (ftype == FtPlugin) {
         footer =  tb2+ "_args.check(); }" + nl;
-        footer += tb2+ "pbFinalizePlugin(parent,\"" +totalname+"\");" + nl;
+        footer += tb2+ "pbFinalizePlugin(parent,\"" +totalname+"\" );" + nl;
         footer += tb2+ "return (_retval) ? _retval : getPyNone();" + nl;    
     }
     footer += tb+ "} catch(std::exception& e) {" + nl;
@@ -141,7 +142,7 @@ string createConverters(const string& name, const string& tb, const string& nl, 
 string gLocalReg, gParent;
 bool gFoundConstructor = false, gIsTemplated=false;
 
-string processPythonFunction(int lb, const string& name, const string& type, const ArgList& args, const string& initlist, bool isInline, bool isConst, bool isVirtual, const string& code, int) {
+string processPythonFunction(int lb, const string& name, const ArgList& opts, const string& type, const ArgList& args, const string& initlist, bool isInline, bool isConst, bool isVirtual, const string& code, int) {
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = (gDebugMode) ? "\t" : "";
@@ -149,6 +150,14 @@ string processPythonFunction(int lb, const string& name, const string& type, con
     string inlineS = isInline ? "inline " : "";
     if (isVirtual) inlineS += "virtual ";
     const string constS = isConst ? " const" : "";
+
+	// PYTHON(...) keyword options
+	bool hasParent = true;
+    for (size_t i=0; i<opts.size(); i++) {
+        if (opts[i].name == "noparent") {
+            hasParent = false;
+		}
+	}
     
     // is header file ?
     bool isHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
@@ -179,7 +188,7 @@ string processPythonFunction(int lb, const string& name, const string& type, con
     FunctionType funcType = isConstructor ? FtConstructor : FtMember;
     if (isPlugin) funcType = FtPlugin;
     const string displayName = gParent.empty() ? name : (gParent+"::"+name);
-    createPythonWrapper(args, isConstructor ? (clname+clname) : fname, displayName, funcType, header, footer, callList, !isPlugin);    
+    createPythonWrapper(args, isConstructor ? (clname+clname) : fname, displayName, funcType, header, footer, callList, !isPlugin, hasParent); 
 
     string caller = (isPlugin ? "" : tb ) + header + nl;
     if (isPlugin) {

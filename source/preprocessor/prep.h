@@ -99,7 +99,7 @@ std::string stripWS(const std::string& s);
 // functions from codegen_XXX.cpp
 std::string createConverters(const std::string& name, const std::string& tb, const std::string& nl, const std::string& nlr);
 std::string processKernel(int lb, const std::string& name, const ArgList& opts, Argument retType, const ArgList& returnArg, const ArgList& templArgs, const ArgList& args, const std::string& code, int line); 
-std::string processPythonFunction(int lb, const std::string& name, const std::string& type, const ArgList& args, const std::string& initlist, bool isInline, bool isConst, bool isVirtual, const std::string& code, int line);
+std::string processPythonFunction(int lb, const std::string& name, const ArgList& opts, const std::string& type, const ArgList& args, const std::string& initlist, bool isInline, bool isConst, bool isVirtual, const std::string& code, int line);
 std::string processPythonVariable(int lb, const std::string& name, const ArgList& opts, const std::string& type, int line); 
 std::string processPythonClass(int lb, const std::string& name, const ArgList& opts, const ArgList& templArgs, const std::string& baseclassName, const ArgList& baseclassTempl, const std::string& code, int line); 
 std::string processPythonInstantiation(int lb, const std::string& name, const ArgList& templArgs, const std::string& aliasname, int line); 

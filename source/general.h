@@ -36,7 +36,7 @@ public:
 		// print error
 		std::cerr << "Aborting: "<< s <<" \n";
 		// then force immedieate crash in debug mode
-		*(int*)(0) = 1; 
+		*(volatile int*)(0) = 1; 
 #		endif
    }
    virtual ~Error() throw() {}

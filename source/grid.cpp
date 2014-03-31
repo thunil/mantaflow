@@ -169,7 +169,7 @@ template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
     return *this;
 }
 template<class T> Grid<T>& Grid<T>::operator= (const Grid<T>& a) {
-    assertMsg (a.mSize.x == mSize.x && a.mSize.y == mSize.y && a.mSize.z == mSize.z, "different grid resolutions");
+    assertMsg (a.mSize.x == mSize.x && a.mSize.y == mSize.y && a.mSize.z == mSize.z, "different grid resolutions "<<a.mSize<<" vs "<<this->mSize );
     memcpy(mData, a.mData, sizeof(T) * mSize.x * mSize.y * mSize.z);
     mType = a.mType; // copy type marker
     return *this;

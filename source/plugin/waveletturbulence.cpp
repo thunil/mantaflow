@@ -279,7 +279,7 @@ void extrapolSimpleFlagsHelper (FlagGrid& flags, Grid<T>& val, int distance = 4,
 	}
 	// optimization, skip extrapolation if we dont have any cells to extrapolate to
 	if(!foundTarget) {
-		debMsg("DKIPPPP NT_DEBUG",1);
+		debMsg("No target cells found, skipping extrapolation", 1);
 		return;
 	}
 

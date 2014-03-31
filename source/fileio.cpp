@@ -252,7 +252,7 @@ typedef struct {
 } UniHeader;
 
 //! for test run debugging
-PYTHON void printUniFileInfoString(const string& name) {
+PYTHON(noparent) void printUniFileInfoString(const string& name) {
 #	if NO_ZLIB!=1
     gzFile gzf = gzopen(name.c_str(), "rb");
     if (gzf) { 
@@ -269,6 +269,25 @@ PYTHON void printUniFileInfoString(const string& name) {
 	}
 #	endif
 	debMsg("File '"<<name<<"', no valid info string found",1);
+}
+
+//! for auto-init & check of results of test runs
+PYTHON(noparent) Vec3 getUniFileSize(const string& name) {
+	Vec3 s(0.);
+#	if NO_ZLIB!=1
+    gzFile gzf = gzopen(name.c_str(), "rb");
+    if (gzf) { 
+		char ID[5]={0,0,0,0,0};
+		gzread(gzf, ID, 4); 
+		if (!strcmp(ID, "MNT2")) {
+			UniHeader head;
+        	assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no header present"); 
+			s = Vec3(head.dimX,head.dimY,head.dimZ);
+		}
+		gzclose(gzf);
+	}
+#	endif
+	return s;
 }
 
 template <class T>
