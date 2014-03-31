@@ -60,7 +60,7 @@ public:
     void setup(PyObject *linargs = NULL, PyObject* dict = NULL);
     
     void check();
-    FluidSolver* obtainParent(); 
+    FluidSolver* obtainParent();
     
     inline int numLinArgs() { return mLinData.size(); }
     

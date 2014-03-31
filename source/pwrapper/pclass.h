@@ -29,6 +29,10 @@ struct QMutex {
 };
 #endif
 
+// to allow IDE autocompletion etc. 
+#define KERNEL 
+#define PYTHON
+
 // forward declaration to minimize Python.h includes
 #ifndef PyObject_HEAD
 #ifndef PyObject_Fake

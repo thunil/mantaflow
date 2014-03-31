@@ -97,7 +97,8 @@ void LevelsetGrid::join(const LevelsetGrid& o) {
 
 void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTransport, bool ignoreWalls, bool correctOuterLayer, int obstacleType)
 {
-    assertMsg(is3D(), "Only 3D grids supported so far");
+    //assertMsg(is3D(), "Only 3D grids supported so far");
+	const int dim = (is3D() ? 3 : 2);
     
     Grid<int> fmFlags(mParent);
     LevelsetGrid& phi = *this;
@@ -118,7 +119,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
             fmFlags(p) = FlagInited;
             
             // add neighbors that are not at the interface
-            for (int nb=0; nb<6; nb++) {
+            for (int nb=0; nb<2*dim; nb++) {
                 const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
                 if ((flags.get(pn) & obstacleType) != 0) continue;
                 
@@ -132,13 +133,13 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
     marchIn.performMarching();     
     
     // set un initialized regions
-    SetUninitialized (fmFlags, phi, -maxTime); 
+    SetUninitialized (fmFlags, phi, -maxTime - 1.); 
     
     // done with inwards marching, now march out...    
     InitFmOut (flags, fmFlags, phi, ignoreWalls, obstacleType);
     
     // by default, correctOuterLayer is on
-    if (correctOuterLayer) {    
+    if (correctOuterLayer) {
         // normal version, inwards march is done, now add all outside values (0..2] to list
         // note, this might move the interface a bit! but keeps a nice signed distance field...        
         FOR_IJK_BND(flags, 1) {
@@ -146,7 +147,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
             const Vec3i p(i,j,k);
             
             // check nbs
-            for (int nb=0; nb<6; nb++) {
+            for (int nb=0; nb<2*dim; nb++) {
                 const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
                 
                 if (fmFlags(pn) != FlagInited) continue;
@@ -174,7 +175,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
                 fmFlags(p) = FlagInited;
                 
                 // add neighbors that are not at the interface
-                for (int nb=0; nb<6; nb++) {
+                for (int nb=0; nb<2*dim; nb++) {
                     const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
                     if ((flags.get(pn) & obstacleType) != 0) continue;
                 
@@ -188,7 +189,7 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
     marchOut.performMarching();
     
     // set un initialized regions
-    SetUninitialized (fmFlags, phi, +maxTime);    
+    SetUninitialized (fmFlags, phi, +maxTime + 1.);    
     
 }
 
@@ -206,6 +207,9 @@ inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
     if (i > data.getSizeX()-2) i= data.getSizeX()-2;
     if (j > data.getSizeY()-2) j= data.getSizeY()-2;
     if (k > data.getSizeZ()-2) k= data.getSizeZ()-2;
+    if (i < 1) i = 1;
+    if (j < 1) j = 1;
+    if (k < 1) k = 1;
     return Vec3 (data(i-1,j  ,k  ) - data(i+1,j  ,k  ),
                  data(i  ,j-1,k  ) - data(i  ,j+1,k  ),
                  data(i  ,j  ,k-1) - data(i  ,j  ,k+1));
@@ -225,11 +229,11 @@ void LevelsetGrid::createMesh(Mesh& mesh) {
     Grid<int> edgeVY(mParent);
     Grid<int> edgeVZ(mParent);
     
-    for(int i=1; i<mSize.x-1; i++)
-    for(int j=1; j<mSize.y-1; j++)
-    for(int k=1; k<mSize.z-1; k++) {
+    for(int i=0; i<mSize.x-1; i++)
+    for(int j=0; j<mSize.y-1; j++)
+    for(int k=0; k<mSize.z-1; k++) {
          Real value[8] = { get(i,j,k),   get(i+1,j,k),   get(i+1,j+1,k),   get(i,j+1,k),
-                                get(i,j,k+1), get(i+1,j,k+1), get(i+1,j+1,k+1), get(i,j+1,k+1) };
+                           get(i,j,k+1), get(i+1,j,k+1), get(i+1,j+1,k+1), get(i,j+1,k+1) };
         
         // build lookup index, check for invalid times
         bool skip = false;

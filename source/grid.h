@@ -52,9 +52,9 @@ public:
     //! Check if indices are within bounds, otherwise error
     inline void checkIndex(int idx) const;
     //! Check if index is within given boundaries
-    inline bool isInBounds(const Vec3i& p, int bnd) const { return (p.x >= bnd && p.y >= bnd && p.z >= bnd && p.x < mSize.x-bnd && p.y < mSize.y-bnd && p.z < mSize.z-bnd); }
+    inline bool isInBounds(const Vec3i& p, int bnd) const;
     //! Check if index is within given boundaries
-    inline bool isInBounds(const Vec3i& p) const { return (p.x >= 0 && p.y >= 0 && p.z >= 0 && p.x < mSize.x && p.y < mSize.y && p.z < mSize.z); }
+    inline bool isInBounds(const Vec3i& p) const;
     //! Check if index is within given boundaries
     inline bool isInBounds(const Vec3& p, int bnd = 0) const { return isInBounds(toVec3i(p), bnd); }
     
@@ -68,7 +68,7 @@ public:
     //! Get index into the data
     inline int index(int i, int j, int k) const { DEBUG_ONLY(checkIndex(i,j,k)); return i + mSize.x * j + mStrideZ * k; }
     //! Get index into the data
-    inline int index(const Vec3i& pos) const { DEBUG_ONLY(checkIndex(pos.x,pos.y,pos.z)); return pos.x + mSize.x * pos.y + mStrideZ * pos.z; }
+    inline int index(const Vec3i& pos) const    { DEBUG_ONLY(checkIndex(pos.x,pos.y,pos.z)); return pos.x + mSize.x * pos.y + mStrideZ * pos.z; }
 protected:
     
     GridType mType;
@@ -83,9 +83,12 @@ protected:
 PYTHON template<class T>
 class Grid : public GridBase {
 public:
+	//! init new grid, values are set to zero
     PYTHON Grid(FluidSolver* parent, bool show = true);
-    virtual ~Grid();
+	//! create new & copy content from another grid
     Grid(const Grid<T>& a);
+	//! return memory to solver
+    virtual ~Grid();
     
     typedef T BASETYPE;
     
@@ -93,28 +96,33 @@ public:
     PYTHON void load(std::string name);
     
     //! set all cells to zero
-    void clear();
+    PYTHON void clear();
     
+	//! all kinds of access functions, use grid(), grid[] or grid.get()
     //! access data
-    inline T get(int i,int j, int k) const { return mData[index(i,j,k)]; }
+    inline T get(int i,int j, int k) const         { return mData[index(i,j,k)]; }
     //! access data
-    inline T& get(int i,int j, int k) { return mData[index(i,j,k)]; }
+    inline T& get(int i,int j, int k)              { return mData[index(i,j,k)]; }
     //! access data
-    inline T get(int idx) const { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+    inline T get(int idx) const                    { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
     //! access data
-    inline T get(const Vec3i& pos) const { return mData[index(pos)]; }
+    inline T get(const Vec3i& pos) const           { return mData[index(pos)]; }
     //! access data
-    inline T& operator()(int i, int j, int k) { return mData[index(i, j, k)]; }
+    inline T& operator()(int i, int j, int k)      { return mData[index(i, j, k)]; }
     //! access data
     inline T operator()(int i, int j, int k) const { return mData[index(i, j, k)]; }
     //! access data
-    inline T& operator()(const Vec3i& pos) { return mData[index(pos)]; }
+    inline T& operator()(int idx)                  { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
     //! access data
-    inline T operator()(const Vec3i& pos) const { return mData[index(pos)]; }
+    inline T operator()(int idx) const             { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
     //! access data
-    inline T& operator[](int idx) { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+    inline T& operator()(const Vec3i& pos)         { return mData[index(pos)]; }
     //! access data
-    inline const T operator[](int idx) const { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+    inline T operator()(const Vec3i& pos) const    { return mData[index(pos)]; }
+    //! access data
+    inline T& operator[](int idx)                  { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+    //! access data
+    inline const T operator[](int idx) const       { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
     
     // interpolated access
     inline T getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
@@ -129,16 +137,19 @@ public:
     template<class S> Grid<T>& operator*=(const S& a);
     template<class S> Grid<T>& operator/=(const Grid<S>& a);
     template<class S> Grid<T>& operator/=(const S& a);
-    Grid<T>& operator=(const T& a);
     Grid<T>& operator=(const Grid<T>& a);
     Grid<T>& safeDivide(const Grid<T>& a);    
+
+	// python helper functions to work with grids in scene files
+	//! set content to added/subtracted values of other two grids
     PYTHON void add(const Grid<T>& a, const Grid<T>& b);
-    PYTHON void scale(T a) { (*this) *= a; }
+    PYTHON void sub(const Grid<T>& a, const Grid<T>& b);
     PYTHON void copyFrom(const Grid<T>& a) { *this = a; }
+
+	//! debugging helper, print grid from python
+	PYTHON void printGrid(int zSlice=-1,  bool printIndex=false); 
     
     // common compound operators
-    //! Grid += a*factor
-    void scaledAdd(const Grid<T>& a, const T& factor);
     //! get absolute max value in grid (only Real grids)
     Real getMaxAbsValue();
     //! get max value in grid (only Real grids)
@@ -160,7 +171,8 @@ PYTHON alias Grid<Vec3> VecGrid;
 //! Special function for staggered grids
 PYTHON class MACGrid : public Grid<Vec3> {
 public:
-    PYTHON MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { mType = (GridType)(TypeMAC | TypeVec3); }
+    PYTHON MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { 
+		mType = (GridType)(TypeMAC | TypeVec3); }
     
     // specialized functions for interpolating MAC information
     inline Vec3 getCentered(int i, int j, int k) const;
@@ -178,7 +190,8 @@ protected:
 //! Special functions for FlagGrid
 PYTHON class FlagGrid : public Grid<int> {
 public:
-    PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show) { mType = (GridType)(TypeFlags | TypeInt); }
+    PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show) { 
+		mType = (GridType)(TypeFlags | TypeInt); }
     
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
     enum CellType { 
@@ -227,6 +240,61 @@ public:
 
 
 //******************************************************************************
+// enable compilation of a more complicated test data type
+// for grids... note - this also enables code parts in fileio.cpp!
+// the code below is meant only as an example for a grid with a more complex data type
+// and illustrates which functions need to be implemented; it's not needed
+// to run any simulations in mantaflow!
+#define ENABLE_GRID_TEST_DATATYPE 0
+
+#if ENABLE_GRID_TEST_DATATYPE==1
+
+typedef std::vector<int> nbVectorBaseType;
+class nbVector : public nbVectorBaseType {
+	public: 
+		inline nbVector() : nbVectorBaseType() {};
+		inline ~nbVector() {};
+
+		inline const nbVector& operator+= ( const nbVector &v1 ) {
+			assertMsg(false,"Never call!"); return *this; 
+		}
+		inline const nbVector& operator*= ( const nbVector &v1 ) {
+			assertMsg(false,"Never call!"); return *this; 
+		}
+};
+
+template<> inline nbVector* FluidSolver::getGridPointer<nbVector>() {
+    return new nbVector[mGridSize.x * mGridSize.y * mGridSize.z];
+}
+template<> inline void FluidSolver::freeGridPointer<nbVector>(nbVector* ptr) {
+    return delete[] ptr;
+}
+
+inline nbVector operator+ ( const nbVector &v1, const nbVector &v2 ) {
+	assertMsg(false,"Never call!"); return nbVector(); 
+}
+inline nbVector operator* ( const nbVector &v1, const nbVector &v2 ) {
+	assertMsg(false,"Never call!"); return nbVector(); 
+}
+template<class S>
+inline nbVector operator* ( const nbVector& v, S s ) {
+	assertMsg(false,"Never call!"); return nbVector(); 
+} 
+template<class S> 
+inline nbVector operator* ( S s, const nbVector& v ) {
+	assertMsg(false,"Never call!"); return nbVector(); 
+}
+
+template<> inline nbVector safeDivide<nbVector>(const nbVector &a, const nbVector& b) { 
+	assertMsg(false,"Never call!"); return nbVector(); 
+}
+
+// make data type known to python
+PYT HON alias Grid<nbVector> TestDataGrid;
+#endif // ENABLE_GRID_TEST_DATATYPE
+
+
+//******************************************************************************
 // Implementation of inline functions
 
 inline void GridBase::checkIndex(int i, int j, int k) const {
@@ -244,6 +312,20 @@ inline void GridBase::checkIndex(int idx) const {
         s << "Grid " << mName << " dim " << mSize << " : index " << idx << " out of bound ";
         errMsg(s.str());
     }
+}
+
+bool GridBase::isInBounds(const Vec3i& p) const { 
+	return (p.x >= 0 && p.y >= 0 && p.z >= 0 && p.x < mSize.x && p.y < mSize.y && p.z < mSize.z); 
+}
+
+bool GridBase::isInBounds(const Vec3i& p, int bnd) const { 
+	bool ret = (p.x >= bnd && p.y >= bnd && p.x < mSize.x-bnd && p.y < mSize.y-bnd);
+	if(this->is3D()) {
+		ret &= (p.z >= bnd && p.z < mSize.z-bnd); 
+	} else {
+		ret &= (p.z == 0);
+	}
+	return ret;
 }
 
 inline Vec3 MACGrid::getCentered(int i, int j, int k) const {
@@ -294,15 +376,17 @@ inline Vec3 MACGrid::getAtMACZ(int i, int j, int k) const {
     return v;
 }
 
-KERNEL(idx) template<class T> void gridAdd2 (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] + b[idx]; }
-KERNEL(idx) template<class T, class S> void gridAdd (Grid<T>& me, const Grid<S>& other) { me[idx] += other[idx]; }
-KERNEL(idx) template<class T, class S> void gridSub (Grid<T>& me, const Grid<S>& other) { me[idx] -= other[idx]; }
+KERNEL(idx) template<class T, class S> void gridAdd (Grid<T>& me, const Grid<S>& other)  { me[idx] += other[idx]; }
+KERNEL(idx) template<class T, class S> void gridSub (Grid<T>& me, const Grid<S>& other)  { me[idx] -= other[idx]; }
 KERNEL(idx) template<class T, class S> void gridMult (Grid<T>& me, const Grid<S>& other) { me[idx] *= other[idx]; }
-KERNEL(idx) template<class T, class S> void gridDiv (Grid<T>& me, const Grid<S>& other) { me[idx] /= other[idx]; }
-KERNEL(idx) template<class T> void gridSafeDiv (Grid<T>& me, const Grid<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
-KERNEL(idx) template<class T, class S> void gridAddScalar (Grid<T>& me, const S& other) { me[idx] += other; }
+KERNEL(idx) template<class T, class S> void gridDiv (Grid<T>& me, const Grid<S>& other)  { me[idx] /= other[idx]; }
+KERNEL(idx) template<class T, class S> void gridAddScalar (Grid<T>& me, const S& other)  { me[idx] += other; }
 KERNEL(idx) template<class T, class S> void gridMultScalar (Grid<T>& me, const S& other) { me[idx] *= other; }
-KERNEL(idx) template<class T> void gridScaleAdd (Grid<T>& me, const Grid<T>& other, const T& factor) { me[idx] += factor * other[idx]; }
+KERNEL(idx) template<class T, class S> void gridScaledAdd (Grid<T>& me, const Grid<T>& other, const S& factor) { me[idx] += factor * other[idx]; }
+
+KERNEL(idx) template<class T> void gridAdd2 (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] + b[idx]; }
+KERNEL(idx) template<class T> void gridSafeDiv (Grid<T>& me, const Grid<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
+KERNEL(idx) template<class T> void gridSetConst(Grid<T>& grid, T value) { grid[idx] = value; }
 
 template<class T> template<class S> Grid<T>& Grid<T>::operator+= (const Grid<S>& a) {
     gridAdd<T,S> (*this, a);
@@ -337,6 +421,8 @@ template<class T> template<class S> Grid<T>& Grid<T>::operator/= (const S& a) {
     gridMultScalar<T,S> (*this, rez);
     return *this;
 }
+
+
 
 } //namespace
 #endif

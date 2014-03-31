@@ -33,6 +33,7 @@ public:
     virtual ~MainWnd();
     bool event(QEvent* e);
     void keyPressEvent(QKeyEvent* e);
+	void keyReleaseEvent(QKeyEvent* e);
     inline bool pauseRequest() { return mRequestPause && !mRequestClose;  }
     inline bool closeRequest() { return mRequestClose;  }
     void setPauseStatus(bool v);

@@ -7,7 +7,7 @@
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Globally used macros and functions
+ * Globally used macros and functions                 
  *
  ******************************************************************************/
 
@@ -21,6 +21,8 @@
 #else
 #   include <sys/time.h>
 #endif
+
+#include "hginfo.h"
 
 using namespace std;
 
@@ -75,6 +77,54 @@ ostream& operator<<(ostream& os, const MuTime& t) {
         }
     }
     return os;
+}
+
+std::string buildInfoString() {
+	std::ostringstream infoStr;
+	infoStr << "mantaflow";
+	// TODO , include hg branch info
+
+	// os
+#	ifdef WIN32
+		infoStr << " win";
+#	endif
+#	ifdef __APPLE__
+		infoStr << " mac";
+#	endif
+#	ifdef LINUX
+		infoStr << " linux";
+#	endif
+
+	// 32/64
+#	ifdef USE64
+		infoStr << " 64bit";
+#	else
+		infoStr << " 32bit";
+#	endif
+
+	// fp precision
+#	if FLOATINGPOINT_PRECISION==2
+		infoStr << " fp2";
+#	else
+		infoStr << " fp1";
+#	endif
+
+	// other compile switches
+#	ifdef DEBUG
+		infoStr << " debug";
+#	endif 
+#	ifdef OPENMP
+		infoStr << " omp";
+#	endif
+
+	// repository info
+#	ifndef MANTA_HG_VERSION
+#	define MANTA_HG_VERSION "<unknown>"
+#	endif
+	infoStr << " hg "<< MANTA_HG_VERSION;
+
+	infoStr << " from "<< __DATE__<<", "<<__TIME__;
+	return infoStr.str();
 }
 
 } // namespace

@@ -44,7 +44,7 @@ public:
     //! self-advect the filament system
     PYTHON void advectSelf(Real scale=1.0, Real regularization=0.1, int integrationMode=IntRK4);
     //! advect a particle system 
-    PYTHON void advectParticles(TracerParticleSystem& sys, Real scale=1.0, Real regularization=0.1, int integrationMode=IntRK2);
+    PYTHON void advectParticles(BasicParticleSystem& sys, Real scale=1.0, Real regularization=0.1, int integrationMode=IntRK2);
     //! advect triangle mesh using filaments
     PYTHON void advectMesh(Mesh& mesh, Real scale=1.0, Real regularization=0.1, int integrationMode=IntRK4);
     //! perform doubly-discrete smoke ring flow update

@@ -14,30 +14,29 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
+#if NO_ZLIB!=1
+extern "C" { 
 #include <zlib.h>
+}
+#endif
 #include "fileio.h"
 #include "grid.h"
 #include "mesh.h"
 #include "vortexsheet.h"
+#include "particle.h"
 #include  <cstring>
 
 using namespace std;
 
 namespace Manta {
-/*
-void trim(string& s) {
-    size_t pl = s.find_first_not_of("\t\r ");
-    if (pl != string::npos) s=s.substr(pl);
-    size_t pr = s.find_last_not_of("\t\r ");
-    if (pr != string::npos) s=s.substr(0,pr);
-}*/
 
-void writeObjFile(const string& name, Mesh* mesh) {
-    errMsg("obj exporter not yet implemented");
-}
+//*****************************************************************************
+// mesh data
+//*****************************************************************************
 
 void writeBobjFile(const string& name, Mesh* mesh) {
     cout << "writing mesh file " << name << endl;
+#	if NO_ZLIB!=1
     const Real dx = mesh->getParent()->getDx();
     const Vec3i gs = mesh->getParent()->getGridSize();
     
@@ -121,6 +120,9 @@ void writeBobjFile(const string& name, Mesh* mesh) {
     }
 
     gzclose( gzf );    
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
 }
 
 void readObjFile(const std::string& name, Mesh* mesh, bool append) {
@@ -178,30 +180,59 @@ void readObjFile(const std::string& name, Mesh* mesh, bool append) {
     ifs.close();    
 }
 
+void writeObjFile(const string& name, Mesh* mesh) {
+    errMsg("obj exporter not yet implemented");
+}
+
+//*****************************************************************************
+// grid data
+//*****************************************************************************
+
+template<class T>
+void writeGridTxt(const string& name, Grid<T>* grid) {
+    cout << "writing grid " << grid->getName() << " to text file " << name << endl;
+
+    ofstream ofs(name.c_str());
+    if (!ofs.good())
+        errMsg("can't open file!");
+	FOR_IJK(*grid) {
+		ofs << Vec3i(i,j,k) <<" = "<< (*grid)(i,j,k) <<"\n";
+	}
+    ofs.close();
+}
+
 template<class T>
 void writeGridRaw(const string& name, Grid<T>* grid) {
     cout << "writing grid " << grid->getName() << " to raw file " << name << endl;
     
+#	if NO_ZLIB!=1
     gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
     if (!gzf) errMsg("can't open file");
     gzwrite(gzf, &((*grid)[0]), sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ());
     gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
 }
 
 template<class T>
 void readGridRaw(const string& name, Grid<T>* grid) {
     cout << "reading grid " << grid->getName() << " from raw file " << name << endl;
     
+#	if NO_ZLIB!=1
     gzFile gzf = gzopen(name.c_str(), "rb");
     if (!gzf) errMsg("can't open file");
     
     int bytes = sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ();
     int readBytes = gzread(gzf, &((*grid)[0]), bytes);
-    assertMsg(bytes==readBytes, "can't read raw file, stream length does not match");
+    assertMsg(bytes==readBytes, "can't read raw file, stream length does not match"<<bytes<<" vs "<<readBytes);
     gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
 }
 
-
+//! legacy headers for reading old files
 typedef struct {
     int dimX, dimY, dimZ;
     int frames, elements, elementType, bytesPerElement, bytesPerFrame;
@@ -210,19 +241,103 @@ typedef struct {
 typedef struct {
     int dimX, dimY, dimZ;
     int gridType, elementType, bytesPerElement;
+} UniLegacyHeader2;
+
+//! uni file header 
+typedef struct {
+    int dimX, dimY, dimZ; // grid size
+    int gridType, elementType, bytesPerElement; // data type info
+	char info[256]; // mantaflow build information
+    unsigned long timestamp; // creation time
 } UniHeader;
+
+//! for test run debugging
+PYTHON(noparent) void printUniFileInfoString(const string& name) {
+#	if NO_ZLIB!=1
+    gzFile gzf = gzopen(name.c_str(), "rb");
+    if (gzf) { 
+		char ID[5]={0,0,0,0,0};
+		gzread(gzf, ID, 4); 
+		if (!strcmp(ID, "MNT2")) {
+			UniHeader head;
+        	assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no header present"); 
+			gzclose(gzf);
+			debMsg("File '"<<name<<"' info: "<< head.info ,1);
+			return; // all good!
+		}
+		gzclose(gzf);
+	}
+#	endif
+	debMsg("File '"<<name<<"', no valid info string found",1);
+}
+
+//! for auto-init & check of results of test runs
+PYTHON(noparent) Vec3 getUniFileSize(const string& name) {
+	Vec3 s(0.);
+#	if NO_ZLIB!=1
+    gzFile gzf = gzopen(name.c_str(), "rb");
+    if (gzf) { 
+		char ID[5]={0,0,0,0,0};
+		gzread(gzf, ID, 4); 
+		if (!strcmp(ID, "MNT2")) {
+			UniHeader head;
+        	assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no header present"); 
+			s = Vec3(head.dimX,head.dimY,head.dimZ);
+		}
+		gzclose(gzf);
+	}
+#	endif
+	return s;
+}
+
+template <class T>
+void convertDoubleAndWrite(Grid<T>& grid, void* ptr, gzFile& gzf, UniHeader& head) {
+	errMsg("unknown type, not yet supported");
+}
+
+template <>
+void convertDoubleAndWrite(Grid<int>& grid, void* ptr, gzFile& gzf, UniHeader& head) {
+    gzwrite(gzf, &head, sizeof(UniHeader));
+    gzwrite(gzf, ptr, sizeof(int)*head.dimX*head.dimY*head.dimZ);
+}
+
+template <>
+void convertDoubleAndWrite(Grid<double>& grid, void* ptr, gzFile& gzf, UniHeader& head) {
+	head.bytesPerElement = sizeof(float);
+    gzwrite(gzf, &head, sizeof(UniHeader));
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i,++ptrf) {
+		*ptrf = (float)grid[i];
+	} 
+    gzwrite(gzf, ptr, sizeof(float)* head.dimX*head.dimY*head.dimZ);
+}
+
+template <>
+void convertDoubleAndWrite(Grid<Vector3D<double> >& grid, void* ptr, gzFile& gzf, UniHeader& head) {
+	head.bytesPerElement = sizeof(Vector3D<float>);
+    gzwrite(gzf, &head, sizeof(UniHeader));
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i) {
+		for(int c=0; c<3; ++c) { *ptrf = (float)grid[i][c]; ptrf++; }
+	} 
+    gzwrite(gzf, ptr, sizeof(float)*3 *head.dimX*head.dimY*head.dimZ);
+}
 
 template <class T>
 void writeGridUni(const string& name, Grid<T>* grid) {
     cout << "writing grid " << grid->getName() << " to uni file " << name << endl;
     
-    char ID[5] = "MNT1";
+#	if NO_ZLIB!=1
+    char ID[5] = "MNT2";
     UniHeader head;
 	head.dimX = grid->getSizeX();
     head.dimY = grid->getSizeY();
     head.dimZ = grid->getSizeZ();
     head.gridType = grid->getType();
     head.bytesPerElement = sizeof(T);
+	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
+	MuTime stamp; stamp.get();
+	head.timestamp = stamp.time;
     
     if (grid->getType() & GridBase::TypeInt)
         head.elementType = 0;
@@ -237,20 +352,66 @@ void writeGridUni(const string& name, Grid<T>* grid) {
     if (!gzf) errMsg("can't open file");
     
     gzwrite(gzf, ID, 4);
+	void* ptr = &((*grid)[0]);
+#	if FLOATINGPOINT_PRECISION!=1
+	// always write float values, even if compiled with double precision...
+	Grid<T> temp(grid->getParent());
+	// "misuse" temp grid as storage for floating point values (we have double, so it will always fit)
+	//ptr = &(temp[0]);
+	//float* ptrf = (float*)ptr;
+	convertDoubleAndWrite( *grid, &(temp[0]), gzf, head);
+#	endif
     gzwrite(gzf, &head, sizeof(UniHeader));
-    gzwrite(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
+    gzwrite(gzf, ptr, sizeof(T)*head.dimX*head.dimY*head.dimZ);
     gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
 };
+
+// grid conversion functions for double precision
+template <class T>
+void convertFloatGridToDouble(Grid<T>& grid, void* ptr, int bytesPerElement) {
+	errMsg("unknown type, not yet supported");
+}
+
+template <>
+void convertFloatGridToDouble<int>(Grid<int>& grid, void* ptr, int bytesPerElement) {
+	assertMsg (bytesPerElement == sizeof(int), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(int) );
+	// easy, nothing to do for ints
+    memcpy(&(grid[0]), ptr, sizeof(int) * grid.getSizeX()*grid.getSizeY()*grid.getSizeZ() );
+}
+
+template <>
+void convertFloatGridToDouble<double>(Grid<double>& grid, void* ptr, int bytesPerElement) {
+	assertMsg (bytesPerElement == sizeof(float), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(float) );
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i,++ptrf) {
+		grid[i] = (double)(*ptrf);
+	} 
+}
+
+template <>
+void convertFloatGridToDouble<Vec3>(Grid<Vec3>& grid, void* ptr, int bytesPerElement) {
+	assertMsg (bytesPerElement == sizeof(Vector3D<float>), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(Vector3D<float>) );
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i) {
+		Vec3 v;
+		for(int c=0; c<3; ++c) { v[c] = double(*ptrf); ptrf++; }
+		grid[i] = v;
+	} 
+}
 
 template <class T>
 void readGridUni(const string& name, Grid<T>* grid) {
     cout << "reading grid " << grid->getName() << " from uni file " << name << endl;
-    
+
+#	if NO_ZLIB!=1
     gzFile gzf = gzopen(name.c_str(), "rb");
     if (!gzf) errMsg("can't open file");
-    
+
     char ID[5]={0,0,0,0,0};
-    gzread(gzf, ID, 4);
+	gzread(gzf, ID, 4);
     
     if (!strcmp(ID, "DDF2")) {
         // legacy file format
@@ -265,16 +426,36 @@ void readGridUni(const string& name, Grid<T>* grid) {
         gzread(gzf, &((*grid)[0]), sizeof(T)*numEl);
     } 
     else if (!strcmp(ID, "MNT1")) {
+        // legacy file format 2
+        UniLegacyHeader2 head;
+        assertMsg (gzread(gzf, &head, sizeof(UniLegacyHeader2)) == sizeof(UniLegacyHeader2), "can't read file, no header present");
+		assertMsg (head.dimX == grid->getSizeX() && head.dimY == grid->getSizeY() && head.dimZ == grid->getSizeZ(), "grid dim doesn't match, "<< Vec3(head.dimX,head.dimY,head.dimZ)<<" vs "<< grid->getSize() );
+		assertMsg (head.gridType == grid->getType(), "grid type doesn't match "<< head.gridType<<" vs "<< grid->getType() );
+		assertMsg (head.bytesPerElement == sizeof(T), "grid element size doesn't match "<< head.bytesPerElement <<" vs "<< sizeof(T) );
+        gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
+    }
+    else if (!strcmp(ID, "MNT2")) {
         // current file format
         UniHeader head;
         assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no header present");
-        assertMsg (head.dimX == grid->getSizeX() && head.dimY == grid->getSizeY() && head.dimZ == grid->getSizeZ(), "grid dim doesn't match");
-        assertMsg (head.gridType == grid->getType() && head.bytesPerElement == sizeof(T), "grid type doesn't match");
+		assertMsg (head.dimX == grid->getSizeX() && head.dimY == grid->getSizeY() && head.dimZ == grid->getSizeZ(), "grid dim doesn't match, "<< Vec3(head.dimX,head.dimY,head.dimZ)<<" vs "<< grid->getSize() );
+		assertMsg (head.gridType == grid->getType(), "grid type doesn't match "<< head.gridType<<" vs "<< grid->getType() );
+#		if FLOATINGPOINT_PRECISION!=1
+		// convert float to double
+		Grid<T> temp(grid->getParent());
+		void*  ptr  = &(temp[0]);
+        gzread(gzf, ptr, sizeof(T)*head.dimX*head.dimY*head.dimZ);
+		convertFloatGridToDouble<T>(*grid, ptr, head.bytesPerElement);
+#		else
+		assertMsg (head.bytesPerElement == sizeof(T), "grid element size doesn't match "<< head.bytesPerElement <<" vs "<< sizeof(T) );
         gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
+#		endif
     }
     gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
 };
-
 
 template <class T>
 void writeGridVol(const string& name, Grid<T>* grid) {
@@ -330,21 +511,167 @@ void writeGridVol<Real>(const string& name, Grid<Real>* grid) {
 	fclose(fp);
 };
 
+
+//*****************************************************************************
+// particle data
+//*****************************************************************************
+
+//! in line with grid uni header
+typedef struct {
+    int dim; // number of partilces
+    int elementType, bytesPerElement; // type id and byte size
+	char info[256]; // mantaflow build information
+    unsigned long timestamp; // creation time
+} UniPartHeader;
+
+template <class T>
+void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
+    cout << "writing particles " << parts->getName() << " to uni file " << name << endl;
+    
+#	if NO_ZLIB!=1
+    char ID[5] = "PB01";
+    UniPartHeader head;
+	head.dim      = parts->size();
+    head.bytesPerElement = sizeof(T);
+    head.elementType = 0; // 0 for base data
+	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
+	MuTime stamp; stamp.get();
+	head.timestamp = stamp.time;
+    
+    gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
+    if (!gzf) errMsg("can't open file");
+    
+    gzwrite(gzf, ID, 4);
+    gzwrite(gzf, &head, sizeof(UniPartHeader));
+    gzwrite(gzf, &(parts->getData()[0]), sizeof(T)*head.dim);
+    gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
+};
+
+template <class T>
+void readParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
+    cout << "reading particles " << parts->getName() << " from uni file " << name << endl;
+    
+#	if NO_ZLIB!=1
+    gzFile gzf = gzopen(name.c_str(), "rb");
+    if (!gzf) errMsg("can't open file");
+
+    char ID[5]={0,0,0,0,0};
+	gzread(gzf, ID, 4);
+    
+    if (!strcmp(ID, "PB01")) {
+        // current file format
+        UniPartHeader head;
+        assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
+        assertMsg ( ((head.bytesPerElement == sizeof(T)) && (head.elementType==0) ), "particle type doesn't match");
+
+		// re-allocate all data
+		parts->resizeAll( head.dim );
+
+        assertMsg (head.dim == parts->size() , "particle size doesn't match");
+    	int bytes = sizeof(T)*head.dim;
+        int readBytes = gzread(gzf, &(parts->getData()[0]), sizeof(T)*head.dim);
+    	assertMsg(bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
+    }
+    gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
+};
+
+template <class T>
+void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
+    cout << "writing particle data " << pdata->getName() << " to uni file " << name << endl;
+    
+#	if NO_ZLIB!=1
+    char ID[5] = "PD01";
+    UniPartHeader head;
+	head.dim      = pdata->size();
+    head.bytesPerElement = sizeof(T);
+    head.elementType = 1; // 1 for particle data, todo - add sub types?
+	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
+	MuTime stamp; stamp.get();
+	head.timestamp = stamp.time;
+    
+    gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
+    if (!gzf) errMsg("can't open file");
+    
+    gzwrite(gzf, ID, 4);
+    gzwrite(gzf, &head, sizeof(UniPartHeader));
+    gzwrite(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
+    gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
+};
+
+template <class T>
+void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
+    cout << "reading particle data " << pdata->getName() << " from uni file " << name << endl;
+    
+#	if NO_ZLIB!=1
+    gzFile gzf = gzopen(name.c_str(), "rb");
+    if (!gzf) errMsg("can't open file");
+
+    char ID[5]={0,0,0,0,0};
+	gzread(gzf, ID, 4);
+    
+    if (!strcmp(ID, "PD01")) {
+        UniPartHeader head;
+        assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
+        assertMsg ( ((head.bytesPerElement == sizeof(T)) && (head.elementType==1) ), "pdata type doesn't match");
+        assertMsg (head.dim == pdata->size() , "pdata size doesn't match");
+    	int bytes = sizeof(T)*head.dim;
+        int readBytes = gzread(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
+    	assertMsg(bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
+    }
+    gzclose(gzf);
+#	else
+    cout << "file format not supported without zlib" << endl;
+#	endif
+}
+
 // explicit instantiation
-template void writeGridRaw<int>(const string& name, Grid<int>* grid);
+template void writeGridRaw<int> (const string& name, Grid<int>*  grid);
 template void writeGridRaw<Real>(const string& name, Grid<Real>* grid);
 template void writeGridRaw<Vec3>(const string& name, Grid<Vec3>* grid);
-template void writeGridUni<int>(const string& name, Grid<int>* grid);
+template void writeGridUni<int> (const string& name, Grid<int>*  grid);
 template void writeGridUni<Real>(const string& name, Grid<Real>* grid);
 template void writeGridUni<Vec3>(const string& name, Grid<Vec3>* grid);
-template void writeGridVol<int>(const string& name, Grid<int>* grid);
+template void writeGridVol<int> (const string& name, Grid<int>*  grid);
 template void writeGridVol<Vec3>(const string& name, Grid<Vec3>* grid);
-template void readGridRaw<int>(const string& name, Grid<int>* grid);
-template void readGridRaw<Real>(const string& name, Grid<Real>* grid);
-template void readGridRaw<Vec3>(const string& name, Grid<Vec3>* grid);
-template void readGridUni<int>(const string& name, Grid<int>* grid);
-template void readGridUni<Real>(const string& name, Grid<Real>* grid);
-template void readGridUni<Vec3>(const string& name, Grid<Vec3>* grid);
+template void writeGridTxt<int> (const string& name, Grid<int>*  grid);
+template void writeGridTxt<Real>(const string& name, Grid<Real>* grid);
+template void writeGridTxt<Vec3>(const string& name, Grid<Vec3>* grid);
+template void readGridRaw<int>  (const string& name, Grid<int>*  grid);
+template void readGridRaw<Real> (const string& name, Grid<Real>* grid);
+template void readGridRaw<Vec3> (const string& name, Grid<Vec3>* grid);
+template void readGridUni<int>  (const string& name, Grid<int>*  grid);
+template void readGridUni<Real> (const string& name, Grid<Real>* grid);
+template void readGridUni<Vec3> (const string& name, Grid<Vec3>* grid);
+
+template void writeParticlesUni<BasicParticleData>(const std::string& name, BasicParticleSystem* parts );
+template void readParticlesUni<BasicParticleData> (const std::string& name, BasicParticleSystem* parts );
+
+template void writePdataUni<int> (const std::string& name, ParticleDataImpl<int>* pdata );
+template void writePdataUni<Real>(const std::string& name, ParticleDataImpl<Real>* pdata );
+template void writePdataUni<Vec3>(const std::string& name, ParticleDataImpl<Vec3>* pdata );
+template void readPdataUni<int>  (const std::string& name, ParticleDataImpl<int>* pdata );
+template void readPdataUni<Real> (const std::string& name, ParticleDataImpl<Real>* pdata );
+template void readPdataUni<Vec3> (const std::string& name, ParticleDataImpl<Vec3>* pdata );
+
+#if ENABLE_GRID_TEST_DATATYPE==1
+// dummy functions for test datatype - not really supported right now!
+// but we need some function body for linking
+template<> void writeGridRaw<nbVector>(const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
+template<> void writeGridUni<nbVector>(const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
+template<> void writeGridVol<nbVector>(const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
+template<> void writeGridTxt<nbVector>(const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
+template<> void readGridRaw<nbVector> (const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
+template<> void readGridUni<nbVector> (const string& name, Grid<nbVector>* grid) {assertMsg(false,"Not supported right now.");};
+#endif // ENABLE_GRID_TEST_DATATYPE
 
 
 } //namespace

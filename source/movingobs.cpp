@@ -36,7 +36,7 @@ void MovingObstacle::add(Shape* shape) {
     mShapes.push_back(shape);
 }
 
-void MovingObstacle::projectOutside(FlagGrid& flags, FlipSystem& flip) {
+void MovingObstacle::projectOutside(FlagGrid& flags, BasicParticleSystem& parts) {
     LevelsetGrid levelset(mParent,false);
     Grid<Vec3> gradient(mParent);
     
@@ -49,7 +49,7 @@ void MovingObstacle::projectOutside(FlagGrid& flags, FlipSystem& flip) {
     // build levelset gradient
     GradientOp(gradient, levelset);
     
-    flip.projectOutside(gradient);
+    parts.projectOutside(gradient);
 }
 
 void MovingObstacle::moveLinear(Real t, Real t0, Real t1, Vec3 p0, Vec3 p1, FlagGrid& flags, MACGrid& vel, bool smooth) {

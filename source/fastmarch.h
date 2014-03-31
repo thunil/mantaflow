@@ -44,31 +44,36 @@ public:
         if(weights[1]>0.0) val += mpVel->get(x-1, y+0, z+0) * weights[1];
         if(weights[2]>0.0) val += mpVel->get(x+0, y+1, z+0) * weights[2];
         if(weights[3]>0.0) val += mpVel->get(x+0, y-1, z+0) * weights[3];
-        if(weights[4]>0.0) val += mpVel->get(x+0, y+0, z+1) * weights[4];
-        if(weights[5]>0.0) val += mpVel->get(x+0, y+0, z-1) * weights[5];
+		if(mpVel->is3D()) {
+        	if(weights[4]>0.0) val += mpVel->get(x+0, y+0, z+1) * weights[4];
+        	if(weights[5]>0.0) val += mpVel->get(x+0, y+0, z-1) * weights[5];
+		}
         
         // set velocity components if adjacent is empty
         if (mpFlags->isEmpty(x-1,y,z)) (*mpVel)(x,y,z).x = val.x;
         if (mpFlags->isEmpty(x,y-1,z)) (*mpVel)(x,y,z).y = val.y;
-        if (mpFlags->isEmpty(x,y,z-1)) (*mpVel)(x,y,z).z = val.z;            
+		if(mpVel->is3D()) {
+        	if (mpFlags->isEmpty(x,y,z-1)) (*mpVel)(x,y,z).z = val.z;            
+		}
     }; 
 
 protected:
     MACGrid* mpVel;
     FlagGrid* mpFlags;
 };
+
 class FmHeapEntryOut {
 public:
     Vec3i p;
     // quick time access for sorting
-    Real *time;
+    Real time;
     static inline bool compare(const Real x, const Real y) { 
         return x > y;
     }
 
     inline bool operator< (const FmHeapEntryOut& o) const {
-        const Real d = fabs((*time) - (*(o.time)));
-        if (d > 1e-4) return (*time) > (*(o.time)); 
+        const Real d = fabs((time) - ((o.time)));
+        if (d > 0.) return (time) > ((o.time)); 
         if (p.z != o.p.z) return p.z > o.p.z;
         if (p.y != o.p.y) return p.y > o.p.y;
         return p.x > o.p.x;
@@ -80,14 +85,14 @@ class FmHeapEntryIn {
 public:
     Vec3i p;
     // quick time access for sorting
-    Real *time;
+    Real time;
     static inline bool compare(const Real x, const Real y) { 
         return x < y;
     }
 
     inline bool operator< (const FmHeapEntryIn& o) const {
-        const Real d = fabs((*time) - (*(o.time)));
-        if (d > 1e-4) return (*time) < (*(o.time)); 
+        const Real d = fabs((time) - ((o.time)));
+        if (d > 0.) return (time) < ((o.time)); 
         if (p.z != o.p.z) return p.z < o.p.z;
         if (p.y != o.p.y) return p.y < o.p.y;
         return p.x < o.p.x;
@@ -135,7 +140,7 @@ protected:
     Real mMaxTime;
 
     //! fast marching list
-    std::priority_queue<T> mHeap;
+    std::priority_queue<T, std::vector<T>, std::less<T> > mHeap;
     Real mReheapVal;
 
     //! weights for touching points

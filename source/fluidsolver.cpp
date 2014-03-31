@@ -139,6 +139,18 @@ void FluidSolver::printTimings() {
     printf("Total : %s\n\n", total.toString().c_str());
 }
 
+void FluidSolver::printMemInfo() {
+	std::ostringstream msg;
+	msg << "Allocated grids: int " << mGridsInt.used  <<"/"<< mGridsInt.grids.size()  <<", ";
+	msg <<                  "real "<< mGridsReal.used <<"/"<< mGridsReal.grids.size() <<", ";
+	msg <<                  "vec3 "<< mGridsVec.used  <<"/"<< mGridsVec.grids.size()  <<". ";
+	printf("%s\n", msg.str().c_str() );
+}
+
+PYTHON(noparent) void printBuildInfo() {
+	debMsg( "Build info: "<<buildInfoString().c_str()<<" ",1);
+}
+
 void FluidSolver::saveMeanTimings(string filename) {
     ofstream ofs(filename.c_str());
     if (!ofs.good())

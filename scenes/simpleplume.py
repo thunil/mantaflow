@@ -5,7 +5,7 @@
 from manta import *
 
 # solver params
-res = 128
+res = 64
 gs = vec3(res,1.5*res,res)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 1.0

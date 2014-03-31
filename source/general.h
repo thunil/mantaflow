@@ -20,11 +20,25 @@
 
 namespace Manta {
 
+// activate debug mode if _DEBUG is defined (eg for windows)
+#ifndef DEBUG
+#ifdef _DEBUG
+#define DEBUG 1
+#endif // _DEBUG
+#endif // DEBUG
+
 // Standard exception
 class Error : public std::exception
 {
 public:
-   Error(const std::string& s) : mS(s) {}
+   Error(const std::string& s) : mS(s) {
+#		ifdef DEBUG
+		// print error
+		std::cerr << "Aborting: "<< s <<" \n";
+		// then force immedieate crash in debug mode
+		*(volatile int*)(0) = 1; 
+#		endif
+   }
    virtual ~Error() throw() {}
    virtual const char* what() const throw() { return mS.c_str(); }
 private:
@@ -38,7 +52,7 @@ private:
 extern int gDebugLevel;
 
 #define MSGSTREAM std::ostringstream msg; msg.precision(7); msg.width(9);
-#define debMsg(mStr, level)     if (_chklevel(level)) { MSGSTREAM; msg << mStr << std::endl; std::cout << msg.str(); }
+#define debMsg(mStr, level)     if (_chklevel(level)) { MSGSTREAM; msg << mStr; std::cout << msg.str()  << std::endl; }
 inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 
 // error and assertation macros
@@ -47,10 +61,10 @@ inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 #else
 #   define DEBUG_ONLY(a)
 #endif
-#define throwError(msg) { std::ostringstream __s; __s << msg << std::endl << "Error raised in " << __FILE__ << ":" << __LINE__; throw Error(__s.str()); }
-#define errMsg(a) throwError(a)
-#define assertMsg(a,b) if(!(a)) throwError(b)
-#define assertDeb(a,b) DEBUG_ONLY(assertMsg(a,b))
+#define throwError(msg)      { std::ostringstream __s; __s << msg << std::endl << "Error raised in " << __FILE__ << ":" << __LINE__; throw Error(__s.str()); }
+#define errMsg(msg)          throwError(msg);
+#define assertMsg(cond,msg)  if(!(cond)) throwError(msg)
+#define assertDeb(cond,msg)  DEBUG_ONLY( assertMsg(cond,msg) )
 
 // Commonly used enums and types
 //! Timing class for preformance measuring
@@ -72,6 +86,8 @@ struct MuTime {
 };
 std::ostream& operator<< (std::ostream& os, const MuTime& t);
     
+//! generate a string with infos about the current mantaflow build
+std::string buildInfoString();
 
 // Some commonly used math helpers
 template<class T> inline T square(T a) {

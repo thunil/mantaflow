@@ -86,7 +86,8 @@ void LockedObjPainter::nextObject() {
 
 template<class T>
 GridPainter<T>::GridPainter(FlagGrid** flags, QWidget* par) 
-    : LockedObjPainter(par), mHide(false), mHideLocal(false), mCentered(true), mLocalGrid(NULL), mFlags(flags), mMaxVal(0), mMax(0)
+    : LockedObjPainter(par), mMaxVal(0), mDim(0), mPlane(0), mMax(0), mLocalGrid(NULL), 
+	  mFlags(flags), mInfo(NULL), mHide(false), mHideLocal(false), mVelMode(VelDispCentered), mValScale()
 {
     mDim = 2; // Z plane
     mPlane = 0;
@@ -167,13 +168,12 @@ Real GridPainter<T>::getScale() {
     if (!mObject) return 0;
     
     if (mValScale.find(mObject) == mValScale.end()) {
+        // init new scale value
         Real s = 1.0;
-        // create new scale
         if (mLocalGrid->getType() & GridBase::TypeVec3)
             s = 0.4;
         else if (mLocalGrid->getType() & GridBase::TypeLevelset)
-            s = 1.0;
-        if (s==0) return 1.0;
+            s = 1.0; 
         mValScale[mObject] = s;
     }
     return mValScale[mObject];
@@ -207,10 +207,11 @@ void GridPainter<Vec3>::processSpecificKeyEvent(PainterEvent e, int param) {
         mValScale[mObject] = getScale() * 0.5;
     else if (e == EventScaleVecUp && mObject)
         mValScale[mObject] = getScale() * 2.0;
-    else if (e == EventToggleVels)
-        mHideLocal = !mHideLocal;    
-    else if (e== EventToggleCentered)
-        mCentered = !mCentered;
+    else if (e == EventNextVelDisplayMode) {
+        mVelMode = (mVelMode+1)%NumVelDispModes;
+		mHideLocal = (mVelMode==VelDispOff);
+
+	}
 }
 
 template<> void GridPainter<int>::updateText() {
@@ -333,12 +334,30 @@ template<> void GridPainter<int>::paint() {
     glColor3f(0.5,0,0);
     
     bool rbox = true;
-    bool lines = mLocalGrid->getSize().max() <= 40; 
-    if (lines) {
+    bool skipFluid = mLocalGrid->getSize().max() > 40; 
+    bool drawLines = mLocalGrid->getSize().max() <= 80; 
+    if (drawLines) {
         //glDepthFunc(GL_LESS);
         glBegin(GL_LINES);
         FOR_P_SLICE(mLocalGrid, mDim, mPlane) {
-            getCellCoordinates(p, box, mDim);
+
+			int flag = 0;
+			flag = mLocalGrid->get(p);
+
+			if (flag & FlagGrid::TypeObstacle) {
+    			glColor3f(0.2,0.2,0.2);
+			} else if (flag & FlagGrid::TypeOutflow) {
+    			glColor3f(0.9,0.2,0);
+			} else if (flag & FlagGrid::TypeEmpty) {
+    			glColor3f(0.25,0,0);
+			} else if (flag & FlagGrid::TypeFluid) {
+				if(skipFluid) continue;
+    			glColor3f(0,0,0.75);
+			} else {
+    			glColor3f(0.5,0,0); // unknown
+			}
+
+            getCellCoordinates(p, box, mDim); 
             for (int n=1;n<=8;n++)
                 glVertex(box[(n/2)%4], dx);
         }
@@ -361,48 +380,81 @@ template<> void GridPainter<Real>::paint() {
     if (!mObject || mHide || mHideLocal || mPlane <0 || mPlane >= mLocalGrid->getSize()[mDim] || !mFlags || !(*mFlags))
         return;
     
-    FlagGrid *flags = *mFlags;
-    if (flags->getSize() != mLocalGrid->getSize()) flags = 0;
     float dx = mLocalGrid->getDx();
     Vec3 box[4];
     glBegin(GL_QUADS);
-    Real scaler = 1.0/getScale();
+    Real scale = getScale();
     bool isLevelset = mLocalGrid->getType() & GridBase::TypeLevelset;
     //glPolygonOffset(1.0,1.0);
     //glDepthFunc(GL_LESS);
-    FOR_P_SLICE(mLocalGrid, mDim, mPlane) { 
-        int flag = FlagGrid::TypeFluid;
-        if (flags && (mLocalGrid->getType() & GridBase::TypeLevelset) == 0) flag = flags->get(p);
-        if (flag & FlagGrid::TypeObstacle)
-            glColor3f(0.15,0.15,0.15);
-        else if (flag & FlagGrid::TypeOutflow)
-            glColor3f(0.3,0.0,0.0);
-        else if (flag & FlagGrid::TypeEmpty)
-            glColor3f(0.,0.2,0.);
-        else {
-            Real v = mLocalGrid->get(p) * scaler;
-            
-            if (isLevelset) {
-                v = max(min(v*0.2, 1.0),-1.0);
-                if (v>=0)
-                    glColor3f(v,0,0.5);
-                else
-                    glColor3f(0.5, 1.0+v, 0.);
-            } else {
-                if (v>0)
-                    glColor3f(v,0,0);
-                else
-                    glColor3f(0,0,-v);
-            }
-        }
-        
-        if ((flag & FlagGrid::TypeEmpty) == 0) {
-            getCellCoordinates(p, box, mDim);
-            for (int n=0;n<4;n++) 
-                glVertex(box[n], dx);
-        }
-    }
-    glEnd();    
+
+	const bool useOldDrawStyle = false;
+	if(useOldDrawStyle) {
+		// original mantaflow drawing style
+		FlagGrid *flags = *mFlags;
+		if (flags->getSize() != mLocalGrid->getSize()) flags = 0;
+
+		FOR_P_SLICE(mLocalGrid, mDim, mPlane) { 
+			int flag = FlagGrid::TypeFluid;
+			if (flags && (mLocalGrid->getType() & GridBase::TypeLevelset) == 0) flag = flags->get(p);
+			if (flag & FlagGrid::TypeObstacle)
+				glColor3f(0.15,0.15,0.15);
+			else if (flag & FlagGrid::TypeOutflow)
+				glColor3f(0.3,0.0,0.0);
+			else if (flag & FlagGrid::TypeEmpty)
+				glColor3f(0.,0.2,0.);
+			else {
+				Real v = mLocalGrid->get(p) * scale;
+				
+				if (isLevelset) {
+					v = max(min(v*0.2, 1.0),-1.0);
+					if (v>=0)
+						glColor3f(v,0,0.5);
+					else
+						glColor3f(0.5, 1.0+v, 0.);
+				} else {
+					if (v>0)
+						glColor3f(v,0,0);
+					else
+						glColor3f(0,0,-v);
+				}
+			}
+			
+			if ((flag & FlagGrid::TypeEmpty) == 0) {
+				getCellCoordinates(p, box, mDim);
+				for (int n=0;n<4;n++) 
+					glVertex(box[n], dx);
+			}
+		}
+
+	} else {
+		// "new" drawing style
+
+		// ignore flags, its a bit dangerous to skip outside info
+
+		FOR_P_SLICE(mLocalGrid, mDim, mPlane) 
+		{ 
+			Real v = mLocalGrid->get(p) * scale; 
+			if (isLevelset) {
+				v = max(min(v*0.2, 1.0),-1.0);
+				if (v>=0)
+					glColor3f(v,0,0.5);
+				else
+					glColor3f(0.5, 1.0+v, 0.);
+			} else {
+				if (v>0)
+					glColor3f(v,0,0);
+				else
+					glColor3f(0,0,-v);
+			}
+
+			getCellCoordinates(p, box, mDim);
+			for (int n=0;n<4;n++) 
+				glVertex(box[n], dx);
+		}
+	}
+
+	glEnd();    
     //glDepthFunc(GL_ALWAYS);    
     //glPolygonOffset(0,0);    
 }
@@ -414,43 +466,63 @@ template<> void GridPainter<Vec3>::paint() {
     
     float dx = mLocalGrid->getDx();
     bool mac = mLocalGrid->getType() & GridBase::TypeMAC;
-    Real scaler = getScale();
-    glBegin(GL_LINES);
-        
-    FOR_P_SLICE(mLocalGrid, mDim, mPlane) {        
-        Vec3 vel = mLocalGrid->get(p) * scaler;
-        Vec3 pos (p.x+0.5, p.y+0.5, p.z+0.5);
-        if (mCentered) {
-            if (mac) {
-                if (p.x < mLocalGrid->getSizeX()-1) 
-                    vel.x = 0.5 * (vel.x + scaler * mLocalGrid->get(p.x+1,p.y,p.z).x);
-                if (p.y < mLocalGrid->getSizeY()-1) 
-                    vel.y = 0.5 * (vel.y + scaler * mLocalGrid->get(p.x,p.y+1,p.z).y);
-                if (p.z < mLocalGrid->getSizeZ()-1) 
-                    vel.z = 0.5 * (vel.z + scaler * mLocalGrid->get(p.x,p.y,p.z+1).z);
-            }
-            glColor3f(1,1,1);
-            glVertex(pos, dx);
-            glColor3f(1,1,1);
-            glVertex(pos+vel*1.2, dx);
-        } else {
-            for (int d=0; d<3; d++) {
-                if (fabs(vel[d]) < 1e-2) continue;
-                Vec3 p1(pos);
-                if (mac)
-                    p1[d] -= 0.5f;
-                Vec3 color(0.0);
-                color[d] = 1;
-                glColor3f(color.x, color.y, color.z);
-                glVertex(p1, dx);
-                glColor3f(1,1,1);
-                p1[d] += vel[d];
-                glVertex(p1, dx);
-            }
-        }
-    }
-    glEnd();    
+    const Real scale = getScale();
+
+	if( (mVelMode==VelDispCentered) || (mVelMode==VelDispStaggered) ) {
+
+		// regular velocity drawing mode
+		glBegin(GL_LINES);
+			
+		FOR_P_SLICE(mLocalGrid, mDim, mPlane) {        
+			Vec3 vel = mLocalGrid->get(p) * scale;
+			Vec3 pos (p.x+0.5, p.y+0.5, p.z+0.5);
+			if (mVelMode==VelDispCentered) {
+				if (mac) {
+					if (p.x < mLocalGrid->getSizeX()-1) 
+						vel.x = 0.5 * (vel.x + scale * mLocalGrid->get(p.x+1,p.y,p.z).x);
+					if (p.y < mLocalGrid->getSizeY()-1) 
+						vel.y = 0.5 * (vel.y + scale * mLocalGrid->get(p.x,p.y+1,p.z).y);
+					if (p.z < mLocalGrid->getSizeZ()-1) 
+						vel.z = 0.5 * (vel.z + scale * mLocalGrid->get(p.x,p.y,p.z+1).z);
+				}
+				glColor3f(1,1,1);
+				glVertex(pos, dx);
+				glColor3f(1,1,1);
+				glVertex(pos+vel*1.2, dx);
+			} else if (mVelMode==VelDispStaggered) {
+				for (int d=0; d<3; d++) {
+					if (fabs(vel[d]) < 1e-2) continue;
+					Vec3 p1(pos);
+					if (mac)
+						p1[d] -= 0.5f;
+					Vec3 color(0.0);
+					color[d] = 1;
+					glColor3f(color.x, color.y, color.z);
+					glVertex(p1, dx);
+					glColor3f(1,1,1);
+					p1[d] += vel[d];
+					glVertex(p1, dx);
+				}
+			}
+		}
+		glEnd();    
     
+	} else if (mVelMode==VelDispUv) {
+		// draw as uv coordinates , note - this will completely hide the real grid display!
+		Vec3 box[4];
+		glBegin(GL_QUADS); 
+		FOR_P_SLICE(mLocalGrid, mDim, mPlane) 
+		{ 
+			Vec3 v = mLocalGrid->get(p) * scale; 
+			for(int c=0; c<3; ++c) v[c] = fmod( (Real)v[c], (Real)1.);
+			//v *= mLocalGrid->get(0)[0]; // debug, show uv grid weight as brightness of values
+			glColor3f(v[0],v[1],v[2]); 
+			getCellCoordinates(p, box, mDim);
+			for (int n=0;n<4;n++) 
+				glVertex(box[n], dx);
+		}
+		glEnd();    
+	}
 }
 
 

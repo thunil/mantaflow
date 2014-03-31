@@ -132,9 +132,9 @@ void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1,
         if (!flags.isFluid(i,j,k)) continue;
         const Real p = Aprecond(i,j,k);
         dst(i,j,k) = p * (Var1(i,j,k)
-                 - dst(i-1,j,k) * Ai(i-1,j,k) * p
-                 - dst(i,j-1,k) * Aj(i,j-1,k) * p
-                 - dst(i,j,k-1) * Ak(i,j,k-1) * p);
+                 - dst(i-1,j,k) * Ai(i-1,j,k) * Aprecond(i-1,j,k)
+                 - dst(i,j-1,k) * Aj(i,j-1,k) * Aprecond(i,j-1,k)
+                 - dst(i,j,k-1) * Ak(i,j,k-1) * Aprecond(i,j,k-1) );
     }
     
     // backward substitution
@@ -234,8 +234,8 @@ bool GridCg<APPLYMAT>::iterate() {
     Real alpha = 0.;
     if(fabs(dp)>0.) alpha = mSigma / (Real)dp;
     
-    mDst.scaledAdd(mSearch, alpha);    // dst += search * alpha
-    mResidual.scaledAdd(mTmp, -alpha); // residual += tmp * -alpha
+    gridScaledAdd<Real,Real>(mDst, mSearch, alpha);    // dst += search * alpha
+    gridScaledAdd<Real,Real>(mResidual, mTmp, -alpha); // residual += tmp * -alpha
     
     if (mPcMethod == PC_ICP)
         ApplyPreconditionIncompCholesky(mTmp, mResidual, mFlags, *mpPCA0, *mpPCAi, *mpPCAj, *mpPCAk, *mpA0, *mpAi, *mpAj, *mpAk);
@@ -246,15 +246,17 @@ bool GridCg<APPLYMAT>::iterate() {
         
     // compute norm of the residual?
     if(this->mUseResNorm) { 
-        mResNorm = GridSumSqr(mResidual).sum;
+        mResNorm = GridSumSqr(mResidual).sum; 
     } else {
-        // TODO test...
         mResNorm = mResidual.getMaxAbsValue();        
     }
     //if(mIterations % 10 == 9) debMsg("GridCg::Iteration i="<<mIterations<<", resNorm="<<mResNorm<<" accuracy="<<mAccuracy, 1);
 
     // abort here to safe some work...
-    if(mResNorm<mAccuracy) return false;
+    if(mResNorm<mAccuracy) {
+        mSigma = mResNorm; // this will be returned later on to the caller...
+        return false;
+    }
 
     Real sigmaNew = GridDotProduct(mTmp, mResidual);
     Real beta = sigmaNew / mSigma;
@@ -262,13 +264,10 @@ bool GridCg<APPLYMAT>::iterate() {
     // search =  tmp + beta * search
     UpdateSearchVec (mSearch, mTmp, beta);
 
-    debMsg("PB-Cg::iter2 i="<<mIterations<<" sigma="<<mSigma<<" alpha="<<alpha<<" beta="<<beta<<" ", CG_DEBUGLEVEL);
+    debMsg("PB-Cg::iter i="<<mIterations<<" sigmaNew="<<sigmaNew<<" sigmaLast="<<mSigma<<" alpha="<<alpha<<" beta="<<beta<<" ", CG_DEBUGLEVEL);
     mSigma = sigmaNew;
     
-    /* debMsg("PB-CG-Norms::p"<<sqrt( DDF::GridOpNormNosqrt(mpDst, mpFlags).getValue() ) <<" search"<<sqrt( DDF::GridOpNormNosqrt(mpSearch, mpFlags).getValue(), CG_DEBUGLEVEL ) 
-            <<" res"<<sqrt( DDF::GridOpNormNosqrt(mpResidual, mpFlags).getValue() ) <<" tmp"<<sqrt( DDF::GridOpNormNosqrt(mpTmp, mpFlags).getValue() ), CG_DEBUGLEVEL ); // debug
-    if(CG_DEBUG) debMsg("PB-CG-Norms","p"<<( DDF::GridOpNormNosqrt(mpDst, mpFlags).getValue() ) <<" search"<<( DDF::GridOpNormNosqrt(mpSearch, mpFlags).getValue(), CG_DEBUGLEVEL ) 
-            <<" res"<<( DDF::GridOpNormNosqrt(mpResidual, mpFlags).getValue() ) <<" tmp"<<( DDF::GridOpNormNosqrt(mpTmp, mpFlags).getValue() ), CG_DEBUGLEVEL ); // debug, no sqrt!*/
+    //debMsg("PB-CG-Norms::p"<<sqrt( GridOpNormNosqrt(mpDst, mpFlags).getValue() ) <<" search"<<sqrt( GridOpNormNosqrt(mpSearch, mpFlags).getValue(), CG_DEBUGLEVEL ) <<" res"<<sqrt( GridOpNormNosqrt(mpResidual, mpFlags).getValue() ) <<" tmp"<<sqrt( GridOpNormNosqrt(mpTmp, mpFlags).getValue() ), CG_DEBUGLEVEL ); // debug
     return true;
 }
 
@@ -280,9 +279,17 @@ void GridCg<APPLYMAT>::solve(int maxIter) {
     return;
 }
 
+static bool gPrint2dWarning = true;
 template<class APPLYMAT>
 void GridCg<APPLYMAT>::setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak) {
     mPcMethod = method;
+	if( (!A0->is3D()) && (mPcMethod!=PC_None) ) {
+    	if(gPrint2dWarning) {
+			debMsg("Pre-conditioning only supported in 3D for now, disabling it.", 1);
+			gPrint2dWarning = false;
+		}
+		mPcMethod=PC_None;
+	}
     mpPCA0 = A0;
     mpPCAi = Ai;
     mpPCAj = Aj;

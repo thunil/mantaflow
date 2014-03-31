@@ -47,9 +47,10 @@ MainWnd::MainWnd() : mPaused(true), mRequestPause(false), mRequestClose(false), 
     mPainter.push_back(new GridPainter<Vec3>(NULL, this));    
     mPainter.push_back(intPainter);
     MeshPainter* ptr = new MeshPainter(this);
-    mPainter.push_back(new ParticlePainter(intPainter, this));
     mPainter.push_back(ptr);    
     connect(this, SIGNAL(setBackgroundMesh(Mesh*)), ptr, SLOT(setBackgroundMesh(Mesh*)));
+    mPainter.push_back(new ParticlePainter(intPainter, this));
+
     for (int i=0; i<(int)mPainter.size(); i++) {
         connect(mGlWidget, SIGNAL(paintSub()), mPainter[i], SLOT(paint()));
         connect(mGlWidget, SIGNAL(painterEvent(int, int)), mPainter[i], SLOT(doEvent(int, int)));
@@ -161,6 +162,16 @@ bool MainWnd::event(QEvent* e) {
         emit exitApp();
         return true;
     }
+
+	// update button states for pause events
+	if( (mRequestPause) && (!mAcPlay->isEnabled()) ) {
+		    mAcPlay->setEnabled(true);
+		    mAcPause->setEnabled(false);    
+	}
+	if( (mRequestPause) && (!mAcPlay->isEnabled()) ) {
+		    mAcPlay->setEnabled(true);
+		    mAcPause->setEnabled(false);    
+	}
     
     return QMainWindow::event(e);
 }
@@ -195,14 +206,19 @@ void MainWnd::keyPressEvent(QKeyEvent* e) {
             mStep = (e->modifiers() & Qt::ShiftModifier) ? 1 : 2;                
         } else
             emit pause();
-    } else
-        QMainWindow::keyPressEvent(e);
+    } else { 
+		mGlWidget->keyPressEvent(e); // let gl widget take care of keyboard shortcuts
+        //QMainWindow::keyPressEvent(e);
+	}
+}
+void MainWnd::keyReleaseEvent(QKeyEvent* e)
+{
+	mGlWidget->keyReleaseEvent(e);
 }
 
 void MainWnd::pause() {
     mRequestPause = true;
-    mAcPlay->setEnabled(true);
-    mAcPause->setEnabled(false);    
+    // dont call: mAcPlay/mAcPause ->setEnabled(true) here; wrong thread if called from python
 }
 
 void MainWnd::play() {

@@ -2,7 +2,7 @@
 #
 # MantaFlow fluid solver framework
 #
-# Copyright 2011 Tobias Pfaff, Nils Thuerey 
+# Copyright 2011-2013 Tobias Pfaff, Nils Thuerey 
 #
 # This program is free software, distributed under the terms of the
 # GNU General Public License (GPL) 
@@ -17,7 +17,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/source/cmake/")
 SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 SET(VERBOSE 1) 
 
-SET(MANTAVERSION "0.4")
+SET(MANTAVERSION "0.5")
 
 #******************************************************************************
 # setup default params
@@ -41,6 +41,7 @@ OPTION(TBB "Use multi-thread kernels using Intels TBB" OFF)
 OPTION(OPENMP "Use multi-thread kernels using OpenMP" OFF)
 OPTION(CUDA "Compile with CUDA plugins" OFF)
 OPTION(PREPDEBUG "Debug generated files" OFF) # This will beautify generated files, and link to them for compiler errors instead of the original sources
+OPTION(DOUBLEPRECISION "Compile with double floating point precision" OFF)
 
 #check consistency of MT options
 set(MT OFF)
@@ -77,6 +78,7 @@ MESSAGE(STATUS "Options - "
     " -DOPENMP='${OPENMP}' "
     " -DPREPDEBUG='${PREPDEBUG}' "
     " -DCUDA='${CUDA}' "
+    " -DDOUBLEPRECISION='${DOUBLEPRECISION}' "
     )
 MESSAGE(STATUS "Multithreading type : ${MT_TYPE}")
 MESSAGE(STATUS "")
@@ -116,6 +118,7 @@ SET(PP_SOURCES
     source/shapes.cpp
     source/mesh.cpp
     source/general.cpp
+    source/particle.cpp
     source/flip.cpp
     source/movingobs.cpp
     source/fileio.cpp   
@@ -227,6 +230,7 @@ SET(INCLUDE_PATHS
 
 # 64 bit config , not for windows
 if (USE64)
+	add_definitions(-DUSE64) 
 	IF(NOT WIN32)
 		SET(F_LINKADD "${F_LINKADD} -m64 ")
 		ADD_DEFINITIONS( -m64 )
@@ -274,7 +278,7 @@ endif()
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
     set(DX_PATH "doxy")
-    foreach(it ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${QT_HEADERS} ${NOPP_HEADERS})
+    foreach(it ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS})
         get_filename_component(CURPATH ${it} PATH)
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${DX_PATH}/${CURPATH}")
         set(CURDX "${DX_PATH}/${it}")
@@ -296,6 +300,8 @@ if(DOXYGEN_FOUND)
     )
 endif(DOXYGEN_FOUND)
 
+
+
 #******************************************************************************
 # Link libraries
 
@@ -307,9 +313,14 @@ list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 
 # Z compression
 include(FindZLIB)
-LIST(APPEND F_LIBS ${ZLIB_LIBRARIES})
-if(ZLIB_INCLUDE_DIR)
-	LIST(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
+if(ZLIB_FOUND) 
+	LIST(APPEND F_LIBS ${ZLIB_LIBRARIES})
+	if(ZLIB_INCLUDE_DIR)
+		LIST(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
+	endif()
+else()
+    ADD_DEFINITIONS( -DNO_ZLIB=1 )
+	MESSAGE(STATUS "Warning - no zlib, some mantaflow loading/saving some file formats will not work")
 endif()
 
 # CUDA
@@ -336,6 +347,23 @@ if(CUDA)
         endif()    
     endif()  
 endif()
+
+# increase FP precision?
+if(DOUBLEPRECISION)
+    add_definitions(-DFLOATINGPOINT_PRECISION=2)
+endif()
+
+
+#******************************************************************************
+# generate repository info
+
+# TEST! NT_DEBUG 
+set(HGINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/hginfo.h")
+MESSAGE(STATUS "Hg info target header ${HGINFO}")
+add_custom_command(OUTPUT ${HGINFO}
+				   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tools/makeHgVersion.py" "${HGINFO}"
+				   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS}
+				   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} )
 
 #******************************************************************************
 # apply preprocessor
@@ -450,16 +478,16 @@ else()
 		add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${PP_SOURCES} ${PP_HEADERS})
 		source_group(Generated FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})		
 	else()
-    	add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY})
+    	add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${HGINFO})
 	endif()
 	target_link_libraries( ${EXECCMD} ${F_LIBS} )
 endif()
 
 if(WIN32)
 	# add no-build target to create nice MSVC folder
-	add_custom_target(SourceFiles SOURCES ${PP_SOURCES} ${PP_HEADERS} ${QT_HEADERS} ${NOPP_HEADERS} ${NOPP_SOURCES})
+	add_custom_target(SourceFiles SOURCES ${PP_SOURCES} ${PP_HEADERS} ${QT_SOURCES} ${QT_HEADERS} ${NOPP_HEADERS} ${NOPP_SOURCES})
 	source_group(Headers FILES ${PP_HEADERS} ${NOPP_HEADERS} ${QT_HEADERS})
-	source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES})	
+	source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES} ${QT_SOURCES})	
 endif()
 
 # debug

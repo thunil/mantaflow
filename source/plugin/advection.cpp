@@ -20,6 +20,17 @@ using namespace std;
 
 namespace Manta { 
 
+static inline bool isNotFluid(FlagGrid& flags, int i, int j, int k)
+{
+    if ( flags.isFluid(i,j,k)   ) return false;
+    if ( flags.isFluid(i-1,j,k) ) return false;
+    if ( flags.isFluid(i,j-1,k) ) return false; 
+	if ( flags.is3D() ) {
+    	if ( flags.isFluid(i,j,k-1) ) return false;
+	}
+	return true;
+}
+
 //! Semi-Lagrange interpolation kernel
 KERNEL(bnd=1) template<class T> 
 void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset) 
@@ -28,8 +39,7 @@ void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Re
         dst(i,j,k) = 0;
         return;
     }
-    if (!isLevelset && !flags.isFluid(i,j,k) && !flags.isFluid(i-1,j,k) && 
-        !flags.isFluid(i,j-1,k) && !flags.isFluid(i,j,k-1)) {
+    if (!isLevelset && isNotFluid(flags,i,j,k) ) {
         dst(i,j,k) = src(i,j,k);
         return;
     }
@@ -47,8 +57,7 @@ void SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, 
         dst(i,j,k) = 0;
         return;
     }
-    if (!flags.isFluid(i,j,k) && !flags.isFluid(i-1,j,k) && 
-        !flags.isFluid(i,j-1,k) && !flags.isFluid(i,j,k-1)) {
+    if ( isNotFluid(flags,i,j,k) ) {
         dst(i,j,k) = src(i,j,k);
         return;
     }
@@ -72,7 +81,7 @@ void MacCormackCorrect(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd
 {
     const int idx = flags.index(i,j,k);
     
-    if (!flags.isFluid(idx) && !flags.isFluid(i-1,j,k) && !flags.isFluid(i,j-1,k) && !flags.isFluid(i,j,k-1)) {
+    if ( isNotFluid(flags,i,j,k) ) {
         dst[idx] = isLevelSet ? fwd[idx] : (T)0.0;
         return;
     }
@@ -101,7 +110,7 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
 {
     if (flags.isObstacle(i,j,k))
         return;
-    if ((!flags.isFluid(i,j,k) && !flags.isFluid(i-1,j,k) && !flags.isFluid(i,j-1,k) && !flags.isFluid(i,j,k-1))) {
+    if ( isNotFluid(flags,i,j,k) ) {
         dst(i,j,k) = fwd(i,j,k);
         return;
     }
@@ -113,8 +122,8 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
     // clamp forward lookup to grid
     const int i0 = clamp(posFwd.x, 0, flags.getSizeX()-2);
     const int j0 = clamp(posFwd.y, 0, flags.getSizeY()-2);
-    const int k0 = clamp(posFwd.z, 0, flags.getSizeZ()-2);
-    const int i1 = i0+1, j1 = j0+1, k1=k0+1;
+    const int k0 = clamp(posFwd.z, 0, (flags.is3D() ? (flags.getSizeZ()-2) : 1) );
+    const int i1 = i0+1, j1 = j0+1, k1= (orig.is3D() ? (k0+1) : k0);
     
     if (orig.isInBounds(Vec3i(i0,j0,k0),1)) {           
         // find min/max around fwd pos
@@ -125,7 +134,7 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
         getMinMax(minv, maxv, orig(i0,j0,k1));
         getMinMax(minv, maxv, orig(i1,j0,k1));
         getMinMax(minv, maxv, orig(i0,j1,k1));
-        getMinMax(minv, maxv, orig(i1,j1,k1));
+        getMinMax(minv, maxv, orig(i1,j1,k1)); 
         
         // write clamped value
         dst(i,j,k) = clamp(dst(i,j,k), minv, maxv);
@@ -134,8 +143,8 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
     // test if lookups point out of grid or into obstacle
     if (posFwd.x < 0 || posFwd.y < 0 || posFwd.z < 0 ||
         posBwd.x < 0 || posBwd.y < 0 || posBwd.z < 0 ||
-        posFwd.x >= flags.getSizeX()-1 || posFwd.y >= flags.getSizeY()-1 || posFwd.z >= flags.getSizeZ()-1 ||
-        posBwd.x >= flags.getSizeX()-1 || posBwd.y >= flags.getSizeY()-1 || posBwd.z >= flags.getSizeZ()-1 ||
+        posFwd.x >= flags.getSizeX()-1 || posFwd.y >= flags.getSizeY()-1 || ((posFwd.z >= flags.getSizeZ()-1)&&flags.is3D()) ||
+        posBwd.x >= flags.getSizeX()-1 || posBwd.y >= flags.getSizeY()-1 || ((posBwd.z >= flags.getSizeZ()-1)&&flags.is3D()) ||
         flags.isObstacle(posFwd) || flags.isObstacle(posBwd) ) 
     {        
         dst(i,j,k) = fwd(i,j,k);
@@ -149,7 +158,7 @@ inline Real doClampComponent(const Vec3i& upperClamp, MACGrid& orig, Real dst, c
     const int i0 = clamp((int)posFwd.x, 0, upperClamp.x);
     const int j0 = clamp((int)posFwd.y, 0, upperClamp.y);
     const int k0 = clamp((int)posFwd.z, 0, upperClamp.z);
-    const int i1 = i0+1, j1 = j0+1, k1=k0+1;
+    const int i1 = i0+1, j1 = j0+1, k1= (orig.is3D() ? (k0+1) : k0);
     if (!orig.isInBounds(Vec3i(i0,j0,k0),1)) 
         return dst;
     
@@ -173,7 +182,7 @@ void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& o
 {
     if (flags.isObstacle(i,j,k))
         return;
-    if ((!flags.isFluid(i,j,k) && !flags.isFluid(i-1,j,k) && !flags.isFluid(i,j-1,k) && !flags.isFluid(i,j,k-1))) {
+    if ( isNotFluid(flags,i,j,k) ) {
         dst(i,j,k) = fwd(i,j,k);
         return;
     }

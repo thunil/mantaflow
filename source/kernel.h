@@ -20,6 +20,11 @@
 #   include <tbb/parallel_for.h>
 #   include <tbb/parallel_reduce.h>
 #endif
+
+#ifdef OPENMP
+#	include <omp.h>
+#endif
+
 namespace Manta {
 // fwd decl
 class GridBase;
@@ -46,6 +51,8 @@ class ParticleBase;
 struct KernelBase {
     int maxX, maxY, maxZ, maxCells, minZ;
     int X, Y, Z;
+	//! store thread info for this kernel 
+	int threadId, threadNum;
     
     KernelBase(const GridBase* base, int bnd);
     KernelBase(int _maxX, int _maxY, int _maxZ, int _maxC, int _minZ, int _X, int _Y, int _Z);
@@ -63,6 +70,8 @@ struct KernelBase {
 
 struct ParticleKernelBase {
     int size;
+	//! store thread info for this kernel 
+	int threadId, threadNum;
     
     ParticleKernelBase(int sz);
     

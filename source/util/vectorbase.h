@@ -487,6 +487,8 @@ inline Vector3D<S> refractVector ( const Vector3D<S> &t, const Vector3D<S> &norm
 template<class S> std::string Vector3D<S>::toString() const {
     char buf[256];
     snprintf ( buf,256,"[%+4.6f,%+4.6f,%+4.6f]", ( double ) ( *this ) [0], ( double ) ( *this ) [1], ( double ) ( *this ) [2] );
+	// for debugging, optionally increase precision:
+    //snprintf ( buf,256,"[%+4.16f,%+4.16f,%+4.16f]", ( double ) ( *this ) [0], ( double ) ( *this ) [1], ( double ) ( *this ) [2] );
     return std::string ( buf );
 }
 

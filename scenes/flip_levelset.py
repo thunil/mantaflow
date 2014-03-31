@@ -34,7 +34,7 @@ if (GUI):
 for t in range(200):
     
     # FLIP advect and writeback
-    flip.advectInGrid(flaggrid=flags, vel=vel, integrationMode=IntRK4)
+    flip.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4)
     flip.velocitiesToGrid(vel=vel, flags=flags)
     flip.adjustNumber(vel=vel, flags=flags, minParticles=4, maxParticles=30)
     #advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)

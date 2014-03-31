@@ -20,17 +20,22 @@ using namespace std;
 //*****************************************************************************
 // Wavelet noise 
 
+#if FLOATINGPOINT_PRECISION==1
+#define TILENAME "waveletNoiseTile.bin"
+#else
+#define TILENAME "waveletNoiseTileD.bin"
+#endif
 
 namespace Manta {
 
 int WaveletNoiseField::randomSeed = 13322223;
-float* WaveletNoiseField::mNoiseTile = NULL;
+Real* WaveletNoiseField::mNoiseTile = NULL;
 
 static Real _aCoeffs[32] = {
-    0.000334f,-0.001528f, 0.000410f, 0.003545f,-0.000938f,-0.008233f, 0.002172f, 0.019120f,
-    -0.005040f,-0.044412f, 0.011655f, 0.103311f,-0.025936f,-0.243780f, 0.033979f, 0.655340f,
-    0.655340f, 0.033979f,-0.243780f,-0.025936f, 0.103311f, 0.011655f,-0.044412f,-0.005040f,
-    0.019120f, 0.002172f,-0.008233f,-0.000938f, 0.003546f, 0.000410f,-0.001528f, 0.000334f};
+    0.000334,-0.001528, 0.000410, 0.003545,-0.000938,-0.008233, 0.002172, 0.019120,
+    -0.005040,-0.044412, 0.011655, 0.103311,-0.025936,-0.243780, 0.033979, 0.655340,
+    0.655340, 0.033979,-0.243780,-0.025936, 0.103311, 0.011655,-0.044412,-0.005040,
+    0.019120, 0.002172,-0.008233,-0.000938, 0.003546, 0.000410,-0.001528, 0.000334};
 
 void WaveletNoiseField::downsample(Real *from, Real *to, int n, int stride){
     const Real *a = &_aCoeffs[16];
@@ -42,7 +47,7 @@ void WaveletNoiseField::downsample(Real *from, Real *to, int n, int stride){
     }
 }
 
-static Real _pCoeffs[4] = {0.25f, 0.75f, 0.75f, 0.25f};
+static Real _pCoeffs[4] = {0.25, 0.75, 0.75, 0.25};
 
 void WaveletNoiseField::upsample(Real *from, Real *to, int n, int stride) {
     const Real *pp = &_pCoeffs[1];
@@ -91,20 +96,19 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
     const int n3 = n*n*n, n3d=n3*3;
 
     if(mNoiseTile) return;
-
     Real *noise3 = new Real[n3d];
     if(loadFromFile) {
-        FILE* fp = fopen("waveletNoiseTile.bin","rb"); 
+        FILE* fp = fopen(TILENAME,"rb"); 
         if(fp) {
             fread(noise3, sizeof(Real), n3d, fp); 
             fclose(fp);
-            cout << "noise tile loaded from file! " << endl;
+            debMsg("noise tile loaded from file! " , 1);
             mNoiseTile = noise3;
             return;
         }
     }
 
-    cout << "generating 3x " << n << "^3 noise tile " << endl;
+    debMsg("generating 3x " << n << "^3 noise tile " , 1);
     Real *temp13 = new Real[n3d];
     Real *temp23 = new Real[n3d];
 
@@ -117,7 +121,7 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
     // Step 1. Fill the tile with random numbers in the range -1 to 1.
     RandomStream randStreamTile ( randomSeed );
     for (int i = 0; i < n3d; i++) {
-        //noise3[i] = (randStream.getFloat() + randStream2.getFloat()) -1.; // produces repeated values??
+        //noise3[i] = (randStream.getReal() + randStream2.getReal()) -1.; // produces repeated values??
         noise3[i] = randStreamTile.getRandNorm(0,1);
     }
 
@@ -173,26 +177,26 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
     delete[] temp23;
     
     if(loadFromFile) {
-        FILE* fp = fopen("waveletNoiseTile.bin","wb"); 
+        FILE* fp = fopen(TILENAME,"wb"); 
         if(fp) {
             fwrite(noise3, sizeof(Real), n3d, fp); 
             fclose(fp);
-            cout << "saved to file! " << endl;
+            debMsg( "saved to file! " , 1);
         }
     }
 }
 
 
 
-void WaveletNoiseField::downsampleNeumann(const float *from, float *to, int n, int stride)
+void WaveletNoiseField::downsampleNeumann(const Real *from, Real *to, int n, int stride)
 {
     // if these values are not local incorrect results are generated
-    static const float *const aCoCenter= &_aCoeffs[16];
+    static const Real *const aCoCenter= &_aCoeffs[16];
     for (int i = 0; i < n / 2; i++) {
         to[i * stride] = 0;
         for (int k = 2 * i - 16; k < 2 * i + 16; k++) { 
             // handle boundary
-            float fromval; 
+            Real fromval; 
             if (k < 0) {
                 fromval = from[0];
             } else if(k > n - 1) {
@@ -205,12 +209,12 @@ void WaveletNoiseField::downsampleNeumann(const float *from, float *to, int n, i
     }
 }
 
-void WaveletNoiseField::upsampleNeumann(const float *from, float *to, int n, int stride) {
-    static const float *const pp = &_pCoeffs[1];
+void WaveletNoiseField::upsampleNeumann(const Real *from, Real *to, int n, int stride) {
+    static const Real *const pp = &_pCoeffs[1];
     for (int i = 0; i < n; i++) {
         to[i * stride] = 0;
         for (int k = i / 2 - 1 ; k < i / 2 + 3; k++) {
-            float fromval;
+            Real fromval;
             if(k>n/2-1) {
                 fromval = from[(n/2-1) * stride];
             } else if(k < 0) {

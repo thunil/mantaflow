@@ -28,9 +28,12 @@ public:
     
     void paint();
     void attachWidget(QLayout* layout);
+
+	enum PaintModes { PaintOff=0, PaintVel=1, PaintPos=2 };
     
 protected:
     std::string getID();
+    Real getScale();
     void update();
     void updateText();
     void processKeyEvent(PainterEvent e, int param);
@@ -38,7 +41,12 @@ protected:
     GridPainter<int>* mGridRef;
     ParticleBase* mLocal;
     QLabel* mInfo;
-    bool mHide;    
+    int mMode;    
+	int mLastPdata;
+	bool mHavePdata;
+	Real mMaxVal;
+	std::string mPdataInfo;
+    std::map<PbClass*, Real> mValScale;
 };    
     
 } // namespace

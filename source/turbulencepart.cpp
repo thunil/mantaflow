@@ -33,7 +33,7 @@ ParticleBase* TurbulenceParticleSystem::clone() {
 }
 
 inline Vec3 hsv2rgb(Real h, Real s, Real v){
-    Real r, g, b;
+    Real r=0, g=0, b=0;
 
     int i = (int)(h * 6);
     Real f = h * 6 - i;
@@ -48,6 +48,7 @@ inline Vec3 hsv2rgb(Real h, Real s, Real v){
         case 3: r = p, g = q, b = v; break;
         case 4: r = t, g = p, b = v; break;
         case 5: r = v, g = p, b = q; break;
+        default: break;
     }
 
     return Vec3(r,g,b);
@@ -117,9 +118,9 @@ void TurbulenceParticleSystem::synthesize(FlagGrid& flags, Grid<Real>& k, int oc
     inflow += inflowBias * dt;
     
     // alpha: hat function over time
-    Real oldAlpha = 2.0f*nmod(ctime/switchLength, 1.0f);        
+    Real oldAlpha = 2.0f*nmod(ctime/switchLength, Real(1.0) ); 
     ctime += dt;
-    Real alpha = 2.0f*nmod(ctime/switchLength, 1.0f);
+    Real alpha = 2.0f*nmod(ctime/switchLength, Real(1.0) );
     
     if (oldAlpha < 1.0f && alpha >= 1.0f) resetTexCoords(0, inflow);
     if (oldAlpha > alpha) resetTexCoords(1, inflow);
