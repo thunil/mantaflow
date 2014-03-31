@@ -140,3 +140,34 @@ def doTestDataLoad( file , name, solver , grid ):
 		print( "Loading %s" % referenceFilename( file, name ) )
 		grid.load( referenceFilename( file, name ) )
 
+
+# read test data
+
+# try to load uni file if it exists
+def tryToGetSize( basename, suffix, number , appendNumber ):
+	if(appendNumber==True):
+		suffix = suffix+("_%04d" % number )
+	rfile = referenceFilename( basename, suffix ) 
+	#print("Trying to get grid size from " + rfile)
+	size = vec3(0,0,0)
+	if(os.path.isfile(rfile)):
+		size = getUniFileSize(rfile) 
+		#print("Found " + str(size) )
+	return size
+
+# configure input filenames
+
+# try to load uni file if it exists
+def tryToLoad( grid, basename, suffix, number , appendNumber , buildInfo ):
+	if(appendNumber==True):
+		suffix = suffix+("_%04d" % number )
+	rfile = referenceFilename( basename, suffix ) 
+	print("Trying to load " + rfile)
+	if(os.path.isfile(rfile)):
+		grid.load(rfile)
+		if(buildInfo==1):
+			printUniFileInfoString(rfile) # more detailed build info
+	else:
+		grid.clear()
+	return 1
+
