@@ -187,6 +187,9 @@ PYTHON void scaledAddReal(Grid<Real>& a, const Grid<Real>& b, const Real& factor
 PYTHON void scaledAddVec3(Grid<Vec3>& a, const Grid<Vec3>& b, const Vec3& factor) {
     gridScaledAdd<Vec3,Vec3> (a, b, factor);
 }
+PYTHON void multiply(Grid<Real>& a, const Grid<Real>& b) {
+    gridMult<Real,Real> (a, b);
+}
 template<> Real Grid<Real>::getMaxValue() {
     return CompMaxReal (*this);
 }

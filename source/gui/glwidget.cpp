@@ -234,10 +234,14 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
         else if (key == Qt::Key_Backslash)            emit painterEvent(Painter::EventMeshColorMode);
 		else if (key == Qt::Key_O && shift)           emit painterEvent(Painter::EventToggleBackgroundMesh); 
 
-        else if (key == Qt::Key_B && shift)           emit painterEvent(Painter::EventToggleParticles);
-        else if (key == Qt::Key_B)                    emit painterEvent(Painter::EventNextSystem);
-        else if (key == Qt::Key_ParenLeft)            emit painterEvent(Painter::EventScalePdataDown);
-        else if (key == Qt::Key_ParenRight)           emit painterEvent(Painter::EventScalePdataUp);
+		else if (key == Qt::Key_B && shift) {         emit painterEvent(Painter::EventToggleParticles); }
+		else if (key == Qt::Key_B) {                  emit painterEvent(Painter::EventNextSystem); }
+
+        else if((key == Qt::Key_ParenLeft) ||         // ugly, but for some reason parentheses dont work in some cases... fall back with dual assignment
+			   ((key == Qt::Key_9) && shift) ) {      emit painterEvent(Painter::EventScalePdataDown); }
+        else if((key == Qt::Key_ParenRight) ||
+			   ((key == Qt::Key_0) && shift ) ) {     emit painterEvent(Painter::EventScalePdataUp);   }
+		
 
         else if (key == Qt::Key_Asterisk) {
             mPlaneDim = (mPlaneDim+1) % 3;            

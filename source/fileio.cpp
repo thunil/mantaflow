@@ -402,6 +402,17 @@ void convertFloatGridToDouble<Vec3>(Grid<Vec3>& grid, void* ptr, int bytesPerEle
 	} 
 }
 
+// make sure compatible grid types dont lead to errors...
+static int unifyGridType(int type) {
+	// real <> levelset
+	if(type & GridBase::TypeReal)     type |= GridBase::TypeLevelset;
+	if(type & GridBase::TypeLevelset) type |= GridBase::TypeReal;
+	// vec3 <> mac
+	if(type & GridBase::TypeVec3)     type |= GridBase::TypeMAC;
+	if(type & GridBase::TypeMAC)      type |= GridBase::TypeVec3;
+	return type;
+}
+
 template <class T>
 void readGridUni(const string& name, Grid<T>* grid) {
     cout << "reading grid " << grid->getName() << " from uni file " << name << endl;
@@ -439,7 +450,7 @@ void readGridUni(const string& name, Grid<T>* grid) {
         UniHeader head;
         assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no header present");
 		assertMsg (head.dimX == grid->getSizeX() && head.dimY == grid->getSizeY() && head.dimZ == grid->getSizeZ(), "grid dim doesn't match, "<< Vec3(head.dimX,head.dimY,head.dimZ)<<" vs "<< grid->getSize() );
-		assertMsg (head.gridType == grid->getType(), "grid type doesn't match "<< head.gridType<<" vs "<< grid->getType() );
+		assertMsg ( unifyGridType(head.gridType)==unifyGridType(grid->getType()) , "grid type doesn't match "<< head.gridType<<" vs "<< grid->getType() );
 #		if FLOATINGPOINT_PRECISION!=1
 		// convert float to double
 		Grid<T> temp(grid->getParent());

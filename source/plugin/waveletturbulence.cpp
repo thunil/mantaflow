@@ -45,6 +45,23 @@ PYTHON void applySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoi
 }
 
 
+//! Simple noise for a real grid , follows applySimpleNoiseVec3
+KERNEL 
+void knApplySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseField& noise, 
+					  Real scale, Grid<Real>* weight ) 
+{
+	if ( !flags.isFluid(i,j,k) ) return; 
+	Real factor = 1;
+	if(weight) factor = (*weight)(i,j,k);
+	target(i,j,k) += noise.evaluate( Vec3(i,j,k) ) * scale * factor;
+}
+PYTHON void applySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseField& noise, 
+							Real scale=1.0 , Grid<Real>* weight=NULL )
+{
+	knApplySimpleNoiseReal(flags, target, noise, scale , weight );
+}
+
+
 
 //! Apply vector-based wavelet noise to target grid
 //! This is the version with more functionality - supports uv grids, and on-the-fly interpolation
