@@ -248,7 +248,7 @@ typedef struct {
     int dimX, dimY, dimZ; // grid size
     int gridType, elementType, bytesPerElement; // data type info
 	char info[256]; // mantaflow build information
-    unsigned long timestamp; // creation time
+    unsigned long long timestamp; // creation time
 } UniHeader;
 
 //! for test run debugging
