@@ -15,7 +15,7 @@ dim = 2
 upres = 4
  
 # overall wavelet noise strength
-wltStrength = 1.0
+wltStrength = 0.6
 
 # how many grids of uv coordinates to use (more than 2 usually dont pay off here)
 uvs = 1
@@ -26,7 +26,7 @@ if(upres>0):
 	octaves = int( math.log(upres)/ math.log(2.0) + 0.5 )
 
 # simulation resolution
-res = 50
+res = 80
 gs = vec3(res,int(1.5*res),res)
 if (dim==2): gs.z = 1  # 2D
 
@@ -46,9 +46,10 @@ noise.valScale = 1
 noise.valOffset = 0.075
 noise.timeAnim = 0.3
 
-# helper objects
+# helper objects: inflow region, and obstacle
 source    = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))
 sourceVel = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15 , z=gs*vec3(0.15 , 0, 0))
+obs       = sm.create(Sphere,   center=gs*vec3(0.5,0.5,0.5), radius=res*0.15)
 
 # larger solver, recompute sizes...
 if(upres>0):
@@ -65,6 +66,8 @@ if(upres>0):
 	xl_flags.fillGrid()
 
 	xl_source = xl.create(Cylinder, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0))
+	xl_obs    = xl.create(Sphere,   center=xl_gs*vec3(0.5,0.5,0.5), radius=xl_gs.x*0.15)
+	xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle)
 
 	xl_noise = xl.create(NoiseField, fixedSeed=265, loadFromFile=True)
 	xl_noise.posScale = noise.posScale
@@ -80,8 +83,6 @@ if(upres>0):
 flags = sm.create(FlagGrid)
 flags.initDomain()
 flags.fillGrid()
-
-obs = sm.create(Sphere, center=gs*vec3(0.5,0.5,0.5), radius=res*0.15)
 obs.applyToGrid(grid=flags, value=FlagObstacle)
 
 # create the array of uv grids
@@ -113,10 +114,10 @@ if(upres>0):
 if (1 and GUI):
 	gui = Gui()
 	gui.show()
-	gui.pause()
+	#gui.pause()
 
 # main loop
-for t in range(100):
+for t in range(200):
 	curt = t * sm.timestep
 	#sys.stdout.write( "Current sim time " + str(curt) +" \n" )
 	
@@ -125,10 +126,12 @@ for t in range(100):
 
 	for i in range(uvs):
 		advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=2) 
-		# note, we have a timestep of 1.5 in this setup! so this is a reset every 11 steps
+		# now we have to update the weights of the different uv channels
+		# note: we have a timestep of 1.5 in this setup! so the value of 16.5 means reset every 11 steps
 		updateUvWeight( resetTime=16.5 , index=i, numUvs=uvs, uv=uv[i] ); 
-		# also note, we have to update the weight after the advection, which destroys it! 
-	
+		# also note, we have to update the weight after the advection 
+		# as it is stored at uv[i](0,0,0) , the advection overwrites this...
+		
 	applyInflow=False
 	if (curt>=0 and curt<75):
 		densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )
@@ -146,9 +149,6 @@ for t in range(100):
 	
 	# determine weighting
 	computeEnergy(flags=flags, vel=vel, energy=energy)
-	# alternatives:
-	#computeVorticity( vel=vel, vorticity=vort, norm=energy);
-	#computeStrainRateMag( vel=vel, vorticity=vort, mag=energy);
 
 	# mark outer obstacle region by extrapolating flags for 2 layers
 	tempFlag.copyFrom(flags)
@@ -175,7 +175,7 @@ for t in range(100):
 				uvWeight = getUvWeight(uv[i]) 
 				applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , 
 					weight=energy, uv=uv[i] )
-			#print "Octave "+str(o)+", ss="+str(sStr)+" sp="+str(sPos)+" uvs="+str(uvs) # debug
+			#print "Octave "+str(o)+", ss="+str(sStr)+" sp="+str(sPos)+" uvs="+str(uvs) # debug output
 
 			# update octave parameters for next iteration
 			sStr *= 0.06 # magic kolmogorov factor
@@ -193,5 +193,6 @@ for t in range(100):
 		xl.printTimings()    
 		xl.step()    
 
-	#gui.screenshot( 'testWlt_%04d.png' % t );
+	# small and xl grid update done
+	#gui.screenshot( 'wltObs_%04d.png' % t );
 

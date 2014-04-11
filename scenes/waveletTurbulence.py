@@ -13,13 +13,9 @@ upres = 4
 # solver params
 res = 80
 gs = vec3(res,int(1.5*res),res)
-# gs = vec3(res,res,res)
 if (dim==2): gs.z = 1  # 2D
 
 sm = Solver(name='main', gridSize = gs, dim=dim)
-
-
-# sm.timestep = 1.0
 sm.timestep = 1.5
 
 velInflow = vec3(2, 0, 0)
@@ -99,12 +95,11 @@ if (GUI):
     gui.show()
 
 # main loop
-for t in range(100):
+for t in range(200):
     
     curt = t * sm.timestep
-    #sys.stdout.write( "Curr t " + str(curt) +" \n" )
+    #sys.stdout.write( "Current time t: " + str(curt) +" \n" )
         
-    #source.applyToGrid(grid=vel, value=velInflow)
     advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
     advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
     
@@ -126,13 +121,16 @@ for t in range(100):
     setWallBcs(flags=flags, vel=vel)
     
     computeEnergy(flags=flags, vel=vel, energy=energy)
+	# standard weights for wavelet turbulence
     computeWaveletCoeffs(energy)
 
+	# other possibilities of generating turbulence weights:
     #computeVorticity( vel=vel, vorticity=vort, norm=energy);
     #computeStrainRateMag( vel=vel, vorticity=vort, mag=energy);
     
     #density.save('densitySm_%04d.vol' % t)
     
+    sm.printTimings()    
     sm.step()
     
     # xl ...
@@ -155,6 +153,8 @@ for t in range(100):
     
     #xl_density.save('densityXl08_%04d.vol' % t)
     
+    xl.printTimings()    
     xl.step()    
-    #gui.screenshot( 'screen_%04d.png' % t );
+
+    #gui.screenshot( 'waveletTurb_%04d.png' % t );
 
