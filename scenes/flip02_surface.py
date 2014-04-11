@@ -83,7 +83,8 @@ for t in range(2500):
         phi.createMesh(mesh)
     
     #gui.screenshot( 'flipt_%04d.png' % t );
-    #s.printMemInfo()
     #pp.save( 'parts_%04d.txt' % t );
+    #s.printMemInfo()
+    s.printTimings()
     s.step()
 

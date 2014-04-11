@@ -8,7 +8,7 @@ from helperInclude import *
 
 # solver params
 res = 160
-#res = 100
+res = 100
 #res = 50
 gs = vec3(res,1.5*res,res)
 s = Solver(name='main', gridSize = gs)
@@ -51,7 +51,7 @@ for t in range(100):
 	setWallBcs(flags=flags, vel=vel)	
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-5e-2,0), flags=flags)
 	
-	#solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, cgMaxIterFac=0.5, cgAccuracy=1e-06)
+	#solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, cgMaxIterFac=0.5, cgAccuracy=1e-04)
 	solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, cgMaxIterFac=2.5, cgAccuracy=1e-08)
 	setWallBcs(flags=flags, vel=vel)
 
