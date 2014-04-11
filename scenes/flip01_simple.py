@@ -41,7 +41,7 @@ sampleFlagsWithParticles( flags=flags, parts=pp, discretization=particleNumber, 
 if (GUI):
     gui = Gui()
     gui.show()
-    gui.pause()
+    #gui.pause()
     
 #main loop
 for t in range(2500):

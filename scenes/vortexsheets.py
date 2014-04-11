@@ -87,6 +87,6 @@ for t in range(180):
     # vorticity source terms
     vorticitySource(mesh=mesh, gravity=gravity, scale=0.1, maxAmount=200)
     
-    mesh.save('d%04d.bobj.gz' % t)
+    #mesh.save('d%04d.bobj.gz' % t)
     s.step()
     

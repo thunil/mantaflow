@@ -47,7 +47,7 @@ setConstPdata( pTest , 0.1 )
 if (GUI):
     gui = Gui()
     gui.show()
-    gui.pause()
+    #gui.pause()
     
 #main loop
 for t in range(2500):
@@ -83,8 +83,7 @@ for t in range(2500):
         phi.createMesh(mesh)
     
     #gui.screenshot( 'flipt_%04d.png' % t );
-    #pp.save( 'parts_%04d.txt' % t );
     #s.printMemInfo()
-    s.printTimings()
+    #pp.save( 'parts_%04d.txt' % t );
     s.step()
 

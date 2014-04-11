@@ -22,6 +22,7 @@ flags.fillGrid()
 if (GUI):
     gui = Gui()
     gui.show()
+	#gui.pause()
 
 source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))
     
@@ -39,5 +40,6 @@ for t in range(400):
     solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='Y')
     setWallBcs(flags=flags, vel=vel)
     
+	s.printTimings()    
     s.step()
 

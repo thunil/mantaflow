@@ -443,9 +443,9 @@ template<> void GridPainter<Real>::paint() {
 					glColor3f(0.5, 1.0+v, 0.);
 			} else {
 				if (v>0)
-					glColor3f(v,0,0);
+					glColor3f(v,v,v);
 				else
-					glColor3f(0,0,-v);
+					glColor3f(-v,0,0);
 			}
 
 			getCellCoordinates(p, box, mDim);
@@ -485,9 +485,9 @@ template<> void GridPainter<Vec3>::paint() {
 					if (p.z < mLocalGrid->getSizeZ()-1) 
 						vel.z = 0.5 * (vel.z + scale * mLocalGrid->get(p.x,p.y,p.z+1).z);
 				}
-				glColor3f(1,1,1);
+				glColor3f(0,1,0);
 				glVertex(pos, dx);
-				glColor3f(1,1,1);
+				glColor3f(1,1,0);
 				glVertex(pos+vel*1.2, dx);
 			} else if (mVelMode==VelDispStaggered) {
 				for (int d=0; d<3; d++) {
@@ -499,7 +499,7 @@ template<> void GridPainter<Vec3>::paint() {
 					color[d] = 1;
 					glColor3f(color.x, color.y, color.z);
 					glVertex(p1, dx);
-					glColor3f(1,1,1);
+					glColor3f(1,1,0);
 					p1[d] += vel[d];
 					glVertex(p1, dx);
 				}
