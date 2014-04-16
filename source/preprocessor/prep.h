@@ -16,6 +16,7 @@
 
 #include <string>
 #include <vector>
+#include <sstream>
 
 // Tokens
 enum Keyword { KwNone = 0, KwKernel, KwPython };
@@ -73,6 +74,8 @@ inline Keyword checkKeyword(const std::string& word) {
 
 #define assert(x, msg) if(!(x)){errMsg(line,msg);}
 
+#define debMsg(l, msg) if(gDebugMode){ std::ostringstream out; out << msg; debMsgHelper(l, out.str()); }
+
 // from main.cpp
 enum MType { MTNone = 0, MTTBB, MTOpenMP};
 extern std::string gFilename;
@@ -82,6 +85,7 @@ extern bool gDocMode;
 extern std::string gRegText;
 extern std::string gParent;
 void errMsg(int line, const std::string& text);
+void debMsgHelper(int line, const std::string& text);
 void replaceAll(std::string& text, const std::string& pattern, const std::string& repl);
 
 // functions from merge.cpp

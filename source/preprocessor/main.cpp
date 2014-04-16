@@ -34,6 +34,10 @@ void errMsg(int line, const string& text) {
     exit(1);
 }
 
+void debMsgHelper(int line, const string& text) {
+    cout << gFilename << ":" << line << ": info: " << text << endl;
+}
+
 string readFile(const string& name) {
     ifstream t(name.c_str());
     if (!t.good()) return "";
@@ -162,7 +166,7 @@ void doGenerate(int argc, char* argv[], bool docs) {
 int main(int argc, char* argv[]) {
     // command line options
     if (argc < 2) usage();
-    
+
     // use merger
     if (!strcmp(argv[1],"merge")) 
         doMerge(argc, argv);

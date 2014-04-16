@@ -36,13 +36,14 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     // process options
     bool idxMode = false, reduce = false, pts = false;
     string bnd = "0", reduceOp="";
+	MType mtType = gMTType;
     for (size_t i=0; i<opts.size(); i++) {
         if (opts[i].name == "ijk") 
             idxMode = false;
         else if (opts[i].name == "index" || opts[i].name == "idx")
             idxMode = true;
         else if (opts[i].name == "st" || opts[i].name == "single")
-            gMTType = MTNone;
+            mtType = MTNone;
         else if (opts[i].name == "pts" || opts[i].name == "particle" || opts[i].name == "points")
             pts = true;
         else if (opts[i].name == "bnd")
@@ -57,9 +58,9 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         } else
             errMsg(line, "KERNEL(opt): illegal kernel option. Supported options are: 'ijk', 'idx', 'bnd=x', 'reduce', 'st', 'pts'");
     }
-    string qualifier = (!reduce && gMTType==MTTBB) ? "const" : "";
+    string qualifier = (!reduce && mtType==MTTBB) ? "const" : "";
     string tbbcall = reduce ? "tbb::parallel_reduce" : "tbb::parallel_for";
-    const bool haveOuter = !reduce && !returnArg.empty() && gMTType == MTTBB;
+    const bool haveOuter = !reduce && !returnArg.empty() && mtType == MTTBB;
     
 	// point out illegal paramter combinations
     if (bnd != "0" && idxMode)
@@ -252,7 +253,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     kclass += code + nl;
     
     // create main kernel function 
-    if (gMTType == MTTBB) {
+    if (mtType == MTTBB) {
         // multithreading using intel tbb
         kclass += tb+ "void operator() (const tbb::blocked_range<size_t>& r) " + qualifier + "{" + nl;
         if (pts) {
@@ -307,7 +308,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
             kclass += tb + "}" + nl;
         }
 	}
-    else if(gMTType == MTOpenMP)
+    else if(mtType == MTOpenMP)
     {
 		// correct for the introduced linebreaks
         if (!gDebugMode) {
@@ -405,6 +406,8 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     
     kclass += parentMember + members + nl;
     kclass += "};" + nl;
+
+	debMsg( line, "Kernel summary '"<< kname <<"'. Basegrid: "<< basegrid <<", baseobj: "<<baseobj<<", mt: "<< mtType );
    
 	return buildline(lb) + kclass + callerClass;
 }
