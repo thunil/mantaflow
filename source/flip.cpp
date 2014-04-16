@@ -100,38 +100,6 @@ PYTHON void testInitGridWithPos(RealGrid &grid) {
     FOR_IJK(grid) { grid(i,j,k) = norm( Vec3(i,j,k) ); }
 }
 
-// compute simple levelset without interpolation (fast, low quality), to be used during simulation
-// deprecated, TODO remove...
-KERNEL(pts, single) 
-void ComputeUnionLevelset_old(BasicParticleSystem& p, LevelsetGrid& phi, Real radius=1.) {
-    if (!p.isActive(i)) return;
-
-	const Vec3 pos = p[i].pos - Vec3(0.5); // offset for centered LS value
-    const int xi = (int)pos.x, yi = (int)pos.y, zi = (int)pos.z; 
-
-	int r  = int(2. * radius) + 1;
-	int rZ = phi.is3D() ? r : 0;
-	for(int zj=zi-rZ; zj<=zi+rZ; zj++) 
-	for(int yj=yi-r ; yj<=yi+r ; yj++) 
-	for(int xj=xi-r ; xj<=xi+r ; xj++) 
-	{
-		if (! phi.isInBounds(Vec3i(xj,yj,zj)) ) continue;
-		phi(xj,yj,zj) = std::min( phi(xj,yj,zj) , fabs( norm(Vec3(xj,yj,zj)-pos) )-radius );
-	}
-}
-
-// deprecated, TODO remove...
-PYTHON void unionParticleLevelset_old (BasicParticleSystem& p, LevelsetGrid& phi, Real radiusFactor=1.) {
-	// make sure we cover at least 1 cell by default (1% safety margin)
-	Real radius = 0.5 * (phi.is3D() ? sqrt(3.) : sqrt(2.) ) * (radiusFactor+.01);
-
-	// reset
-	FOR_IJK(phi) {
-		//phi(i,j,k) = radius + VECTOR_EPSILON;
-		phi(i,j,k) = 1e10;
-	} 
-	ComputeUnionLevelset_old(p, phi, radius);
-}
 
 //! helper to calculate particle radius factor to cover the diagonal of a cell in 2d/3d
 inline Real calculateRadiusFactor(Grid<Real>& grid, Real factor) {
@@ -192,6 +160,7 @@ PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& fl
 }
 
 // simple and slow helper conversion to show contents of int grids like a real grid in the ui
+// (use eg to quickly display contents of the particle-index grid)
 PYTHON void debugIntToReal( Grid<int>& source, Grid<Real>& dest, Real factor=1. )
 {
 	FOR_IJK( source ) { dest(i,j,k) = (Real)source(i,j,k) * factor; }
@@ -248,9 +217,6 @@ PYTHON void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem& 
 	if(delCounter) delete counter;
 }
 
-//KERNEL
-//void ComputeUnionLevelsetPindex(BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
-		//Grid<int>& index, LevelsetGrid& phi, Real radius=1.) 
 KERNEL
 void ComputeUnionLevelsetPindex(Grid<int>& index, BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
 		LevelsetGrid& phi, Real radius=1.) 

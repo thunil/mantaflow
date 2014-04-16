@@ -17,7 +17,7 @@ s.timestep = 0.75
 minParticles = pow(2,dim)
 
 # use slightly larger radius to make the sim a bit harder
-radiusFactor = 1.0
+radiusFactor = 1.5
 
 # prepare grids and particles
 flags    = s.create(FlagGrid)
@@ -76,8 +76,7 @@ for t in range(25):
 
 	# create approximate surface level set, resample particles
     gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
-    #unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
-    unionParticleLevelset_old( pp,  phi , radiusFactor ) 
+    unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
     phi.reinitMarching(flags=flags, maxTime=int(2*radiusFactor) )
     pVel.setSource( vel, isMAC=True )
     pDens.setSource( tstGrid );
