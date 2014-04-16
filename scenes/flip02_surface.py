@@ -4,7 +4,7 @@
 from manta import *
 
 # solver params
-dim = 2
+dim = 3
 res = 64
 gs = vec3(res,res,res)
 if (dim==2):
@@ -12,6 +12,9 @@ if (dim==2):
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.5
 minParticles = pow(2,dim)
+
+# size of particles 
+radiusFactor = 1.0
 
 # prepare grids and particles
 flags    = s.create(FlagGrid)
@@ -29,6 +32,10 @@ pVel     = pp.create(PdataVec3)
 pTest    = pp.create(PdataReal) 
 mesh     = s.create(Mesh)
 
+# acceleration data for particle nbs
+pindex = s.create(ParticleIndexSystem) 
+gpi    = s.create(IntGrid)
+
 # scene setup
 flags.initDomain(boundaryWidth=0)
 # enable one of the following
@@ -44,11 +51,12 @@ sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, r
 testInitGridWithPos(tstGrid)
 setConstPdata( pTest , 0.1 )
     
-if (GUI):
+if 1 and (GUI):
     gui = Gui()
     gui.show()
-    #gui.pause()
-    
+    gui.pause()
+   
+
 #main loop
 for t in range(2500):
     
@@ -61,12 +69,14 @@ for t in range(2500):
     markFluidCells( parts=pp, flags=flags )
 
 	# create approximate surface level set, resample particles
-    # note - this is slow right now, and could be optimized by only computing a narrow band
-    unionParticleLevelset( pp, phi )
-    phi.reinitMarching(flags=flags, maxTime=2 )
+    gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
+    unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
+    phi.reinitMarching(flags=flags, maxTime=int(2*radiusFactor) )
+
+	# set source grids for resampling, used in adjustNumber!
     pVel.setSource( vel, isMAC=True )
     pTest.setSource( tstGrid );
-    adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi ) 
+    adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor ) 
 
 	# forces & pressure solve
     addGravity(flags=flags, vel=vel, gravity=(0,-0.001,0))
@@ -82,8 +92,11 @@ for t in range(2500):
     if (dim==3):
         phi.createMesh(mesh)
     
-    #gui.screenshot( 'flipt_%04d.png' % t );
     #s.printMemInfo()
-    #pp.save( 'parts_%04d.txt' % t );
+    s.printTimings()
     s.step()
+
+    #pp.save( 'parts_%04d.txt' % t );
+    if 0 and (GUI):
+        gui.screenshot( 'flipt11n3d_%04d.png' % t );
 

@@ -16,6 +16,9 @@ s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.75
 minParticles = pow(2,dim)
 
+# use slightly larger radius to make the sim a bit harder
+radiusFactor = 1.0
+
 # prepare grids and particles
 flags    = s.create(FlagGrid)
 phi      = s.create(LevelsetGrid)
@@ -35,6 +38,10 @@ pInt     = pp.create(PdataInt) # todo, no effect so far
 pDens    = pp.create(PdataReal) 
 pDens2   = pp.create(PdataReal) # read density back in from grid
 #mesh     = s.create(Mesh)
+
+# acceleration data for particle nbs
+pindex = s.create(ParticleIndexSystem) 
+gpi    = s.create(IntGrid)
 
 # scene setup
 flags.initDomain(boundaryWidth=0)
@@ -68,12 +75,13 @@ for t in range(25):
     markFluidCells( parts=pp, flags=flags )
 
 	# create approximate surface level set, resample particles
-    # note - this is slow right now, and could be optimized by only computing a narrow band
-    unionParticleLevelset( pp, phi )
-    phi.reinitMarching(flags=flags, maxTime=2 )
+    gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
+    #unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
+    unionParticleLevelset_old( pp,  phi , radiusFactor ) 
+    phi.reinitMarching(flags=flags, maxTime=int(2*radiusFactor) )
     pVel.setSource( vel, isMAC=True )
     pDens.setSource( tstGrid );
-    adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi ) 
+    adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor ) 
 
     mapPartsToGrid(target=dens,  flags=flags, parts=pp, source=pDens )
 
