@@ -47,9 +47,9 @@ public:
     
     inline Real getDx() { return mDx; }
     
-    //! Check if indices are within bounds, otherwise error
+    //! Check if indices are within bounds, otherwise error (should only be called when debugging)
     inline void checkIndex(int i, int j, int k) const;
-    //! Check if indices are within bounds, otherwise error
+    //! Check if indices are within bounds, otherwise error (should only be called when debugging)
     inline void checkIndex(int idx) const;
     //! Check if index is within given boundaries
     inline bool isInBounds(const Vec3i& p, int bnd) const;
@@ -57,6 +57,8 @@ public:
     inline bool isInBounds(const Vec3i& p) const;
     //! Check if index is within given boundaries
     inline bool isInBounds(const Vec3& p, int bnd = 0) const { return isInBounds(toVec3i(p), bnd); }
+    //! Check if linear index is in the range of the array
+    inline bool isInBounds(int idx) const;
     
     //! Get the type of grid
     inline GridType getType() const { return mType; }
@@ -307,7 +309,7 @@ inline void GridBase::checkIndex(int i, int j, int k) const {
 }
 
 inline void GridBase::checkIndex(int idx) const {
-    if (idx<0 || idx > mSize.x * mSize.y * mSize.z) {
+    if (idx<0 || idx >= mSize.x * mSize.y * mSize.z) {
         std::ostringstream s;
         s << "Grid " << mName << " dim " << mSize << " : index " << idx << " out of bound ";
         errMsg(s.str());
@@ -326,6 +328,13 @@ bool GridBase::isInBounds(const Vec3i& p, int bnd) const {
 		ret &= (p.z == 0);
 	}
 	return ret;
+}
+//! Check if linear index is in the range of the array
+bool GridBase::isInBounds(int idx) const {
+    if (idx<0 || idx >= mSize.x * mSize.y * mSize.z) {
+		return false;
+	}
+	return true;
 }
 
 inline Vec3 MACGrid::getCentered(int i, int j, int k) const {

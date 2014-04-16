@@ -194,14 +194,20 @@ public:
 //******************************************************************************
 
 //! Index into other particle system
+//  used for grid based neighborhood searches on generic particle systems (stores
+//  only active particles, and reduces copied data)
+//  note - pos & flag are disabled here, do not use!
 struct ParticleIndexData {
 public:
-    ParticleIndexData() : otherIndex(0), pos(0.) {}
+    ParticleIndexData() : sourceIndex(0) {}
     static ParticleBase::SystemType getType() { return ParticleBase::INDEX; }
 
-    int  otherIndex;
-    Vec3 pos; // more for debugging, should not be necessary...
-	static int flag; // unused 
+    int  sourceIndex; // index of this particle in the original particle system
+	// note - the following two are needed for template instantiation, but not used
+	// for the particle index system (use values from original one!)
+	static Vec3 pos;  // do not use... 
+	static int  flag; // not needed usally 
+    //Vec3 pos; // enable for debugging
 };
 
 PYTHON class ParticleIndexSystem : public ParticleSystem<ParticleIndexData> {

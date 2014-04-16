@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * MantaFlow fluid solver framework
+ * MantaFlow fluid solver framework 
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
@@ -101,12 +101,12 @@ PYTHON void testInitGridWithPos(RealGrid &grid) {
 }
 
 // compute simple levelset without interpolation (fast, low quality), to be used during simulation
+// deprecated, TODO remove...
 KERNEL(pts, single) 
-void ComputeUnionLevelset(BasicParticleSystem& p, LevelsetGrid& phi, Real radius=1.) {
+void ComputeUnionLevelset_old(BasicParticleSystem& p, LevelsetGrid& phi, Real radius=1.) {
     if (!p.isActive(i)) return;
 
 	const Vec3 pos = p[i].pos - Vec3(0.5); // offset for centered LS value
-	//const Vec3i size = phi.getSize();
     const int xi = (int)pos.x, yi = (int)pos.y, zi = (int)pos.z; 
 
 	int r  = int(2. * radius) + 1;
@@ -119,7 +119,9 @@ void ComputeUnionLevelset(BasicParticleSystem& p, LevelsetGrid& phi, Real radius
 		phi(xj,yj,zj) = std::min( phi(xj,yj,zj) , fabs( norm(Vec3(xj,yj,zj)-pos) )-radius );
 	}
 }
-PYTHON void unionParticleLevelset (BasicParticleSystem& p, LevelsetGrid& phi, Real radiusFactor=1.) {
+
+// deprecated, TODO remove...
+PYTHON void unionParticleLevelset_old (BasicParticleSystem& p, LevelsetGrid& phi, Real radiusFactor=1.) {
 	// make sure we cover at least 1 cell by default (1% safety margin)
 	Real radius = 0.5 * (phi.is3D() ? sqrt(3.) : sqrt(2.) ) * (radiusFactor+.01);
 
@@ -128,14 +130,20 @@ PYTHON void unionParticleLevelset (BasicParticleSystem& p, LevelsetGrid& phi, Re
 		//phi(i,j,k) = radius + VECTOR_EPSILON;
 		phi(i,j,k) = 1e10;
 	} 
-	ComputeUnionLevelset(p, phi, radius);
+	ComputeUnionLevelset_old(p, phi, radius);
 }
 
+//! helper to calculate particle radius factor to cover the diagonal of a cell in 2d/3d
+inline Real calculateRadiusFactor(Grid<Real>& grid, Real factor) {
+	return (grid.is3D() ? sqrt(3.) : sqrt(2.) ) * (factor+.01); // note, a 1% safety factor is added here
+} 
+
+//! re-sample particles based on an input levelset 
 PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& flags, 
-		int minParticles, int maxParticles, LevelsetGrid& phi ) 
+		int minParticles, int maxParticles, LevelsetGrid& phi, Real radiusFactor=1.  ) 
 {
-	// which levelset to use as threshold, todo - make depend on particle radius
-	const Real SURFACE_LS = -1.5; 
+	// which levelset to use as threshold
+	const Real SURFACE_LS = -1.0 * calculateRadiusFactor(phi, radiusFactor);
     Grid<int> tmp( vel.getParent() );
 	std::ostringstream out;
 
@@ -189,6 +197,9 @@ PYTHON void debugIntToReal( Grid<int>& source, Grid<Real>& dest, Real factor=1. 
 	FOR_IJK( source ) { dest(i,j,k) = (Real)source(i,j,k) * factor; }
 }
 
+// build a grid that contains indices for a particle system
+// the particles in a cell i,j,k are particles[index(i,j,k)] to particles[index(i+1,j,k)-1]
+// (ie,  particles[index(i+1,j,k)] alreadu belongs to cell i+1,j,k)
 PYTHON void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
 		FlagGrid& flags, Grid<int>& index, Grid<int>* counter=NULL) 
 {
@@ -211,14 +222,12 @@ PYTHON void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem& 
 		}
     }
 
-	//ParticleIndexSystem* indexSys = new ParticleIndexSystem( parts.getParent() );
 	// note - this one might be smaller...
 	indexSys.resize( parts.size()-inactive );
 
 	// convert per cell number to continuous index
 	int idx=0;
 	FOR_IJK( index ) {
-		//if( index(i,j,k) ) debMsg("IDDX "<<Vec3i(i,j,k)<<" "<<idx<<"  "<< index(i,j,k) ,1); // debug entries
 		int num = index(i,j,k);
 		index(i,j,k) = idx;
 		idx += num;
@@ -231,45 +240,61 @@ PYTHON void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem& 
 		if (! index.isInBounds(p)) { continue; }
 
 		// initialize position and index into original array
-		indexSys[ index(p)+(*counter)(p) ].pos        = parts[i].pos;
-		indexSys[ index(p)+(*counter)(p) ].otherIndex = i;
+		//indexSys[ index(p)+(*counter)(p) ].pos        = parts[i].pos;
+		indexSys[ index(p)+(*counter)(p) ].sourceIndex = i;
 		(*counter)(p)++;
     }
 
 	if(delCounter) delete counter;
 }
 
+//KERNEL
+//void ComputeUnionLevelsetPindex(BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
+		//Grid<int>& index, LevelsetGrid& phi, Real radius=1.) 
 KERNEL
-void ComputeUnionLevelset2(BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
-		Grid<int>& index, LevelsetGrid& phi, Real radius=1.) 
+void ComputeUnionLevelsetPindex(Grid<int>& index, BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
+		LevelsetGrid& phi, Real radius=1.) 
 {
-	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5);
-	Real phiv = 1e10; 
+	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5); // shifted by half cell
+	Real phiv = 1e10;  // uninitialized value
 
 	int r  = int(radius) + 1;
 	int rZ = phi.is3D() ? r : 0;
 	for(int zj=k-rZ; zj<=k+rZ; zj++) 
 	for(int yj=j-r ; yj<=j+r ; yj++) 
 	for(int xj=i-r ; xj<=i+r ; xj++) {
-		if ( (!phi.isInBounds(Vec3i(xj-1,yj,zj))) || (!phi.isInBounds(Vec3i(xj,yj,zj))) ) continue;
+		if (!phi.isInBounds(Vec3i(xj,yj,zj))) continue;
 
-		for(int p=index(xj-1,yj,zj); p<index(xj,yj,zj); ++p) {
-			const Vec3 pos = indexSys[p].pos; // - Vec3(0.5); // offset for centered LS value
+		// note, for the particle indices in indexSys the access is periodic (ie, dont skip for eg inBounds(sx,10,10)
+		int isysIdxS = phi.index(xj,yj,zj);
+		int pStart = index(isysIdxS), pEnd=0;
+		if(phi.isInBounds(isysIdxS+1)) pEnd = index(isysIdxS+1);
+		else                           pEnd = indexSys.size();
 
+		// now loop over particles in cell
+		for(int p=pStart; p<pEnd; ++p) {
+			const int psrc = indexSys[p].sourceIndex;
+			//const Vec3 pos = indexSys[p].pos; 
+			const Vec3 pos = parts[psrc].pos; 
 			phiv = std::min( phiv , fabs( norm(gridPos-pos) )-radius );
-			//debMsg("at "<<Vec3i(xj,yj,zj)<<" "<<p<<" "<<gridPos<<" "<< pos   <<"  "<<phiv ,1);
 		}
 	}
 	phi(i,j,k) = phiv;
 }
-
-PYTHON void unionParticleLevelset2( BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
+ 
+PYTHON void unionParticleLevelset( BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
 		FlagGrid& flags, Grid<int>& index, LevelsetGrid& phi, Real radiusFactor=1. ) 
 {
-	Real radius = 0.5 * (phi.is3D() ? sqrt(3.) : sqrt(2.) ) * (radiusFactor+.01);
-	ComputeUnionLevelset2(parts, indexSys, index, phi, radius);
+	// use half a cell diagonal as base radius
+	const Real radius = 0.5 * calculateRadiusFactor(phi, radiusFactor);
+	// no reset of phi necessary here 
+	ComputeUnionLevelsetPindex(index, parts, indexSys, phi, radius);
 }
 
+
+
+
+//******************************************************************************
 // grid interpolation functions
 
 KERNEL(idx) template<class T> 
