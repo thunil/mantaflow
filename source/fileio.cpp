@@ -593,7 +593,6 @@ void readParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
         int readBytes = gzread(gzf, &(parts->getData()[0]), sizeof(T)*head.dim);
     	assertMsg(bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
 
-		debMsg(" ->transformPositions( "<< Vec3i(head.dimX,head.dimY,head.dimZ) <<" to "<< parts->getParent()->getGridSize() , 1);
 		parts->transformPositions( Vec3i(head.dimX,head.dimY,head.dimZ), parts->getParent()->getGridSize() );
     }
     gzclose(gzf);

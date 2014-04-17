@@ -46,10 +46,10 @@ MainWnd::MainWnd() : mPaused(true), mRequestPause(false), mRequestClose(false), 
     mPainter.push_back(new GridPainter<Real>((FlagGrid**)intPainter->getGridPtr(), this));    
     mPainter.push_back(new GridPainter<Vec3>(NULL, this));    
     mPainter.push_back(intPainter);
+    mPainter.push_back(new ParticlePainter(intPainter, this));
     MeshPainter* ptr = new MeshPainter(this);
     mPainter.push_back(ptr);    
     connect(this, SIGNAL(setBackgroundMesh(Mesh*)), ptr, SLOT(setBackgroundMesh(Mesh*)));
-    mPainter.push_back(new ParticlePainter(intPainter, this));
 
     for (int i=0; i<(int)mPainter.size(); i++) {
         connect(mGlWidget, SIGNAL(paintSub()), mPainter[i], SLOT(paint()));

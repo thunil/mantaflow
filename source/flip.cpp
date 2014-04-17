@@ -263,9 +263,8 @@ void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts, ParticleDataImpl<
 		LevelsetGrid& phi, Real radius=1.) 
 {
 	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5); // shifted by half cell
-	//Real phiv = 1e10;  // uninitialized value
 
-	// the particles which to compute weight for
+	// the particles which to compute weight for   NT_DEBUG
 	//int isIdxIni = phi.index(i,j,k);
 	//int targetS = index(isIdxIni), targetE=0;
 	//if(phi.isInBounds(isIdxIni+1)) targetE = index(isIdxIni+1);
@@ -302,8 +301,7 @@ void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts, ParticleDataImpl<
 			//phiv = std::min( phiv , fabs( norm(gridPos-pos) )-radius );
 		}
 	}
-	//phi(i,j,k) = phiv;
-	//Real phiv = std::min( phiv , fabs( norm(gridPos-pacc) )-racc );
+
 	Real phiv = 1e10;
 	if(wacc > VECTOR_EPSILON) {
 		racc /= wacc;
