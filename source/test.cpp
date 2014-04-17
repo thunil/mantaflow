@@ -13,6 +13,7 @@
 
 #include "levelset.h"
 #include "commonkernels.h"
+#include "particle.h"
 #include <cmath>
 
 using namespace std;
@@ -129,5 +130,15 @@ PYTHON void setinflow(FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Real h) 
     }
 }
     
+PYTHON void testDiscardNth (BasicParticleSystem& parts,  int skip=1) { 
+	//knSetPdataConst<Real>(pd,value); 
+	for(int i=0; i<parts.size(); ++i) {
+		if(i%(skip+1) == skip) { // keep 
+		} else {
+			parts.setPos(i, Vec3(-100000) );
+		}
+	}
+}
+
 } //namespace
 

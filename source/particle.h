@@ -119,6 +119,11 @@ public:
     //! safe accessor for python
     PYTHON void setPos(int idx, const Vec3& pos) { DEBUG_ONLY(checkPartIndex(idx)); mData[idx].pos = pos; }
     PYTHON Vec3 getPos(int idx)                  { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].pos; }
+	//! copy all positions into pdata vec3 field
+    PYTHON void getPosPdata(ParticleDataImpl<Vec3>& target);
+    PYTHON void setPosPdata(ParticleDataImpl<Vec3>& source);
+	//! transform coordinate system from one grid size to another (usually upon load)
+	void transformPositions( Vec3i dimOld, Vec3i dimNew );
 
 	//! explicitly trigger compression from outside
 	void doCompress() { if ( mDeletes > mDeleteChunk) compress(); }
@@ -349,6 +354,28 @@ inline void ParticleSystem<S>::kill(int idx)     {
     assertMsg(idx>=0 && idx<size(), "Index out of bounds");
 	mData[idx].flag |= PDELETE; 
 	if ( (++mDeletes > mDeleteChunk) && (mAllowCompress) ) compress(); 
+}
+
+template<class S>
+void ParticleSystem<S>::getPosPdata(ParticleDataImpl<Vec3>& target) {
+	for(int i=0; i<(int)this->size(); ++i) {
+		target[i] = this->getPos(i);
+	}
+}
+template<class S>
+void ParticleSystem<S>::setPosPdata(ParticleDataImpl<Vec3>& target) {
+	for(int i=0; i<(int)this->size(); ++i) {
+		this->getPos(i) = target[i];
+	}
+}
+
+template<class S>
+void ParticleSystem<S>::transformPositions( Vec3i dimOld, Vec3i dimNew )
+{
+	Vec3 factor = calcGridSizeFactor( dimNew, dimOld );
+	for(int i=0; i<(int)this->size(); ++i) {
+		this->setPos(i, this->getPos(i) * factor );
+	}
 }
 
 // check for deletion/invalid position, otherwise return velocity

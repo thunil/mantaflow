@@ -93,6 +93,9 @@ std::string buildInfoString();
 template<class T> inline T square(T a) {
     return a*a;
 }
+template<class T> inline T cubed(T a) {
+    return a*a;
+}
 
 template<class T> inline T clamp(const T& val, const T& vmin, const T& vmax) {
     if (val < vmin) return vmin;

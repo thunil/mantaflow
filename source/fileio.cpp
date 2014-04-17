@@ -530,6 +530,7 @@ void writeGridVol<Real>(const string& name, Grid<Real>* grid) {
 //! in line with grid uni header
 typedef struct {
     int dim; // number of partilces
+    int dimX, dimY, dimZ; // underlying solver resolution (all data in local coordinates!)
     int elementType, bytesPerElement; // type id and byte size
 	char info[256]; // mantaflow build information
     unsigned long timestamp; // creation time
@@ -540,9 +541,13 @@ void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
     cout << "writing particles " << parts->getName() << " to uni file " << name << endl;
     
 #	if NO_ZLIB!=1
-    char ID[5] = "PB01";
+    char ID[5] = "PB02";
     UniPartHeader head;
 	head.dim      = parts->size();
+	Vec3i         gridSize = parts->getParent()->getGridSize();
+	head.dimX     = gridSize.x;
+	head.dimY     = gridSize.y;
+	head.dimZ     = gridSize.z;
     head.bytesPerElement = sizeof(T);
     head.elementType = 0; // 0 for base data
 	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
@@ -573,6 +578,8 @@ void readParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 	gzread(gzf, ID, 4);
     
     if (!strcmp(ID, "PB01")) {
+		errMsg("particle uni file format v01 not supported anymore");
+	} else if (!strcmp(ID, "PB02")) {
         // current file format
         UniPartHeader head;
         assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
@@ -585,6 +592,9 @@ void readParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
     	int bytes = sizeof(T)*head.dim;
         int readBytes = gzread(gzf, &(parts->getData()[0]), sizeof(T)*head.dim);
     	assertMsg(bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
+
+		debMsg(" ->transformPositions( "<< Vec3i(head.dimX,head.dimY,head.dimZ) <<" to "<< parts->getParent()->getGridSize() , 1);
+		parts->transformPositions( Vec3i(head.dimX,head.dimY,head.dimZ), parts->getParent()->getGridSize() );
     }
     gzclose(gzf);
 #	else

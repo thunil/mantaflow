@@ -240,7 +240,6 @@ void ComputeUnionLevelsetPindex(Grid<int>& index, BasicParticleSystem& parts, Pa
 		// now loop over particles in cell
 		for(int p=pStart; p<pEnd; ++p) {
 			const int psrc = indexSys[p].sourceIndex;
-			//const Vec3 pos = indexSys[p].pos; 
 			const Vec3 pos = parts[psrc].pos; 
 			phiv = std::min( phiv , fabs( norm(gridPos-pos) )-radius );
 		}
@@ -255,6 +254,76 @@ PYTHON void unionParticleLevelset( BasicParticleSystem& parts, ParticleIndexSyst
 	const Real radius = 0.5 * calculateRadiusFactor(phi, radiusFactor);
 	// no reset of phi necessary here 
 	ComputeUnionLevelsetPindex(index, parts, indexSys, phi, radius);
+}
+
+
+KERNEL
+void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts, ParticleDataImpl<Real> ptmp, 
+		Grid<int>& index, ParticleIndexSystem& indexSys, 
+		LevelsetGrid& phi, Real radius=1.) 
+{
+	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5); // shifted by half cell
+	//Real phiv = 1e10;  // uninitialized value
+
+	// the particles which to compute weight for
+	//int isIdxIni = phi.index(i,j,k);
+	//int targetS = index(isIdxIni), targetE=0;
+	//if(phi.isInBounds(isIdxIni+1)) targetE = index(isIdxIni+1);
+	//else                           targetE = indexSys.size();
+	//if(targetE-targetS<1) return;
+
+	// loop over neighborhood, similar to ComputeUnionLevelsetPindex
+	const Real sradiusInv = 1. / (4. * radius * radius) ;
+	int   r    = int(2. * radius) + 1;
+	int   rZ   = phi.is3D() ? r : 0;
+	// accumulators
+	Real  wacc = 0.;
+	Vec3  pacc = Vec3(0.);
+	Real  racc = 0.;
+
+	for(int zj=k-rZ; zj<=k+rZ; zj++) 
+	for(int yj=j-r ; yj<=j+r ; yj++) 
+	for(int xj=i-r ; xj<=i+r ; xj++) {
+		if (! phi.isInBounds(Vec3i(xj,yj,zj)) ) continue;
+
+		int isysIdxS = phi.index(xj,yj,zj);
+		int pStart = index(isysIdxS), pEnd=0;
+		if(phi.isInBounds(isysIdxS+1)) pEnd = index(isysIdxS+1);
+		else                           pEnd = indexSys.size();
+
+		for(int p=pStart; p<pEnd; ++p) {
+			int   psrc = indexSys[p].sourceIndex;
+			Vec3  pos  = parts[psrc].pos; 
+			Real  s    = normSquare(gridPos-pos) * sradiusInv;
+			Real  w    = std::max(0., cubed(1.-s) );
+			wacc += w;
+			racc += radius * w;
+			pacc += pos * w;
+			//phiv = std::min( phiv , fabs( norm(gridPos-pos) )-radius );
+		}
+	}
+	//phi(i,j,k) = phiv;
+	//Real phiv = std::min( phiv , fabs( norm(gridPos-pacc) )-racc );
+	Real phiv = 1e10;
+	if(wacc > VECTOR_EPSILON) {
+		racc /= wacc;
+		pacc /= wacc;
+		phiv = fabs( norm(gridPos-pacc) )-racc;
+	}
+	phi(i,j,k) = phiv;
+}
+
+ 
+PYTHON void averagedParticleLevelset( BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
+		FlagGrid& flags, Grid<int>& index, LevelsetGrid& phi, Real radiusFactor=1. ) 
+{
+	// use half a cell diagonal as base radius
+	const Real radius = 0.5 * calculateRadiusFactor(phi, radiusFactor);
+	// temporary storage for weight
+	ParticleDataImpl<Real> ptmp( parts.getParent() );
+	ptmp.resize( parts.size() );
+
+	ComputeAveragedLevelsetWeight(parts, ptmp, index, indexSys, phi, radius);
 }
 
 

@@ -35,7 +35,6 @@ ENDIF()
 
 # compilation versions
 OPTION(DEBUG "Enable debug compilation" OFF)
-OPTION(USE64 "Switch 64bit support" ON)
 OPTION(GUI "Compile with GUI (requires QT)" OFF)
 OPTION(TBB "Use multi-thread kernels using Intels TBB" OFF)
 OPTION(OPENMP "Use multi-thread kernels using OpenMP" OFF)
@@ -72,7 +71,6 @@ ENDIF()
 MESSAGE(STATUS "")
 MESSAGE(STATUS "Options - "
     " -DDEBUG='${DEBUG}' "
-    " -DUSE64='${USE64}' "
     " -DGUI='${GUI}' "
     " -DTBB='${TBB}' "
     " -DOPENMP='${OPENMP}' "
@@ -209,6 +207,7 @@ if (GUI)
         source/gui/qtmain.cpp
     )
 	list(APPEND PP_SOURCES ${QT_SOURCES})
+	list(APPEND PP_HEADERS ${QT_HEADERS})
 endif()
 
 # CUDA sources
@@ -227,15 +226,6 @@ SET(INCLUDE_PATHS
    source/util
    ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source   
 )
-
-# 64 bit config , not for windows
-if (USE64)
-	add_definitions(-DUSE64) 
-	IF(NOT WIN32)
-		SET(F_LINKADD "${F_LINKADD} -m64 ")
-		ADD_DEFINITIONS( -m64 )
-	ENDIF()
-endif()
 
 # Multithreading
 if(MT)
@@ -278,7 +268,7 @@ endif()
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
     set(DX_PATH "doxy")
-    foreach(it ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS})
+    foreach(it ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS})
         get_filename_component(CURPATH ${it} PATH)
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${DX_PATH}/${CURPATH}")
         set(CURDX "${DX_PATH}/${it}")
@@ -328,9 +318,7 @@ if(CUDA)
     add_definitions( -DCUDA=1 )
     find_package(CUDA QUIET REQUIRED)
     set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
-    if (USE64)
-        set(CUDA_64_BIT_DEVICE_CODE ON)
-    endif()
+    # ? if (USE64) set(CUDA_64_BIT_DEVICE_CODE ON) endif()
     if(WIN32)
         if(DEBUG)
             set(CUDA_NVCC_FLAGS -DDEBUG;--compiler-options;-Wall)

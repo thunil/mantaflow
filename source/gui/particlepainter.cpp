@@ -114,7 +114,7 @@ void ParticlePainter::paint() {
     Real scale = getScale(); 
     
     glDisable(GL_BLEND);
-    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_DEPTH_TEST); // why depth test for particles? clashes with display plane for regular ones
     glDisable(GL_LIGHTING);
     
     // obtain current plane

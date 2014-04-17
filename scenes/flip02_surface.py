@@ -93,10 +93,10 @@ for t in range(2500):
         phi.createMesh(mesh)
     
     #s.printMemInfo()
-    s.printTimings()
+    #s.printTimings()
     s.step()
 
-    #pp.save( 'parts_%04d.txt' % t );
+    #pp.save( 'flipOut03_%04d.uni' % t );
     if 0 and (GUI):
         gui.screenshot( 'flipt11n3d_%04d.png' % t );
 

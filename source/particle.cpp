@@ -184,12 +184,12 @@ void BasicParticleSystem::writeParticlesRawVelocityGz(string name) {
 }
 
 
-void BasicParticleSystem::load(string name) {
+void BasicParticleSystem::load(string name ) {
     if (name.find_last_of('.') == string::npos)
         errMsg("file '" + name + "' does not have an extension");
     string ext = name.substr(name.find_last_of('.'));
     if ( ext == ".uni") 
-        readParticlesUni<BasicParticleData>(name, this);
+        readParticlesUni<BasicParticleData>(name, this );
 	else 
         errMsg("particle '" + name +"' filetype not supported for loading");
 }

@@ -292,8 +292,15 @@ template<> inline nbVector safeDivide<nbVector>(const nbVector &a, const nbVecto
 }
 
 // make data type known to python
+// python keyword changed here, because the preprocessor does not yet parse #ifdefs correctly
 PYT HON alias Grid<nbVector> TestDataGrid;
 #endif // ENABLE_GRID_TEST_DATATYPE
+
+
+//! helper to compute grid conversion factor between local coordinates of two grids
+inline Vec3 calcGridSizeFactor(Vec3i s1, Vec3i s2) {
+	return Vec3( Real(s1[0])/s2[0], Real(s1[1])/s2[1], Real(s1[2])/s2[2] );
+}
 
 
 //******************************************************************************

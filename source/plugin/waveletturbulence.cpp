@@ -22,11 +22,6 @@ using namespace std;
 namespace Manta {
 
 
-//! helper to compute grid size conversion factor
-static inline Vec3 gridSizeFactor(Vec3i s1, Vec3i s2) {
-	return Vec3( Real(s1[0])/s2[0], Real(s1[1])/s2[1], Real(s1[2])/s2[2] );
-}
-
 //! Apply vector noise to grid, this is a simplified version - no position scaling or UVs
 KERNEL 
 void knApplySimpleNoiseVec(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
@@ -109,10 +104,10 @@ PYTHON void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseFiel
 	Vec3 sourceFactor = Vec3(1.);
 	if(uv) {
 		uvInterpol = (target.getSize() != uv->getSize());
-		sourceFactor = gridSizeFactor( uv->getSize(), target.getSize() );
+		sourceFactor = calcGridSizeFactor( uv->getSize(), target.getSize() );
 	} else if(weight) {
 	   	uvInterpol = (target.getSize() != weight->getSize());
-		sourceFactor = gridSizeFactor( weight->getSize(), target.getSize() );
+		sourceFactor = calcGridSizeFactor( weight->getSize(), target.getSize() );
 	}
 	if(uv && weight) assertMsg( uv->getSize() == weight->getSize(), "UV and weight grid have to match!");
 
@@ -152,7 +147,7 @@ void KnInterpolateGrid(Grid<Real>& target, Grid<Real>& source, const Vec3& sourc
 
 PYTHON void interpolateGrid( Grid<Real>& target, Grid<Real>& source )
 {
-	Vec3 sourceFactor = gridSizeFactor( source.getSize(), target.getSize() );
+	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
 
 	// a brief note on a mantaflow specialty: the target grid has to be the first argument here!
 	// the parent fluidsolver object is taken from the first grid, and it determines the size of the
@@ -179,7 +174,7 @@ void KnInterpolateMACGrid(MACGrid& target, MACGrid& source, const Vec3& sourceFa
 
 PYTHON void interpolateMACGrid(MACGrid& target, MACGrid& source)
 {
-	Vec3 sourceFactor = gridSizeFactor( source.getSize(), target.getSize() );
+	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
 
 	// see interpolateGrid for why the target grid needs to come first in the parameters!
 
@@ -230,51 +225,6 @@ PYTHON void computeStrainRateMag(MACGrid& vel, Grid<Real>& mag) {
 
 // extrapolate a real grid into a flagged region (based on initial flags)
 // by default extrapolates from fluid to obstacle cells
-PYTHON void _extrapolateSimpleFlags (FlagGrid& flags, Grid<Real>& val, int distance = 4, 
-									int flagFrom=FlagGrid::TypeFluid, int flagTo=FlagGrid::TypeObstacle ) 
-{
-    Grid<int> tmp( flags.getParent() );
-	int dim = (flags.is3D() ? 3:2);
-	Vec3i nb[6] = { 
-		Vec3i(1 ,0,0), Vec3i(-1,0,0),
-		Vec3i(0,1 ,0), Vec3i(0,-1,0),
-		Vec3i(0,0,1 ), Vec3i(0,0,-1) };
-
-	// remove all fluid cells (set to 1)
-	tmp.clear();
-	FOR_IJK_BND(flags,1) {
-		if (flags(i,j,k) & flagFrom) 
-			tmp( Vec3i(i,j,k) ) = 1;
-	}
-
-	// extrapolate for given distance
-	for(int d=1; d<1+distance; ++d) {
-
-		// TODO, parallelize
-		FOR_IJK_BND(flags,1) {
-			if (tmp(i,j,k) != 0)          continue;
-			if (!(flags(i,j,k) & flagTo)) continue;
-
-			// copy from initialized neighbors
-			Vec3i p(i,j,k);
-			int nbs = 0;
-			Real avgVel = 0.;
-			for (int n=0; n<2*dim; ++n) {
-				if (tmp(p+nb[n]) == d) {
-					avgVel += val(p+nb[n]);
-					nbs++;
-				}
-			}
-
-			if(nbs>0) {
-				tmp(p)    = d+1;
-				val(p) = avgVel / nbs;
-			}
-		}
-
-	} // distance 
-}
-
 template<class T> 
 void extrapolSimpleFlagsHelper (FlagGrid& flags, Grid<T>& val, int distance = 4, 
 									int flagFrom=FlagGrid::TypeFluid, int flagTo=FlagGrid::TypeObstacle ) 
