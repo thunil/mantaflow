@@ -258,18 +258,11 @@ PYTHON void unionParticleLevelset( BasicParticleSystem& parts, ParticleIndexSyst
 
 
 KERNEL
-void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts, ParticleDataImpl<Real> ptmp, 
+void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts, ParticleDataImpl<Real>& ptmp, 
 		Grid<int>& index, ParticleIndexSystem& indexSys, 
 		LevelsetGrid& phi, Real radius=1.) 
 {
 	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5); // shifted by half cell
-
-	// the particles which to compute weight for   NT_DEBUG
-	//int isIdxIni = phi.index(i,j,k);
-	//int targetS = index(isIdxIni), targetE=0;
-	//if(phi.isInBounds(isIdxIni+1)) targetE = index(isIdxIni+1);
-	//else                           targetE = indexSys.size();
-	//if(targetE-targetS<1) return;
 
 	// loop over neighborhood, similar to ComputeUnionLevelsetPindex
 	const Real sradiusInv = 1. / (4. * radius * radius) ;
@@ -279,6 +272,8 @@ void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts, ParticleDataImpl<
 	Real  wacc = 0.;
 	Vec3  pacc = Vec3(0.);
 	Real  racc = 0.;
+	int cnt = 0; // NT_DEBUG
+	Real phiv = 1e10; // far outside / uninitialized
 
 	for(int zj=k-rZ; zj<=k+rZ; zj++) 
 	for(int yj=j-r ; yj<=j+r ; yj++) 
@@ -289,7 +284,6 @@ void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts, ParticleDataImpl<
 		int pStart = index(isysIdxS), pEnd=0;
 		if(phi.isInBounds(isysIdxS+1)) pEnd = index(isysIdxS+1);
 		else                           pEnd = indexSys.size();
-
 		for(int p=pStart; p<pEnd; ++p) {
 			int   psrc = indexSys[p].sourceIndex;
 			Vec3  pos  = parts[psrc].pos; 
@@ -298,17 +292,17 @@ void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts, ParticleDataImpl<
 			wacc += w;
 			racc += radius * w;
 			pacc += pos * w;
-			//phiv = std::min( phiv , fabs( norm(gridPos-pos) )-radius );
-		}
+			cnt++;
+		} 
 	}
 
-	Real phiv = 1e10;
 	if(wacc > VECTOR_EPSILON) {
 		racc /= wacc;
 		pacc /= wacc;
 		phiv = fabs( norm(gridPos-pacc) )-racc;
 	}
 	phi(i,j,k) = phiv;
+	//if(cnt>0 || (j==1 && i==1)) debMsg("avg "<<i<<","<<j<<","<<k<<" , phi="<<phiv <<" #"<<cnt <<"   r "<<r<<" "<<rZ ,1 );  // NT_DEBUG
 }
 
  
