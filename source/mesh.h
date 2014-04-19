@@ -180,6 +180,7 @@ public:
     void removeNodes(const std::vector<int>& deletedNodes);
     void rebuildCorners(int from=0, int to=-1);
     void rebuildLookup(int from=0, int to=-1);
+    void rebuildQuickCheck();
     void fastNodeLookupRebuild(int corner);
     void sanityCheck(bool strict=true, std::vector<int>* deletedNodes=0, std::map<int,bool>* taintedTris=0);
     

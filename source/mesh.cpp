@@ -123,6 +123,14 @@ void Mesh::fromShape(Shape& shape, bool append) {
 }
 
 
+//! do a quick check whether a rebuild is necessary, and if yes do rebuild
+void Mesh::rebuildQuickCheck() {
+    if(mCorners.size() != 3*mTris.size())
+    	rebuildCorners();
+    if(m1RingLookup.size() != mNodes.size())
+    	rebuildLookup();
+}
+
 void Mesh::rebuildCorners(int from, int to) {
     mCorners.resize(3*mTris.size());
     if (to < 0) to = mTris.size();        
