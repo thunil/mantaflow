@@ -35,7 +35,8 @@ namespace Manta {
 /*! see Desbrun 99 "Implicit fairing of of irregular meshes using diffusion and curvature flow"*/
 PYTHON void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLength=1e-5) {
     const Real dt = parent->getDt();
-    const Real str = min(dt * strength, (Real)1);
+    const Real str = min(dt * strength, (Real)1); 
+	mesh.rebuildQuickCheck(); 
     
     // calculate original mesh volume
     Vec3 origCM;
@@ -107,6 +108,7 @@ PYTHON void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLength=
 PYTHON void subdivideMesh(Mesh& mesh, Real minAngle, Real minLength, Real maxLength, bool cutTubes = false) {
     // gather some statistics
     int edgeSubdivs = 0, edgeCollsAngle = 0, edgeCollsLen = 0, edgeKill = 0;
+	mesh.rebuildQuickCheck(); 
 
     vector<int> deletedNodes;
     map<int,bool> taintedTris;

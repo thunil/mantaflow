@@ -5,8 +5,9 @@ from manta import *
 
 # solver params
 dim = 3
-res = 64
-res = 120
+res = 32
+#res = 64
+#res = 120 # NT_DEBUG, todo check flotsam at this res
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
@@ -16,6 +17,8 @@ minParticles = pow(2,dim)
 
 # size of particles 
 radiusFactor = 5.1
+
+scale = 0.5
 
 # prepare grids and particles
 flags    = s.create(FlagGrid)
@@ -62,12 +65,20 @@ for t in range(2500):
 	gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
 	#unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
 	averagedParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
+#todo check flotsam particles
 	# NT_DEBUG , why does marching need flags?
 	phi.reinitMarching(flags=flags, maxTime=int(2*radiusFactor) )
 
 
 	if (dim==3):
+		setBoundaries(phi, 0., boundaryWidth=1)
 		phi.createMesh(mesh)
+		s.step()
+		subdivideMesh(mesh=mesh, minAngle=0.01, minLength=scale, maxLength=3*scale, cutTubes=True)
+		# beautify mesh
+		for t in range(2500):
+			smoothMesh(mesh=mesh, strength=1e-3, steps=10) # NT_DEBUG no effect?
+			s.step()
 	
 	#s.printMemInfo()
 	s.printTimings()

@@ -353,6 +353,15 @@ PYTHON void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv
 	if(info) debMsg("Uv grid "<<index<<"/"<<numUvs<< " t="<<currt<<" w="<<uvWeight<<", reset:"<<(int)(currt<lastt) , 1);
 }
 
+PYTHON void setBoundaries(Grid<Real>& grid, Real value=0., int boundaryWidth=1) {
+    const int w = boundaryWidth;
+    FOR_IJK(grid) {
+        bool bnd = (i<=w || i>=grid.getSizeX()-1-w || j<=w || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w || k>=grid.getSizeZ()-1-w)));
+        if (bnd) 
+            grid(i,j,k) = value;
+    }
+}
+
 //******************************************************************************
 // Specialization classes
 
