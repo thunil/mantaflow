@@ -222,7 +222,7 @@ void ComputeUnionLevelsetPindex(Grid<int>& index, BasicParticleSystem& parts, Pa
 		LevelsetGrid& phi, Real radius=1.) 
 {
 	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5); // shifted by half cell
-	Real phiv = 1e10;  // uninitialized value
+	Real phiv = radius * 1.732;  // outside
 
 	int r  = int(radius) + 1;
 	int rZ = phi.is3D() ? r : 0;
@@ -258,22 +258,21 @@ PYTHON void unionParticleLevelset( BasicParticleSystem& parts, ParticleIndexSyst
 
 
 KERNEL
-void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts, ParticleDataImpl<Real>& ptmp, 
+void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts, 
 		Grid<int>& index, ParticleIndexSystem& indexSys, 
 		LevelsetGrid& phi, Real radius=1.) 
 {
 	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5); // shifted by half cell
+	Real phiv = radius * 1.732; // outside 
 
 	// loop over neighborhood, similar to ComputeUnionLevelsetPindex
 	const Real sradiusInv = 1. / (4. * radius * radius) ;
-	int   r    = int(2. * radius) + 1;
+	int   r    = int(1. * radius) + 1;
 	int   rZ   = phi.is3D() ? r : 0;
 	// accumulators
 	Real  wacc = 0.;
 	Vec3  pacc = Vec3(0.);
 	Real  racc = 0.;
-	int cnt = 0; // NT_DEBUG
-	Real phiv = 1e10; // far outside / uninitialized
 
 	for(int zj=k-rZ; zj<=k+rZ; zj++) 
 	for(int yj=j-r ; yj<=j+r ; yj++) 
@@ -292,7 +291,6 @@ void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts, ParticleDataImpl<
 			wacc += w;
 			racc += radius * w;
 			pacc += pos * w;
-			cnt++;
 		} 
 	}
 
@@ -302,20 +300,54 @@ void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts, ParticleDataImpl<
 		phiv = fabs( norm(gridPos-pacc) )-racc;
 	}
 	phi(i,j,k) = phiv;
-	//if(cnt>0 || (j==1 && i==1)) debMsg("avg "<<i<<","<<j<<","<<k<<" , phi="<<phiv <<" #"<<cnt <<"   r "<<r<<" "<<rZ ,1 );  // NT_DEBUG
+}
+
+// smoothing, and  
+KERNEL(bnd=1) template<class T> 
+void knSmoothGrid(Grid<T>& me, Grid<T>& tmp, Real factor) {
+	T val = me(i,j,k) + 
+			me(i+1,j,k) + me(i-1,j,k) + 
+			me(i,j+1,k) + me(i,j-1,k) ;
+	if(me.is3D()) {
+		val += me(i,j,k+1) + me(i,j,k-1);
+	}
+	tmp(i,j,k) = val * factor;
+}
+
+KERNEL(bnd=1) template<class T> 
+void knSmoothGridNeg(Grid<T>& me, Grid<T>& tmp, Real factor) {
+	T val = me(i,j,k) + 
+			me(i+1,j,k) + me(i-1,j,k) + 
+			me(i,j+1,k) + me(i,j-1,k) ;
+	if(me.is3D()) {
+		val += me(i,j,k+1) + me(i,j,k-1);
+	}
+	val *= factor;
+	if(val<tmp(i,j,k)) tmp(i,j,k) = val;
+	else               tmp(i,j,k) = me(i,j,k);
 }
 
  
 PYTHON void averagedParticleLevelset( BasicParticleSystem& parts, ParticleIndexSystem& indexSys, 
-		FlagGrid& flags, Grid<int>& index, LevelsetGrid& phi, Real radiusFactor=1. ) 
+		FlagGrid& flags, Grid<int>& index, LevelsetGrid& phi, Real radiusFactor=1. ,
+		int smoothen=1 , int smoothenNeg=1 ) 
 {
 	// use half a cell diagonal as base radius
-	const Real radius = 0.5 * calculateRadiusFactor(phi, radiusFactor);
-	// temporary storage for weight
-	ParticleDataImpl<Real> ptmp( parts.getParent() );
-	ptmp.resize( parts.size() );
+	const Real radius = 0.5 * calculateRadiusFactor(phi, radiusFactor); 
+	ComputeAveragedLevelsetWeight(parts,  index, indexSys, phi, radius);
 
-	ComputeAveragedLevelsetWeight(parts, ptmp, index, indexSys, phi, radius);
+	// post-process level-set
+	for(int i=0; i<smoothen; ++i) {
+		LevelsetGrid tmp(parent);
+		knSmoothGrid<Real>(phi,tmp, 1./(phi.is3D() ? 7. : 5.) );
+		phi.swap(tmp);
+	} 
+	for(int i=0; i<smoothenNeg; ++i) {
+		LevelsetGrid tmp(parent);
+		knSmoothGridNeg<Real>(phi,tmp, 1./(phi.is3D() ? 7. : 5.) );
+		phi.swap(tmp);
+	}
+	// NT_DEBUG , todo copy border
 }
 
 
