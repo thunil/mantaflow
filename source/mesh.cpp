@@ -491,14 +491,14 @@ void Mesh::sanityCheck(bool strict, vector<int>* deletedNodes, map<int,bool>* ta
             set<int>& rnodes = m1RingLookup[node].nodes;
             set<int>& rtris = m1RingLookup[node].tris;
             if (rnodes.find(next) == rnodes.end() || rnodes.find(prev) == rnodes.end()) {
-                cout << t << " " << node << " " << next << " " << prev << endl;
+                debMsg("Tri "<< t << " " << node << " " << next << " " << prev , 1);
                 for(set<int>::iterator it= rnodes.begin(); it != rnodes.end(); ++it)
-                    cout << *it << endl;
-                errMsg("node missing in 1ring");                            
+                    debMsg( *it , 1);
+                errMsg("node missing in 1ring");
             }
             if (rtris.find(t) == rtris.end()) {
-               cout << t << " " << node << endl;               
-               errMsg("tri missing in 1ring");            
+               debMsg("Tri "<< t << " " << node , 1);
+               errMsg("tri missing in 1ring");
             }
         }
     }

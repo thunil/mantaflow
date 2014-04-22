@@ -17,6 +17,7 @@
 #include "pclass.h"
 #include "vectorbase.h"
 #include "interpol.h"
+#include "interpolHigh.h"
 #include "kernel.h"
 
 namespace Manta {
@@ -129,6 +130,17 @@ public:
     // interpolated access
     inline T getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
     inline void setInterpolated(const Vec3& pos, const T& val, Grid<Real>& sumBuffer) const { setInterpol<T>(mData, mSize, mStrideZ, pos, val, &sumBuffer[0]); }
+	// higher order interpolation
+    inline T getInterpolated(const Vec3& pos, int order) const { 
+		switch(order) {
+		case 2: return interpolCubic<T>(mData, mSize, mStrideZ, pos); 
+		default: 
+			// default / fallback
+			assertMsg(false, "Unknown interpolation order "<<order);
+		case 1: 
+			return interpol<T>(mData, mSize, mStrideZ, pos); 
+		}
+	}
     
     // operators
     template<class S> Grid<T>& operator+=(const Grid<S>& a);
