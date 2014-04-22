@@ -95,9 +95,10 @@ void LevelsetGrid::join(const LevelsetGrid& o) {
     KnJoin(*this, o);
 }
 
+//! re-init levelset and extrapolate velocities (in & out)
+//  note - uses flags to identify border (could also be done based on ls values)
 void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTransport, bool ignoreWalls, bool correctOuterLayer, int obstacleType)
 {
-    //assertMsg(is3D(), "Only 3D grids supported so far");
 	const int dim = (is3D() ? 3 : 2);
     
     Grid<int> fmFlags(mParent);
