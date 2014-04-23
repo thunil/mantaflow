@@ -21,8 +21,8 @@ def writeHeader( filename, content ):
 # params
 
 if(len(sys.argv)<2):
-	print "Usage makeHgVersion.py <out-file> <optional: path-to-hg> "
-	print "Warning, the target file <out-file> will be overwritten! "
+	print("Usage makeHgVersion.py <out-file> <optional: path-to-hg> ")
+	print("Warning, the target file <out-file> will be overwritten! ")
 	exit(1)
 
 # target file
@@ -43,7 +43,7 @@ for hgnameCheck in hgnames:
 # write empty file if no hg found
 if(hgname == ""):
 	writeHeader( outname, "\n// no hg found!\n\n" )
-	print("Warning, no hg found - writing empty header")
+	print("Warning, no hg found - writing dummy header")
 	exit(0); # dont throw an error for make, we can still continue...
 
 if(doDebug):
@@ -57,10 +57,10 @@ try:
 	oldContent = infile.read()
 	infile.close()
 	if(doDebug):
-		print "\n Old file content '"+oldContent+"' end \n"
+		print("\n Old file content '"+oldContent+"' end \n")
 except IOError:
 	if(doDebug):
-		print "Old file not found..."
+		print("Old file not found...")
 
 
 # get hg version
@@ -75,11 +75,11 @@ newContent = "\n\n#define MANTA_HG_VERSION \"" + hgVersion + "\" \n\n"
 
 if(newContent == oldContent):
 	if(doDebug):
-		print "MATCHES! No write"
+		print("MATCHES! No write")
 	doWrite = False
 else:
 	if(doDebug):
-		print "Old info different, writing"
+		print("Old info different, writing")
 
 # write temp file
 if(doWrite):
