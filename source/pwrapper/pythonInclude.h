@@ -14,7 +14,7 @@
 #ifndef _PYTHONINCLUDE_H
 #define _PYTHONINCLUDE_H
 
-#if defined WIN32 || defined _WIN32
+#if defined(WIN32) || defined(_WIN32)
 
 	// note - we have to include these first!
 	#include <string>
@@ -34,10 +34,8 @@
 	#else
 		#include <Python.h>
 	#endif
-
-
-	#endif
-
 #else
 	#include <Python.h>
+#endif
+
 #endif

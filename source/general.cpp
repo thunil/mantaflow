@@ -12,7 +12,7 @@
  ******************************************************************************/
 
 #include "general.h"
-#if defined WIN32 || defined _WIN32
+#if defined(WIN32) || defined(_WIN32)
 #  define WIN32_LEAN_AND_MEAN
 #  define NOMINMAX
 #  include <windows.h>
@@ -30,7 +30,7 @@ namespace Manta {
 int gDebugLevel = 1;
  
 void MuTime::get() {    
-#if defined WIN32 || defined _WIN32
+#if defined(WIN32) || defined(_WIN32)
     LARGE_INTEGER liTimerFrequency;
     QueryPerformanceFrequency(&liTimerFrequency);
     LARGE_INTEGER liLastTime;
@@ -84,7 +84,7 @@ std::string buildInfoString() {
 	// TODO , include hg branch info
 
 	// os
-#if defined WIN32 || defined _WIN32
+#if defined(WIN32) || defined(_WIN32)
 		infoStr << " win";
 #	endif
 #	ifdef __APPLE__
