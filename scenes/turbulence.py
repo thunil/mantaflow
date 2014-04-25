@@ -3,7 +3,7 @@
 
 from manta import *
 
-scale = 0.2
+# unused: scale = 0.2
 
 # solver params
 res = 64
@@ -62,7 +62,7 @@ if (GUI):
     gui = Gui()
     gui.setBackgroundMesh(bgr)
     gui.show()
-    sliderL0 = gui.addControl(Slider, text='turbulent lengthscale', val=L0, min=0.001, max=0.5)
+    # unused: sliderL0 = gui.addControl(Slider, text='turbulent lengthscale', val=L0, min=0.001, max=0.5)
     sliderMult = gui.addControl(Slider, text='turbulent mult', val=mult, min=0, max=1)
     sliderProd = gui.addControl(Slider, text='production mult', val=prodMult, min=0.1, max=5)
     checkDiff = gui.addControl(Checkbox, text='enable RANS', val=enableDiffuse)
@@ -73,7 +73,7 @@ KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=True)
 for t in range(10000):
     if (GUI):
         mult = sliderMult.get()
-        K0 = sliderL0.get()
+		# unused: K0 = sliderL0.get()
         enableDiffuse = checkDiff.get()
         prodMult = sliderProd.get()
     
