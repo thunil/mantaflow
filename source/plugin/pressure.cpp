@@ -122,7 +122,8 @@ KERNEL void SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<boo
 inline static Real thetaHelper(Real inside, Real outside)
 {
     Real denom = inside-outside;
-    if (denom==0) return 0; // trust inside value
+    //if (denom==0) return 0; // trust inside value
+    if (denom > -1e-04) return 0.5; // should always be neg, and large enough...
     return std::max(Real(0), std::min(Real(1), inside/denom));
 }
 
@@ -131,8 +132,15 @@ inline static Real ghostFluidHelper(int idx, int offset, const Grid<Real> &phi, 
 {
     Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
 
-    if (alpha == 0) return gfClamp;
-    return std::max(gfClamp, std::min(Real(0), 1-1/alpha)); // ]clamp ; 0]
+    //if (alpha == 0) return gfClamp;
+    if (alpha < gfClamp) alpha = gfClamp;
+	//Real b = (1-1/alpha);
+	//if(1) debMsg("--- At "<<idx<<" "<<alpha<<"    "<< b  <<"   "<< std::max(gfClamp, std::min(Real(0),b)) ,1); // NT_DEBUG
+    //return std::max(gfClamp, std::min(Real(0), 1-1/alpha)); // ]clamp ; 0]
+    //return std::max(gfClamp, std::min(Real(0), -1+1/alpha)); // ]clamp ; 0]
+	//if(1) debMsg("--- At "<<idx<<" "<<alpha<<"    "<< b  <<"   "<< std::min(gfClamp, b) ,1); // NT_DEBUG
+    //return std::min(gfClamp, (1-1/alpha) ); // ]clamp ; 0]
+    return (1-(1/alpha)); // ]clamp ; 0]
 }
 
 //! Kernel: Adapt A0 for ghost fluid
@@ -142,7 +150,7 @@ void ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<R
     const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
     int idx = flags.index(i,j,k);
     if (!flags.isFluid(idx)) return;
- 
+	//Real d1 = A0[idx] ; // NT_DEBUG
     if (flags.isEmpty(i-1,j,k)) A0[idx] -= ghostFluidHelper(idx, -X, phi, gfClamp);
     if (flags.isEmpty(i+1,j,k)) A0[idx] -= ghostFluidHelper(idx, +X, phi, gfClamp);
     if (flags.isEmpty(i,j-1,k)) A0[idx] -= ghostFluidHelper(idx, -Y, phi, gfClamp);
@@ -151,6 +159,8 @@ void ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<R
         if (flags.isEmpty(i,j,k-1)) A0[idx] -= ghostFluidHelper(idx, -Z, phi, gfClamp);
         if (flags.isEmpty(i,j,k+1)) A0[idx] -= ghostFluidHelper(idx, +Z, phi, gfClamp);
     }
+	//Real d2 = A0[idx] ; // NT_DEBUG
+	//if(fabs(d1-d2)>VECTOR_EPSILON) debMsg("At "<<idx<<" "<<d1<<" to "<<d2 ,1);
 }
 
 //! Kernel: Apply velocity update: ghost fluid contribution
@@ -194,7 +204,7 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0, 
-                     Real gfClamp = 1e-04,
+                     Real gfClamp = 1e-02, // NT_DEBUG , check default for large res.?
                      Real cgMaxIterFac = 1.5,
                      Real cgAccuracy = 1e-3,
                      string openBound = "",
@@ -202,7 +212,9 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      int outflowHeight = 1,
                      bool precondition = true,
                      bool enforceCompatibility = false,
-                     bool useResNorm = true )
+                     bool useResNorm = true ,
+					 Grid<Real>* gfDebug = NULL  // NT_DEBUG
+					 )
 {
     // parse strings
     Vector3D<bool> loOpenBound, upOpenBound, loOutflow, upOutflow;
@@ -231,6 +243,9 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     
     if (phi) {
         ApplyGhostFluidDiagonal(A0, flags, *phi, gfClamp);
+    }
+    if (gfDebug) {
+        ApplyGhostFluidDiagonal(*gfDebug, flags, *phi, gfClamp);
     }
     
     // compute divergence and init right hand side
