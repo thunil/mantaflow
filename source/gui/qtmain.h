@@ -14,7 +14,7 @@
 #define _QTMAIN_H_
 
 #include <QThread>
-#include <QtGui/QApplication>
+#include <QApplication>
 #include <vector>
 #include <QMutex>
 #include <QWaitCondition>

@@ -2,7 +2,7 @@
 #
 # MantaFlow fluid solver framework
 #
-# Copyright 2011-2013 Tobias Pfaff, Nils Thuerey 
+# Copyright 2011-2014 Tobias Pfaff, Nils Thuerey 
 #
 # This program is free software, distributed under the terms of the
 # GNU General Public License (GPL) 
@@ -17,7 +17,21 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/source/cmake/")
 SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 SET(VERBOSE 1) 
 
-SET(MANTAVERSION "0.5")
+SET(MANTAVERSION "0.6")
+
+#******************************************************************************
+# Default paths
+# - CMake's path finder is completely useless for Qt5 + Python on Win64
+
+IF(WIN32)
+    set(WIN_PYTHON_PATH "C:/Python34")
+    set(WIN_PYTHON_VERSION "34")
+    SET(CMAKE_PREFIX_PATH "C:/Qt/Qt5.2.1/5.2.1/msvc2012_64_opengl" ${WIN_PYTHON_PATH})
+ENDIF()
+
+IF(APPLE)
+    SET(CMAKE_PREFIX_PATH "/usr/local/Cellar/qt5/5.2.1/") # for homebrew
+ENDIF()
 
 #******************************************************************************
 # setup default params
@@ -26,11 +40,6 @@ IF(NOT CMAKE_BUILD_TYPE)
     SET(CMAKE_BUILD_TYPE "Release") 
 ELSE()
     MESSAGE("Build-type: '${CMAKE_BUILD_TYPE}'")
-ENDIF()
-IF(NOT CMAKE_PREFIX_PATH)
-    IF(WIN32)
-	    SET(CMAKE_PREFIX_PATH "c:/program files (x86)/gnuwin32")
-    ENDIF()
 ENDIF()
 
 # compilation versions
@@ -296,12 +305,17 @@ endif(DOXYGEN_FOUND)
 # Link libraries
 
 # Python: prefer 3.x, but can also use 2.x now
-set(Python_ADDITIONAL_VERSIONS 3.2)
+if(WIN32)
+    set(PYTHON_INCLUDE_DIR "${WIN_PYTHON_PATH}/include")
+    set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${WIN_PYTHON_VERSION}.lib")
+endif()
 find_package(PythonLibs REQUIRED)
 list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
 list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 
 # Z compression
+set(WIN_ZLIB_PATH "dependencies/zlib_win")
+
 include(FindZLIB)
 if(ZLIB_FOUND) 
 	LIST(APPEND F_LIBS ${ZLIB_LIBRARIES})
@@ -390,24 +404,40 @@ set_source_files_properties(${PP_REGISTRY} PROPERTIES GENERATED 1)
 # QT for GUI
 
 if(GUI)
-    find_package(Qt4 REQUIRED)
-    set(QT_USE_QTOPENGL TRUE)
-
     # remap
     set(QT_REMAP)
     foreach(it ${QT_HEADERS})
         list(APPEND QT_REMAP "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${it}")
     endforeach(it)
-    
-    qt4_wrap_cpp(MOC_OUTFILES ${QT_REMAP} )
-    qt4_add_resources(QT_RES resources/res.qrc )
-    include(${QT_USE_FILE})
     add_definitions(-DGUI=1)
-    add_definitions(${QT_DEFINITIONS})
-    list(APPEND INCLUDE_PATHS ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/gui source/gui)
-    list(APPEND F_LIBS ${QT_LIBRARIES})
-    list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})
+    list(APPEND INCLUDE_PATHS ${CMAKE_CURRENT_BINARY_DIR}
+                ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/gui source/gui)
     
+    find_package(Qt4)
+    if (Qt4_FOUND) 
+        message("Using QT4")
+        set(QT_USE_QTOPENGL TRUE)
+
+        qt4_wrap_cpp(MOC_OUTFILES ${QT_REMAP} )
+        qt4_add_resources(QT_RES resources/res.qrc )
+        include(${QT_USE_FILE})
+        add_definitions(${QT_DEFINITIONS})
+        list(APPEND F_LIBS ${QT_LIBRARIES})
+        list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})
+    else()
+        message("QT4 not found, trying QT5")
+        find_package(Qt5Widgets REQUIRED)
+        find_package(Qt5OpenGL REQUIRED)
+    
+        qt5_wrap_cpp(MOC_OUTFILES ${QT_REMAP} )
+        qt5_add_resources(QT_RES resources/res.qrc )
+        add_definitions(-DGUI=1)
+        add_definitions(${Qt5Widgets_DEFINITIONS})
+        list(APPEND INCLUDE_PATHS ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS})
+        list(APPEND F_LIBS ${Qt5Widgets_LIBRARIES} ${Qt5OpenGL_LIBRARIES})
+        list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})
+    endif()
+
     if (APPLE)
 		# mac opengl framework
         SET(F_LINKADD "${F_LINKADD} -framework OpenGL ")
