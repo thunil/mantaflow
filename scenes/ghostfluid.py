@@ -1,12 +1,13 @@
 #
-# Simple example for free-surface simulation
-# with MacCormack advection
+# Smooth surface for ghost fluid testing
+# 
 
 from manta import *
 
 # solver params
 dim = 3
 res = 64
+#res = 128
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
@@ -20,11 +21,13 @@ flags = s.create(FlagGrid)
 vel = s.create(MACGrid)
 pressure = s.create(RealGrid)
 mesh = s.create(Mesh)
+tstgr = s.create(RealGrid)
 
 # scene setup
 flags.initDomain(boundaryWidth=0)
 basin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1,0.2,1))
-drop  = s.create(Sphere, center=gs*vec3(0.5,0.5,0.5), radius=res*0.15)
+#drop  = s.create(Sphere, center=gs*vec3(0.5,0.68,0.5), radius=res*0.2) # high
+drop  = s.create(Sphere, center=gs*vec3(0.5,-0.28,0.5), radius=res*0.5) # low, gf test
 phi = basin.computeLevelset()
 phi.join(drop.computeLevelset())
 flags.updateFromLevelset(phi)
@@ -32,38 +35,34 @@ flags.updateFromLevelset(phi)
 if (GUI):
     gui = Gui()
     gui.show()
-    #gui.pause()
+    gui.pause()
     
 
 #main loop
 for t in range(2000):
     
-    # update and advect levelset
-    phi.reinitMarching(flags=flags, velTransport=vel) #, ignoreWalls=False)
+    phi.reinitMarching(flags=flags, velTransport=vel) 
     advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
     flags.updateFromLevelset(phi)
     
-    # velocity self-advection
     advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
     addGravity(flags=flags, vel=vel, gravity=vec3(0,-0.025,0))
+    setConstant(tstgr,1)
     
     # pressure solve
     setWallBcs(flags=flags, vel=vel)
     if ghostFluid:
-        solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False, phi=phi )
+        solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=1.0, cgAccuracy=accuracy, useResNorm=False, \
+        phi=phi , gfDebug=tstgr, gfClamp=0.01 ) # ok!
     else:
         solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False)
     setWallBcs(flags=flags, vel=vel)
     
-    # note: these meshes are created by fast marching only, should smooth
-    #       geometry and normals before rendering (only in 3D for now)
     if (dim==3):
         phi.createMesh(mesh)
-        #mesh.save('phi%04d.bobj.gz' % t)
     
     s.step()
-    #gui.pause()
-	#gui.screenshot( 'screenOn_%04d.png' % t );
+    #gui.screenshot( 'out_%04d.png' % t );
 
 
 
