@@ -24,17 +24,26 @@ SET(MANTAVERSION "0.6")
 # - CMake's path finder is completely useless for Qt5 + Python on Win64
 
 IF(WIN32)
+    set(WIN_QT_PATH "C:/Qt/Qt5.2.1/5.2.1/msvc2012_64_opengl") # qt5/win64
+    # set(WIN_QT_PATH "C:/Qt/4.8.6") # qt4/win32
     set(WIN_PYTHON_PATH "C:/Python34")
-    set(WIN_PYTHON_VERSION "34")
-    SET(CMAKE_PREFIX_PATH "C:/Qt/Qt5.2.1/5.2.1/msvc2012_64_opengl" ${WIN_PYTHON_PATH})
+	set(WIN_PYTHON_VERSION "34")
+	set(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
+    SET(CMAKE_PREFIX_PATH ${WIN_QT_PATH})
 ENDIF()
 
 IF(APPLE)
-    SET(CMAKE_PREFIX_PATH "/usr/local/Cellar/qt5/5.2.1/") # for homebrew
+    SET(CMAKE_PREFIX_PATH "/usr/local/Cellar/qt5/5.2.1/") #  mac/homebrew
 ENDIF()
 
 #******************************************************************************
 # setup default params
+
+IF (CMAKE_SIZEOF_VOID_P EQUAL 8) 
+	SET(64BIT TRUE)
+ELSE()
+	SET(64BIT FALSE)
+ENDIF()
 
 IF(NOT CMAKE_BUILD_TYPE) 
     SET(CMAKE_BUILD_TYPE "Release") 
@@ -114,6 +123,7 @@ SET(F_LIBS "" )
 SET(F_LIB_PATHS)
 SET(F_LINKADD "") # additional linker flags, not a list
 set(PP_PATH "pp")
+SET(SILENT_SOURCES)
 
 # need pre-processing
 SET(PP_SOURCES
@@ -304,27 +314,29 @@ endif(DOXYGEN_FOUND)
 #******************************************************************************
 # Link libraries
 
-# Python: prefer 3.x, but can also use 2.x now
-if(WIN32)
-    set(PYTHON_INCLUDE_DIR "${WIN_PYTHON_PATH}/include")
-    set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${WIN_PYTHON_VERSION}.lib")
+# Python
+find_package(PythonLibs QUIET)
+if((NOT PYTHONLIBS_FOUND) AND WIN32)
+	set(PYTHON_INCLUDE_DIR "${WIN_PYTHON_PATH}/include")
+	set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${WIN_PYTHON_VERSION}.lib")	
 endif()
 find_package(PythonLibs REQUIRED)
 list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
 list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 
 # Z compression
-set(WIN_ZLIB_PATH "dependencies/zlib_win")
-
-include(FindZLIB)
-if(ZLIB_FOUND) 
-	LIST(APPEND F_LIBS ${ZLIB_LIBRARIES})
-	if(ZLIB_INCLUDE_DIR)
-		LIST(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
-	endif()
+if (1)
+	# default: build from source
+	set(ZLIB_SRC adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c
+				 inflate.c infback.c inftrees.c inffast.c trees.c uncompr.c zutil.c)
+	foreach(it ${ZLIB_SRC})
+        list(APPEND SILENT_SOURCES dependencies/zlib-1.2.8/${it})
+    endforeach(it)
+	list(APPEND INCLUDE_PATHS dependencies/zlib-1.2.8)
 else()
-    ADD_DEFINITIONS( -DNO_ZLIB=1 )
-	MESSAGE(STATUS "Warning - no zlib, some mantaflow loading/saving some file formats will not work")
+	include(FindZLIB)
+	list(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
+	list(APPEND F_LIBS ${ZLIB_LIBRARIES})
 endif()
 
 # CUDA
@@ -370,7 +382,7 @@ add_custom_command(OUTPUT ${HGINFO}
 #******************************************************************************
 # apply preprocessor
 
-set(SOURCES ${NOPP_SOURCES})
+set(SOURCES ${NOPP_SOURCES} ${SILENT_SOURCES})
 set(HEADERS ${NOPP_HEADERS})
 set(PP_REGISTRY "${PP_PATH}/ppreg.cpp")
 set(PP_REGS)
@@ -413,19 +425,10 @@ if(GUI)
     list(APPEND INCLUDE_PATHS ${CMAKE_CURRENT_BINARY_DIR}
                 ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/gui source/gui)
     
-    find_package(Qt4)
-    if (Qt4_FOUND) 
-        message("Using QT4")
-        set(QT_USE_QTOPENGL TRUE)
-
-        qt4_wrap_cpp(MOC_OUTFILES ${QT_REMAP} )
-        qt4_add_resources(QT_RES resources/res.qrc )
-        include(${QT_USE_FILE})
-        add_definitions(${QT_DEFINITIONS})
-        list(APPEND F_LIBS ${QT_LIBRARIES})
-        list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})
-    else()
-        message("QT4 not found, trying QT5")
+	cmake_policy(SET CMP0020 NEW)
+    find_package(Qt5Core QUIET)
+	if (Qt5Core_FOUND)
+		message("Using Qt5")
         find_package(Qt5Widgets REQUIRED)
         find_package(Qt5OpenGL REQUIRED)
     
@@ -435,6 +438,17 @@ if(GUI)
         add_definitions(${Qt5Widgets_DEFINITIONS})
         list(APPEND INCLUDE_PATHS ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS})
         list(APPEND F_LIBS ${Qt5Widgets_LIBRARIES} ${Qt5OpenGL_LIBRARIES})
+        list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})		
+    else()
+	    message("Using Qt4")
+        find_package(Qt4 REQUIRED)
+		set(QT_USE_QTOPENGL TRUE)
+
+        qt4_wrap_cpp(MOC_OUTFILES ${QT_REMAP} )
+        qt4_add_resources(QT_RES resources/res.qrc )
+        include(${QT_USE_FILE})
+        add_definitions(${QT_DEFINITIONS})
+        list(APPEND F_LIBS ${QT_LIBRARIES})
         list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})
     endif()
 
@@ -467,7 +481,11 @@ IF(NOT WIN32)
 ELSE()
     # get rid of some MSVC warnings
     add_definitions( /wd4018 /wd4146 /wd4800 )
-
+	
+	# for zlib
+	add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
+    add_definitions(-D_CRT_NONSTDC_NO_DEPRECATE)
+    
     # unsigned to signed conversions
     add_definitions( /wd4267 )
     # double <> single precision
