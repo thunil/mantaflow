@@ -110,9 +110,10 @@ if(upres>0):
 	xl_wltnoise.posScale = xl_wltnoise.posScale * (1./upres)
 
 
-
-if (1 and GUI):
+# setup user interface
+if (GUI):
 	gui = Gui()
+	sliderStr = gui.addControl(Slider, text='turb. strength', val=wltStrength, min=0, max=2)
 	gui.show()
 	#gui.pause()
 
@@ -120,6 +121,9 @@ if (1 and GUI):
 for t in range(200):
 	curt = t * sm.timestep
 	#sys.stdout.write( "Current sim time " + str(curt) +" \n" )
+
+	if (GUI):
+		wltStrength = sliderStr.get()
 	
 	advectSemiLagrange(flags=flags, vel=vel, grid=density,  order=2)	
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel,      order=2)
