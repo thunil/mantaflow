@@ -39,12 +39,6 @@ ENDIF()
 #******************************************************************************
 # setup default params
 
-IF (CMAKE_SIZEOF_VOID_P EQUAL 8) 
-	SET(64BIT TRUE)
-ELSE()
-	SET(64BIT FALSE)
-ENDIF()
-
 IF(NOT CMAKE_BUILD_TYPE) 
     SET(CMAKE_BUILD_TYPE "Release") 
 ELSE()
@@ -123,7 +117,6 @@ SET(F_LIBS "" )
 SET(F_LIB_PATHS)
 SET(F_LINKADD "") # additional linker flags, not a list
 set(PP_PATH "pp")
-SET(SILENT_SOURCES)
 
 # need pre-processing
 SET(PP_SOURCES
