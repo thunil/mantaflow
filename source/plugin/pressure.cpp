@@ -7,8 +7,7 @@
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Plugins for pressure correction:
- * - solve_pressure
+ * Plugins for pressure correction: solve_pressure, and ghost fluid helpers
  *
  ******************************************************************************/
 #include "vectorbase.h"
@@ -29,14 +28,7 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
     }
        
     // compute divergence 
-    // assumes vel at obstacle interfaces is set to zero
-    /* Real set = 0;
-    if (!flags.isObstacle(i-1,j,k)) set += vel(i,j,k).x;
-    if (!flags.isObstacle(i+1,j,k)) set -= vel(i+1,j,k).x;
-    if (!flags.isObstacle(i,j-1,k)) set += vel(i,j,k).y;
-    if (!flags.isObstacle(i,j+1,k)) set -= vel(i,j+1,k).y;
-    if (!flags.isObstacle(i,j,k-1)) set += vel(i,j,k).z;
-    if (!flags.isObstacle(i,j,k+1)) set -= vel(i,j,k+1).z; */
+ 	// no flag checks: assumes vel at obstacle interfaces is set to zero
     Real set =          vel(i,j,k).x - vel(i+1,j,k).x + 
                         vel(i,j,k).y - vel(i,j+1,k).y; 
     if(vel.is3D()) set+=vel(i,j,k).z - vel(i,j,k+1).z;
@@ -119,28 +111,20 @@ KERNEL void SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<boo
 // *****************************************************************************
 // Ghost fluid helpers
 
+// calculate fraction filled with liquid (note, assumes inside value is < outside!)
 inline static Real thetaHelper(Real inside, Real outside)
 {
     Real denom = inside-outside;
-    //if (denom==0) return 0; // trust inside value
     if (denom > -1e-04) return 0.5; // should always be neg, and large enough...
     return std::max(Real(0), std::min(Real(1), inside/denom));
 }
 
-// p should be a fluid cell
+// calculate ghost fluid factor, cell at idx should be a fluid cell
 inline static Real ghostFluidHelper(int idx, int offset, const Grid<Real> &phi, Real gfClamp)
 {
     Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
-
-    //if (alpha == 0) return gfClamp;
-    if (alpha < gfClamp) alpha = gfClamp;
-	//Real b = (1-1/alpha);
-	//if(1) debMsg("--- At "<<idx<<" "<<alpha<<"    "<< b  <<"   "<< std::max(gfClamp, std::min(Real(0),b)) ,1); // NT_DEBUG
-    //return std::max(gfClamp, std::min(Real(0), 1-1/alpha)); // ]clamp ; 0]
-    //return std::max(gfClamp, std::min(Real(0), -1+1/alpha)); // ]clamp ; 0]
-	//if(1) debMsg("--- At "<<idx<<" "<<alpha<<"    "<< b  <<"   "<< std::min(gfClamp, b) ,1); // NT_DEBUG
-    //return std::min(gfClamp, (1-1/alpha) ); // ]clamp ; 0]
-    return (1-(1/alpha)); // ]clamp ; 0]
+    if (alpha < gfClamp) return alpha = gfClamp;
+    return (1-(1/alpha)); 
 }
 
 //! Kernel: Adapt A0 for ghost fluid
@@ -150,7 +134,7 @@ void ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<R
     const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
     int idx = flags.index(i,j,k);
     if (!flags.isFluid(idx)) return;
-	//Real d1 = A0[idx] ; // NT_DEBUG
+
     if (flags.isEmpty(i-1,j,k)) A0[idx] -= ghostFluidHelper(idx, -X, phi, gfClamp);
     if (flags.isEmpty(i+1,j,k)) A0[idx] -= ghostFluidHelper(idx, +X, phi, gfClamp);
     if (flags.isEmpty(i,j-1,k)) A0[idx] -= ghostFluidHelper(idx, -Y, phi, gfClamp);
@@ -159,8 +143,6 @@ void ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<R
         if (flags.isEmpty(i,j,k-1)) A0[idx] -= ghostFluidHelper(idx, -Z, phi, gfClamp);
         if (flags.isEmpty(i,j,k+1)) A0[idx] -= ghostFluidHelper(idx, +Z, phi, gfClamp);
     }
-	//Real d2 = A0[idx] ; // NT_DEBUG
-	//if(fabs(d1-d2)>VECTOR_EPSILON) debMsg("At "<<idx<<" "<<d1<<" to "<<d2 ,1);
 }
 
 //! Kernel: Apply velocity update: ghost fluid contribution
@@ -204,7 +186,7 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0, 
-                     Real gfClamp = 1e-02, // NT_DEBUG , check default for large res.?
+                     Real gfClamp = 1e-04, 
                      Real cgMaxIterFac = 1.5,
                      Real cgAccuracy = 1e-3,
                      string openBound = "",
@@ -212,9 +194,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      int outflowHeight = 1,
                      bool precondition = true,
                      bool enforceCompatibility = false,
-                     bool useResNorm = true ,
-					 Grid<Real>* gfDebug = NULL  // NT_DEBUG
-					 )
+                     bool useResNorm = true )
 {
     // parse strings
     Vector3D<bool> loOpenBound, upOpenBound, loOutflow, upOutflow;
@@ -244,9 +224,6 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     if (phi) {
         ApplyGhostFluidDiagonal(A0, flags, *phi, gfClamp);
     }
-    if (gfDebug) {
-        ApplyGhostFluidDiagonal(*gfDebug, flags, *phi, gfClamp);
-    }
     
     // compute divergence and init right hand side
     MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr);
@@ -257,8 +234,9 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     if (enforceCompatibility)
         rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
     
-    // CG
-    const int maxIter = (int)(cgMaxIterFac * flags.getSize().max());
+    // CG setup
+	// note: the last factor increases the max iterations for 2d, which right now can't use a preconditioner 
+    const int maxIter = (int)(cgMaxIterFac * flags.getSize().max()) * (flags.is3D() ? 1 : 4);
     GridCgInterface *gcg;
     if (vel.is3D())
         gcg = new GridCg<ApplyMatrix>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
