@@ -303,6 +303,10 @@ list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 
 # Z compression
 include(FindZLIB)
+if(NO_ZLIB)
+    ADD_DEFINITIONS( -DNO_ZLIB=1 )
+	MESSAGE(STATUS "Zlib manually disabled")
+else()
 if(ZLIB_FOUND) 
 	LIST(APPEND F_LIBS ${ZLIB_LIBRARIES})
 	if(ZLIB_INCLUDE_DIR)
@@ -311,6 +315,7 @@ if(ZLIB_FOUND)
 else()
     ADD_DEFINITIONS( -DNO_ZLIB=1 )
 	MESSAGE(STATUS "Warning - no zlib, some mantaflow loading/saving some file formats will not work")
+endif()
 endif()
 
 # CUDA

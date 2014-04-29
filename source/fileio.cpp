@@ -19,6 +19,7 @@ extern "C" {
 #include <zlib.h>
 }
 #endif
+
 #include "fileio.h"
 #include "grid.h"
 #include "mesh.h"
@@ -290,6 +291,7 @@ PYTHON(noparent) Vec3 getUniFileSize(const string& name) {
 	return s;
 }
 
+#if NO_ZLIB!=1
 template <class T>
 void convertDoubleAndWrite(Grid<T>& grid, void* ptr, gzFile& gzf, UniHeader& head) {
 	errMsg("unknown type, not yet supported");
@@ -322,6 +324,7 @@ void convertDoubleAndWrite(Grid<Vector3D<double> >& grid, void* ptr, gzFile& gzf
 	} 
     gzwrite(gzf, ptr, sizeof(float)*3 *head.dimX*head.dimY*head.dimZ);
 }
+#endif // NO_ZLIB!=1
 
 template <class T>
 void writeGridUni(const string& name, Grid<T>* grid) {
