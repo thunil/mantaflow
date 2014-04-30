@@ -40,7 +40,7 @@ if(len(sys.argv)>2):
 
 exename = ""
 for nameCheck in exenames:
-	print "exe entry '"+nameCheck+"' "
+	#print "exe entry '"+nameCheck+"' "  # debug
 	if( os.path.isfile(nameCheck) ):
 		exename = nameCheck
 

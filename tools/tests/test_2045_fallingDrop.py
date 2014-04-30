@@ -20,7 +20,7 @@ accuracy = 5e-5
 flags    = s.create(FlagGrid)
 vel      = s.create(MACGrid)
 pressure = s.create(RealGrid)
-mesh     = s.create(Mesh)
+#mesh     = s.create(Mesh)
 
 # scene setup
 flags.initDomain(boundaryWidth=0)
@@ -50,8 +50,8 @@ for t in range(18):
     solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False, phi=phi)
     setWallBcs(flags=flags, vel=vel)
     
-    if (dim==3):
-        phi.createMesh(mesh)
+    #if (dim==3):
+        #phi.createMesh(mesh)
     
     s.step()
 	#gui.screenshot( 'screenOn_%04d.png' % t );
