@@ -28,26 +28,30 @@ if(len(sys.argv)<2):
 # target file
 outname = sys.argv[1]
 
-# path to hg executable, try a few options
-hgnames = [ "/opt/local/bin/hg", "/opt/local/bin/hg", "/usr/local/bin/hg" ]
-# note /opt/local/bin/hg is a double entry, can be overwritten by command line arg
-hgname = ""
+# path to git/hg executable, try a few options
+# note /opt/local/bin/xxx is a double entry, can be overwritten by command line arg
+exenames = [ "--replace--", "--replace--", "/opt/local/bin/git", "/usr/local/bin/git" ]
+# check default
+exenames[1] = os.popen("which git").read() 
+exenames[1] = exenames[1].rstrip('\n')
 # optionally, make argument
 if(len(sys.argv)>2):
-	hgnames[0] = sys.argv[2]
+	exenames[0] = sys.argv[2]
 
-for hgnameCheck in hgnames:
-	if( os.path.isfile(hgnameCheck) ):
-		hgname = hgnameCheck
+exename = ""
+for nameCheck in exenames:
+	print "exe entry '"+nameCheck+"' "
+	if( os.path.isfile(nameCheck) ):
+		exename = nameCheck
 
-# write empty file if no hg found
-if(hgname == ""):
-	writeHeader( outname, "\n// no hg found!\n\n" )
-	print("Warning, no hg found - writing dummy header")
+# write empty file if no exe found
+if(exename == ""):
+	writeHeader( outname, "\n// no executable found!\n\n" )
+	print("Warning, no exe found - writing dummy header")
 	exit(0); # dont throw an error for make, we can still continue...
 
 if(doDebug):
-	print("Params: outname '"+outname+"' , hgname '"+hgname)
+	print("Params: outname '"+outname+"' , exename '"+exename)
 
 # read old contents
 oldContent = ""
@@ -64,8 +68,11 @@ except IOError:
 
 
 # get hg version
-hgVersion = os.popen(hgname+" id").read() 
+#hgVersion = os.popen(exename+" id").read() 
+# get gid id
+hgVersion = os.popen(exename+" log -1 ").read() 
 # remove newlines...
+hgVersion = hgVersion.splitlines()[0]
 hgVersion = hgVersion.rstrip('\n')
 if(doDebug):
 	print( "Got hg info: '" + hgVersion +"' " )
