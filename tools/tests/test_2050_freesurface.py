@@ -1,6 +1,6 @@
 #
-# Simple example for free-surface simulation
-# with MacCormack advection
+# Simple test for free-surface simulation with ghost fluid boundaries
+# 
 
 import sys
 from manta import *
@@ -14,7 +14,6 @@ if (dim==2):
 	gs.z=1
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.25
-ghostFluid = True
 accuracy = 5e-5
 
 # prepare grids and particles
@@ -51,17 +50,9 @@ for t in range(50):
     
     # pressure solve
     setWallBcs(flags=flags, vel=vel)
-    if ghostFluid:
-        solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False, phi=phi)
-    else:
-        solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False)
+    solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False, \
+        phi=phi ) # leave gfClamp at default
     setWallBcs(flags=flags, vel=vel)
-    
-    # note: these meshes are created by fast marching only, should smooth
-    #       geometry and normals before rendering (only in 3D for now)
-    if (dim==3):
-        phi.createMesh(mesh)
-        #mesh.save('phi%04d.bobj.gz' % t)
     
     s.step()
     #gui.pause()
