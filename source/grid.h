@@ -164,12 +164,12 @@ public:
 	PYTHON void printGrid(int zSlice=-1,  bool printIndex=false); 
     
     // common compound operators
-    //! get absolute max value in grid (only Real grids)
-    Real getMaxAbsValue();
-    //! get max value in grid (only Real grids)
-    Real getMaxValue();
-    //! get min value in grid (only Real grids)
-    Real getMinValue();    
+    //! get absolute max value in grid 
+    PYTHON Real getMaxAbsValue();
+    //! get max value in grid 
+    PYTHON Real getMaxValue();
+    //! get min value in grid 
+    PYTHON Real getMinValue();    
     //! Swap data with another grid (no actual data is moved)
     void swap(Grid<T>& other);
     

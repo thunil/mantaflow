@@ -150,7 +150,7 @@ KERNEL(bnd=1)
 void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp)
 {
     const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
-    int idx = flags.index(i,j,k);
+    const int idx = flags.index(i,j,k);
     if (flags.isFluid(idx))
     {
         if (flags.isEmpty(i-1,j,k)) vel[idx][0] += pressure[idx] * ghostFluidHelper(idx, -X, phi, gfClamp);
@@ -169,6 +169,48 @@ void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<R
 		}
     }
 }
+
+
+// improve behavior of clamping for large time steps:
+
+inline static Real ghostFluidWasClamped(int idx, int offset, const Grid<Real> &phi, Real gfClamp)
+{
+    Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
+    if (alpha < gfClamp) return true;
+    return false;
+}
+
+KERNEL(bnd=1)
+void ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags, 
+		const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp )
+{
+    const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
+    const int idx = flags.index(i,j,k);
+    if (flags.isFluid(idx))
+    {
+        if( (flags.isEmpty(i-1,j,k)) && (ghostFluidWasClamped(idx, -X, phi, gfClamp)) )
+			vel[idx-X][0] = vel[idx][0];
+        if( (flags.isEmpty(i,j-1,k)) && (ghostFluidWasClamped(idx, -Y, phi, gfClamp)) )
+			vel[idx-Y][1] = vel[idx][1];
+        if( flags.is3D() && 
+		   (flags.isEmpty(i,j,k-1)) && (ghostFluidWasClamped(idx, -Z, phi, gfClamp)) )
+			vel[idx-Z][2] = vel[idx][2];
+    }
+    else if (flags.isEmpty(idx))
+    {
+        if( (i>-1) && (flags.isFluid(i-1,j,k)) && ( ghostFluidWasClamped(idx-X, +X, phi, gfClamp) ) )
+			vel[idx][0] = vel[idx-X][0];
+        if( (j>-1) && (flags.isFluid(i,j-1,k)) && ( ghostFluidWasClamped(idx-Y, +Y, phi, gfClamp) ) )
+       		vel[idx][1] = vel[idx-Y][1];
+        if( flags.is3D() &&
+		  ( (k>-1) && (flags.isFluid(i,j,k-1)) && ( ghostFluidWasClamped(idx-Z, +Z, phi, gfClamp) ) ))
+       		vel[idx][2] = vel[idx-Z][2];
+    }
+}
+
+
+// *****************************************************************************
+// Main pressure solve
 
 inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bool>& up) {
     for(size_t i=0; i<desc.size(); i++) {
@@ -256,7 +298,11 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     delete gcg;
     
     CorrectVelocity(flags, vel, pressure);
-    if (phi) CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);
+    if (phi) {
+		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);
+		// improve behavior of clamping for large time steps:
+		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
+	}
 }
 
 } // end namespace
