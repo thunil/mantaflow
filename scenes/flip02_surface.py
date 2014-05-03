@@ -102,7 +102,7 @@ for t in range(250):
 	# forces & pressure solve
 	addGravity(flags=flags, vel=vel, gravity=(0,-0.001,0))
 	setWallBcs(flags=flags, vel=vel)	
-	solvePressure(flags=flags, vel=vel, pressure=pressure )
+	solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi)
 	setWallBcs(flags=flags, vel=vel)
 
 	# make sure we have proper velocities
@@ -118,7 +118,7 @@ for t in range(250):
 	s.step()
 
 	# generate data for flip03 surface generation
-	pp.save( 'flipParts_%04d.uni' % t );
+	#pp.save( 'flipParts_%04d.uni' % t );
 
 	if 0 and (GUI):
 		gui.screenshot( 'flipt2_%04d.png' % t );
