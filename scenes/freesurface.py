@@ -1,6 +1,6 @@
 #
-# Simple example for free-surface simulation
-# with MacCormack advection
+# Simple example for free-surface simulation with MacCormack advection
+#
 
 from manta import *
 
