@@ -7,7 +7,7 @@
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Fast marching
+ * Fast marching and extrapolation
  *
  ******************************************************************************/
 
@@ -160,8 +160,10 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
     if (mVelTransport.isInitialized())
         mVelTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
 
-    if(!found) // old: (!found) , new always add, might lead to  duplicate
-		  // entries, but the earlier will be handled earlier, the second one will skip to the FlagInited check above
+	// the following adds entries to the heap of active cells
+	// current: (!found) , previous: always add, might lead to duplicate
+	//     entries, but the earlier will be handled earlier, the second one will skip to the FlagInited check above
+    if(!found) 
 	{
         // add list entry with source value
         COMP entry;
@@ -221,15 +223,43 @@ template class FastMarch<FmHeapEntryIn, -1>;
 template class FastMarch<FmHeapEntryOut, +1>;
 
 
-// a simple extrapolation step , used for cases where there's no levelset
-// (note, less accurate than fast marching extrapolation!)
-PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4) {
-    Grid<int> tmp( flags.getParent() );
-	int dim = (flags.is3D() ? 3:2);
-	Vec3i nb[6] = { 
+/*****************************************************************************/
+// simpler extrapolation functions (primarily for FLIP)
+
+KERNEL(bnd=1)
+void knExtrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance , Grid<int>& tmp , const int d , const int c ) 
+{
+	static const Vec3i nb[6] = { 
 		Vec3i(1 ,0,0), Vec3i(-1,0,0),
 		Vec3i(0,1 ,0), Vec3i(0,-1,0),
 		Vec3i(0,0,1 ), Vec3i(0,0,-1) };
+	const int dim = (vel.is3D() ? 3:2);
+
+	if (tmp(i,j,k) != 0) return;
+
+	// copy from initialized neighbors
+	Vec3i p(i,j,k);
+	int nbs = 0;
+	Real avgVel = 0.;
+	for (int n=0; n<2*dim; ++n) {
+		if (tmp(p+nb[n]) == d) {
+			//vel(p)[c] = (c+1.)*0.1;
+			avgVel += vel(p+nb[n])[c];
+			nbs++;
+		}
+	}
+
+	if(nbs>0) {
+		tmp(p)    = d+1;
+		vel(p)[c] = avgVel / nbs;
+	}
+}
+// a simple extrapolation step , used for cases where there's no levelset
+// (note, less accurate than fast marching extrapolation!)
+PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4) 
+{
+    Grid<int> tmp( flags.getParent() );
+	int dim = (flags.is3D() ? 3:2);
 
 	for(int c=0; c<dim; ++c) {
 		Vec3i dir = 0;
@@ -248,88 +278,62 @@ PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 
 		//FOR_IJK_BND(flags,1) { if (tmp(i,j,k) == 0) continue; vel(i,j,k)[c] = (i+j+k+c+1.)*0.1; }
 		
 		// extrapolate for distance
-		// TODO, parallelize
 		for(int d=1; d<1+distance; ++d) {
-
-			FOR_IJK_BND(flags,1) {
-				if (tmp(i,j,k) != 0) continue;
-
-				// copy from initialized neighbors
-				Vec3i p(i,j,k);
-				int nbs = 0;
-				Real avgVel = 0.;
-				for (int n=0; n<2*dim; ++n) {
-					if (tmp(p+nb[n]) == d) {
-						//vel(p)[c] = (c+1.)*0.1;
-						avgVel += vel(p+nb[n])[c];
-						nbs++;
-					}
-				}
-
-				if(nbs>0) {
-					tmp(p)    = d+1;
-					vel(p)[c] = avgVel / nbs;
-				}
-			}
-
+			knExtrapolateMACSimple(flags, vel, distance, tmp, d, c);
 		} // d
 
 	}
 }
 
+KERNEL(bnd=1)
+void knExtrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance , const int d, const int c ) 
+{
+	static const Vec3i nb[6] = { 
+		Vec3i(1 ,0,0), Vec3i(-1,0,0),
+		Vec3i(0,1 ,0), Vec3i(0,-1,0),
+		Vec3i(0,0,1 ), Vec3i(0,0,-1) };
+	const int dim = (vel.is3D() ? 3:2);
+
+	if (weight(i,j,k)[c] != 0) return;
+
+	// copy from initialized neighbors
+	Vec3i p(i,j,k);
+	int nbs = 0;
+	Real avgVel = 0.;
+	for (int n=0; n<2*dim; ++n) {
+		if (weight(p+nb[n])[c] == d) {
+			avgVel += vel(p+nb[n])[c];
+			nbs++;
+		}
+	}
+
+	if(nbs>0) {
+		weight(p)[c]    = d+1;
+		vel(p)[c] = avgVel / nbs;
+	}
+}
 // same as extrapolateMACSimple, but uses weight vec3 grid instead of flags to check
 // for valid values (to be used in combination with mapPartsToMAC)
 // note - the weight grid values are destroyed! the function is necessary due to discrepancies
 // between velocity mapping on surface-levelset / fluid-flag creation. With this
 // extrapolation we make sure the fluid region is covered by initial velocities
-PYTHON void extrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance = 2) {
-	//todo
-    //Grid<int> tmp( flags.getParent() );
-	int dim = (vel.is3D() ? 3:2);
-	Vec3i nb[6] = { 
-		Vec3i(1 ,0,0), Vec3i(-1,0,0),
-		Vec3i(0,1 ,0), Vec3i(0,-1,0),
-		Vec3i(0,0,1 ), Vec3i(0,0,-1) };
+PYTHON void extrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance = 2) 
+{
+	const int dim = (vel.is3D() ? 3:2);
 
 	for(int c=0; c<dim; ++c) {
 		Vec3i dir = 0;
 		dir[c] = 1;
-		//tmp.clear();
 
 		// reset weight values to 0 (uninitialized), and 1 (initialized inner values)
 		FOR_IJK_BND(vel,1) {
 			Vec3i p(i,j,k);
-			//if (flags.isFluid(p) || flags.isFluid(p-dir) ) { tmp(p) = 1; }
 			if(weight(p)[c]>0.) weight(p)[c] = 1.0;
 		}
-
-		// debug init! , enable for testing only - set varying velocities inside
-		//FOR_IJK_BND(flags,1) { if (tmp(i,j,k) == 0) continue; vel(i,j,k)[c] = (i+j+k+c+1.)*0.1; }
 		
 		// extrapolate for distance
 		for(int d=1; d<1+distance; ++d) {
-
-			FOR_IJK_BND(vel,1) {
-				if (weight(i,j,k)[c] != 0) continue;
-
-				// copy from initialized neighbors
-				Vec3i p(i,j,k);
-				int nbs = 0;
-				Real avgVel = 0.;
-				for (int n=0; n<2*dim; ++n) {
-					if (weight(p+nb[n])[c] == d) {
-						//vel(p)[c] = (c+1.)*0.1;
-						avgVel += vel(p+nb[n])[c];
-						nbs++;
-					}
-				}
-
-				if(nbs>0) {
-					weight(p)[c]    = d+1;
-					vel(p)[c] = avgVel / nbs;
-				}
-			}
-
+			knExtrapolateMACFromWeight(vel, weight, distance, d, c);
 		} // d
 
 	}
