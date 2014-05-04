@@ -9,12 +9,17 @@ from helperInclude import *
 # use numbered files? or just base name?
 appendNumber = False
 # input file prefixes
-basename1 = "testfile01.py"
-basename2 = "testfile02.py"
+basename1 = "test01.py"
+basename2 = "test02.py"
 # sim range
 startFrame = 1
 endFrame   = 150
 
+# id string for grids to load (real, vec3, particles)
+# leave string blank to skip loading
+nameScalar = "phi" 
+nameVec3   = "" # "vel"
+nameParts  = "" #  "parts"
 
 # setup
 
@@ -22,11 +27,17 @@ endFrame   = 150
 gs = vec3(0,0,0)
 if 1:
 	for t in range(startFrame, endFrame):
-		# TODO, also search for vel. grids
-		gs = tryToGetSize( basename1, "dens" , t, appendNumber )
+		# optionally, also search for other grid types?
+		gs = tryToGetSize( basename1, nameScalar , t, appendNumber )
 		if(gs.x!=0):
 			break;
-		gs = tryToGetSize( basename2, "dens" , t, appendNumber )
+		gs = tryToGetSize( basename2, nameScalar , t, appendNumber )
+		if(gs.x!=0):
+			break;
+		gs = tryToGetSize( basename1, nameVec3 , t, appendNumber )
+		if(gs.x!=0):
+			break;
+		gs = tryToGetSize( basename2, nameVec3 , t, appendNumber )
 		if(gs.x!=0):
 			break;
 		if(appendNumber==False):
@@ -83,26 +94,26 @@ partErrMax = 0
 #main loop
 for t in range(startFrame, endFrame):
 
-	if(1):
-		tryToLoad( real1, basename1, "dens"  , t, appendNumber, buildInfo )
-		tryToLoad( real2, basename2, "dens"  , t, appendNumber, buildInfo )
-		realErr.sub(real1,real2);
+	if(nameScalar != ""):
+		tryToLoad( real1, basename1, nameScalar , t, appendNumber, buildInfo )
+		tryToLoad( real2, basename2, nameScalar , t, appendNumber, buildInfo )
+		realErr.setSub(real1,real2);
 		realErrMax = gridMaxDiff(real1, real2)
 	
 		#realErr.print(zSlice=15) 
 		print("Max difference in step " +str(t) + " = "+ str(realErrMax) )
 
-	if(1):
+	if(nameVec3 != ""):
 		tryToLoad( mac1, basename1, "vel"  , t, appendNumber, buildInfo )
 		tryToLoad( mac2, basename2, "vel"  , t, appendNumber, buildInfo )
-		macErr.sub(mac1,mac2);
+		macErr.setSub(mac1,mac2);
 		macErrMax = gridMaxDiffVec3(mac1, mac2)
 	
 		#macErr.print(zSlice=15) 
 		print("Max vec3 difference in step " +str(t) + " = "+ str(macErrMax) )
 
 	# load particles
-	if(0):
+	if(nameParts != ""):
 		tryToLoad( parts1 , basename1, "parts"  , t, appendNumber, buildInfo )
 		tryToLoad( parts2 , basename2, "parts"  , t, appendNumber, buildInfo )
 
