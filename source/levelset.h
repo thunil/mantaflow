@@ -25,7 +25,9 @@ public:
     PYTHON LevelsetGrid(FluidSolver* parent, bool show = true);
     
     //! reconstruct the levelset using fast marching
-    PYTHON void reinitMarching(FlagGrid& flags, Real maxTime=4.0, MACGrid* velTransport=NULL, bool ignoreWalls=false, bool correctOuterLayer=true, int obstacleType = FlagGrid::TypeObstacle);
+    PYTHON void reinitMarching(FlagGrid& flags, Real maxTime=4.0, 
+			MACGrid* velTransport=NULL, bool ignoreWalls=false, bool correctOuterLayer=true, 
+			int obstacleType = FlagGrid::TypeObstacle, Grid<Real>* scalarTransport = NULL );
     //! create a triangle mesh from the levelset isosurface
     PYTHON void createMesh(Mesh& mesh);
     

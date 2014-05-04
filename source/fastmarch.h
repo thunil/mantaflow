@@ -20,45 +20,82 @@
 namespace Manta {
     
 //! Fast marching. Transport certain values
-template<class T>
-class FmValueTransport {
-public:
-    FmValueTransport() : mpFlags(0), mpVel(0) { };
-    ~FmValueTransport() { };
+//  This class exists in two versions: for scalar, and for vector values - the only difference are 
+//  flag checks i transpTouch (for simplicity in separate classes)
 
-    void initMarching(MACGrid* vel, FlagGrid* flags) {
-        mpVel = vel;
+template<class GRID, class T>
+inline T fmInterpolateNeighbors(GRID* mpVal, int x,int y,int z, Real *weights) {
+	T val(0.); 
+	if(weights[0]>0.0) val += mpVal->get(x+1, y+0, z+0) * weights[0];
+	if(weights[1]>0.0) val += mpVal->get(x-1, y+0, z+0) * weights[1];
+	if(weights[2]>0.0) val += mpVal->get(x+0, y+1, z+0) * weights[2];
+	if(weights[3]>0.0) val += mpVal->get(x+0, y-1, z+0) * weights[3];
+	if(mpVal->is3D()) {
+		if(weights[4]>0.0) val += mpVal->get(x+0, y+0, z+1) * weights[4];
+		if(weights[5]>0.0) val += mpVal->get(x+0, y+0, z-1) * weights[5];
+	} 
+	return val;
+}
+
+template<class GRID, class T>
+class FmValueTransportScalar {
+public:
+    FmValueTransportScalar() : mpFlags(0), mpVal(0) { };
+    ~FmValueTransportScalar() { }; 
+    void initMarching(GRID* val, FlagGrid* flags) {
+        mpVal = val;
         mpFlags = flags;
-    }
-    
-    inline bool isInitialized() {
-        return mpVel != 0;
-    }
+    } 
+    inline bool isInitialized() { return mpVal != 0; }
 
     //! cell is touched by marching from source cell
     inline void transpTouch(int x,int y,int z, Real *weights, Real time) {
-        if(!mpVel || !mpFlags->isEmpty(x,y,z)) return;
+        if(!mpVal || !mpFlags->isEmpty(x,y,z)) return;
+        T val = fmInterpolateNeighbors<GRID,T>(mpVal,x,y,z,weights); 
+        (*mpVal)(x,y,z) = val;
+    }; 
+protected:
+    GRID* mpVal;
+    FlagGrid* mpFlags;
+};
+
+template<class GRID, class T>
+class FmValueTransportVec3 {
+public:
+    FmValueTransportVec3() : mpFlags(0), mpVal(0) { };
+    ~FmValueTransportVec3() { };
+    inline bool isInitialized() { return mpVal != 0; } 
+    void initMarching(GRID* val, FlagGrid* flags) {
+        mpVal = val;
+        mpFlags = flags;
+    } 
+
+    //! cell is touched by marching from source cell
+    inline void transpTouch(int x,int y,int z, Real *weights, Real time) {
+        if(!mpVal || !mpFlags->isEmpty(x,y,z)) return;
+        //if(!mpVal) return;
         
-        T val = T(0.); 
-        if(weights[0]>0.0) val += mpVel->get(x+1, y+0, z+0) * weights[0];
-        if(weights[1]>0.0) val += mpVel->get(x-1, y+0, z+0) * weights[1];
-        if(weights[2]>0.0) val += mpVel->get(x+0, y+1, z+0) * weights[2];
-        if(weights[3]>0.0) val += mpVel->get(x+0, y-1, z+0) * weights[3];
-		if(mpVel->is3D()) {
-        	if(weights[4]>0.0) val += mpVel->get(x+0, y+0, z+1) * weights[4];
-        	if(weights[5]>0.0) val += mpVel->get(x+0, y+0, z-1) * weights[5];
-		}
-        
+        T val = fmInterpolateNeighbors<GRID,T>(mpVal,x,y,z,weights); /*T(0.); 
+        if(weights[0]>0.0) val += mpVal->get(x+1, y+0, z+0) * weights[0];
+        if(weights[1]>0.0) val += mpVal->get(x-1, y+0, z+0) * weights[1];
+        if(weights[2]>0.0) val += mpVal->get(x+0, y+1, z+0) * weights[2];
+        if(weights[3]>0.0) val += mpVal->get(x+0, y-1, z+0) * weights[3];
+		if(mpVal->is3D()) {
+        	if(weights[4]>0.0) val += mpVal->get(x+0, y+0, z+1) * weights[4];
+        	if(weights[5]>0.0) val += mpVal->get(x+0, y+0, z-1) * weights[5];
+		}*/ 
+
         // set velocity components if adjacent is empty
-        if (mpFlags->isEmpty(x-1,y,z)) (*mpVel)(x,y,z).x = val.x;
-        if (mpFlags->isEmpty(x,y-1,z)) (*mpVel)(x,y,z).y = val.y;
-		if(mpVel->is3D()) {
-        	if (mpFlags->isEmpty(x,y,z-1)) (*mpVel)(x,y,z).z = val.z;            
-		}
+        if (mpFlags->isEmpty(x-1,y,z)) (*mpVal)(x,y,z).x = val.x;
+        if (mpFlags->isEmpty(x,y-1,z)) (*mpVal)(x,y,z).y = val.y;
+		if(mpVal->is3D()) { if (mpFlags->isEmpty(x,y,z-1)) (*mpVal)(x,y,z).z = val.z; }
+        //(*mpVal)(x,y,z).x = val.x;
+        //(*mpVal)(x,y,z).y = val.y;
+		//if(mpVal->is3D()) { (*mpVal)(x,y,z).z = val.z; } 
     }; 
 
 protected:
-    MACGrid* mpVel;
+    GRID* mpVal;
     FlagGrid* mpFlags;
 };
 
@@ -111,7 +148,8 @@ public:
 
     enum SpecialValues { FlagInited = 1, FlagIsOnHeap = 2};
 
-    FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, MACGrid* velTransport = NULL); 
+    FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, 
+			MACGrid* velTransport = NULL, Grid<Real>* velMag = NULL); 
     ~FastMarch() {}
     
     //! advect level set function with given velocity */
@@ -131,10 +169,12 @@ public:
     inline Real _phi(int i, int j, int k) { return mLevelset(i,j,k); }
 protected:   
     LevelsetGrid& mLevelset;
-    Grid<int>& mFmFlags;
-    FlagGrid& mFlags;
+    FlagGrid&     mFlags;
+    Grid<int>&    mFmFlags;
     
-    FmValueTransport<Vec3> mVelTransport;
+	//! velocity extrpolation
+    FmValueTransportVec3<MACGrid     , Vec3> mVelTransport;
+    FmValueTransportScalar<Grid<Real>, Real> mMagTransport;
     
     //! maximal time to march for
     Real mMaxTime;
