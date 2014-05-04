@@ -179,17 +179,59 @@ template<class T> Grid<T>& Grid<T>::operator= (const Grid<T>& a) {
     return *this;
 }*/
 
+PYTHON void setConstant    (Grid<Real>& grid, Real value=0.) { gridSetConst<Real>(grid,value); }
+PYTHON void setConstantVec3(Grid<Vec3>& grid, Vec3 value=0.) { gridSetConst<Vec3>(grid,value); }
+PYTHON void setConstantInt (Grid<int >& grid, int  value=0.) { gridSetConst<int>(grid,value); }
+
+template<class T> void Grid<T>::add(const Grid<T>& a) {
+    gridAdd<T,T>(*this, a);
+}
+template<class T> void Grid<T>::sub(const Grid<T>& a) {
+    gridSub<T,T>(*this, a);
+}
+KERNEL(idx) template<class T> void knGridSetAdded (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { 
+	me[idx] = a[idx] + b[idx]; }
+template<class T> void Grid<T>::setAdd(const Grid<T>& a, const Grid<T>& b) {
+    knGridSetAdded<T>(*this, a, b);
+}
+KERNEL(idx) template<class T> void knGridSetSubtracted (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { 
+	me[idx] = a[idx] - b[idx]; }
+template<class T> void Grid<T>::setSub(const Grid<T>& a, const Grid<T>& b) {
+    knGridSetSubtracted<T>(*this, a, b);
+}
+KERNEL(idx) template<class T> void knGridAddConstReal (Grid<T>& me, T val) { 
+	me[idx] += val; }
+template<class T> void Grid<T>::addConstReal(Real a) {
+    knGridAddConstReal<T>( *this, T(a) );
+}
+KERNEL(idx) template<class T> void knGridMultConstReal (Grid<T>& me, Real val) { 
+	me[idx] *= val; }
+template<class T> void Grid<T>::multiplyConstReal(Real a) {
+    knGridMultConstReal<T>( *this, a );
+}
+
+template<class T> void Grid<T>::addScaledReal(const Grid<T>& b, const Real& factor) { 
+	gridScaledAdd<T,T> (*this, b, factor); 
+}
+template<class T> void Grid<T>::multiply(const Grid<T>& b) {
+    gridMult<T,T> (*this, b);
+}
+
+KERNEL(idx) template<class T> void knGridClamp (Grid<T>& me, T min, T max) { me[idx] = clamp( me[idx], min, max); }
+template<class T> void Grid<T>::clamp(Real min, Real max) {
+    knGridClamp<T> (*this, T(min), T(max) );
+}
+
 //! Grid a += b*factor (note, shouldnt be part of the grid class! can cause problems with python instantiation)
-// also the python integration doesnt support templated functions for now (only classes)
-PYTHON void scaledAddReal(Grid<Real>& a, const Grid<Real>& b, const Real& factor) {
+//  (the template T class in argument list causes errors in fromPy etc. functions).
+//  Also the python integration doesnt support templated functions for now (only classes)
+//  So real and vec3 version are seperately declared here
+/*PYTHON void scaledAddReal(Grid<Real>& a, const Grid<Real>& b, const Real& factor) {
     gridScaledAdd<Real,Real> (a, b, factor);
 }
 PYTHON void scaledAddVec3(Grid<Vec3>& a, const Grid<Vec3>& b, const Vec3& factor) {
     gridScaledAdd<Vec3,Vec3> (a, b, factor);
-}
-PYTHON void multiply(Grid<Real>& a, const Grid<Real>& b) {
-    gridMult<Real,Real> (a, b);
-}
+} */
 template<> Real Grid<Real>::getMaxValue() {
     return CompMaxReal (*this);
 }
@@ -221,18 +263,6 @@ template<> Real Grid<int>::getMaxAbsValue() {
     int amax = CompMaxInt (*this);
     return max( fabs((Real)amin), fabs((Real)amax));
 }
-KERNEL(idx) template<class T> void gridAddSameType (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] + b[idx]; }
-template<class T> void Grid<T>::add(const Grid<T>& a, const Grid<T>& b) {
-    gridAddSameType<T>(*this, a, b);
-}
-KERNEL(idx) template<class T> void gridSubSameType (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] - b[idx]; }
-template<class T> void Grid<T>::sub(const Grid<T>& a, const Grid<T>& b) {
-    gridSubSameType<T>(*this, a, b);
-}
-
-PYTHON void setConstant    (Grid<Real>& grid, Real value=0.) { gridSetConst<Real>(grid,value); }
-PYTHON void setConstantVec3(Grid<Vec3>& grid, Vec3 value=0.) { gridSetConst<Vec3>(grid,value); }
-PYTHON void setConstantInt (Grid<int >& grid, int  value=0.) { gridSetConst<int>(grid,value); }
 
 // compute maximal diference of two cells in the grid
 // used for testing

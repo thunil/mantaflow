@@ -154,14 +154,28 @@ public:
     Grid<T>& operator=(const Grid<T>& a);
     Grid<T>& safeDivide(const Grid<T>& a);    
 
-	// python helper functions to work with grids in scene files
-	//! set content to added/subtracted values of other two grids
-    PYTHON void add(const Grid<T>& a, const Grid<T>& b);
-    PYTHON void sub(const Grid<T>& a, const Grid<T>& b);
-    PYTHON void copyFrom(const Grid<T>& a) { *this = a; }
+	// python helper functions to work with grids in scene files 
+	// note - unfortunately setConstant function has to be external! here only e.g. set to Real would work...
+	// see setConstant, setConstantVec3, setConstantInt in grid.cpp for details
 
-	//! debugging helper, print grid from python
-	PYTHON void printGrid(int zSlice=-1,  bool printIndex=false); 
+	//! add/subtract other grid
+    PYTHON void add(const Grid<T>& a);
+    PYTHON void sub(const Grid<T>& a);
+	//! set content to added/subtracted values of other two grids
+    PYTHON void setAdd(const Grid<T>& a, const Grid<T>& b);
+    PYTHON void setSub(const Grid<T>& a, const Grid<T>& b);
+	//! add real constant to all grid cells
+    PYTHON void addConstReal(Real s);
+	//! multiply contents of grid
+	PYTHON void multiply( const Grid<T>& b);
+	//! multiply each cell by a constant scalar value
+    PYTHON void multiplyConstReal(Real s);
+	//! add scaled other grid to current one (note, only "Real" factor, "T" type not supported here!)
+	PYTHON void addScaledReal(const Grid<T>& b, const Real& factor); 
+	//! copy content from other grid (use this one instead of operator= !)
+    PYTHON void copyFrom(const Grid<T>& a) { *this = a; }
+	//! clamp content to range (for vec3, clamps each component separately)
+    PYTHON void clamp(Real min, Real max);
     
     // common compound operators
     //! get absolute max value in grid 
@@ -172,13 +186,16 @@ public:
     PYTHON Real getMinValue();    
     //! Swap data with another grid (no actual data is moved)
     void swap(Grid<T>& other);
+
+	//! debugging helper, print grid from python
+	PYTHON void printGrid(int zSlice=-1,  bool printIndex=false); 
     
 protected:
     T* mData;
 };
 
 // Python doesn't know about templates: explicit aliases needed
-PYTHON alias Grid<int> IntGrid;
+PYTHON alias Grid<int>  IntGrid;
 PYTHON alias Grid<Real> RealGrid;
 PYTHON alias Grid<Vec3> VecGrid;
 

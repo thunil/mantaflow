@@ -140,15 +140,15 @@ void MeshPainter::setupLights(bool specular) {
     glEnable(GL_LIGHT2);
 }
 
-static inline void glColor(const Vec3& color) {
-    glColor3f(std::max(_0,std::min(_1,color.x)), std::max(_0,std::min(_1,color.y)), std::max(_0,std::min(_1,color.z)));
-}
+//static inline void glColor(const Vec3& color) {
+	//glColor3f(std::max(_0,std::min(_1,color.x)), std::max(_0,std::min(_1,color.y)), std::max(_0,std::min(_1,color.z)));
+//}
 
 static inline void glVertex(const Vec3& v, Real dx) {
-    glVertex3f(v.x * dx, v.y * dx, v.z * dx);
+	glVertex3f(v.x * dx, v.y * dx, v.z * dx);
 }
 static inline void glNormal(const Vec3& v) {
-    glNormal3f(v.x, v.y, v.z);
+	glNormal3f(v.x, v.y, v.z);
 }            
 
 void MeshPainter::paint() {
