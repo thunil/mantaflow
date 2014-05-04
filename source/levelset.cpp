@@ -73,6 +73,19 @@ inline bool isAtInterface(Grid<int>& fmFlags, LevelsetGrid& phi, const Vec3i& p)
     return false;
 }
 
+// helper function to compute normal
+inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
+    if (i > data.getSizeX()-2) i= data.getSizeX()-2;
+    if (j > data.getSizeY()-2) j= data.getSizeY()-2;
+    if (k > data.getSizeZ()-2) k= data.getSizeZ()-2;
+    if (i < 1) i = 1;
+    if (j < 1) j = 1;
+    if (k < 1) k = 1;
+    return Vec3( data(i+1,j  ,k  ) - data(i-1,j  ,k  ) ,
+                 data(i  ,j+1,k  ) - data(i  ,j-1,k  ) ,
+                 data(i  ,j  ,k+1) - data(i  ,j  ,k-1) );
+}
+
 //************************************************************************
 // Levelset class def
 
@@ -97,15 +110,17 @@ void LevelsetGrid::join(const LevelsetGrid& o) {
 
 //! re-init levelset and extrapolate velocities (in & out)
 //  note - uses flags to identify border (could also be done based on ls values)
-void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTransport, bool ignoreWalls, bool correctOuterLayer, int obstacleType)
+void LevelsetGrid::reinitMarching(
+		FlagGrid& flags, Real maxTime, MACGrid* velTransport,
+		bool ignoreWalls, bool correctOuterLayer, int obstacleType
+		, Grid<Real>* normSpeed )
 {
 	const int dim = (is3D() ? 3 : 2);
     
     Grid<int> fmFlags(mParent);
     LevelsetGrid& phi = *this;
-    
-    FastMarch<FmHeapEntryOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport);
-    FastMarch<FmHeapEntryIn, -1> marchIn(flags, fmFlags, phi, maxTime, NULL);
+
+    FastMarch<FmHeapEntryIn,  -1> marchIn (flags, fmFlags, phi, maxTime, NULL, NULL);
     
     // march inside
     InitFmIn (flags, fmFlags, phi, ignoreWalls, obstacleType);
@@ -132,12 +147,25 @@ void LevelsetGrid::reinitMarching(FlagGrid& flags, Real maxTime, MACGrid* velTra
         }
     }
     marchIn.performMarching();     
+    // done with inwards marching
+   
+	// now march out...    
     
     // set un initialized regions
     SetUninitialized (fmFlags, phi, -maxTime - 1.); 
-    
-    // done with inwards marching, now march out...    
+
     InitFmOut (flags, fmFlags, phi, ignoreWalls, obstacleType);
+    
+    FastMarch<FmHeapEntryOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport, normSpeed);
+
+	// NT_DEBUG
+	if(normSpeed && velTransport) {
+        FOR_IJK_BND(flags, 1) {
+			Vec3 vel  = velTransport->getCentered(i,j,k);
+			Vec3 norm = getNormal(phi, i,j,k);  normalize(norm);
+			(*normSpeed)(i,j,k) = dot( norm , vel );
+		}
+	}
     
     // by default, correctOuterLayer is on
     if (correctOuterLayer) {
@@ -201,19 +229,6 @@ void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
         else
             mData[idx] = 0.5;
     }
-}
-
-// helper function
-inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
-    if (i > data.getSizeX()-2) i= data.getSizeX()-2;
-    if (j > data.getSizeY()-2) j= data.getSizeY()-2;
-    if (k > data.getSizeZ()-2) k= data.getSizeZ()-2;
-    if (i < 1) i = 1;
-    if (j < 1) j = 1;
-    if (k < 1) k = 1;
-    return Vec3 (data(i-1,j  ,k  ) - data(i+1,j  ,k  ),
-                 data(i  ,j-1,k  ) - data(i  ,j+1,k  ),
-                 data(i  ,j  ,k-1) - data(i  ,j  ,k+1));
 }
 
 

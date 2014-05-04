@@ -21,11 +21,14 @@ using namespace std;
 namespace Manta {
     
 template<class COMP, int TDIR>
-FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, MACGrid* velTransport)
-    : mLevelset(levelset), mFlags(flags), mFmFlags(fmFlags)
+FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, 
+		MACGrid* velTransport, Grid<Real>* velMag )
+    : mLevelset(levelset), mFmFlags(fmFlags), mFlags(flags)
 {
     if (velTransport)
         mVelTransport.initMarching(velTransport, &flags);
+    if (velMag)
+        mMagTransport.initMarching(velMag, &flags);
     
     mMaxTime = maxTime * TDIR;
 }
@@ -131,8 +134,8 @@ inline Real FastMarch<COMP,TDIR>::calculateDistance(const Vec3i& idx) {
 
 template<class COMP, int TDIR>
 void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
-    if (!mFlags.isInBounds(p,1)) return;
-    const int idx = mFlags.index(p);
+    if (!mLevelset.isInBounds(p,1)) return;
+    const int idx = mLevelset.index(p);
     
     // already known value, value alreay set to valid value? skip cell...
     if(mFmFlags[idx] == FlagInited) return;
@@ -159,6 +162,8 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
     
     if (mVelTransport.isInitialized())
         mVelTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
+    if (mMagTransport.isInitialized())
+        mMagTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
 
 	// the following adds entries to the heap of active cells
 	// current: (!found) , previous: always add, might lead to duplicate

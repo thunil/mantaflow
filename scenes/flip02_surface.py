@@ -92,7 +92,7 @@ for t in range(250):
 	# create approximate surface level set, resample particles
 	gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
 	unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
-	phi.reinitMarching(flags=flags, maxTime=int(2*radiusFactor) )
+    #phi.reinitMarching(flags=flags, velTransport=vel, correctOuterLayer=False ) # optionally, beautify levelset
 
 	# set source grids for resampling, used in adjustNumber!
 	pVel.setSource( vel, isMAC=True )
@@ -117,10 +117,10 @@ for t in range(250):
 	#s.printTimings()
 	s.step()
 
-	# generate data for flip03 surface generation
+	# generate data for flip03_gen.py surface generation
 	#pp.save( 'flipParts_%04d.uni' % t );
 
 	if 0 and (GUI):
-		gui.screenshot( 'flipt2_%04d.png' % t );
+		gui.screenshot( 'flip02_%04d.png' % t );
 
 
