@@ -231,7 +231,22 @@ void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
     }
 }
 
+// note - the following functions are experimental, might be removed at some point NT_DEBUG
+KERNEL(idx) void knGridRemapLsMask (Grid<Real>& me, Real min, Real max, Real fac) { 
+	me[idx] = (clamp(me[idx], min, max) - min) * fac; 
 
+	// now we have 0..1 range, convert to hat around 1/2
+	me[idx] = me[idx] * 2.;
+	if(me[idx]>1.0) me[idx] = 2. - me[idx];
+}
+// remap min/max range to hat function around (min+max)/2
+PYTHON void remapLsMask(Grid<Real>& phi, Real min, Real max) {
+	Real fac = 0.;
+	if ( fabs(max-min) > VECTOR_EPSILON ) fac = 1. / (max-min);
+    knGridRemapLsMask(phi, min, max, fac);
+}
+
+//! run marching cubes to create a mesh for the 0-levelset
 void LevelsetGrid::createMesh(Mesh& mesh) {
     assertMsg(is3D(), "Only 3D grids supported so far");
     
