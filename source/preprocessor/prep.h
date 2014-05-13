@@ -18,10 +18,30 @@
 #include <vector>
 #include <sstream>
 
+// Helpers
+struct BracketStack {
+    bool empty() { return stack.empty(); }
+    char top() { return empty() ? '\0' : *(stack.rbegin()); }
+    void push_back(char c) { stack += c; }
+    char pop() { if (empty()) return '\0'; char c = *(stack.rbegin()); stack.erase(stack.end()-1); return c; }
+    
+    std::string stack;
+};
+
 // Tokens
 enum Keyword { KwNone = 0, KwKernel, KwPython };
 
-enum TokenType { TkNone = 0, TkComment, TkWhitespace, TkCodeBlock, TkDescriptor, TkComma, TkBracketL, TkBracketR, TkTBracketL, TkTBracketR, TkAssign, TkPointer, TkRef, TkColon, TkSemicolon };
+enum TokenType { TkNone = 0, TkComment, TkWhitespace, TkCodeBlock, TkDescriptor, TkComma, TkBracketL, 
+                 TkBracketR, TkTBracketL, TkTBracketR, TkAssign, TkPointer, TkRef, TkDoubleColon, TkSemicolon, 
+                 TkSimpleType, TkTypeQualifier, TkConst, TkEnd, TkManta, TkUnsupportedKW, TkClass,
+                 TkInline, TkTemplate, TkStatic, TkVirtual, TkString, TkPublic, TkColon };
+
+const std::string unsupportedKeywords[] = {"and", "and", "and_eq", "auto", "bitand", "bitor", "break", 
+    "catch", "const_cast", "continue", "default", "delete", "do", "dynamic_cast", "else", "enum", 
+    "explicit", "export", "extern", "for", "friend", "goto", "if", "mutable", "namespace", "new", 
+    "not", "not_eq", "or", "or_eq", "operator", "private", "protected", "register", 
+    "reinterpret_cast", "return", "sizeof", "static_cast", "switch", "this", "throw", "try", "typedef", 
+    "union", "using", "volatile", "while", "xor", "xor_eq", "" };
 
 struct Token {
     Token(TokenType t, int l) : type(t), text(""), line(l) {}
@@ -31,6 +51,64 @@ struct Token {
     int line;
 };
 
+// tracks a set of tokens, and the current position in this list
+struct TokenPointer {
+    TokenPointer(const std::vector<Token>& t) : parent(0),queue(t),ptr(0),oldPtr(0),linebreaks(0) {}
+    TokenPointer(TokenPointer& t) : parent(&t),queue(t.queue),ptr(t.ptr),oldPtr(t.ptr),linebreaks(0) {}
+    ~TokenPointer();
+    TokenPointer *parent;
+    const std::vector<Token>& queue;
+    int ptr, oldPtr;
+    int linebreaks;
+    std::string completeText, minimalText;
+
+    inline void reset() { linebreaks = 0; completeText=minimalText=""; consumeWhitespace(); }
+    
+    inline TokenType curType() { return done() ? TkEnd : cur().type; }
+    inline int curLine() { if (queue.empty()) return -1; return done() ? queue.back().line : cur().line; }
+    inline const Token& cur() { return queue[ptr]; }
+    inline bool done() { return ptr >= queue.size(); }
+    inline bool next() { oldPtr = ptr; ptr++; consumeWhitespace(); return !done(); }
+    inline void previous() { ptr = oldPtr; consumeWhitespace(); }
+    inline bool isLast() { return ptr = queue.size()-1;}
+    void consumeWhitespace();
+};
+
+struct Type {
+    Type() : isConst(false), isRef(false), isPointer(false) {};
+    
+    std::string name;
+    bool isConst, isRef, isPointer;
+    std::vector<Type> templateTypes;
+};
+
+struct Argument {
+    Argument() : type() {};
+
+    Type type;
+    std::string name;
+};
+typedef std::vector<Argument> ArgList;
+
+struct Function {
+    Function() : returnType(),isInline(false),isVirtual(false),isConst(false),noParentheses(false) {}
+
+    std::string name;
+    Type returnType;
+    bool isInline, isVirtual, isConst, noParentheses;
+    std::vector<Type> templateTypes;
+    std::vector<Argument> arguments;
+};
+
+struct Class {
+    Class() {};
+
+    std::string name;
+    Type baseClass;
+    std::vector<Type> templateTypes;  
+};
+
+/*
 struct Argument {
     Argument() : name(""),value(""),type(""),templ(""), complete(""), isRef(false), isPointer(false), isConst(false), number(0) {}
     std::string name, value, type, templ, complete;
@@ -47,8 +125,8 @@ struct Argument {
     }
     std::string getTypeName() const { return getType() + " " + name; }
 };
-typedef std::vector<Argument> ArgList;
-
+*/
+/*
 inline std::string listArgs(const ArgList& args) {
     std::string s = "";
     for (size_t i=0; i<args.size(); i++) {
@@ -57,7 +135,7 @@ inline std::string listArgs(const ArgList& args) {
     }
     return s;
 }
-
+*/
 inline bool isNameChar(char c) {
     return (c>='A' && c<='Z') || (c>='a' && c<='z') || (c>='0' && c<='9') || c=='_';
 }
@@ -65,14 +143,6 @@ inline bool isNameChar(char c) {
 inline bool isIntegral(const std::string& t) {
     return t=="int" || t=="char" || t=="unsigned" || t=="bool" || t=="float" || t=="long" || t=="double" || t=="Real" || t=="Vec3" || t=="Vec3i" || t=="string" || t=="std::string";
 }
-
-inline Keyword checkKeyword(const std::string& word) {
-    if (word == "KERNEL") return KwKernel;
-    if (word == "PYTHON") return KwPython;
-    return KwNone;
-}
-
-#define assert(x, msg) if(!(x)){errMsg(line,msg);}
 
 #define debMsg(l, msg) if(gDebugMode){ std::ostringstream out; out << msg; debMsgHelper(l, out.str()); }
 
@@ -93,11 +163,9 @@ std::string generateMerge(const std::string& text);
 
 // functions from tokenize.cpp
 std::string processText(const std::string& text, int baseline);
-std::vector<Token> tokenizeBlock(const std::string& kw, const std::string& text, size_t& cursor, int& line, bool complete);
 
 // functions from parse.cpp
-std::string parseBlock(const std::string& kw, const std::vector<Token>& tokens, int line);
-std::string replaceFunctionHeader(const std::string& text, const std::string& funcname, const std::string& header, const std::string& finalizer, int line);
+std::string parseBlock(const std::string& kw, std::vector<Token>& tokens);
 std::string stripWS(const std::string& s);
 
 // functions from codegen_XXX.cpp

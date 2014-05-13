@@ -105,11 +105,11 @@ MESSAGE(STATUS "")
 # compile prep
 SET(SOURCES 
     source/preprocessor/main.cpp
+    source/preprocessor/tokenize.cpp
     source/preprocessor/parse.cpp
     source/preprocessor/merge.cpp
     source/preprocessor/codegen_python.cpp
-    source/preprocessor/codegen_kernel.cpp
-    source/preprocessor/tokenize.cpp
+    source/preprocessor/codegen_kernel.cpp    
 )
 add_executable(prep ${SOURCES})
 if (NOT WIN32)
