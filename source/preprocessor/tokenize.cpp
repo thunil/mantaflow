@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ * Copyright 2011-2014 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL) 
@@ -26,23 +26,36 @@ using namespace std;
 void TokenPointer::consumeWhitespace() {
     if (done()) return;
     while (cur().type == TkWhitespace || cur().type == TkComment) {
-        linebreaks += count(cur().text.begin(), cur().text.end(), '\n');
-        completeText += cur().text;
-        if (minimalText.empty() || *minimalText.rbegin() != ' ')
-            minimalText += ' ';
+        txt->original += cur().text;
+        if (txt->minimal.empty() || *(txt->minimal).rbegin() != ' ')
+            txt->minimal += ' ';
         ptr++;
         if (ptr >= queue.size())
             errMsg(-1, "Preprocessor ran out of tokens. This shouldn't happen.");
     }
 }
 
+void TokenPointer::next() {
+    txt->minimal += cur().text; 
+    txt->original += cur().text;
+    ptr++;
+    consumeWhitespace();
+}
+
+void TokenPointer::errorMsg(const string& msg) {
+    int line = -1;
+    if (!queue.empty()) 
+        line = done() ? queue.back().line : cur().line; 
+    if (txt) {
+        errMsg(line, txt->original + ": " + msg);
+    }
+    errMsg(line, msg);
+}
+
 TokenPointer::~TokenPointer() {
     if (parent) {
-        parent->completeText += completeText;
-        parent->minimalText += minimalText;
+        parent->txt->add(txt);
         parent->ptr = ptr;
-        parent->oldPtr = ptr;
-        parent->linebreaks += linebreaks;
     }
 }
 

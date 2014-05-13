@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ * Copyright 2011-2014 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL) 
@@ -18,18 +18,28 @@
 #include <iostream>
 using namespace std;
 
-string processKernel(int lb, const string& kname, const ArgList& opts, Argument retType, const ArgList& returnArg, const ArgList& templArgs, const ArgList& args, const string& code, int line) {
+#define kernelAssert(x,msg) if(!(x)){errMsg(line,msg);}
+
+string processKernel(const Block& block, const string& code) {
     // beautify code
 	string nlr = "\n";
     string nl = gDebugMode ? "\n" : " ";
     string tb = gDebugMode ? "\t" : "";    
     string tb2 = tb+tb, tb3=tb2+tb, tb4=tb3+tb, tb5=tb4+tb;
-	
+
+    const List<Argument>& args = block.func.arguments;
+    const string kernelName = block.func.name;
+    const Type& retType = block.func.returnType;
+    const List<Type>& templArgs = block.func.templateTypes;
+    const List<Argument>& opts = block.options;
+    const List<Argument>& returnArg = block.reduceArgs;
+    const int line = block.line0;
+    
     if (gDocMode) {
         string ds = "//! \\ingroup Kernels\nKERNEL<";
-        for(size_t i=0; i<opts.size(); i++) { if (i!=0) ds+=", "; ds+=opts[i].complete; }
-        ds += "> " + kname + " (";
-        for(size_t i=0; i<args.size(); i++) { if (i!=0) ds+=", "; ds+=args[i].complete;}
+        for(size_t i=0; i<opts.size(); i++) { if (i!=0) ds+=", "; ds+=opts[i].minimalText; }
+        ds += "> " + kernelName + " (";
+        for(size_t i=0; i<args.size(); i++) { if (i!=0) ds+=", "; ds+=args[i].minimalText;}
         return ds + " ) {}\n";
     }
     
@@ -53,7 +63,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         else if (opts[i].name == "reduce") {
             reduce = true;
             reduceOp = opts[i].value;
-            assert(reduceOp == "+" || reduceOp == "-" || reduceOp == "*" || reduceOp == "/" || reduceOp == "min" || reduceOp == "max",
+            kernelAssert(reduceOp == "+" || reduceOp == "-" || reduceOp == "*" || reduceOp == "/" || reduceOp == "min" || reduceOp == "max",
                    "invalid 'reduce' operator. Expected reduce= +|-|*|/|min|max");
         } else
             errMsg(line, "KERNEL(opt): illegal kernel option. Supported options are: 'ijk', 'idx', 'bnd=x', 'reduce', 'st', 'pts'");
@@ -69,20 +79,18 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         errMsg(line, "KERNEL(opt): Modes 'ijk', 'idx' and 'bnd' can't be applied to particle kernels.");
 
     // check type consistency of first 'returns' with return type
-    if (!returnArg.empty() && retType.type != "void") {
-        assert(returnArg.size() == 1, "multiple returns statement only work for 'void' kernels");
-        const Argument& rt = returnArg[0];
-        assert(rt.type == retType.type && rt.templ == retType.templ &&
-               rt.isRef == retType.isRef && rt.isPointer == retType.isPointer &&
-               rt.isConst == retType.isConst, "return type does not match type in first 'returns' statement");
+    if (!returnArg.empty() && retType.name != "void") {
+        kernelAssert(returnArg.size() == 1, "multiple returns statement only work for 'void' kernels");
+        const Type& rt = returnArg[0].type;
+        kernelAssert(rt == retType, "return type does not match type in first 'returns' statement");
     }
-    if (retType.type != "void" && returnArg.empty())
+    if (retType.name != "void" && returnArg.empty())
         errMsg(line, "return argument specified without matching 'returns' initializer");
     
     // parse arguments
     string initList = "", argList = "", copier = "", members = "", basegrid="", baseobj="", callList = "", orgArgList="", mCallList, outerCopier="", lineAcc="";
     for (size_t i=0; i<args.size(); i++) {
-        string type = args[i].getType();
+        string type = args[i].type.build();
         string name = args[i].name;
         
         initList += (i==0) ? "" : ", ";
@@ -105,28 +113,28 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         if (!args[i].value.empty())
             argList += " = " + args[i].value;
         if (i<3) {
-            Argument refa(args[i]), refb(args[i]);
+            Type refa(args[i].type), refb(args[i].type);
             refa.isRef = true;
             refb.isRef = false; refb.isConst = false;
             char num = '0' + i;
             string avar = (haveOuter ? "_inner." : "") + sname;
-            lineAcc += tb + refa.getType() + " getArg" + num + "() { return " + avar + "; }" + nl;
-            //lineAcc += tb + "void setArg" + num + "(" + refa.getType() + " _v) { " + avar + " = _v; }" + nl;
-            lineAcc += tb + "typedef " + refb.getType() + " type" + num + ";" + nl;
+            lineAcc += tb + refa.build() + " getArg" + num + "() { return " + avar + "; }" + nl;
+            //lineAcc += tb + "void setArg" + num + "(" + refa.type.build() + " _v) { " + avar + " = _v; }" + nl;
+            lineAcc += tb + "typedef " + refb.build() + " type" + num + ";" + nl;
         }
         
         // figure out basegrid and baseobj
         if (basegrid.empty()) {
             if (!pts && type.find("Grid") != string::npos) {
-                if (!args[i].isPointer) basegrid += "&";
+                if (!args[i].type.isPointer) basegrid += "&";
                 basegrid += "_" + name;
             } else if (pts) {
-                if (args[i].isPointer) basegrid += "*";
+                if (args[i].type.isPointer) basegrid += "*";
                 basegrid += "_" + name;
             }
         }
         if (baseobj.empty() && (type.find("Grid") != string::npos || type.find("System") != string::npos)) {
-            if (args[i].isPointer) baseobj += "*";
+            if (args[i].type.isPointer) baseobj += "*";
             baseobj += "_" + name;
         }
     }
@@ -141,14 +149,14 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         parentMember = tb + "FluidSolver* parent;" + nl;
     }
     
-    string kclass = "", kclassname = kname, callerClass="";
+    string kclass = "", kclassname = kernelName, callerClass="";
     string outerMembers = parentMember, outerArgList = argList, initRetval = "", retList = "";
         
     // add return args as members
     for (size_t i=0; i<returnArg.size(); i++) {
         Argument arg = returnArg[i];
         
-        outerMembers += tb + arg.getTypeName() + ";"+nl;
+        outerMembers += tb + arg.type.build() + ";"+nl;
         callList += ", " + arg.name;
         copier +=", " + arg.name + "(" + arg.value + ")";
         initRetval += arg.name + "(" + arg.value + "), ";
@@ -157,40 +165,40 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
             
         if (haveOuter) {
             initList +=", m_" + arg.name + "(_"+arg.name+ ")";\
-            arg.isRef = true;
+            arg.type.isRef = true;
             arg.name = "_" + arg.name;
-            argList += ", " + arg.getTypeName();
+            argList += ", " + arg.type.build();
             arg.name = "m" + arg.name;          
         } else {
             initList +=", " + arg.name + "(" + arg.value + ")";
         }
-        members += tb + arg.getTypeName() + ";"+nl;        
+        members += tb + arg.type.build() + ";"+nl;        
         
         mCallList += ", " + arg.name;
         // ref it
         Argument arg2 = returnArg[i];
-        arg2.isRef = true;
-        orgArgList += ", " + arg2.getTypeName();         
+        arg2.type.isRef = true;
+        orgArgList += ", " + arg2.type.build();         
     }
 
     // define return conversion operator
     string outOp = "";
-    if (retType.type != "void") {
-        outOp += tb + "operator " + retType.complete + " () {" + nl;
+    if (retType.name != "void") {
+        outOp += tb + "operator " + retType.minimal + " () {" + nl;
         outOp += tb2+ "return " + returnArg[0].name + ";" + nl;
         outOp += tb + "}" + nl;
-        Argument crRet = retType;
+        Type crRet = retType;
         crRet.isRef = true; crRet.isConst = true;
-        outOp += tb + crRet.getType() + " getRet() const { return " + returnArg[0].name + "; }" + nl;
+        outOp += tb + crRet.build() + " getRet() const { return " + returnArg[0].name + "; }" + nl;
         outOp += lineAcc;
     }
         
     // create outer class for non-reduce return values
     if (haveOuter) {
-        kclassname = "_kernel_" + kname;
-        if (!templArgs.empty()) callerClass += "template <" + listArgs(templArgs) + ">" + nl;
-        callerClass += "struct " + kname + " : public " + (pts ? "Particle" : "") + "KernelBase { " + nl;
-        callerClass += tb + kname + " ( " + outerArgList + ") : ";
+        kclassname = "_kernel_" + kernelName;
+        if (!templArgs.empty()) callerClass += "template <" + templArgs.minimal + ">" + nl;
+        callerClass += "struct " + kernelName + " : public " + (pts ? "Particle" : "") + "KernelBase { " + nl;
+        callerClass += tb + kernelName + " ( " + outerArgList + ") : ";
         if (pts)
             callerClass += "ParticleKernelBase((" + basegrid + ").size()), ";
         else
@@ -198,7 +206,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         callerClass += initParent + initRetval + " _inner(" + callList + ") { }" + nl;
         
         // copy constructor
-        callerClass += tb+ kname + " (const " + kname + "& o) : ";
+        callerClass += tb+ kernelName + " (const " + kernelName + "& o) : ";
         if (!pts)
             callerClass += "KernelBase(o.maxX, o.maxY, o.maxZ, o.maxCells, o.minZ, o.X, o.Y, o.Z), ";
         else
@@ -220,7 +228,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     }
     
     // create kernel class
-    if (!templArgs.empty()) kclass += "template <" + listArgs(templArgs) + ">" + nl;
+    if (!templArgs.empty()) kclass += "template <" + templArgs.minimal + ">" + nl;
     kclass += "struct " + kclassname + " : public " + (pts ? "Particle" : "") + "KernelBase { " + nl;
     
     // init constructor
@@ -321,7 +329,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
         if (reduce) {
             directive = "#pragma omp for nowait";
             for (size_t i=0; i<returnArg.size(); i++)
-                preDir += tb3 + returnArg[i].getType() + " _loc_" + returnArg[i].name + " = " + returnArg[i].value + ";" + nl;
+                preDir += tb3 + returnArg[i].type.build() + " _loc_" + returnArg[i].name + " = " + returnArg[i].value + ";" + nl;
             postDir = nlr + tb3 + "#pragma omp critical" + nlr;
             postDir += tb3 + "{" + nl;
             for (size_t i=0; i<returnArg.size(); i++) {
@@ -407,7 +415,7 @@ string processKernel(int lb, const string& kname, const ArgList& opts, Argument 
     kclass += parentMember + members + nl;
     kclass += "};" + nl;
 
-	debMsg( line, "Kernel summary '"<< kname <<"'. Basegrid: "<< basegrid <<", baseobj: "<<baseobj<<", mt: "<< mtType );
+	debMsg( line, "Kernel summary '"<< kernelName <<"'. Basegrid: "<< basegrid <<", baseobj: "<<baseobj<<", mt: "<< mtType );
    
-	return buildline(lb) + kclass + callerClass;
+	return block.linebreaks() + kclass + callerClass;
 }

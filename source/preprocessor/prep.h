@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ * Copyright 2011-2014 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL) 
@@ -51,91 +51,96 @@ struct Token {
     int line;
 };
 
+struct Text {
+    int line0;
+    std::string minimal, original;
+    void reset() { minimal = original = ""; line0=0; }
+    void add(Text* a) { minimal += a->minimal; original += a->original; }
+    std::string linebreaks() const; 
+};
+
 // tracks a set of tokens, and the current position in this list
 struct TokenPointer {
-    TokenPointer(const std::vector<Token>& t) : parent(0),queue(t),ptr(0),oldPtr(0),linebreaks(0) {}
-    TokenPointer(TokenPointer& t) : parent(&t),queue(t.queue),ptr(t.ptr),oldPtr(t.ptr),linebreaks(0) {}
+    TokenPointer(const std::vector<Token>& t, Text *track) : parent(0),queue(t),ptr(0),txt(track) { reset(); }
+    TokenPointer(TokenPointer& t, Text *track) : parent(&t),queue(t.queue),ptr(t.ptr),txt(track) { reset(); }
     ~TokenPointer();
     TokenPointer *parent;
     const std::vector<Token>& queue;
-    int ptr, oldPtr;
-    int linebreaks;
-    std::string completeText, minimalText;
+    int ptr;
+    Text *txt;
 
-    inline void reset() { linebreaks = 0; completeText=minimalText=""; consumeWhitespace(); }
-    
+    inline void reset() { txt->reset(); if(!done()) txt->line0 = cur().line; consumeWhitespace(); }
     inline TokenType curType() { return done() ? TkEnd : cur().type; }
-    inline int curLine() { if (queue.empty()) return -1; return done() ? queue.back().line : cur().line; }
     inline const Token& cur() { return queue[ptr]; }
+    inline TokenType previewType() { return (ptr+1 >= queue.size()) ? TkEnd : queue[ptr+1].type; }
     inline bool done() { return ptr >= queue.size(); }
-    inline bool next() { oldPtr = ptr; ptr++; consumeWhitespace(); return !done(); }
-    inline void previous() { ptr = oldPtr; consumeWhitespace(); }
     inline bool isLast() { return ptr = queue.size()-1;}
+    void next();
     void consumeWhitespace();
+    void errorMsg(const std::string& msg);
 };
 
-struct Type {
+template <class T>
+struct List : Text {
+    std::vector<T> _data;
+    inline size_t size() const { return _data.size(); }
+    inline T& operator[](int i) { return _data[i]; }
+    inline const T& operator[](int i) const { return _data[i]; }
+    inline bool empty() const { return _data.empty(); }
+    inline T& back() { return _data.back(); }
+    inline void push_back(const T& a) { _data.push_back(a); }
+};
+
+struct Type : Text {
     Type() : isConst(false), isRef(false), isPointer(false) {};
     
     std::string name;
     bool isConst, isRef, isPointer;
-    std::vector<Type> templateTypes;
+    List<Type> templateTypes;
+
+    bool operator==(const Type& a) const;
+    std::string build() const;
 };
 
-struct Argument {
-    Argument() : type() {};
-
+struct Argument : Text {
+    Argument() : type(),index(-1) {};
+    
     Type type;
-    std::string name;
+    int index;
+    std::string name, value;
+    std::string completeText, minimalText;
 };
-typedef std::vector<Argument> ArgList;
 
-struct Function {
+struct Function : Text {
     Function() : returnType(),isInline(false),isVirtual(false),isConst(false),noParentheses(false) {}
 
     std::string name;
     Type returnType;
     bool isInline, isVirtual, isConst, noParentheses;
-    std::vector<Type> templateTypes;
-    std::vector<Argument> arguments;
+    List<Type> templateTypes;
+    List<Argument> arguments;
 };
 
-struct Class {
+struct Class : Text {
     Class() {};
 
     std::string name;
     Type baseClass;
-    std::vector<Type> templateTypes;  
+    List<Type> templateTypes;  
 };
 
-/*
-struct Argument {
-    Argument() : name(""),value(""),type(""),templ(""), complete(""), isRef(false), isPointer(false), isConst(false), number(0) {}
-    std::string name, value, type, templ, complete;
-    bool isRef, isPointer, isConst;
-    int number;
-    std::string getType() const {
-        std::string s="";
-        if (isConst) s+= "const ";
-        s += type;
-        if (!templ.empty()) s+= "<" + templ + " >";
-        if (isRef) s+= "&";
-        if (isPointer) s+= "*";            
-        return s;
-    }
-    std::string getTypeName() const { return getType() + " " + name; }
+struct Block : Text {
+    Block() {};
+
+    std::string initList;
+    Type aliasType;
+    std::string aliasName;
+    Class cls;
+    Function func;
+    List<Argument> options;
+    List<Argument> reduceArgs;
 };
-*/
-/*
-inline std::string listArgs(const ArgList& args) {
-    std::string s = "";
-    for (size_t i=0; i<args.size(); i++) {
-        s += args[i].complete;
-        if (i!=args.size()-1) s+=",";
-    }
-    return s;
-}
-*/
+
 inline bool isNameChar(char c) {
     return (c>='A' && c<='Z') || (c>='a' && c<='z') || (c>='0' && c<='9') || c=='_';
 }
@@ -165,16 +170,14 @@ std::string generateMerge(const std::string& text);
 std::string processText(const std::string& text, int baseline);
 
 // functions from parse.cpp
-std::string parseBlock(const std::string& kw, std::vector<Token>& tokens);
-std::string stripWS(const std::string& s);
+std::string parseBlock(const std::string& kw, const std::vector<Token>& tokens);
 
 // functions from codegen_XXX.cpp
 std::string createConverters(const std::string& name, const std::string& tb, const std::string& nl, const std::string& nlr);
-std::string processKernel(int lb, const std::string& name, const ArgList& opts, Argument retType, const ArgList& returnArg, const ArgList& templArgs, const ArgList& args, const std::string& code, int line); 
-std::string processPythonFunction(int lb, const std::string& name, const ArgList& opts, const std::string& type, const ArgList& args, const std::string& initlist, bool isInline, bool isConst, bool isVirtual, const std::string& code, int line);
-std::string processPythonVariable(int lb, const std::string& name, const ArgList& opts, const std::string& type, int line); 
-std::string processPythonClass(int lb, const std::string& name, const ArgList& opts, const ArgList& templArgs, const std::string& baseclassName, const ArgList& baseclassTempl, const std::string& code, int line); 
-std::string processPythonInstantiation(int lb, const std::string& name, const ArgList& templArgs, const std::string& aliasname, int line); 
-std::string buildline(int lb);
+std::string processKernel(const Block& block, const std::string& code);
+std::string processPythonFunction(const Block& block, const std::string& code);
+std::string processPythonVariable(const Block& block, const std::string& code);
+std::string processPythonClass(const Block& block, const std::string& code);
+std::string processPythonInstantiation(const Block& block, const std::string& code);
 
 #endif // _PREP_H

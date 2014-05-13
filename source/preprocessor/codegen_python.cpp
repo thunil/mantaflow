@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ * Copyright 2011-2014 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL) 
@@ -18,14 +18,9 @@
 #include <iostream>
 using namespace std;
 
-string buildline(int lb) {
-    string lbs="";
-    for (int i=0; i<lb; i++) lbs+="\n";
-    return lbs;
-}
 
 enum FunctionType { FtPlugin, FtMember, FtConstructor };
-void createPythonWrapper(const ArgList& args, const string& fname, const string& totalname, FunctionType ftype, string& header, string& footer, string& callList, bool isClass, bool hasParent) {
+void createPythonWrapper(const List<Argument>& args, const string& fname, const string& totalname, FunctionType ftype, string& header, string& footer, string& callList, bool isClass, bool hasParent) {
     // beautify code for debug mode
     string nl  = (gDebugMode && ftype != FtConstructor) ? "\n" : " ";
     string tb  = (gDebugMode && ftype != FtConstructor) ? (isClass ? "\t\t" : "\t") : "";
@@ -37,38 +32,38 @@ void createPythonWrapper(const ArgList& args, const string& fname, const string&
     callList = "";
     string loader = "", argList = "";
     for (size_t i=0; i<args.size(); i++) {
-        string type = args[i].type;        
-        bool itype = isIntegral(args[i].type);
-        string name = args[i].name;
-        stringstream num; num << args[i].number;
-        if (!args[i].templ.empty()) type+= "<" + args[i].templ + ">";
-        if (args[i].isPointer) type += "*";        
-        string completeType = (args[i].isConst) ? ("const " + type) : type;
+        Type type = args[i].type;        
+        bool itype = isIntegral(type.name);
+        string name = args[i].name, typeName = type.name;
+        stringstream num; num << args[i].index;
+        if (!type.templateTypes.empty()) typeName += "<" + type.templateTypes.minimal + ">";
+        if (type.isPointer) typeName += "*";        
+        string completeType = (type.isConst) ? ("const " + typeName) : typeName;
                 
-        if (args[i].isRef) {
+        if (type.isRef) {
             if (args[i].value.empty()) {                
                 // for strings etc. direct get, for PbClass use pointers
                 if (itype)
-                    loader += tb2+ completeType + "& " + name + " = " + argstr + ".get< " + type + " > (" + num.str() + ",\"" + name + "\", &_lock);" + nl;
+                    loader += tb2+ completeType + "& " + name + " = " + argstr + ".get< " + typeName + " > (" + num.str() + ",\"" + name + "\", &_lock);" + nl;
                 else
-                    loader += tb2+ completeType + "& " + name + " = *" + argstr + ".get< " + type + "* > (" + num.str() + ",\"" + name + "\", &_lock);" + nl;
+                    loader += tb2+ completeType + "& " + name + " = *" + argstr + ".get< " + typeName + "* > (" + num.str() + ",\"" + name + "\", &_lock);" + nl;
             } else {                
                 // for strings etc. direct get, for PbClass use pointers
                 if (itype) {
-                    loader += tb2+ completeType + "& " + name + " = " + argstr + ".getOpt< " + type + " > (" + num.str() + ",\"" + name + "\", " + args[i].value + ", &_lock);" + nl;
+                    loader += tb2+ completeType + "& " + name + " = " + argstr + ".getOpt< " + typeName + " > (" + num.str() + ",\"" + name + "\", " + args[i].value + ", &_lock);" + nl;
                 } else {
-                    loader += tb2+ completeType + "* _ptr_" + name + " = " + argstr + ".getOpt< " + type + "* > (" + num.str() + ",\"" + name + "\", 0, &_lock);" + nl;
+                    loader += tb2+ completeType + "* _ptr_" + name + " = " + argstr + ".getOpt< " + typeName + "* > (" + num.str() + ",\"" + name + "\", 0, &_lock);" + nl;
                     loader += tb2+ completeType + "& " + name + " = (_ptr_" + name + ") ? (*_ptr_" + name + ") : (" + args[i].value + ");" + nl; 
                 }
             }
-            type += "&";
+            typeName += "&";
         }
         else {
             loader += tb2+ completeType + " " + name + " = ";
             if (args[i].value.empty()) {
-                loader += argstr + ".get< " + type + " > (" + num.str() + ",\"" + name + "\", &_lock);" + nl;
+                loader += argstr + ".get< " + typeName + " > (" + num.str() + ",\"" + name + "\", &_lock);" + nl;
             } else {
-                loader += argstr + ".getOpt< " + type + " > (" + num.str() + ",\"" + name + "\", " + args[i].value + ", &_lock);" + nl;
+                loader += argstr + ".getOpt< " + typeName + " > (" + num.str() + ",\"" + name + "\", " + args[i].value + ", &_lock);" + nl;
             }
         }
         if (i!=0) callList +=", ";
@@ -142,26 +137,30 @@ string createConverters(const string& name, const string& tb, const string& nl, 
 string gLocalReg, gParent;
 bool gFoundConstructor = false, gIsTemplated=false;
 
-string processPythonFunction(int lb, const string& name, const ArgList& opts, const string& type, const ArgList& args, const string& initlist, bool isInline, bool isConst, bool isVirtual, const string& code, int) {
+string processPythonFunction(const Block& block, const string& code) {
+    const string name = block.func.name;
+    const List<Argument> args = block.func.arguments;
+    const Type type = block.func.returnType;
+    
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = (gDebugMode) ? "\t" : "";
     
-    string inlineS = isInline ? "inline " : "";
-    if (isVirtual) inlineS += "virtual ";
-    const string constS = isConst ? " const" : "";
+    string inlineS = block.func.isInline ? "inline " : "";
+    if (block.func.isVirtual) inlineS += "virtual ";
+    const string constS = block.func.isConst ? " const" : "";
 
 	// PYTHON(...) keyword options
 	bool hasParent = true;
-    for (size_t i=0; i<opts.size(); i++) {
-        if (opts[i].name == "noparent") {
+    for (size_t i=0; i<block.options.size(); i++) {
+        if (block.options[i].name == "noparent") {
             hasParent = false;
 		}
 	}
     
     // is header file ?
     bool isHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
-    bool isConstructor = type.empty();
+    bool isConstructor = type.minimal.empty();
     bool isPlugin = gParent.empty();
     if (isConstructor) gFoundConstructor = true;
         
@@ -180,7 +179,7 @@ string processPythonFunction(int lb, const string& name, const ArgList& opts, co
     // document free plugins
     if (isPlugin && gDocMode) {
         string ds = "//! \\ingroup Plugins\nPYTHON " + fname + "( ";
-        for(size_t i=0; i<args.size(); i++) {  if (i!=0) ds+=", "; ds+=args[i].complete;}
+        for(size_t i=0; i<args.size(); i++) {  if (i!=0) ds+=", "; ds+=args[i].minimal;}
         return ds + " ) {}\n";
     }
     
@@ -195,7 +194,7 @@ string processPythonFunction(int lb, const string& name, const ArgList& opts, co
         if (!callList.empty()) callList +=", ";
         callList += "parent";
     }
-    if (type == "void") {
+    if (type.name == "void") {
         caller += tb+tb+tb+ "_retval = getPyNone();" + nl;
         caller += tb+tb+tb+ name + "(" + callList + ");" + nl + nl;
     } else
@@ -203,7 +202,7 @@ string processPythonFunction(int lb, const string& name, const ArgList& opts, co
     caller += footer;
     
     // replicate original function
-    string func = inlineS + type + " " + name + "(" + listArgs(args);
+    string func = inlineS + type.name + " " + name + "(" + args.minimal;
     if (isPlugin) {
         // add parent as argument
         if (args.size()>0) func += ",";
@@ -247,7 +246,7 @@ string processPythonFunction(int lb, const string& name, const ArgList& opts, co
     return buildline(lb) + func + nl + caller;
 }
 
-string processPythonVariable(int lb, const string& name, const ArgList& opts, const string& type, int line) {
+string processPythonVariable(const Block& block, const string& code) {
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = gDebugMode ? "\t" : "";
@@ -258,7 +257,7 @@ string processPythonVariable(int lb, const string& name, const ArgList& opts, co
     if (gParent.empty())
         errMsg(line, "PYTHON variables con only be used inside classes");
     
-    string pname = name;
+    string name=block.pname = name;
     
     // process options
     for (size_t i=0; i<opts.size(); i++) {
