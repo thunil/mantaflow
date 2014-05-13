@@ -232,7 +232,7 @@ template class FastMarch<FmHeapEntryOut, +1>;
 // simpler extrapolation functions (primarily for FLIP)
 
 KERNEL(bnd=1)
-void knExtrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance , Grid<int>& tmp , const int d , const int c ) 
+void knExtrapolateMACSimple (MACGrid& vel, int distance , Grid<int>& tmp , const int d , const int c ) 
 {
 	static const Vec3i nb[6] = { 
 		Vec3i(1 ,0,0), Vec3i(-1,0,0),
@@ -257,6 +257,46 @@ void knExtrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance , Grid<
 	if(nbs>0) {
 		tmp(p)    = d+1;
 		vel(p)[c] = avgVel / nbs;
+	}
+}
+KERNEL(bnd=0)
+void knExtrapolateIntoBnd (FlagGrid& flags, MACGrid& vel)
+{
+	int c=0;
+	Vec3 v(0,0,0);
+	if( i==0 ) { 
+		v = vel(i+1,j,k);
+		if(v[0] < 0.) v[0] = 0.;
+		c++;
+	}
+	else if( i==(flags.getSizeX()-1) ) { 
+		v = vel(i-1,j,k);
+		if(v[0] > 0.) v[0] = 0.;
+		c++;
+	}
+	if( j==0 ) { 
+		v = vel(i,j+1,k);
+		if(v[1] < 0.) v[1] = 0.;
+		c++;
+	}
+	else if( j==(flags.getSizeY()-1) ) { 
+		v = vel(i,j-1,k);
+		if(v[1] > 0.) v[1] = 0.;
+		c++;
+	}
+	if(flags.is3D()) {
+	if( k==0 ) { 
+		v = vel(i,j,k+1);
+		if(v[2] < 0.) v[2] = 0.;
+		c++;
+	}
+	else if( k==(flags.getSizeY()-1) ) { 
+		v = vel(i,j,k-1);
+		if(v[2] > 0.) v[2] = 0.;
+		c++;
+	} }
+	if(c>0) {
+		vel(i,j,k) = v/(Real)c;
 	}
 }
 // a simple extrapolation step , used for cases where there's no levelset
@@ -284,10 +324,12 @@ PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 
 		
 		// extrapolate for distance
 		for(int d=1; d<1+distance; ++d) {
-			knExtrapolateMACSimple(flags, vel, distance, tmp, d, c);
+			knExtrapolateMACSimple(vel, distance, tmp, d, c);
 		} // d
-
 	}
+
+	// copy tangential values into sides
+	knExtrapolateIntoBnd(flags, vel);
 }
 
 KERNEL(bnd=1)
