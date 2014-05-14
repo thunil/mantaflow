@@ -36,7 +36,7 @@ void createPythonWrapper(const List<Argument>& args, const string& fname, const 
         bool itype = isIntegral(type.name);
         string name = args[i].name, typeName = type.name;
         stringstream num; num << args[i].index;
-        if (!type.templateTypes.empty()) typeName += "<" + type.templateTypes.minimal + ">";
+        if (!type.templateTypes.empty()) typeName += type.templateTypes.minimal;
         if (type.isPointer) typeName += "*";        
         string completeType = (type.isConst) ? ("const " + typeName) : typeName;
                 
@@ -202,13 +202,13 @@ string processPythonFunction(const Block& block, const string& code) {
     caller += footer;
     
     // replicate original function
-    string func = inlineS + type.name + " " + name + "(" + args.minimal;
+    string func = inlineS + type.minimal + " " + name + "(" + args.listText;
     if (isPlugin) {
         // add parent as argument
         if (args.size()>0) func += ",";
         func += " FluidSolver* parent = NULL, PbArgs& _args = PbArgs::EMPTY";
     }
-    func += ") " + constS + initlist + codeInline + nl;
+    func += ") " + constS + block.initList + codeInline + nl;
         
     // register
     string regname = clname + (isConstructor ? clname : fname);
@@ -243,13 +243,14 @@ string processPythonFunction(const Block& block, const string& code) {
         caller = "";
         func = "PYTHON " + func;
     }    
-    return buildline(lb) + func + nl + caller;
+    return block.linebreaks() + func + nl + caller;
 }
 
-string processPythonVariable(const Block& block, const string& code) {
+string processPythonVariable(const Block& block) {
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = gDebugMode ? "\t" : "";
+    const int line = block.line0;
     
     // is header file ?
     bool isHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
@@ -257,12 +258,13 @@ string processPythonVariable(const Block& block, const string& code) {
     if (gParent.empty())
         errMsg(line, "PYTHON variables con only be used inside classes");
     
-    string name=block.pname = name;
+    string name=block.func.name;
+    string pname=name, type = block.func.returnType.name;
     
     // process options
-    for (size_t i=0; i<opts.size(); i++) {
-        if (opts[i].name == "name") 
-            pname = opts[i].value;
+    for (size_t i=0; i<block.options.size(); i++) {
+        if (block.options[i].name == "name") 
+            pname = block.options[i].value;
         else
             errMsg(line, "PYTHON(opt): illegal option. Supported options are: 'name'");
     }
@@ -291,26 +293,31 @@ string processPythonVariable(const Block& block, const string& code) {
         gRegText += "extern " + gethdr + ";\nextern " + sethdr + ";\n";
     }
     
-    return buildline(lb) + code;
+    return block.linebreaks() + code;
 }
 
-string processPythonClass(int lb, const string& name, const ArgList& opts, const ArgList& templArgs, const string& baseclassName, const ArgList& baseclassTempl, const string& code, int line) {
+string processPythonClass(const Block& block, const string& code) {
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = gDebugMode ? "\t" : "";
-        
+    const List<Type>& templArgs = block.cls.templateTypes;
+    const int line = block.line0;
+
     // is header file ?
     bool isHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
     
     if (!isHeader && !templArgs.empty())
         errMsg(line, "PYTHON template classes can only be defined in header files.");
     
+    string name = block.cls.name;
     string pname = name; // for now
+    string baseclassName = block.cls.baseClass.name;
+    const List<Type>& baseclassTempl = block.cls.baseClass.templateTypes;
     
     // process options
-    for (size_t i=0; i<opts.size(); i++) {
-        if (opts[i].name == "name") 
-            pname = opts[i].value;
+    for (size_t i=0; i<block.options.size(); i++) {
+        if (block.options[i].name == "name") 
+            pname = block.options[i].value;
         else
             errMsg(line, "PYTHON(opt): illegal kernel option. Supported options are: 'name'");
     }
@@ -356,7 +363,7 @@ string processPythonClass(int lb, const string& name, const ArgList& opts, const
             gRegText += "@instance " + baseclassName + " " + targ + " " + aliasn + "\n";    
         }
         modBase += "<" + bclist + ">";
-        baseclass += "<" + listArgs(baseclassTempl) + ">";
+        baseclass += baseclassTempl.minimal;
     }
     if (templArgs.empty())
         registry = "PbWrapperRegistry::instance().addClass(\"" + pname + "\", \"" + name + "\", \"" + modBase + "\");";
@@ -400,7 +407,7 @@ string processPythonClass(int lb, const string& name, const ArgList& opts, const
         pclass += "//! \\ingroup PyClasses\nPYTHON ";
     }
     if (gIsTemplated)
-        pclass += "template<" + listArgs(templArgs) + "> " + nl;
+        pclass += "template" + templArgs.minimal + nl;
     pclass += "class " + name + " : public " + baseclass + " {" + nl;
     pclass += newText + nl;
     if (!gDocMode) {
@@ -409,16 +416,16 @@ string processPythonClass(int lb, const string& name, const ArgList& opts, const
     }
     pclass += "};" + nl;
     
-    return buildline(lb) + implInst + pclass + gLocalReg;
+    return block.linebreaks() + implInst + pclass + gLocalReg;
 }
 
 set<string> gAliasRegister;
-string processPythonInstantiation(int lb, const string& name, const ArgList& templArgs, const string& aliasname, int) {
-    gRegText += "@instance " + name + " " + listArgs(templArgs) + " " + aliasname + "\n";
+string processPythonInstantiation(const Block& block, const Type& aliasType, const string& aliasName) {
+    gRegText += "@instance " + aliasType.name + " " + aliasType.templateTypes.listText + " " + aliasName + "\n";
     
-    if (gAliasRegister.find(aliasname) == gAliasRegister.end()) {
-        gAliasRegister.insert(aliasname);
-        return buildline(lb) + "typedef " + name + "<" + listArgs(templArgs) + "> " + aliasname + "; ";
+    if (gAliasRegister.find(aliasName) == gAliasRegister.end()) {
+        gAliasRegister.insert(aliasName);
+        return block.linebreaks() + "typedef " + aliasType.minimal + " " + aliasName + "; ";
     }
-    return buildline(lb);
+    return block.linebreaks();
 }

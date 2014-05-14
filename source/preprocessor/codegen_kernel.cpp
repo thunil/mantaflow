@@ -66,7 +66,7 @@ string processKernel(const Block& block, const string& code) {
             kernelAssert(reduceOp == "+" || reduceOp == "-" || reduceOp == "*" || reduceOp == "/" || reduceOp == "min" || reduceOp == "max",
                    "invalid 'reduce' operator. Expected reduce= +|-|*|/|min|max");
         } else
-            errMsg(line, "KERNEL(opt): illegal kernel option. Supported options are: 'ijk', 'idx', 'bnd=x', 'reduce', 'st', 'pts'");
+            errMsg(line, "KERNEL(opt): illegal kernel option '"+ opts[i].name +"' Supported options are: 'ijk', 'idx', 'bnd=x', 'reduce', 'st', 'pts'");
     }
     string qualifier = (!reduce && mtType==MTTBB) ? "const" : "";
     string tbbcall = reduce ? "tbb::parallel_reduce" : "tbb::parallel_for";
@@ -92,7 +92,6 @@ string processKernel(const Block& block, const string& code) {
     for (size_t i=0; i<args.size(); i++) {
         string type = args[i].type.build();
         string name = args[i].name;
-        
         initList += (i==0) ? "" : ", ";
         argList += (i==0) ? "" : ", ";
         copier += (i==0) ? "" : ", ";
@@ -156,7 +155,7 @@ string processKernel(const Block& block, const string& code) {
     for (size_t i=0; i<returnArg.size(); i++) {
         Argument arg = returnArg[i];
         
-        outerMembers += tb + arg.type.build() + ";"+nl;
+        outerMembers += tb + arg.type.build() + " " + arg.name + ";"+nl;
         callList += ", " + arg.name;
         copier +=", " + arg.name + "(" + arg.value + ")";
         initRetval += arg.name + "(" + arg.value + "), ";
@@ -172,7 +171,7 @@ string processKernel(const Block& block, const string& code) {
         } else {
             initList +=", " + arg.name + "(" + arg.value + ")";
         }
-        members += tb + arg.type.build() + ";"+nl;        
+        members += tb + arg.type.build() + " " + arg.name + ";"+nl;        
         
         mCallList += ", " + arg.name;
         // ref it
@@ -196,7 +195,7 @@ string processKernel(const Block& block, const string& code) {
     // create outer class for non-reduce return values
     if (haveOuter) {
         kclassname = "_kernel_" + kernelName;
-        if (!templArgs.empty()) callerClass += "template <" + templArgs.minimal + ">" + nl;
+        if (!templArgs.empty()) callerClass += "template " + templArgs.minimal + nl;
         callerClass += "struct " + kernelName + " : public " + (pts ? "Particle" : "") + "KernelBase { " + nl;
         callerClass += tb + kernelName + " ( " + outerArgList + ") : ";
         if (pts)
@@ -228,7 +227,7 @@ string processKernel(const Block& block, const string& code) {
     }
     
     // create kernel class
-    if (!templArgs.empty()) kclass += "template <" + templArgs.minimal + ">" + nl;
+    if (!templArgs.empty()) kclass += "template " + templArgs.minimal + nl;
     kclass += "struct " + kclassname + " : public " + (pts ? "Particle" : "") + "KernelBase { " + nl;
     
     // init constructor

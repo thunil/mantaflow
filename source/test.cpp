@@ -20,11 +20,12 @@ using namespace std;
 
 namespace Manta {
 
-
+/*
 PYTHON template<class S>
 void addToGrid(Grid<S>& a, S v) {
     
 }
+*/
 
 //! Kernel: get component (not shifted)
 KERNEL(idx) returns(Grid<Real> ret(parent))

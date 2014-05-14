@@ -26,37 +26,44 @@ using namespace std;
 void TokenPointer::consumeWhitespace() {
     if (done()) return;
     while (cur().type == TkWhitespace || cur().type == TkComment) {
-        txt->original += cur().text;
-        if (txt->minimal.empty() || *(txt->minimal).rbegin() != ' ')
-            txt->minimal += ' ';
-        ptr++;
+        string minimal = (!txt->minimal.empty() && *(txt->minimal).rbegin() == ' ') ? "" : " ";
+        forward(minimal,cur().text,1);
         if (ptr >= queue.size())
             errMsg(-1, "Preprocessor ran out of tokens. This shouldn't happen.");
     }
 }
 
 void TokenPointer::next() {
-    txt->minimal += cur().text; 
-    txt->original += cur().text;
-    ptr++;
+    forward(cur().text, cur().text, 1);
     consumeWhitespace();
 }
 
+void TokenPointer::forward(const string& minimal, const string& original, int offset) {
+    txt->minimal += minimal; 
+    txt->original += original;
+    ptr += offset;
+    if (parent)
+        parent->forward(minimal, original, offset);
+}
+
+string TokenPointer::backtrace() {
+    string bt = "[" + txt->dynamicClass() + "]: " + txt->original + "\n";
+    if (parent)
+        bt += parent->backtrace();
+    return bt;
+}
+
 void TokenPointer::errorMsg(const string& msg) {
+    string emsg = "'" + txt->original;
+    if (!done()) emsg += cur().text;
+    emsg += "' " + msg + "\n";
+    emsg += " Preprocessor backtrace:\n" + backtrace(); 
+
     int line = -1;
     if (!queue.empty()) 
         line = done() ? queue.back().line : cur().line; 
-    if (txt) {
-        errMsg(line, txt->original + ": " + msg);
-    }
-    errMsg(line, msg);
-}
-
-TokenPointer::~TokenPointer() {
-    if (parent) {
-        parent->txt->add(txt);
-        parent->ptr = ptr;
-    }
+    
+    errMsg(line, emsg);
 }
 
 //*************************************************************************************
@@ -113,7 +120,7 @@ void tokenizeBlock(vector<Token>& tokens, const string& kw, const string& text, 
             else
                 curstr += c;
         }
-        else if (!isString && c=='\"') {
+        else if (!isString && c=='\"' && codeblockLevel == 0) {
             isString = true;
             tokens.push_back(Token(TkString, line, c));
         }
@@ -317,14 +324,14 @@ string processText(const string& text, int baseline) {
             if (isNameChar(c))
                 word += c;
             else {
-                if (word != "KERNEL" && word != "PYTHON") {
-                    newText += word;                    
-                    newText += c;                
-                } else {
+                if (word == "KERNEL" || word == "PYTHON") {
                     vector<Token> tokens;
                     tokenizeBlock(tokens, word, text, i, line);
                     convertKeywords(tokens);
-                    newText += parseBlock(word, tokens);
+                    newText += parseBlock(word, tokens);               
+                } else {
+                    newText += word;                    
+                    newText += c; 
                 }
                 word = "";         
             }

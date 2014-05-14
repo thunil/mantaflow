@@ -35,7 +35,7 @@ string Type::build() const {
     if (isConst) s+= "const ";
     s += name;
     if (!templateTypes.empty())
-        s+= "<" + templateTypes.minimal + " >";
+        s+= templateTypes.minimal;
     if (isRef) s+= "&";
     if (isPointer) s+= "*";            
     return s;
@@ -54,9 +54,32 @@ string Text::linebreaks() const {
 //*************************************************************
 // parsers
 
-#define tkAssert(x,msg) if(!(x)){tk.errorMsg(msg);}
+#define tkAssert(x,msg) {if(!(x)){tk.errorMsg(msg);}}
 #define typeAssert(x) tkAssert(x," is not a valid type.")
 #define argAssert(x) tkAssert(x," is not a valid argument.")
+
+string parseRunaway(TokenPointer& parentPtr) {
+    Text text;
+    TokenPointer tk(parentPtr, &text);
+
+    // don't validate, just track bracket level
+    BracketStack stack;
+    for(;!tk.done();tk.next()) {
+        if (stack.empty() && (tk.curType() == TkComma || 
+            tk.curType() == TkBracketR || tk.curType() == TkTBracketR)) {
+                break;
+        }
+        if (tk.curType() == TkBracketL || tk.curType() == TkTBracketL) {
+            stack.push_back(tk.cur().text[0]);
+        } else if (tk.curType() == TkBracketR) {
+            argAssert(stack.pop() == '(');
+        } else if (tk.curType() == TkTBracketR) {
+            argAssert(stack.pop() == '<');
+        }
+    }
+    argAssert(stack.empty());
+    return text.minimal;
+}
 
 void parsePointer(TokenPointer& tk, Type& cur) {
     if (tk.done()) return;
@@ -93,7 +116,12 @@ Type parseType(TokenPointer& parentPtr) {
         return cur;
     }
 
-    typeAssert(tk.curType() == TkDescriptor || tk.curType() == TkSimpleType || tk.curType() == TkClass);
+    // template argument
+    if (tk.curType() == TkClass) {
+        tk.next();
+    }
+
+    typeAssert(tk.curType() == TkDescriptor || tk.curType() == TkSimpleType);
     cur.name = tk.cur().text;
     tk.next();
 
@@ -101,7 +129,7 @@ Type parseType(TokenPointer& parentPtr) {
     if (tk.curType() == TkDoubleColon) {
         cur.name += "::";
         tk.next();
-        typeAssert(tk.curType() == TkDescriptor);
+        typeAssert(tk.curType() == TkDescriptor || tk.curType() == TkSimpleType);
         cur.name += tk.cur().text;
         tk.next();
     }
@@ -130,28 +158,10 @@ Argument parseArgument(TokenPointer& parentPtr, bool requireName, bool requireTy
     tk.next();
 
     // default value ?
-    if (tk.curType() == TkAssign) {
-        tk.next();
-        argAssert(tk.curType() == TkDescriptor);
-        tk.next();
-
-        // don't validate, just track bracket level
-        BracketStack stack;
-        for(;!tk.done();tk.next()) {
-            if (tk.curType() == TkBracketL || tk.curType() == TkTBracketL) {
-                stack.push_back(tk.cur().text[0]);
-            } else if (tk.curType() == TkBracketR) {
-                argAssert(stack.pop() == '(');
-            } else if (tk.curType() == TkTBracketR) {
-                argAssert(stack.pop() == '<');
-            }
-            if (stack.empty()) {
-                if (tk.previewType() == TkComma || tk.previewType() == TkBracketR || 
-                    tk.previewType() == TkTBracketR)
-                    break;
-            }
-        }
-        argAssert(stack.empty());
+    if (tk.curType() == TkAssign || tk.curType() == TkBracketL) {
+        if (tk.curType() == TkAssign)
+            tk.next();
+        cur.value = parseRunaway(tk);
     }
     return cur;
 }
@@ -160,15 +170,19 @@ List<Type> parseTypeList(TokenPointer& parentPtr) {
     List<Type> list;
     TokenPointer tk(parentPtr, &list);
     
-    typeAssert(tk.curType() == TkTBracketL);
+    tkAssert(tk.curType() == TkTBracketL, "expect template opening bracket");
     tk.next();
-    for(;;) {
-        list.push_back(parseType(tk));
-        if (tk.curType() == TkTBracketR) 
-            break;
-        typeAssert(tk.curType() == TkComma);
+    if (tk.curType() != TkTBracketR) {
+        for(;;) {
+            list.push_back(parseType(tk));
+            if (tk.curType() == TkTBracketR) 
+                break;
+            tkAssert(tk.curType() == TkComma, "expect comma or closing bracket");
+            tk.next();
+        }
     }
-    typeAssert(tk.curType() == TkTBracketR);
+    list.listText = list.minimal.substr(1);
+    tkAssert(tk.curType() == TkTBracketR, "expect template closing bracket");
     tk.next();
     return list;
 }
@@ -177,16 +191,20 @@ List<Argument> parseArgumentList(TokenPointer& parentPtr, bool requireName, bool
     List<Argument> list;
     TokenPointer tk(parentPtr, &list);
     
-    typeAssert(tk.curType() == TkBracketL);
+    tkAssert(tk.curType() == TkBracketL, "expect opening bracket");
     tk.next();
-    for(int idx=0;;idx++) {
-        list.push_back(parseArgument(tk, requireName, requireType));
-        list.back().index = idx;
-        if (tk.curType() == TkBracketR) 
-            break;
-        typeAssert(tk.curType() == TkComma);
+    if (tk.curType() != TkBracketR) {
+        for(int idx=0;;idx++) {
+            list.push_back(parseArgument(tk, requireName, requireType));
+            list.back().index = idx;
+            if (tk.curType() == TkBracketR) 
+                break;
+            tkAssert(tk.curType() == TkComma, "expect comma or closing bracket");
+            tk.next();
+        }
     }
-    typeAssert(tk.curType() == TkBracketR);
+    list.listText = list.minimal.substr(1);
+    tkAssert(tk.curType() == TkBracketR, "expect closing bracket");
     tk.next();
     return list;
 }
@@ -216,8 +234,10 @@ Function parseFunction(TokenPointer& parentPtr, bool requireNames, bool requireT
     else
         cur.noParentheses = true;
 
-    if (tk.curType() == TkConst)
+    if (tk.curType() == TkConst) {
         cur.isConst = true;
+        tk.next();
+    }
 
     return cur;
 }
@@ -228,8 +248,9 @@ string parseBlock(const string& kw, const vector<Token>& tokens) {
     TokenPointer tk(tokens, &block);
 
     // parse keyword options
-    block.options = parseArgumentList(tk, true, false);
-    
+    if (tk.curType() == TkBracketL)
+        block.options = parseArgumentList(tk, true, false);
+
     if (kw == "KERNEL") {
         List<Type> templTypes;
 
@@ -242,10 +263,10 @@ string parseBlock(const string& kw, const vector<Token>& tokens) {
         // return values
         while (tk.curType() == TkDescriptor && tk.cur().text == "returns") {
             tk.next();
-            typeAssert(tk.curType() == TkBracketL);
+            tkAssert(tk.curType() == TkBracketL, "expext opening bracket");
             tk.next();
             block.reduceArgs.push_back(parseArgument(tk, true, true));
-            typeAssert(tk.curType() == TkBracketR);
+            tkAssert(tk.curType() == TkBracketR, "expect closing bracket");
             tk.next();            
         }
 
@@ -263,11 +284,12 @@ string parseBlock(const string& kw, const vector<Token>& tokens) {
         // template instantiation / alias
         if (tk.curType() == TkDescriptor && tk.cur().text == "alias") {
             tk.next();
-            block.aliasType = parseType(tk);
-            tkAssert(tk.curType() == TkDescriptor, "malformed preprocessor block. Expected 'PYTHON alias cname pyname;'");
-            block.aliasName = tk.cur().text;
+            Type aliasType = parseType(tk);
+            tkAssert(tk.curType() == TkDescriptor, "malformed preprocessor block. Expected 'PYTHON alias cname pyname; '");
+            string aliasName = tk.cur().text;
+            tk.next();
             tkAssert(tk.curType() == TkSemicolon && tk.isLast(), "malformed preprocessor block. Expected 'PYTHON alias cname pyname;'");
-            return processPythonInstantiation(block, tk.cur().text);
+            return processPythonInstantiation(block, aliasType, aliasName);
         }
         List<Type> templTypes;
 
@@ -289,7 +311,6 @@ string parseBlock(const string& kw, const vector<Token>& tokens) {
             tk.next();
             tkAssert(tk.curType() == TkDescriptor, "PYTHON class must publicly derive from PbClass (or a subclass)");
             block.cls.baseClass = parseType(tk);
-            tk.next();
             tkAssert(tk.curType() == TkCodeBlock && tk.isLast(), "malformed preprocessor keyword block. Expected 'PYTHON class name : public X {}'");
 
             return processPythonClass(block, tk.cur().text);
@@ -301,6 +322,7 @@ string parseBlock(const string& kw, const vector<Token>& tokens) {
 
             if (isConstructor && tk.curType() == TkColon) {
                 // read till end
+                block.initList = " : ";
                 while(!tk.done() && tk.curType() != TkSemicolon && tk.curType() != TkCodeBlock) {
                     block.initList += tk.cur().text;
                     tk.next();
@@ -311,11 +333,11 @@ string parseBlock(const string& kw, const vector<Token>& tokens) {
             if (tk.curType() == TkSemicolon && block.func.noParentheses) {
                 tkAssert(tk.curType() == TkSemicolon && tk.isLast(), 
                     "malformed preprocessor keyword block. Expected 'PYTHON type varname;'");
-               return processPythonVariable(block, tk.cur().text);
+               return processPythonVariable(block);
             }
             tkAssert((tk.curType() == TkCodeBlock || tk.curType() == TkSemicolon) && tk.isLast(), 
                 "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]'");
-            return processPythonVariable(block, tk.cur().text);
+            return processPythonFunction(block, tk.cur().text);
         }
 
     }

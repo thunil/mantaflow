@@ -55,40 +55,42 @@ struct Text {
     int line0;
     std::string minimal, original;
     void reset() { minimal = original = ""; line0=0; }
-    void add(Text* a) { minimal += a->minimal; original += a->original; }
     std::string linebreaks() const; 
+    virtual std::string dynamicClass() { return ""; }
 };
 
 // tracks a set of tokens, and the current position in this list
 struct TokenPointer {
     TokenPointer(const std::vector<Token>& t, Text *track) : parent(0),queue(t),ptr(0),txt(track) { reset(); }
     TokenPointer(TokenPointer& t, Text *track) : parent(&t),queue(t.queue),ptr(t.ptr),txt(track) { reset(); }
-    ~TokenPointer();
     TokenPointer *parent;
     const std::vector<Token>& queue;
     int ptr;
     Text *txt;
 
-    inline void reset() { txt->reset(); if(!done()) txt->line0 = cur().line; consumeWhitespace(); }
+    inline void reset() { txt->reset(); consumeWhitespace(); if(!done()) txt->line0 = cur().line;  }
     inline TokenType curType() { return done() ? TkEnd : cur().type; }
     inline const Token& cur() { return queue[ptr]; }
-    inline TokenType previewType() { return (ptr+1 >= queue.size()) ? TkEnd : queue[ptr+1].type; }
     inline bool done() { return ptr >= queue.size(); }
     inline bool isLast() { return ptr = queue.size()-1;}
+    void forward(const std::string& minimal, const std::string& original, int offset);
     void next();
     void consumeWhitespace();
     void errorMsg(const std::string& msg);
+    std::string backtrace();
 };
 
 template <class T>
 struct List : Text {
     std::vector<T> _data;
+    std::string listText;
     inline size_t size() const { return _data.size(); }
     inline T& operator[](int i) { return _data[i]; }
     inline const T& operator[](int i) const { return _data[i]; }
     inline bool empty() const { return _data.empty(); }
     inline T& back() { return _data.back(); }
     inline void push_back(const T& a) { _data.push_back(a); }
+    virtual std::string dynamicClass() { return "List"; }
 };
 
 struct Type : Text {
@@ -100,6 +102,7 @@ struct Type : Text {
 
     bool operator==(const Type& a) const;
     std::string build() const;
+    virtual std::string dynamicClass() { return "Type"; }
 };
 
 struct Argument : Text {
@@ -109,6 +112,7 @@ struct Argument : Text {
     int index;
     std::string name, value;
     std::string completeText, minimalText;
+    virtual std::string dynamicClass() { return "Argument"; }
 };
 
 struct Function : Text {
@@ -119,6 +123,7 @@ struct Function : Text {
     bool isInline, isVirtual, isConst, noParentheses;
     List<Type> templateTypes;
     List<Argument> arguments;
+    virtual std::string dynamicClass() { return "Function"; }
 };
 
 struct Class : Text {
@@ -127,18 +132,18 @@ struct Class : Text {
     std::string name;
     Type baseClass;
     List<Type> templateTypes;  
+    virtual std::string dynamicClass() { return "Class"; }
 };
 
 struct Block : Text {
     Block() {};
 
     std::string initList;
-    Type aliasType;
-    std::string aliasName;
     Class cls;
     Function func;
     List<Argument> options;
     List<Argument> reduceArgs;
+    virtual std::string dynamicClass() { return "Block"; }
 };
 
 inline bool isNameChar(char c) {
@@ -176,8 +181,8 @@ std::string parseBlock(const std::string& kw, const std::vector<Token>& tokens);
 std::string createConverters(const std::string& name, const std::string& tb, const std::string& nl, const std::string& nlr);
 std::string processKernel(const Block& block, const std::string& code);
 std::string processPythonFunction(const Block& block, const std::string& code);
-std::string processPythonVariable(const Block& block, const std::string& code);
+std::string processPythonVariable(const Block& block);
 std::string processPythonClass(const Block& block, const std::string& code);
-std::string processPythonInstantiation(const Block& block, const std::string& code);
+std::string processPythonInstantiation(const Block& block, const Type& aliasType, const std::string& aliasName);
 
 #endif // _PREP_H
