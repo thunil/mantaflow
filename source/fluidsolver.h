@@ -55,7 +55,9 @@ public:
     template<class T> T* getGridPointer();
     template<class T> void freeGridPointer(T* ptr);    
     void pluginStart(const std::string& name);
-    void pluginStop(const std::string& name);        
+    void pluginStop(const std::string& name);      
+
+    PYTHON(name=timestep) Real mDt;  
 protected:
     //! subclass for managing grid memory
     //! stored as a stack to allow fast allocation
@@ -71,7 +73,6 @@ protected:
     
     Vec3i mGridSize;
     const int mDim;
-    PYTHON(name=timestep) Real mDt;
     Real mTimeTotal, mScale;
     int mFrame;
         

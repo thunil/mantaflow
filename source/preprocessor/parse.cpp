@@ -259,6 +259,25 @@ Function parseFunction(TokenPointer& parentPtr, bool requireNames, bool requireT
     return cur;
 }
 
+Class parseClass(TokenPointer& parentPtr) {
+    Class cur;
+    TokenPointer tk(parentPtr, &cur);
+
+    tkAssert(tk.curType() == TkClass, "");
+    tk.next();
+    tkAssert(tk.curType() == TkDescriptor, "malformed preprocessor keyword block. Expected 'PYTHON class name : public X {}'");
+    cur.name = tk.cur().text;
+    tk.next();
+    tkAssert(tk.curType() == TkColon, "PYTHON class must publicly derive from PbClass (or a subclass)");
+    tk.next();
+    tkAssert(tk.curType() == TkPublic, "PYTHON class must publicly derive from PbClass (or a subclass)");
+    tk.next();
+    tkAssert(tk.curType() == TkDescriptor, "PYTHON class must publicly derive from PbClass (or a subclass)");
+    cur.baseClass = parseType(tk);
+
+    return cur;
+}
+
 // Parse syntax KEYWORD(opt1, opt2, ...) STATEMENTS [ {} or ; ]    
 void parseBlock(const string& kw, const vector<Token>& tokens, const Class* parent, Sink& sink) {
     Block block = Block();
@@ -300,48 +319,43 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
     else if (kw == "PYTHON")
     {
         // template instantiation / alias
-        if (tk.curType() == TkDescriptor && tk.cur().text == "alias") {
+        if (tk.curType() == TkDescriptor && (tk.cur().text == "alias" || tk.cur().text == "instantiate"))  {
             tk.next();
             Type aliasType = parseType(tk);
-            tkAssert(tk.curType() == TkDescriptor, "malformed preprocessor block. Expected 'PYTHON alias cname pyname; '");
-            string aliasName = tk.cur().text;
-            tk.next();
+            string aliasName = "";
+            if (tk.curType() == TkDescriptor) {
+                aliasName = tk.cur().text;
+                tk.next();
+            }
             tkAssert(tk.curType() == TkSemicolon && tk.isLast(), "malformed preprocessor block. Expected 'PYTHON alias cname pyname;'");
-            sink.inplace << processPythonInstantiation(block, aliasType, aliasName);
+            processPythonInstantiation(block, aliasType, aliasName, sink);
             return;
         }
         List<Type> templTypes;
 
         // resolve template class
+        Text templText;
         if (tk.curType() == TkTemplate) {
-            tk.next();
-            templTypes = parseTypeList(tk);            
+            TokenPointer t2(tk, &templText);
+            t2.next();
+            templTypes = parseTypeList(t2);            
         }
 
+        // python class
         if (tk.curType() == TkClass && tk.cur().text != "typename") {
+            block.cls = parseClass(tk);
             block.cls.templateTypes = templTypes;
-            tk.next();
-            tkAssert(tk.curType() == TkDescriptor, "malformed preprocessor keyword block. Expected 'PYTHON class name : public X {}'");
-            block.cls.name = tk.cur().text;
-            tk.next();
-            tkAssert(tk.curType() == TkColon, "PYTHON class must publicly derive from PbClass (or a subclass)");
-            tk.next();
-            tkAssert(tk.curType() == TkPublic, "PYTHON class must publicly derive from PbClass (or a subclass)");
-            tk.next();
-            tkAssert(tk.curType() == TkDescriptor, "PYTHON class must publicly derive from PbClass (or a subclass)");
-            block.cls.baseClass = parseType(tk);
+            block.cls.prequel(&templText);
             tkAssert(tk.curType() == TkCodeBlock && tk.isLast(), "malformed preprocessor keyword block. Expected 'PYTHON class name : public X {}'");
-
             processPythonClass(block, tk.cur().text, sink);
         }
-        else
+        else // function or member
         {
-            bool isConstructor = tk.curType() == TkDescriptor && gParent == tk.cur().text;
+            bool isConstructor = parent && tk.curType() == TkDescriptor && parent->name == tk.cur().text;
             block.func = parseFunction(tk, false, !isConstructor, false);
 
             if (isConstructor && tk.curType() == TkColon) {
                 // read till end
-                block.initList = " : ";
                 while(!tk.done() && tk.curType() != TkSemicolon && tk.curType() != TkCodeBlock) {
                     block.initList += tk.cur().text;
                     tk.next();
@@ -352,7 +366,7 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
             if (tk.curType() == TkSemicolon && block.func.noParentheses) {
                 tkAssert(tk.curType() == TkSemicolon && tk.isLast(), 
                     "malformed preprocessor keyword block. Expected 'PYTHON type varname;'");
-               sink.inplace << processPythonVariable(block);
+                processPythonVariable(block, sink);
             } else {
                 tkAssert((tk.curType() == TkCodeBlock || tk.curType() == TkSemicolon) && tk.isLast(), 
                     "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]'");

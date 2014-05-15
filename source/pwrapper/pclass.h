@@ -137,12 +137,15 @@ void pbFinalizePlugin(FluidSolver* parent, const std::string& name);
 void pbPreparePlugin(FluidSolver* parent, const std::string& name);
 void pbSetError(const std::string& fn, const std::string& ex);
 
-struct PbRegFunc {
-    PbRegFunc(const std::string& className, const std::string& funcName, PbGenericFunction func) {
+struct PbRegister {
+    PbRegister(const std::string& className, const std::string& funcName, PbGenericFunction func) {
         PbWrapperRegistry::instance().addMethod(className, funcName, func);
     }
-    PbRegFunc(const std::string& className, const std::string& funcName, PbConstructor func) {
+    PbRegister(const std::string& className, const std::string& funcName, PbConstructor func) {
         PbWrapperRegistry::instance().addConstructor(className, func);
+    }
+    PbRegister(const std::string& className, const std::string& property, PbGetter getter, PbSetter setter) {
+        PbWrapperRegistry::instance().addGetSet(className, property, getter, setter);
     }
 };
 

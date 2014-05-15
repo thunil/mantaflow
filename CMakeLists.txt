@@ -386,8 +386,6 @@ add_custom_command(OUTPUT ${HGINFO}
 
 set(SOURCES ${NOPP_SOURCES} ${SILENT_SOURCES})
 set(HEADERS ${NOPP_HEADERS})
-set(PP_REGISTRY "${PP_PATH}/ppreg.cpp")
-set(PP_REGS)
 set(PP_PREPD "0")
 if (PREPDEBUG)
     set(PP_PREPD "1")
@@ -407,16 +405,8 @@ foreach(it ${PP_SOURCES} ${PP_HEADERS})
     if ("${CUREXT}" STREQUAL ".h")
         list(APPEND SOURCES "${CURPP}_ext.cpp")
     endif()
-    list(APPEND PP_REGS "${CURPP}.reg")
     list(APPEND SOURCES ${CURPP})    
 endforeach(it)
-
-# merge reg files
-add_custom_command(OUTPUT ${PP_REGISTRY}
-                  COMMAND prep merge ${PP_REGISTRY} ${PP_REGS}
-                  DEPENDS prep ${SOURCES}
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-set_source_files_properties(${PP_REGISTRY} PROPERTIES GENERATED 1)
 
 #******************************************************************************
 # QT for GUI

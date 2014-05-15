@@ -48,7 +48,7 @@ static PyObject* _P_$FUNCNAME (PyObject* _self, PyObject* _linargs, PyObject* _k
         return 0;
     }
 }
-static const PbRegFunc _RP_$FUNCNAME ("","$FUNCNAME",_P_$FUNCNAME);
+static const PbRegister _RP_$FUNCNAME ("","$FUNCNAME",_P_$FUNCNAME);
 );
 
 const string TmpMemberFunction = STR(
@@ -103,10 +103,30 @@ static int _$CLASS (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
 });
 
 const string TmpRegisterMethod = STR(
-@IF($CLASSTPL)
-    static const PbRegFunc _R_$CLASS_$CLASSTPL_$FUNCNAME ("$CLASS<$CLASSTPL>$","$FUNCNAME",$CLASS<$CLASSTPL>::_$FUNCNAME);
+@IF($CTPL)
+    static const PbRegister _R_$CLASS_$CTPL_$FUNCNAME ("$CLASS<$CTPL>$","$FUNCNAME",$CLASS<$CTPL>::_$FUNCNAME);
 @ELSE
-    static const PbRegFunc _R_$CLASS_$FUNCNAME ("$CLASS","$FUNCNAME",$CLASS::_$FUNCNAME);
+    static const PbRegister _R_$CLASS_$FUNCNAME ("$CLASS","$FUNCNAME",$CLASS::_$FUNCNAME);
+@END
+);
+
+const string TmpGetSet = STR(
+static PyObject* _GET_$NAME(PyObject* self, void* cl) {
+    $CLASS* pbo = dynamic_cast<$CLASS*>(PbClass::fromPyObject(self));
+    return d_toPy(pbo->$NAME);
+}
+static int _SET_$NAME(PyObject* self, PyObject* val, void* cl) {
+    $CLASS* pbo = dynamic_cast<$CLASS*>(PbClass::fromPyObject(self));
+    pbo->$NAME = fromPy<Real >(val); 
+    return 0;
+}
+
+);
+const string TmpRegisterGetSet = STR(
+@IF($CTPL)
+    static const PbRegister _R_$CLASS_$CTPL_$NAME ("$CLASS<$CTPL>$","$PYNAME",$CLASS<$CTPL>::_GET_$NAME,$CLASS<$CTPL>::_SET_$NAME);
+@ELSE
+    static const PbRegister _R_$CLASS_$NAME ("$CLASS","$PYNAME",$CLASS::_GET_$NAME,$CLASS::_SET_$NAME);
 @END
 );
 
@@ -141,6 +161,21 @@ string generateLoader(const Argument& arg) {
     return loader.str();
 }
 
+/*
+template<> FluidSolver* fromPy<FluidSolver*>(PyObject* obj) { 
+if (PbClass::isNullRef(obj)) return 0; 
+PbClass* pbo = PbClass::fromPyObject(obj); 
+if (!pbo || !(pbo->canConvertTo("FluidSolver"))) 
+    throw Error("can't convert argument to type 'FluidSolver'"); 
+return dynamic_cast<FluidSolver*>(pbo); 
+}
+template<> PyObject* toPy< FluidSolver >( FluidSolver& v) { 
+if (v.getPyObject()) return v.getPyObject(); 
+FluidSolver* co = new FluidSolver (v); 
+return co->assignNewPyObject("FluidSolver"); 
+}
+*/
+  
 string createConverters(const string& name, const string& tb, const string& nl, const string& nlr) {
     return "template<> " + name + "* fromPy<" + name + "*>(PyObject* obj) {" + nl +
            tb+ "if (PbClass::isNullRef(obj)) return 0;" + nl +
@@ -156,9 +191,8 @@ string createConverters(const string& name, const string& tb, const string& nl, 
            "}" + nlr;
 }
 
-// globals for tracking state between python class and python function registrations
-string gLocalReg, gParent;
-bool gFoundConstructor = false, gIsTemplated=false;
+// global for tracking state between python class and python function registrations
+bool gFoundConstructor = false;
 
 void processPythonFunction(const Block& block, const string& code, Sink& sink) {
     const Function& func = block.func;
@@ -194,7 +228,7 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink) {
     const string table[] = { "FUNCNAME", func.name, 
                              "ARGLOADER", loader, 
                              "CLASS", isPlugin ? "" : block.parent->name,
-                             "CLASSTPL", (isPlugin || !block.parent->isTemplated()) ? "" : "$CT",
+                             "CTPL", (isPlugin || !block.parent->isTemplated()) ? "" : "$CT",
                              "CALLSTRING", func.callString(),
                              "RET_VOID", (func.returnType.name=="void") ? "Y" : "",
                              "@end" };
@@ -211,58 +245,110 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink) {
     }
 }
 
-string processPythonVariable(const Block& block, Sink& sink) {
-    // beautify code
-    string nl = gDebugMode ? "\n" : "";
-    string tb = gDebugMode ? "\t" : "";
-    const int line = block.line0;
-    
-    if (gParent.empty())
-        errMsg(line, "PYTHON variables con only be used inside classes");
-    
-    string name=block.func.name;
-    string pname=name, type = block.func.returnType.name;
-    
+void processPythonVariable(const Block& block, Sink& sink) {
+    const Function& var = block.func;
+
+    if (!block.parent)
+        errMsg(block.line0, "python variables can only be used inside classes");
+
     // process options
+    string pythonName = var.name;
     for (size_t i=0; i<block.options.size(); i++) {
         if (block.options[i].name == "name") 
-            pname = block.options[i].value;
+            pythonName = block.options[i].value;
         else
-            errMsg(line, "PYTHON(opt): illegal option. Supported options are: 'name'");
+            errMsg(block.line0, "PYTHON(opt): illegal option. Supported options are: 'name'");
     }
-    
-    // define getter / setter
-    string nn = gParent + "_" +name;
-    string gethdr = "PyObject* _get_" + nn + "(PyObject* self, void* cl)";
-    string sethdr = "int _set_" + nn + "(PyObject* self, PyObject* val, void* cl)";
-    
-    // replicate original code plus accessor
-    string code = "";
-    code += type + " " + name + ";" + nl;
-    code += tb + "friend " + gethdr + ";" + nl;
-    code += tb + "friend " + sethdr + ";" + nl;
-    
-    // add get/setter
-    string getter = gethdr+" { return d_toPy(fromPy<" + gParent+"*>(self)->" + name + "); }";
-    string setter = sethdr+" { fromPy<" + gParent+"*>(self)->" + name + "=fromPy<" + type + " >(val); return 0;}";
-        
-    // register
-    gRegText += "PbWrapperRegistry::instance().addGetSet(\""+gParent+"\",\""+pname+"\",_get_"+nn+ ",_set_"+nn+");\n";
-    if (gIsHeader) {
-        gRegText += getter+"\n"+setter+"\n";
-    } else {
-        gLocalReg += getter + nl + setter + nl;
-        gRegText += "extern " + gethdr + ";\nextern " + sethdr + ";\n";
-    }
-    
-    return block.linebreaks() + code;
+
+    // generate glue layer function
+    const string table[] = { "NAME", var.name, 
+                             "CLASS", block.parent->name,
+                             "CTPL", !block.parent->isTemplated() ? "" : "$CT",
+                             "PYNAME", pythonName,
+                             "@end" };
+
+    // output function and accessors
+    sink.inplace << block.linebreaks() << var.minimal << ";";
+    sink.inplace << replaceSet(TmpGetSet, table);
+
+    // register accessors
+    const string reg = replaceSet(TmpRegisterGetSet, table);
+    if (block.parent->isTemplated())
+        sink.tplReg.push_back(RegCall(block.parent->name, reg));
+    else 
+        sink.ext << reg << "\n";
 }
 
 void processPythonClass(const Block& block, const string& code, Sink& sink) {
-    const Class& cur = block.cls;
+    const Class& cls = block.cls;
+    string pythonName = cls.name;
+
+    if (!sink.isHeader)
+        errMsg(block.line0, "PYTHON classes can only be defined in header files.");
     
+    // PYTHON(...) keyword options
+    for (size_t i=0; i<block.options.size(); i++) {
+        if (block.options[i].name == "name") 
+            pythonName = block.options[i].value;
+        else
+            errMsg(block.line0, "PYTHON(opt): illegal kernel option. Supported options are: 'name'");
+    }
+    
+    if (gDocMode) {
+        sink.inplace << "//! \\ingroup PyClasses\nPYTHON " << cls.minimal;
+        return;
+    }
 
+    // explicit base class instantion ?
 
+    // write signature
+    sink.inplace << block.linebreaks() << cls.minimal << "{";
+
+    // scan code for member functions
+    gFoundConstructor = false;
+    processText(code.substr(1), block.line0, sink, &cls);
+    if (!gFoundConstructor)
+        errMsg(block.line0, "no PYTHON constructor found in class '" + cls.name + "'");
+    
+    // add secret bonus member to class and close
+    sink.inplace << "public: PbArgs _args;";
+    sink.inplace << "}";
+
+    /*
+
+    // tokenize and parse contained python functions
+    gParent = name;
+    gIsTemplated = !templArgs.empty();
+    gFoundConstructor = false;
+
+    // create class
+    string pclass = "";
+    if (gDocMode) {
+        pclass += "//! \\ingroup PyClasses\nPYTHON ";
+    }
+    if (gIsTemplated)
+        pclass += "template" + templArgs.minimal + nl;
+    pclass += "class " + name + " : public " + baseclass + " {" + nl;
+    
+    sink.inplace << (block.linebreaks() + implInst);
+    sink.inplace << pclass;
+    processText(code.substr(1), line, sink, &cur);
+    gParent = "";    
+    if (!gFoundConstructor)
+        errMsg(line, "no PYTHON constructor found in class '" + name + "'");
+    if (!gIsHeader && gIsTemplated)
+        errMsg(line, "PYTHON class template can only be used in header files.");
+    
+    pclass = nl;
+    if (!gDocMode) {
+        pclass += "public:" + nl;
+        pclass += tb+"PbArgs _args;" + nl;
+    }
+    pclass += "};" + nl;
+    
+    sink.inplace << pclass << gLocalReg;*/
+
+/*
     // beautify code
     string nl = gDebugMode ? "\n" : "";
     string tb = gDebugMode ? "\t" : "";
@@ -383,16 +469,18 @@ void processPythonClass(const Block& block, const string& code, Sink& sink) {
     }
     pclass += "};" + nl;
     
-    sink.inplace << pclass << gLocalReg;
+    sink.inplace << pclass << gLocalReg;*/
 }
 
-set<string> gAliasRegister;
-string processPythonInstantiation(const Block& block, const Type& aliasType, const string& aliasName) {
-    gRegText += "@instance " + aliasType.name + " " + aliasType.templateTypes.listText + " " + aliasName + "\n";
-    
-    if (gAliasRegister.find(aliasName) == gAliasRegister.end()) {
-        gAliasRegister.insert(aliasName);
-        return block.linebreaks() + "typedef " + aliasType.minimal + " " + aliasName + "; ";
+void processPythonInstantiation(const Block& block, const Type& aliasType, const string& aliasName, Sink& sink) {
+    if (!sink.isHeader)
+        errMsg(block.line0, "instantiate allowed in headers only");
+
+    for (int i=0; i<sink.tplReg.size(); i++) {
+        if (sink.tplReg[i].cls == aliasType.name) {
+            const string table[] = { "CT", aliasType.templateTypes.listText, "@end" };
+            sink.ext << replaceSet(sink.tplReg[i].str, table) << '\n';
+        }
     }
-    return block.linebreaks();
+    sink.inplace << block.linebreaks();
 }

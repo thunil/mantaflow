@@ -63,7 +63,6 @@ void doGenerate(int argc, char* argv[], bool docs) {
     gFilename = infile;
     gIsHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
     gRegText = "";
-    gParent = "";
     
     // TP : only enable in cmake's PREP_DEBUG mode (passed via cmd line option dbg_mode)
     gDebugMode = atoi(argv[2]) != 0;
@@ -110,10 +109,6 @@ void doGenerate(int argc, char* argv[], bool docs) {
         processText(text, 1, sink, 0);
 		sink.write();
     }
-        
-    // write reg functions into file
-    if (!docs)
-        writeFile(outfile + ".reg", gRegText);
 }
 
 

@@ -196,7 +196,7 @@ void tokenizeBlock(vector<Token>& tokens, const string& kw, const string& text, 
                 tokens.back().text = "::";
                 i++;
             } else {
-                tokens.push_back(Token(TkColon, line));
+                tokens.push_back(Token(TkColon, line, c));
             }
         }
         else if (c==';') {

@@ -58,6 +58,7 @@ struct Text {
     void reset() { minimal = original = ""; line0=0; }
     std::string linebreaks() const; 
     virtual std::string dynamicClass() { return ""; }
+    void prequel(const Text* a) { minimal = a->minimal + minimal; original = a->original + original; }
 };
 
 // tracks a set of tokens, and the current position in this list
@@ -188,7 +189,6 @@ extern bool gIsHeader;
 extern MType gMTType;
 extern bool gDocMode;
 extern std::string gRegText;
-extern std::string gParent;
 
 // functions from util.cpp
 std::string generateMerge(const std::string& text);
@@ -214,6 +214,6 @@ std::string processKernel(const Block& block, const std::string& code);
 void processPythonFunction(const Block& block, const std::string& code, Sink& sink);
 void processPythonVariable(const Block& block, Sink& sink);
 void processPythonClass(const Block& block, const std::string& code, Sink& sink);
-std::string processPythonInstantiation(const Block& block, const Type& aliasType, const std::string& aliasName);
+void processPythonInstantiation(const Block& block, const Type& aliasType, const std::string& aliasName, Sink& sink);
 
 #endif // _PREP_H

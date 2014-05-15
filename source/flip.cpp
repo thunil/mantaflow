@@ -96,7 +96,7 @@ PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
 }
 
 // for testing purposes only...
-PYTHON void testInitGridWithPos(RealGrid &grid) {
+PYTHON void testInitGridWithPos(Grid<Real>& grid) {
     FOR_IJK(grid) { grid(i,j,k) = norm( Vec3(i,j,k) ); }
 }
 
