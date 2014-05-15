@@ -50,6 +50,23 @@ string Text::linebreaks() const {
     return s;
 }
 
+string Function::callString() const {
+    stringstream s;
+    for (int i=0; i<arguments.size(); i++) {
+        s << arguments[i].name;
+        if (i != arguments.size()-1) s << ',';
+    }
+    return s.str();
+}
+
+string Class::tplString() const {
+    stringstream s;
+    for (int i=0; i<templateTypes.size(); i++) {
+        s << templateTypes[i].name;
+        if (i != templateTypes.size()-1) s << ',';
+    }
+    return s.str();
+}
 
 //*************************************************************
 // parsers
@@ -243,8 +260,9 @@ Function parseFunction(TokenPointer& parentPtr, bool requireNames, bool requireT
 }
 
 // Parse syntax KEYWORD(opt1, opt2, ...) STATEMENTS [ {} or ; ]    
-string parseBlock(const string& kw, const vector<Token>& tokens) {
+void parseBlock(const string& kw, const vector<Token>& tokens, const Class* parent, Sink& sink) {
     Block block = Block();
+    block.parent = parent;
     TokenPointer tk(tokens, &block);
 
     // parse keyword options
@@ -277,7 +295,7 @@ string parseBlock(const string& kw, const vector<Token>& tokens) {
         tkAssert(tk.curType() == TkCodeBlock && tk.isLast(), 
             "Malformed KERNEL, expected KERNEL(opts...) ret_type name(args...) { code }");
 
-        return processKernel(block, tk.cur().text);
+        sink.inplace << processKernel(block, tk.cur().text);
     }
     else if (kw == "PYTHON")
     {
@@ -289,7 +307,8 @@ string parseBlock(const string& kw, const vector<Token>& tokens) {
             string aliasName = tk.cur().text;
             tk.next();
             tkAssert(tk.curType() == TkSemicolon && tk.isLast(), "malformed preprocessor block. Expected 'PYTHON alias cname pyname;'");
-            return processPythonInstantiation(block, aliasType, aliasName);
+            sink.inplace << processPythonInstantiation(block, aliasType, aliasName);
+            return;
         }
         List<Type> templTypes;
 
@@ -313,7 +332,7 @@ string parseBlock(const string& kw, const vector<Token>& tokens) {
             block.cls.baseClass = parseType(tk);
             tkAssert(tk.curType() == TkCodeBlock && tk.isLast(), "malformed preprocessor keyword block. Expected 'PYTHON class name : public X {}'");
 
-            return processPythonClass(block, tk.cur().text);
+            processPythonClass(block, tk.cur().text, sink);
         }
         else
         {
@@ -333,13 +352,13 @@ string parseBlock(const string& kw, const vector<Token>& tokens) {
             if (tk.curType() == TkSemicolon && block.func.noParentheses) {
                 tkAssert(tk.curType() == TkSemicolon && tk.isLast(), 
                     "malformed preprocessor keyword block. Expected 'PYTHON type varname;'");
-               return processPythonVariable(block);
+               sink.inplace << processPythonVariable(block);
+            } else {
+                tkAssert((tk.curType() == TkCodeBlock || tk.curType() == TkSemicolon) && tk.isLast(), 
+                    "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]'");
+                processPythonFunction(block, tk.cur().text, sink);
             }
-            tkAssert((tk.curType() == TkCodeBlock || tk.curType() == TkSemicolon) && tk.isLast(), 
-                "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]'");
-            return processPythonFunction(block, tk.cur().text);
         }
 
     }
-    return "";
 }

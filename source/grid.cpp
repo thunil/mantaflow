@@ -327,10 +327,10 @@ PYTHON void resetUvGrid (Grid<Vec3> &target)
 }
 PYTHON void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv , bool info=false)
 {
-	const Real t   = parent->getTime();
+	const Real t   = uv.getParent()->getTime();
 	Real  timeOff  = resetTime/(Real)numUvs;
 
-	Real lastt = computeUvGridTime(t +(Real)index*timeOff - parent->getDt(), resetTime);
+	Real lastt = computeUvGridTime(t +(Real)index*timeOff - uv.getParent()->getDt(), resetTime);
 	Real currt = computeUvGridTime(t +(Real)index*timeOff                  , resetTime);
 	Real uvWeight = computeUvRamp(currt);
 

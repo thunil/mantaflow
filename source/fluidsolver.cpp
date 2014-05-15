@@ -147,7 +147,7 @@ void FluidSolver::printMemInfo() {
 	printf("%s\n", msg.str().c_str() );
 }
 
-PYTHON(noparent) void printBuildInfo() {
+PYTHON() void printBuildInfo() {
 	debMsg( "Build info: "<<buildInfoString().c_str()<<" ",1);
 }
 

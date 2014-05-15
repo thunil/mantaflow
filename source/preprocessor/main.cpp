@@ -27,57 +27,14 @@ string gFilename;
 string gRegText;
 bool gDebugMode = true;
 bool gDocMode;
+bool gIsHeader;
 MType gMTType = MTNone;
 
-void errMsg(int line, const string& text) {
-    cerr << gFilename << ":" << line << ": error: " << text << endl;
-    exit(1);
-}
-
-void debMsgHelper(int line, const string& text) {
-    cout << gFilename << ":" << line << ": info: " << text << endl;
-}
-
-string readFile(const string& name) {
-    ifstream t(name.c_str());
-    if (!t.good()) return "";
-    
-    string str;
-    
-    t.seekg(0, ios::end);   
-    str.reserve((unsigned)t.tellg());
-    t.seekg(0, ios::beg);
-
-    str.assign((istreambuf_iterator<char>(t)),
-                istreambuf_iterator<char>());
-    
-    t.close();
-    return str;
-}
-
-void writeFile(const string& name, const string& text) {
-    ofstream ofs(name.c_str(), ios::binary | ios::out);
-    if (!ofs.good()) {
-        cerr << "preprocessor error: Can't write to file '" << name << "'" << endl;
-        exit(1);
-    }
-    ofs << text;
-    ofs.close();
-}
-
-void replaceAll(string& text, const string& pattern, const string& repl) {
-    for(;;) {
-        const size_t pos = text.find(pattern);
-        if (pos == string::npos) return;
-        text.replace(pos, pattern.size(), repl);
-    }
-    return;
-}
 
 void usage() {
     cerr << "preprocessor error: Unknown parameters." << endl;
-    cerr << "  Usage : prep generate <dbg_mode> <mt_type> <inputfile> <outputfile>" << endl;
-    cerr << "     or : prep docgen <inputfile> <outputfile>" << endl;
+    cerr << "  Usage : prep generate <dbg_mode> <mt_type> <inputdir> <inputfile> <outputfile>" << endl;
+    cerr << "     or : prep docgen <dbg_mode> <mt_type> <inputdir> <inputfile> <outputfile>" << endl;
     cerr << "     or : prep merge <outfile> <infiles...>" << endl;
     exit(1);
 }
@@ -99,22 +56,22 @@ void doGenerate(int argc, char* argv[], bool docs) {
     gDocMode = docs;
     gDebugMode = false;
     gMTType    = MTNone;
-    if (docs && argc != 4) usage();
-    if (!docs && argc != 6) usage();
+    if (argc != 7) usage();
     
     // set constants
-    const string infile (argv[docs ? 2 : 4]), outfile(argv[docs ? 3 : 5]);
+    const string indir(argv[4]), infile(argv[5]), outfile(argv[6]);
     gFilename = infile;
+    gIsHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
     gRegText = "";
     gParent = "";
+    
     // TP : only enable in cmake's PREP_DEBUG mode (passed via cmd line option dbg_mode)
-    if (!docs) {
-        gDebugMode = atoi(argv[2]) != 0;
-        if (!strcmp(argv[3],"TBB")) gMTType = MTTBB;
-        if (!strcmp(argv[3],"OPENMP")) gMTType = MTOpenMP;
-    }
+    gDebugMode = atoi(argv[2]) != 0;
+    if (!strcmp(argv[3],"TBB")) gMTType = MTTBB;
+    if (!strcmp(argv[3],"OPENMP")) gMTType = MTOpenMP;
+    
     // load complete file into buffer    
-    string text = readFile(infile);
+    string text = readFile(indir+infile);
     if (text.empty()) {
         cerr << "preprocessor error: Can't read file '" << infile << "'" << endl;
         exit(1);
@@ -136,25 +93,22 @@ void doGenerate(int argc, char* argv[], bool docs) {
     } 
     else {    
         // C++ files, normal processing
-        string newText;
-        if (docs) {
-            string fn = outfile;
-            //while (fn.find('/') != string::npos) fn = fn.substr(fn.find('/')+1);
-            newText += "/*! \\file " + fn + " */\n";
+        Sink sink(outfile);
+        if (gDocMode) {
+            sink.inplace << "/*! \\file " + infile + " */\n";
         } else {
-            newText += "\n\n\n\n\n// DO NOT EDIT !\n";
-			newText += "// This file is generated using the MantaFlow preprocessor (prep generate).";
-			newText += "\n\n\n\n\n";
-            
+            string header = "\n\n\n\n\n// DO NOT EDIT !\n";
+			header += "// This file is generated using the MantaFlow preprocessor (prep generate).";
+			header += "\n\n\n\n\n";
+            sink.inplace << header;
+            sink.headerExt = header + "#include \"" + infile + "\"\nnamespace Manta ";
 			// Note - PREP_DEBUG mode is meant to debug problems in the generated files, so errors should not be redirected to the sources
 			// so dont always add this line...
 	        if (!gDebugMode) 
-				newText += "#line 1 \"" + infile + "\"\n";
+				sink.inplace << "#line 1 \"" << indir << infile << "\"\n";
         }
-        newText += processText(text, 1);
-		
-        // write down complete file from buffer
-        writeFile(outfile, newText);        
+        processText(text, 1, sink, 0);
+		sink.write();
     }
         
     // write reg functions into file

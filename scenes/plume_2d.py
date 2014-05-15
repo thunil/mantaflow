@@ -40,6 +40,6 @@ for t in range(400):
     solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='Y')
     setWallBcs(flags=flags, vel=vel)
     
-	s.printTimings()    
+    s.printTimings()    
     s.step()
 

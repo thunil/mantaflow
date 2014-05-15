@@ -107,6 +107,7 @@ SET(SOURCES
     source/preprocessor/main.cpp
     source/preprocessor/tokenize.cpp
     source/preprocessor/parse.cpp
+    source/preprocessor/util.cpp
     source/preprocessor/merge.cpp
     source/preprocessor/codegen_python.cpp
     source/preprocessor/codegen_kernel.cpp    
@@ -292,8 +293,9 @@ if(DOXYGEN_FOUND)
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${DX_PATH}/${CURPATH}")
         set(CURDX "${DX_PATH}/${it}")
         string(REPLACE "/" "_" TGT ${CURDX})
+        string(REPLACE "source/" "" INFILE ${it})
         add_custom_command(OUTPUT ${TGT} 
-                        COMMAND prep docgen "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURDX}"
+                        COMMAND prep docgen "0" ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURDX}"
                         DEPENDS prep
                         IMPLICIT_DEPENDS CXX ${it}
                         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -392,15 +394,19 @@ if (PREPDEBUG)
 endif()
 foreach(it ${PP_SOURCES} ${PP_HEADERS})
     get_filename_component(CURPATH ${it} PATH)
-    #get_filename_component(CUREXT ${it} EXT)
+    get_filename_component(CUREXT ${it} EXT)
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${CURPATH}")
     set(CURPP "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${it}")
+    string(REPLACE "source/" "" INFILE ${it})
     # preprocessor
     add_custom_command(OUTPUT ${CURPP}
-                       COMMAND prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURPP}"
+                       COMMAND prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}"
                        DEPENDS prep
                        IMPLICIT_DEPENDS CXX ${it}
                        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if ("${CUREXT}" STREQUAL ".h")
+        list(APPEND SOURCES "${CURPP}_ext.cpp")
+    endif()
     list(APPEND PP_REGS "${CURPP}.reg")
     list(APPEND SOURCES ${CURPP})    
 endforeach(it)

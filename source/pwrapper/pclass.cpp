@@ -114,11 +114,6 @@ PbWrapperRegistry::PbWrapperRegistry() {
     addClass("PbClass", "PbClass", "");
 }
 
-static PyObject* zeroGetter(PyObject* self, void* closure) {
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
 void PbWrapperRegistry::addClass(const string& pythonName, const string& internalName, const string& baseclass) {
     // store class info
     PbClassData* data = new PbClassData;
@@ -128,9 +123,6 @@ void PbWrapperRegistry::addClass(const string& pythonName, const string& interna
         errMsg("Registering class '" + internalName + "' : Base class '" + baseclass + "' not found");
     mClasses[internalName] = data;
     mClassList.push_back(data);
-    
-    // register info object
-    addGetSet(internalName, "__mantaclass__", zeroGetter, NULL);
     
     // register all methods of base classes
     if (data->baseclass) {
@@ -180,7 +172,7 @@ void PbWrapperRegistry::addMethod(const string& classname, const string& methodn
         errMsg("Register class '" + aclass + "' before registering methods.");
     
     PbClassData* classdef = mClasses[aclass];
-    classdef->methods.push_back(PbMethod(methodname,methodname,func));        
+    classdef->methods.push_back(PbMethod(methodname,methodname,func)); 
 }
 
 void PbWrapperRegistry::addConstructor(const string& classname, PbConstructor func) {
@@ -255,8 +247,6 @@ void PbWrapperRegistry::renameObjects() {
 //******************************************************************************
 // Callback functions
 
-
-
 PyMODINIT_FUNC PyInit_Main(void) {
 #if PY_MAJOR_VERSION >= 3
     return PbWrapperRegistry::instance().initModule();   
@@ -283,6 +273,10 @@ PyObject* cbNew(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     } else
         errMsg("can't allocate new python class object");
     return (PyObject*) self;
+}
+
+inline bool isMantaObject(PyObject *obj) {
+    return obj->ob_type->tp_dealloc == (destructor)cbDealloc;
 }
 
 PyObject* PbWrapperRegistry::initModule() {    
@@ -523,7 +517,7 @@ int PbClass::getNumInstances() {
 }
     
 PbClass* PbClass::fromPyObject(PyObject* o) {
-    if(!PyObject_HasAttrString(o, "__mantaclass__"))
+    if (!isMantaObject(o))
         return NULL;
         
     return ((PbObject*) o)->instance;
@@ -534,7 +528,7 @@ bool PbClass::isNullRef(PyObject* obj) {
 }
 
 void PbClass::setPyObject(PyObject* obj) {
-    if(!PyObject_HasAttrString(obj, "__mantaclass__"))
+    if(!isMantaObject(obj))
         return;
     
     // cross link

@@ -269,8 +269,8 @@ void convertKeywords(vector<Token>& tokens) {
 
 // parse complete file.
 // Defer parts to be processed to processTextBlock, and directly copy the rest
-string processText(const string& text, int baseline) {
-    string newText = "";
+void processText(const string& text, int baseline, Sink& sink, const Class* parent) {
+    ostream& newText = sink.inplace;
     
     // no real lexing yet, only track define and comment blocks
     string word = "";
@@ -291,33 +291,33 @@ string processText(const string& text, int baseline) {
         // track comments and defines
         if (comment) {
             if (c=='*' && text[i+1]=='/') comment = false;            
-            newText += c;
+            newText << c;
         } 
         else if (slComment) {
             if (isEOL) slComment = false;
-            newText += c;
+            newText << c;
         } 
         else if (define) {
             if (isEOL) define = false;
-            newText += c;
+            newText << c;
         }
         else if (c=='/' && text[i+1]=='*') {
             comment = true;
-            newText += word;
+            newText << word;
             word = "";
-            newText += c;
+            newText << c;
         }
         else if (c=='/' && text[i+1]=='/') {
             slComment = true;
-            newText += word;
+            newText << word;
             word = "";
-            newText += c;
+            newText << c;
         }
         else if (c=='#') {
             define = true;
-            newText += word;
+            newText << word;
             word = "";
-            newText += c;            
+            newText << c;            
         } 
         else {
             // tokenize keywords
@@ -328,18 +328,16 @@ string processText(const string& text, int baseline) {
                     vector<Token> tokens;
                     tokenizeBlock(tokens, word, text, i, line);
                     convertKeywords(tokens);
-                    newText += parseBlock(word, tokens);               
+                    parseBlock(word, tokens, parent, sink); 
                 } else {
-                    newText += word;                    
-                    newText += c; 
+                    newText << word;                    
+                    newText << c; 
                 }
                 word = "";         
             }
         }
     }
-    newText += word;
-    
-    return newText;    
+    newText << word;
 }
 
 

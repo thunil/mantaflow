@@ -34,7 +34,7 @@ Grid<Real> GetComponent2(const Grid<Vec3>& grid, int dim) {
 };
 
 PYTHON void testp(Grid<Vec3>& b) {
-    Grid<Real> d(parent);
+    Grid<Real> d(b.getParent());
     b(20,20,20) = Vec3(21,22,23); 
     {
         cout <<"middle" << endl;        
@@ -94,7 +94,7 @@ PYTHON void kernelTest() {
 }
 
 PYTHON void getCurl(MACGrid& vel, Grid<Real>& vort, int comp) {
-    Grid<Vec3> velCenter(parent), curl(parent);
+    Grid<Vec3> velCenter(vel.getParent()), curl(vel.getParent());
     
     GetCentered(velCenter, vel);
     CurlOp(velCenter, curl);

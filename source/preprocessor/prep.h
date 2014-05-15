@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <fstream>
 
 // Helpers
 struct BracketStack {
@@ -123,6 +124,7 @@ struct Function : Text {
     bool isInline, isVirtual, isConst, noParentheses;
     List<Type> templateTypes;
     List<Argument> arguments;
+    std::string callString() const;
     virtual std::string dynamicClass() { return "Function"; }
 };
 
@@ -132,6 +134,8 @@ struct Class : Text {
     std::string name;
     Type baseClass;
     List<Type> templateTypes;  
+    std::string tplString() const;
+    inline bool isTemplated() const { return !templateTypes.empty(); }
     virtual std::string dynamicClass() { return "Class"; }
 };
 
@@ -140,10 +144,30 @@ struct Block : Text {
 
     std::string initList;
     Class cls;
+    const Class *parent;
     Function func;
     List<Argument> options;
     List<Argument> reduceArgs;
     virtual std::string dynamicClass() { return "Block"; }
+};
+
+struct RegCall {
+    RegCall(std::string c, std::string s) : cls(c), str(s) {}
+    std::string cls, str;
+};
+
+// defined in util.cpp
+struct Sink {
+    Sink(const std::string& file);
+    void write();
+
+    std::ostringstream inplace;
+    std::ostringstream ext;
+    std::vector<RegCall> tplReg;
+    std::string headerExt;
+    bool isHeader;
+private:
+    std::string filename;
 };
 
 inline bool isNameChar(char c) {
@@ -160,29 +184,36 @@ inline bool isIntegral(const std::string& t) {
 enum MType { MTNone = 0, MTTBB, MTOpenMP};
 extern std::string gFilename;
 extern bool gDebugMode;
+extern bool gIsHeader;
 extern MType gMTType;
 extern bool gDocMode;
 extern std::string gRegText;
 extern std::string gParent;
+
+// functions from util.cpp
+std::string generateMerge(const std::string& text);
 void errMsg(int line, const std::string& text);
 void debMsgHelper(int line, const std::string& text);
 void replaceAll(std::string& text, const std::string& pattern, const std::string& repl);
+std::string readFile(const std::string&);
+void writeFile(const std::string& name, const std::string& text);
+std::string replaceSet(const std::string& templ, const std::string table[]);
 
 // functions from merge.cpp
 std::string generateMerge(const std::string& text);
 
 // functions from tokenize.cpp
-std::string processText(const std::string& text, int baseline);
+void processText(const std::string& text, int baseline, Sink& sink, const Class *parent);
 
 // functions from parse.cpp
-std::string parseBlock(const std::string& kw, const std::vector<Token>& tokens);
+void parseBlock(const std::string& kw, const std::vector<Token>& tokens, const Class *parent, Sink& sink);
 
 // functions from codegen_XXX.cpp
 std::string createConverters(const std::string& name, const std::string& tb, const std::string& nl, const std::string& nlr);
 std::string processKernel(const Block& block, const std::string& code);
-std::string processPythonFunction(const Block& block, const std::string& code);
-std::string processPythonVariable(const Block& block);
-std::string processPythonClass(const Block& block, const std::string& code);
+void processPythonFunction(const Block& block, const std::string& code, Sink& sink);
+void processPythonVariable(const Block& block, Sink& sink);
+void processPythonClass(const Block& block, const std::string& code, Sink& sink);
 std::string processPythonInstantiation(const Block& block, const Type& aliasType, const std::string& aliasName);
 
 #endif // _PREP_H

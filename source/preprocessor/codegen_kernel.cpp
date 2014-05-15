@@ -414,7 +414,7 @@ string processKernel(const Block& block, const string& code) {
     kclass += parentMember + members + nl;
     kclass += "};" + nl;
 
-	debMsg( line, "Kernel summary '"<< kernelName <<"'. Basegrid: "<< basegrid <<", baseobj: "<<baseobj<<", mt: "<< mtType );
+	//debMsg( line, "Kernel summary '"<< kernelName <<"'. Basegrid: "<< basegrid <<", baseobj: "<<baseobj<<", mt: "<< mtType );
    
 	return block.linebreaks() + kclass + callerClass;
 }

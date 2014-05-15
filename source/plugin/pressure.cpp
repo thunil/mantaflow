@@ -212,6 +212,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
         errMsg("open boundaries for z specified for 2D grid");
     
     // reserve temp grids
+    FluidSolver* parent = flags.getParent();
     Grid<Real> rhs(parent);
     Grid<Real> residual(parent);
     Grid<Real> search(parent);

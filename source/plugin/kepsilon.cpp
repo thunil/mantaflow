@@ -86,7 +86,7 @@ void KnComputeProduction(const MACGrid& vel, const Grid<Vec3>& velCenter, const 
 PYTHON void KEpsilonComputeProduction(MACGrid& vel, Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod, Grid<Real>& nuT, Grid<Real>* strain=0, Real pscale = 1.0f) 
 {
     // get centered velocity grid
-    Grid<Vec3> vcenter(parent);
+    Grid<Vec3> vcenter(k.getParent());
     GetCentered(vcenter, vel);
     FillInBoundary(vcenter,1);
     
@@ -115,7 +115,7 @@ void KnAddTurbulenceSource(Grid<Real>& kgrid, Grid<Real>& egrid, const Grid<Real
 
 //! Integrate source terms of k-epsilon equation
 PYTHON void KEpsilonSources(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod) {
-    Real dt = parent->getDt();
+    Real dt = k.getParent()->getDt();
         
     KnAddTurbulenceSource(k, eps, prod, dt);
     
@@ -155,8 +155,8 @@ void ApplyGradDiff(const Grid<Real>& grid, Grid<Real>& res, const Grid<Real>& nu
 
 //! Compute k-epsilon turbulent viscosity
 PYTHON void KEpsilonGradientDiffusion(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& nuT, Real sigmaU=4.0, MACGrid* vel=0) {
-    Real dt = parent->getDt();
-    Grid<Real> res(parent);
+    Real dt = k.getParent()->getDt();
+    Grid<Real> res(k.getParent());
     
     // gradient diffusion of k
     ApplyGradDiff(k, res, nuT, dt, keS1);
@@ -168,7 +168,7 @@ PYTHON void KEpsilonGradientDiffusion(Grid<Real>& k, Grid<Real>& eps, Grid<Real>
     
     // gradient diffusion of velocity
     if (vel) {
-        Grid<Real> vc(parent);
+        Grid<Real> vc(k.getParent());
         for (int c=0; c<3; c++) {
             GetComponent(*vel, vc, c);
             ApplyGradDiff(vc, res, nuT, dt, sigmaU);

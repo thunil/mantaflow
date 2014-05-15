@@ -55,8 +55,8 @@ PYTHON void setNoisePdataInt (BasicParticleSystem& parts, ParticleDataImpl<int >
 
 //! SDF gradient from obstacle flags
 PYTHON Grid<Vec3> obstacleGradient(FlagGrid& flags) {
-    LevelsetGrid levelset(parent,false);
-    Grid<Vec3> gradient(parent);
+    LevelsetGrid levelset(flags.getParent(),false);
+    Grid<Vec3> gradient(flags.getParent());
     
     // rebuild obstacle levelset
     FOR_IDX(levelset) {
@@ -79,8 +79,8 @@ PYTHON Grid<Vec3> obstacleGradient(FlagGrid& flags) {
 }
 
 PYTHON LevelsetGrid obstacleLevelset(FlagGrid& flags) {
-   LevelsetGrid levelset(parent,false);
-    Grid<Vec3> gradient(parent);
+   LevelsetGrid levelset(flags.getParent(),false);
+    Grid<Vec3> gradient(flags.getParent());
 
     // rebuild obstacle levelset
     FOR_IDX(levelset) {
