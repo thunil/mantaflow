@@ -15,10 +15,8 @@
 #include <sstream>
 #include <algorithm>
 #include "vectorbase.h"
-#include "pconvert.h"
-#define _PCLASS_NOFLUIDSOLVER
 #include "pclass.h"
-
+ 
 using namespace std;
 
 //******************************************************************************
@@ -40,33 +38,33 @@ PyObject* getPyNone() {
 /*template<> PyObject* toPy<PyObject*>(PyObject* obj) {
     return obj;     
 }*/
-template<> PyObject* toPy<int>( int& v) {
+template<> PyObject* toPy<int>( const int& v) {
     return PyLong_FromLong(v);     
 }
 /*template<> PyObject* toPy<char*>(const (char*) & val) {
     return PyUnicode_DecodeLatin1(val,strlen(val),"replace");
 }*/
-template<> PyObject* toPy<string>( string& val) {
+template<> PyObject* toPy<string>( const string& val) {
     return PyUnicode_DecodeLatin1(val.c_str(),val.length(),"replace");
 }
-template<> PyObject* toPy<float>( float& v) {
+template<> PyObject* toPy<float>( const float& v) {
     return PyFloat_FromDouble(v);     
 }
-template<> PyObject* toPy<double>( double& v) {
+template<> PyObject* toPy<double>( const double& v) {
     return PyFloat_FromDouble(v);     
 }
-template<> PyObject* toPy<bool>( bool& v) {
+template<> PyObject* toPy<bool>( const bool& v) {
     return PyBool_FromLong(v);     
 }
-template<> PyObject* toPy<Vec3i>( Vec3i& v) {
+template<> PyObject* toPy<Vec3i>(const Vec3i& v) {
     float x=(float)v.x, y=(float)v.y, z=(float)v.z;
     return PyObject_CallFunction((PyObject*)&PbVec3Type, (char*)"fff", x, y, z);
 }
-template<> PyObject* toPy<Vec3>( Vec3& v) {
+template<> PyObject* toPy<Vec3>(const Vec3& v) {
     float x=(float)v.x, y=(float)v.y, z=(float)v.z;
     return PyObject_CallFunction((PyObject*)&PbVec3Type, (char*)"fff", x, y, z);
 }
-template<> PyObject* toPy<PbClass*>( PbClass*& obj) {
+template<> PyObject* toPy<PbClass*>(const PbClass_Ptr& obj) {
     return obj->getPyObject();
 }
 
@@ -155,13 +153,6 @@ template<> PbType fromPy<PbType>(PyObject* obj) {
     const char* tname = ((PyTypeObject*)obj)->tp_name;
     pb.str = tname;
     return pb;
-}
-
-// PbClass derived objects
-template<> PbClass* fromPy<PbClass*>(PyObject* obj) {
-    PbClass* pbo = PbClass::fromPyObject(obj);
-    if (!pbo) return NULL;    
-    return pbo;
 }
 
 // fromPy/toPy is automatically instantiated using the preprocessor for registered PbClasses

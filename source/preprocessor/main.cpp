@@ -35,21 +35,14 @@ void usage() {
     cerr << "preprocessor error: Unknown parameters." << endl;
     cerr << "  Usage : prep generate <dbg_mode> <mt_type> <inputdir> <inputfile> <outputfile>" << endl;
     cerr << "     or : prep docgen <dbg_mode> <mt_type> <inputdir> <inputfile> <outputfile>" << endl;
-    cerr << "     or : prep merge <outfile> <infiles...>" << endl;
+    cerr << "     or : prep link <regfiles...>" << endl;
     exit(1);
 }
 
 void doMerge(int argc, char* argv[]) {    
-    if (argc < 4) usage();
+    if (argc < 3) usage();
     
-    string merged = "";
-    const string outfile(argv[2]);
-    
-    for (int i=3; i<argc; i++) {
-        merged += "@filename " + string(argv[i]) + "\n";        
-        merged += readFile(argv[i]) + "\n";
-    }
-    writeFile(outfile, generateMerge(merged));    
+    generateMerge(argc-2, &argv[2]);
 }
 
 void doGenerate(int argc, char* argv[], bool docs) {
@@ -60,10 +53,8 @@ void doGenerate(int argc, char* argv[], bool docs) {
     
     // set constants
     const string indir(argv[4]), infile(argv[5]), outfile(argv[6]);
-    gFilename = infile;
-    gIsHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
-    gRegText = "";
-    
+    bool isPython = infile.size() > 3 && !infile.compare(infile.size()-3, 3, ".py");
+
     // TP : only enable in cmake's PREP_DEBUG mode (passed via cmd line option dbg_mode)
     gDebugMode = atoi(argv[2]) != 0;
     if (!strcmp(argv[3],"TBB")) gMTType = MTTBB;
@@ -78,37 +69,32 @@ void doGenerate(int argc, char* argv[], bool docs) {
     // pad text for easier lexing lookups
     text += "\n\n\n";
     
-    // process text
-    if (infile.size() > 3 && !infile.compare(infile.size()-3, 3, ".py")) {
+    Sink sink(outfile);
+    if (gDocMode) {
+        sink.inplace << "/*! \\file " + infile + " */\n";
+    } else {
+        sink.inplace << "\n\n\n\n\n// DO NOT EDIT !\n";
+		sink.inplace << "// This file is generated using the MantaFlow preprocessor (prep generate).";
+		sink.inplace << "\n\n\n\n\n";
+    }
+    
+    if (isPython) {
         // python file, only registering
         replaceAll(text, "\n", "\\n");
-        replaceAll(text, "\r", "\\r");
+        replaceAll(text, "\r", "");
         replaceAll(text, "\t", "\\t");
         replaceAll(text, "\"", "<qtm>"); // split into two ops to avoid interference
         replaceAll(text, "<qtm>", "\\\"");
-        gRegText += "PbWrapperRegistry::instance().addPythonCode(\"" + gFilename + "\", \"" + text + "\");\n";
-        
-        writeFile(outfile, "");
-    } 
-    else {    
-        // C++ files, normal processing
-        Sink sink(outfile);
-        if (gDocMode) {
-            sink.inplace << "/*! \\file " + infile + " */\n";
-        } else {
-            string header = "\n\n\n\n\n// DO NOT EDIT !\n";
-			header += "// This file is generated using the MantaFlow preprocessor (prep generate).";
-			header += "\n\n\n\n\n";
-            sink.inplace << header;
-            sink.headerExt = header + "#include \"" + infile + "\"\nnamespace Manta ";
-			// Note - PREP_DEBUG mode is meant to debug problems in the generated files, so errors should not be redirected to the sources
-			// so dont always add this line...
-	        if (!gDebugMode) 
-				sink.inplace << "#line 1 \"" << indir << infile << "\"\n";
+        sink.link << "#include \"pclass.h\"\n";
+        sink.link << "static const PbRegister _reg(\"" + infile + "\", \"" + text + "\");\n";
+    } else {
+        if (!gDocMode) {
+            sink.link << "#include \"" + infile + "\"\n";
+            sink.inplace << "#line 1 \"" << indir << infile << "\"\n";
         }
         processText(text, 1, sink, 0);
-		sink.write();
-    }
+	}
+    sink.write();
 }
 
 
@@ -117,7 +103,7 @@ int main(int argc, char* argv[]) {
     if (argc < 2) usage();
 
     // use merger
-    if (!strcmp(argv[1],"merge")) 
+    if (!strcmp(argv[1],"link")) 
         doMerge(argc, argv);
     else if (!strcmp(argv[1],"generate")) 
         doGenerate(argc, argv, false);

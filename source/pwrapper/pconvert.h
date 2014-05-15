@@ -11,6 +11,8 @@
  *
  ******************************************************************************/
 
+// force to load pclass first
+#ifdef _PTYPE_H
 #ifndef _PCONVERT_H
 #define _PCONVERT_H
 
@@ -18,7 +20,7 @@
 #include <map>
 #include <vector>
 #include "general.h"
-
+#include "vectorbase.h"
 // forward decl.
 // forward declaration to minimize Python.h includes
 #ifndef PyObject_HEAD
@@ -34,9 +36,6 @@ template<class T> class Grid;
 class PbClass;
 class FluidSolver;
 
-struct PbType {
-    std::string str;
-};
 
 //! Locks the given PbClass Arguments until ArgLocker goes out of scope
 struct ArgLocker {    
@@ -45,13 +44,50 @@ struct ArgLocker {
     std::vector<PbClass*> locks;
 };
 
-// Conversion functions
-template<class T> T fromPy(PyObject* obj);
-template<class T> PyObject* toPy( T& val);
 PyObject* getPyNone();
-    
+
+// Conversion functions
+
+// for PbClass-derived classes
+template<class T> T fromPy(PyObject* obj) { 
+    if (PbClass::isNullRef(obj)) 
+        return 0; 
+    PbClass* pbo = PbClass::fromPyObject(obj); 
+    if (!pbo || !(pbo->canConvertTo("FluidSolver"))) 
+        throw Error("can't convert argument"); 
+    return (T)(pbo); 
+}
+template<class T> PyObject* toPy(const T& v) { 
+    if (v.getPyObject()) 
+        return v.getPyObject(); 
+    T* co = new T (v); 
+    return co->assignNewPyObject("FluidSolver"); 
+}
+
+// builtin types
+template<> float fromPy<float>(PyObject* obj);
+template<> double fromPy<double>(PyObject* obj);
+template<> int fromPy<int>(PyObject *obj);
+template<> PyObject* fromPy<PyObject*>(PyObject *obj);
+template<> std::string fromPy<std::string>(PyObject *obj);
+template<> const char* fromPy<const char*>(PyObject *obj);
+template<> bool fromPy<bool>(PyObject *obj);
+template<> Vec3 fromPy<Vec3>(PyObject* obj);
+template<> Vec3i fromPy<Vec3i>(PyObject* obj);
+template<> PbType fromPy<PbType>(PyObject* obj);
+
+template<> PyObject* toPy<int>( const int& v);
+template<> PyObject* toPy<std::string>( const std::string& val);
+template<> PyObject* toPy<float>( const float& v);
+template<> PyObject* toPy<double>( const double& v);
+template<> PyObject* toPy<bool>( const bool& v);
+template<> PyObject* toPy<Vec3i>( const Vec3i& v);
+template<> PyObject* toPy<Vec3>( const Vec3& v);
+typedef PbClass* PbClass_Ptr;
+template<> PyObject* toPy<PbClass*>( const PbClass_Ptr & obj);
+
 // additional indirection somehow needed to resolve specializations in ppreg.cpp
-template<class T> inline PyObject* d_toPy(T val) { return toPy<T>(val);}
+//template<class T> inline PyObject* d_toPy(T val) { return toPy<T>(val);}
 
 //! Encapsulation of python arguments
 class PbArgs {
@@ -127,4 +163,5 @@ protected:
 };
 
 } // namespace
+#endif
 #endif

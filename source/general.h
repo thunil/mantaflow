@@ -67,6 +67,17 @@ inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 #define assertMsg(cond,msg)  if(!(cond)) throwError(msg)
 #define assertDeb(cond,msg)  DEBUG_ONLY( assertMsg(cond,msg) )
 
+// template tricks
+template<typename T>
+struct remove_pointers {
+    typedef T type;
+};
+
+template<typename T>
+struct remove_pointers<T*> {
+    typedef T type;
+};
+
 // Commonly used enums and types
 //! Timing class for preformance measuring
 struct MuTime {

@@ -15,6 +15,7 @@
 #include "structmember.h"
 #include "pclass.h"
 #include "general.h"
+#include "fluidSolver.h"
 
 using namespace std;
 namespace Manta {

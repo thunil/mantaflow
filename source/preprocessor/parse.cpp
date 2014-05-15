@@ -50,22 +50,25 @@ string Text::linebreaks() const {
     return s;
 }
 
-string Function::callString() const {
+template<class T> inline string enlist(const List<T>& list) {
     stringstream s;
-    for (int i=0; i<arguments.size(); i++) {
-        s << arguments[i].name;
-        if (i != arguments.size()-1) s << ',';
+    for (int i=0; i<list.size(); i++) {
+        s << list[i].name;
+        if (i != list.size()-1) s << ',';
     }
     return s.str();
 }
 
+string Function::callString() const {
+    return enlist(arguments);
+}
+
 string Class::tplString() const {
-    stringstream s;
-    for (int i=0; i<templateTypes.size(); i++) {
-        s << templateTypes[i].name;
-        if (i != templateTypes.size()-1) s << ',';
-    }
-    return s.str();
+    return enlist(templateTypes);
+}
+
+string Type::tplString() const {
+   return enlist(templateTypes);
 }
 
 //*************************************************************

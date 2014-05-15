@@ -14,7 +14,8 @@
 #ifndef _PTYPE_H
 #define _PTYPE_H
 
-#include "pconvert.h"
+//#include "pconvert.h"
+
 #include <string>
 #include <vector>
 #include <map>
@@ -45,6 +46,11 @@ typedef _object PyObject;
 namespace Manta {
 struct PbClassData;
 class FluidSolver;
+class PbArgs;
+
+struct PbType {
+    std::string str;
+};
 
 //! Base class for all classes exposed to Python
 class PbClass {
@@ -147,6 +153,12 @@ struct PbRegister {
     PbRegister(const std::string& className, const std::string& property, PbGetter getter, PbSetter setter) {
         PbWrapperRegistry::instance().addGetSet(className, property, getter, setter);
     }
+    PbRegister(const std::string& className, const std::string& pyName, const std::string& baseClass) {
+        PbWrapperRegistry::instance().addClass(pyName, className, baseClass);
+    }
+    PbRegister(const std::string& file, const std::string& pythonCode) {
+        PbWrapperRegistry::instance().addPythonCode(file, pythonCode);
+    }
 };
 
 struct PbRegisterExtInit {
@@ -168,8 +180,10 @@ struct PbRegisterExtInit {
 } // namespace        
 
 // to avoid the constant incomplete class nagging
+#include "pconvert.h"
 #ifndef _PCLASS_NOFLUIDSOLVER
 #   include "fluidsolver.h"
 #endif
 
 #endif
+

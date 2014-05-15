@@ -37,7 +37,7 @@ static PyObject* _P_$FUNCNAME (PyObject* _self, PyObject* _linargs, PyObject* _k
                 _retval = getPyNone();
                 $FUNCNAME($CALLSTRING);
             @ELSE
-                _retval = d_toPy($FUNCNAME($CALLSTRING));
+                _retval = toPy($FUNCNAME($CALLSTRING));
             @END
             _args.check();
         }
@@ -66,7 +66,7 @@ static PyObject* _$FUNCNAME (PyObject* _self, PyObject* _linargs, PyObject* _kwd
                 _retval = getPyNone();
                 pbo->$FUNCNAME($CALLSTRING);
             @ELSE
-                _retval = d_toPy(pbo->$FUNCNAME($CALLSTRING));
+                _retval = toPy(pbo->$FUNCNAME($CALLSTRING));
             @END
             _args.check();
         }
@@ -104,7 +104,7 @@ static int _$CLASS (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
 
 const string TmpRegisterMethod = STR(
 @IF($CTPL)
-    static const PbRegister _R_$CLASS_$CTPL_$FUNCNAME ("$CLASS<$CTPL>$","$FUNCNAME",$CLASS<$CTPL>::_$FUNCNAME);
+    static const PbRegister _R_$CLASS_$CL_$FUNCNAME ("$CLASS<$CTPL>","$FUNCNAME",$CLASS<$CTPL>::_$FUNCNAME);
 @ELSE
     static const PbRegister _R_$CLASS_$FUNCNAME ("$CLASS","$FUNCNAME",$CLASS::_$FUNCNAME);
 @END
@@ -113,7 +113,7 @@ const string TmpRegisterMethod = STR(
 const string TmpGetSet = STR(
 static PyObject* _GET_$NAME(PyObject* self, void* cl) {
     $CLASS* pbo = dynamic_cast<$CLASS*>(PbClass::fromPyObject(self));
-    return d_toPy(pbo->$NAME);
+    return toPy(pbo->$NAME);
 }
 static int _SET_$NAME(PyObject* self, PyObject* val, void* cl) {
     $CLASS* pbo = dynamic_cast<$CLASS*>(PbClass::fromPyObject(self));
@@ -124,9 +124,19 @@ static int _SET_$NAME(PyObject* self, PyObject* val, void* cl) {
 );
 const string TmpRegisterGetSet = STR(
 @IF($CTPL)
-    static const PbRegister _R_$CLASS_$CTPL_$NAME ("$CLASS<$CTPL>$","$PYNAME",$CLASS<$CTPL>::_GET_$NAME,$CLASS<$CTPL>::_SET_$NAME);
+    static const PbRegister _R_$CLASS_$CL_$NAME ("$CLASS<$CTPL>$","$PYNAME",$CLASS<$CTPL>::_GET_$NAME,$CLASS<$CTPL>::_SET_$NAME);
 @ELSE
     static const PbRegister _R_$CLASS_$NAME ("$CLASS","$PYNAME",$CLASS::_GET_$NAME,$CLASS::_SET_$NAME);
+@END
+);
+
+const string TmpRegisterClass = STR(
+@IF(TPL)
+    static const PbRegister _R_$CLASS_$CL ("$CLASS<$CT>","$PYNAME<$CT>","$BASE$BTPL");
+    template<> const char* $CLASS<$CT>::_class = "$CLASS<$CT>";
+@ELSE
+    static const PbRegister _R_$CLASS ("$CLASS","$PYNAME","$BASE$BTPL");
+    const char* $CLASS::_class = "$CLASS";
 @END
 );
 
@@ -159,36 +169,6 @@ string generateLoader(const Argument& arg) {
     loader << "&_lock); ";
 
     return loader.str();
-}
-
-/*
-template<> FluidSolver* fromPy<FluidSolver*>(PyObject* obj) { 
-if (PbClass::isNullRef(obj)) return 0; 
-PbClass* pbo = PbClass::fromPyObject(obj); 
-if (!pbo || !(pbo->canConvertTo("FluidSolver"))) 
-    throw Error("can't convert argument to type 'FluidSolver'"); 
-return dynamic_cast<FluidSolver*>(pbo); 
-}
-template<> PyObject* toPy< FluidSolver >( FluidSolver& v) { 
-if (v.getPyObject()) return v.getPyObject(); 
-FluidSolver* co = new FluidSolver (v); 
-return co->assignNewPyObject("FluidSolver"); 
-}
-*/
-  
-string createConverters(const string& name, const string& tb, const string& nl, const string& nlr) {
-    return "template<> " + name + "* fromPy<" + name + "*>(PyObject* obj) {" + nl +
-           tb+ "if (PbClass::isNullRef(obj)) return 0;" + nl +
-           tb+ "PbClass* pbo = PbClass::fromPyObject(obj);" + nl +
-           tb+ "if (!pbo || !(pbo->canConvertTo(\"" + name + "\")))" + nl +
-           tb+tb+ "throw Error(\"can't convert argument to type '" + name + "'\");" + nl +
-           tb+ "return dynamic_cast<" + name + "*>(pbo);" + nl +
-           "}" + nlr +
-           "template<> PyObject* toPy< " + name + " >( " + name + "& v) {" + nl +
-           tb+ "if (v.getPyObject()) return v.getPyObject();" + nl +
-           tb+ name + "* co = new " + name + " (v); " +
-           tb+ "return co->assignNewPyObject(\""+name+"\");" + nl +
-           "}" + nlr;
 }
 
 // global for tracking state between python class and python function registrations
@@ -238,10 +218,7 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink) {
     // register member functions
     if (!isPlugin) {
         const string reg = replaceSet(TmpRegisterMethod, table);
-        if (block.parent->isTemplated())
-            sink.tplReg.push_back(RegCall(block.parent->name,reg));
-        else 
-            sink.ext << reg << "\n";
+        sink.link << '+' << block.parent->name << '^' << reg << '\n';
     }
 }
 
@@ -273,10 +250,7 @@ void processPythonVariable(const Block& block, Sink& sink) {
 
     // register accessors
     const string reg = replaceSet(TmpRegisterGetSet, table);
-    if (block.parent->isTemplated())
-        sink.tplReg.push_back(RegCall(block.parent->name, reg));
-    else 
-        sink.ext << reg << "\n";
+    sink.link << '+' << block.parent->name << '^' << reg << '\n';
 }
 
 void processPythonClass(const Block& block, const string& code, Sink& sink) {
@@ -310,177 +284,35 @@ void processPythonClass(const Block& block, const string& code, Sink& sink) {
     if (!gFoundConstructor)
         errMsg(block.line0, "no PYTHON constructor found in class '" + cls.name + "'");
     
-    // add secret bonus member to class and close
+    // add secret bonus members to class and close
     sink.inplace << "public: PbArgs _args;";
+    sink.inplace << "static const char* _class;";
     sink.inplace << "}";
 
-    /*
-
-    // tokenize and parse contained python functions
-    gParent = name;
-    gIsTemplated = !templArgs.empty();
-    gFoundConstructor = false;
-
-    // create class
-    string pclass = "";
-    if (gDocMode) {
-        pclass += "//! \\ingroup PyClasses\nPYTHON ";
-    }
-    if (gIsTemplated)
-        pclass += "template" + templArgs.minimal + nl;
-    pclass += "class " + name + " : public " + baseclass + " {" + nl;
-    
-    sink.inplace << (block.linebreaks() + implInst);
-    sink.inplace << pclass;
-    processText(code.substr(1), line, sink, &cur);
-    gParent = "";    
-    if (!gFoundConstructor)
-        errMsg(line, "no PYTHON constructor found in class '" + name + "'");
-    if (!gIsHeader && gIsTemplated)
-        errMsg(line, "PYTHON class template can only be used in header files.");
-    
-    pclass = nl;
-    if (!gDocMode) {
-        pclass += "public:" + nl;
-        pclass += tb+"PbArgs _args;" + nl;
-    }
-    pclass += "};" + nl;
-    
-    sink.inplace << pclass << gLocalReg;*/
-
-/*
-    // beautify code
-    string nl = gDebugMode ? "\n" : "";
-    string tb = gDebugMode ? "\t" : "";
-    const List<Type>& templArgs = block.cls.templateTypes;
-    const int line = block.line0;
-
-    if (!gIsHeader && !templArgs.empty())
-        errMsg(line, "PYTHON template classes can only be defined in header files.");
-    
-    string name = block.cls.name;
-    string pname = name; // for now
-    string baseclassName = block.cls.baseClass.name;
-    const List<Type>& baseclassTempl = block.cls.baseClass.templateTypes;
-    
-    // process options
-    for (size_t i=0; i<block.options.size(); i++) {
-        if (block.options[i].name == "name") 
-            pname = block.options[i].value;
-        else
-            errMsg(line, "PYTHON(opt): illegal kernel option. Supported options are: 'name'");
-    }
-    
-    // class registry
-    string baseclass = baseclassName, modBase = baseclassName, registry = "", implInst = "";
-    if (!baseclassTempl.empty()) {
-        // baseclass known ? try to implicitly instantiate base class
-        string targ="", tcarg="" ,bclist="";
-        bool chain=false;
-        for (size_t i=0; i<baseclassTempl.size(); i++) {
-            // check if template arg            
-            int index = -1;
-            for (size_t j=0; j<templArgs.size(); j++) {
-                if (templArgs[j].name == baseclassTempl[i].name) {
-                    index = j;
-                    chain=true;
-                    break;
-                }
-            }
-            if (index>=0) {
-                targ += "@"+baseclassTempl[i].name+"@";
-                stringstream s;
-                s << "$" << index << "$";
-                bclist += s.str();
-            } else {
-                targ += baseclassTempl[i].name;
-                bclist += baseclassTempl[i].name;
-            }
-            if (i!=baseclassTempl.size()-1) { targ += ","; bclist += ","; }
-        }
-        for (size_t i=0; i<templArgs.size(); i++) {
-            tcarg += "@" + templArgs[i].name + "@";
-            if (i!=templArgs.size()-1) tcarg += ",";
-        }
-        string aliasn = "_" + baseclassName + "_" + targ;
-        replaceAll(aliasn,",","_");
-        
-        // need defer chain ?
-        if (chain){
-            gRegText += "@chain " + name + " " + tcarg + " " + baseclassName + " " + targ + "\n";
-        } else {
-            gRegText += "@instance " + baseclassName + " " + targ + " " + aliasn + "\n";    
-        }
-        modBase += "<" + bclist + ">";
-        baseclass += baseclassTempl.minimal;
-    }
-    if (templArgs.empty())
-        registry = "PbWrapperRegistry::instance().addClass(\"" + pname + "\", \"" + name + "\", \"" + modBase + "\");";
-    else {
-        registry = "@template " + name + " PbWrapperRegistry::instance().addClass(\"@\", \"" + name + "<$$>\", \"" + modBase + "\");";
-    }
-    
     // register class
-    if (gIsHeader) {
-        // make sure we
-        string fn = gFilename;
-        const size_t p = fn.find_last_of('/');
-        if (p != string::npos) fn=fn.substr(p+1);
-        gRegText += "#include \"" + fn + "\"\n";        
-    }
-    gRegText += registry + "\n";
-    
-    // register converters
-    gLocalReg = ""; 
-    if (templArgs.empty()) {
-        if (gIsHeader)
-            gRegText += createConverters(name, "", " ", "\n");
-        else
-            gLocalReg += createConverters(name, tb, nl, nl);
-    }
-    
-    // tokenize and parse contained python functions
-    gParent = name;
-    gIsTemplated = !templArgs.empty();
-    gFoundConstructor = false;
+    const string table[] = { "CLASS", cls.name,
+                             "BASE", cls.baseClass.name,
+                             "BTPL", cls.baseClass.isTemplated() ? "<$BT>" : "",
+                             "PYNAME", pythonName,
+                             "TPL", cls.isTemplated() ? "Y" : "",
+                             "@end" };
 
-    // create class
-    string pclass = "";
-    if (gDocMode) {
-        pclass += "//! \\ingroup PyClasses\nPYTHON ";
-    }
-    if (gIsTemplated)
-        pclass += "template" + templArgs.minimal + nl;
-    pclass += "class " + name + " : public " + baseclass + " {" + nl;
-    
-    sink.inplace << (block.linebreaks() + implInst);
-    sink.inplace << pclass;
-    processText(code.substr(1), line, sink, &cur);
-    gParent = "";    
-    if (!gFoundConstructor)
-        errMsg(line, "no PYTHON constructor found in class '" + name + "'");
-    if (!gIsHeader && gIsTemplated)
-        errMsg(line, "PYTHON class template can only be used in header files.");
-    
-    pclass = nl;
-    if (!gDocMode) {
-        pclass += "public:" + nl;
-        pclass += tb+"PbArgs _args;" + nl;
-    }
-    pclass += "};" + nl;
-    
-    sink.inplace << pclass << gLocalReg;*/
+    // register class
+    string reg = replaceSet(TmpRegisterClass, table);
+    sink.link << '+' << cls.name << '^' << reg << '\n';
+    // instantiate directly if not templated
+    if (!cls.isTemplated())
+        sink.link << '>' << cls.name << "^\n";
+    // chain the baseclass instantiation
+    if (cls.baseClass.isTemplated())
+        sink.link << '@' << cls.name << '^' << cls.tplString() << '^' 
+                  << cls.baseClass.name << '^' << cls.baseClass.tplString() << '\n';
 }
 
 void processPythonInstantiation(const Block& block, const Type& aliasType, const string& aliasName, Sink& sink) {
     if (!sink.isHeader)
         errMsg(block.line0, "instantiate allowed in headers only");
 
-    for (int i=0; i<sink.tplReg.size(); i++) {
-        if (sink.tplReg[i].cls == aliasType.name) {
-            const string table[] = { "CT", aliasType.templateTypes.listText, "@end" };
-            sink.ext << replaceSet(sink.tplReg[i].str, table) << '\n';
-        }
-    }
+    sink.link << '>' << aliasType.name << '^' << aliasType.templateTypes.listText << '\n';
     sink.inplace << block.linebreaks();
 }

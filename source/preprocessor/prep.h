@@ -102,6 +102,8 @@ struct Type : Text {
     bool isConst, isRef, isPointer;
     List<Type> templateTypes;
 
+    inline bool isTemplated() const { return !templateTypes.empty(); }
+    std::string tplString() const;
     bool operator==(const Type& a) const;
     std::string build() const;
     virtual std::string dynamicClass() { return "Type"; }
@@ -136,6 +138,7 @@ struct Class : Text {
     Type baseClass;
     List<Type> templateTypes;  
     std::string tplString() const;
+    std::string fullName() const { return isTemplated() ? (name+"<"+tplString()+">") : name; }
     inline bool isTemplated() const { return !templateTypes.empty(); }
     virtual std::string dynamicClass() { return "Class"; }
 };
@@ -152,20 +155,13 @@ struct Block : Text {
     virtual std::string dynamicClass() { return "Block"; }
 };
 
-struct RegCall {
-    RegCall(std::string c, std::string s) : cls(c), str(s) {}
-    std::string cls, str;
-};
-
 // defined in util.cpp
 struct Sink {
     Sink(const std::string& file);
     void write();
 
     std::ostringstream inplace;
-    std::ostringstream ext;
-    std::vector<RegCall> tplReg;
-    std::string headerExt;
+    std::ostringstream link;
     bool isHeader;
 private:
     std::string filename;
@@ -185,19 +181,18 @@ inline bool isIntegral(const std::string& t) {
 enum MType { MTNone = 0, MTTBB, MTOpenMP};
 extern std::string gFilename;
 extern bool gDebugMode;
-extern bool gIsHeader;
 extern MType gMTType;
 extern bool gDocMode;
-extern std::string gRegText;
 
 // functions from util.cpp
-std::string generateMerge(const std::string& text);
+void generateMerge(int num, char* files[]);
 void errMsg(int line, const std::string& text);
 void debMsgHelper(int line, const std::string& text);
 void replaceAll(std::string& text, const std::string& pattern, const std::string& repl);
 std::string readFile(const std::string&);
 void writeFile(const std::string& name, const std::string& text);
 std::string replaceSet(const std::string& templ, const std::string table[]);
+std::vector<std::string> split(const std::string& text, char sep);
 
 // functions from merge.cpp
 std::string generateMerge(const std::string& text);

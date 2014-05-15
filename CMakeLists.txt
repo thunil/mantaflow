@@ -386,6 +386,8 @@ add_custom_command(OUTPUT ${HGINFO}
 
 set(SOURCES ${NOPP_SOURCES} ${SILENT_SOURCES})
 set(HEADERS ${NOPP_HEADERS})
+set(PP_REGCPP)
+set(PP_REGS)
 set(PP_PREPD "0")
 if (PREPDEBUG)
     set(PP_PREPD "1")
@@ -402,12 +404,21 @@ foreach(it ${PP_SOURCES} ${PP_HEADERS})
                        DEPENDS prep
                        IMPLICIT_DEPENDS CXX ${it}
                        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if ("${CUREXT}" STREQUAL ".h")
-        list(APPEND SOURCES "${CURPP}_ext.cpp")
+    if ("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
+        list(APPEND PP_REGS "${CURPP}.reg")
+        list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
     endif()
-    list(APPEND SOURCES ${CURPP})    
+    list(APPEND SOURCES ${CURPP})
 endforeach(it)
 
+# link reg files
+add_custom_command(OUTPUT ${PP_REGCPP}
+                  COMMAND prep link ${PP_REGS}
+                  DEPENDS prep ${SOURCES}
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+#set_source_files_properties(${PP_REGISTRY} PROPERTIES GENERATED 1)
+list(APPEND SOURCES ${PP_REGCPP})
+    
 #******************************************************************************
 # QT for GUI
 

@@ -58,27 +58,38 @@ void writeFile(const string& name, const string& text) {
 Sink::Sink(const string& outfile):
     filename(outfile)
 {
-    isHeader = outfile[outfile.size()-2] == '.' && outfile[outfile.size()-1] == 'h';   
+    isHeader = outfile.compare(outfile.size()-3, 3, ".py") == 0 ||
+               outfile.compare(outfile.size()-2, 2, ".h") == 0;
 }
 
 void Sink::write() {
     writeFile(filename, inplace.str());
     if (isHeader && !gDocMode) {
-        string text = ext.str();
-        if (!text.empty()) {
-            text = headerExt + "{\n" + text + "\n}\n"; 
-        }
-        writeFile(filename + "_ext.cpp", text);
+        writeFile(filename + ".reg", link.str());
     }
 }
 
-void replaceAll(string& text, const string& pattern, const string& repl) {
-    for(;;) {
-        const size_t pos = text.find(pattern);
-        if (pos == string::npos) return;
-        text.replace(pos, pattern.size(), repl);
+vector<string> split(const string& text, char sep) {
+    vector<string> bins;
+    string cur;
+    for (int i=0; i<text.size(); i++) {
+        if (text[i]==sep) {
+            bins.push_back(cur);
+            cur = "";
+        } else
+            cur += text[i];
     }
-    return;
+    bins.push_back(cur);
+    return bins;
+}
+
+void replaceAll(string& source, string const& find, string const& replace)
+{
+    for(string::size_type i = 0; (i = source.find(find, i)) != std::string::npos;)
+    {
+        source.replace(i, find.length(), replace);
+        i += replace.length() - find.length() + 1;
+    }
 }
 
 // Helpers for replaceSet
