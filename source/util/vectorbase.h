@@ -15,8 +15,8 @@
 #define _VECTORBASE_H
 
 // get rid of windos min/max defines
-#ifdef WIN32
-#define NOMINMAX
+#if defined(WIN32) || defined(_WIN32)
+#	define NOMINMAX
 #endif
 
 #include <stdio.h>
@@ -27,13 +27,13 @@
 #include "general.h"
 
 // if min/max are still around...
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32)
 #   undef min
 #   undef max
 #endif
 
 // redefine usage of some windows functions
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32)
 #	ifndef snprintf 
 #	define snprintf _snprintf
 #	endif

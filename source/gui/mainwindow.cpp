@@ -14,10 +14,10 @@
 #include "mainwindow.h"
 #include "qtmain.h"
 
-#include <QtGui/QLabel>
-#include <QtGui/QMenu>
-#include <QtGui/QMenuBar>
-#include <QtGui/QAction>
+#include <QLabel>
+#include <QMenu>
+#include <QMenuBar>
+#include <QAction>
 #include <QtOpenGL>
 #include <sstream>
 #include "meshpainter.h"

@@ -46,14 +46,6 @@ void runScript(vector<string>& args) {
     Py_Initialize();
     PbWrapperRegistry::instance().runPreInit(args);
         
-    // Try to load python script
-    FILE* fp = fopen(filename.c_str(),"r");
-    if (fp == NULL) {
-        debMsg("Cannot open '" << filename << "'", 0);
-        Py_Finalize();
-        return;
-    }
-    
     // Pass through the command line arguments
     // for Py3k compatability, convert to wstring
     vector<pyString> pyArgs(args.size());
@@ -64,22 +56,31 @@ void runScript(vector<string>& args) {
     }
     PySys_SetArgv( args.size(), (pyChar**) cargs);
     
+    // Try to load python script
+    FILE* fp = fopen(filename.c_str(),"rb");
+    if (fp == NULL) {
+        debMsg("Cannot open '" << filename << "'", 0);
+        Py_Finalize();
+        return;
+    }
+    
     // Run the python script file
     debMsg("Loading script '" << filename << "'", 0);
-#ifdef WIN32
-    // known bug workaround: use simplestring
+#if defined(WIN32) || defined(_WIN32)
+	// known bug workaround: use simplestring
     fseek(fp,0,SEEK_END);
     long filelen=ftell(fp);
     fseek(fp,0,SEEK_SET);
-    char* buf = new char[filelen+1];
+	char* buf = new char[filelen+1];
     fread(buf,filelen,1,fp);
     buf[filelen] = '\0';
-    fclose(fp);
+	fclose(fp);
     PyRun_SimpleString(buf);
     delete[] buf;    
 #else
     // for linux, use this as it produces nicer error messages
     PyRun_SimpleFileEx(fp, filename.c_str(), 1);    
+	fclose(fp);    
 #endif
     
     debMsg("Script finished.", 0);

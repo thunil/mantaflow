@@ -87,7 +87,7 @@ void guiMain(int argc, char* argv[]) {
 	// Show file dialog if no argument is present
 	if (argc <= 1) {
 		QString filename = QFileDialog::getOpenFileName(0, "Open scene file", "", "Python scene files (*.py)");
-		args.push_back(filename.toAscii().data());
+		args.push_back(filename.toLatin1().data());
 	}
 	
     GuiThread gui(app);
