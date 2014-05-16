@@ -28,6 +28,13 @@ void debMsgHelper(int line, const string& text) {
     cout << gFilename << ":" << line << ": info: " << text << endl;
 }
 
+bool fileExists(const string& name) {
+    ifstream t(name.c_str());
+    if (!t.good()) return false;
+    t.close();
+    return true;
+}
+
 string readFile(const string& name) {
     ifstream t(name.c_str());
     if (!t.good()) return "";

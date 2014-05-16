@@ -190,6 +190,7 @@ void errMsg(int line, const std::string& text);
 void debMsgHelper(int line, const std::string& text);
 void replaceAll(std::string& text, const std::string& pattern, const std::string& repl);
 std::string readFile(const std::string&);
+bool fileExists(const std::string& name);
 void writeFile(const std::string& name, const std::string& text);
 std::string replaceSet(const std::string& templ, const std::string table[]);
 std::vector<std::string> split(const std::string& text, char sep);

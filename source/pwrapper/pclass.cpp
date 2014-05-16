@@ -49,13 +49,14 @@ struct PbGetSet {
 };
 
 struct PbClassData {
-    string pythonName;
+    string pythonName, cName;
     PbInitFunc init;
     PyTypeObject typeInfo;
     //PySequenceMethods seqInfo;
     vector<PbMethod> methods;
     map<string,PbGetSet> getset;
     PbClassData* baseclass;
+    string baseclassName;
     PbConstructor constructor;
 
     vector<PyMethodDef> genMethods;
@@ -119,18 +120,11 @@ void PbWrapperRegistry::addClass(const string& pythonName, const string& interna
     // store class info
     PbClassData* data = new PbClassData;
     data->pythonName = pythonName;
-    data->baseclass = baseclass.empty() ? NULL : lookup(baseclass);    
-    if (!baseclass.empty() && !data->baseclass)
-        errMsg("Registering class '" + internalName + "' : Base class '" + baseclass + "' not found");
+    data->cName = internalName;
+    data->baseclass = NULL;
+    data->baseclassName = baseclass;    
     mClasses[internalName] = data;
     mClassList.push_back(data);
-    
-    // register all methods of base classes
-    if (data->baseclass) {
-        for (vector<PbMethod>::iterator it = data->baseclass->methods.begin(); it != data->baseclass->methods.end(); ++it) {
-            addMethod(internalName, it->name, it->func);
-        }
-    }        
 }
 
 void PbWrapperRegistry::addExternalInitializer(PbInitFunc func) {
@@ -173,6 +167,8 @@ void PbWrapperRegistry::addMethod(const string& classname, const string& methodn
         errMsg("Register class '" + aclass + "' before registering methods.");
     
     PbClassData* classdef = mClasses[aclass];
+    for(int i=0; i<classdef->methods.size(); i++)
+        if (classdef->methods[i].name == methodname) return; // avoid duplicates
     classdef->methods.push_back(PbMethod(methodname,methodname,func)); 
 }
 
@@ -181,7 +177,38 @@ void PbWrapperRegistry::addConstructor(const string& classname, PbConstructor fu
         errMsg("Register class " + classname + " before registering constructor.");
     
     PbClassData* classdef = mClasses[classname];
-    classdef->constructor = func;    
+    classdef->constructor = func;
+}
+
+void PbWrapperRegistry::addParentMethods(PbClassData* cur, PbClassData* base) {
+    if (base == 0) return;
+
+    for (vector<PbMethod>::iterator it = base->methods.begin(); it != base->methods.end(); ++it)
+        addMethod(cur->cName, it->name, it->func);
+
+    for (map<string,PbGetSet>::iterator it = base->getset.begin(); it != base->getset.end(); ++it)
+        addGetSet(cur->cName, it->first, it->second.getter, it->second.setter);
+
+    addParentMethods(cur, base->baseclass);
+}
+
+void PbWrapperRegistry::registerBaseclasses() {
+    for (int i=0; i<mClassList.size(); i++) {
+        cout << mClassList[i]->pythonName << endl;
+    }
+ 
+    for (int i=0; i<mClassList.size(); i++) {
+        string bname = mClassList[i]->baseclassName;
+        if(!bname.empty()) {
+            mClassList[i]->baseclass = lookup(bname);
+            if (!mClassList[i]->baseclass)
+                errMsg("Registering class '" + mClassList[i]->cName + "' : Base class '" + bname + "' not found");
+        }
+    }
+
+    for (int i=0; i<mClassList.size(); i++) {
+        addParentMethods(mClassList[i], mClassList[i]->baseclass);
+    }
 }
 
 PbClassData* PbWrapperRegistry::lookup(const string& name) {
@@ -419,6 +446,8 @@ void PbWrapperRegistry::addInstance(PbClass* obj) {
 // prepare typeinfo and register python module
 void PbWrapperRegistry::construct(const string& scriptname) {
     mScriptName = scriptname;
+
+    registerBaseclasses();
     
     // load main extension module
     PyImport_AppendInittab(gDefaultModuleName.c_str(), PyInit_Main);

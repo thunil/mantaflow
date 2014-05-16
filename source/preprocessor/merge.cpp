@@ -84,15 +84,15 @@ void resolveChains(RegFile& file) {
 }
 
 void resolveRequests(RegFile& file) {
-    for (int i=0; i<file.req.size(); i++) {
+    for (int i=0,idx=0; i<file.req.size(); i++) {
         Request& req = file.req[i];
         ClassInfo& info = classes[req.cls];
         if (info.tplDone[req.tpl]) continue;
 
-        string tpl_flat = req.tpl;
-        replaceAll(tpl_flat, ",", "_");
-        const string table[] = {"CT", req.tpl, "BT", req.base, "CL", tpl_flat, "@end"};
-        for (int j=0; j<info.snippets.size(); j++) {
+        for (int j=0; j<info.snippets.size(); j++,idx++) {
+            stringstream idxStr;
+            idxStr << idx;
+            const string table[] = {"CT", req.tpl, "BT", req.base, "IDX", idxStr.str(), "@end"};
             file.out << replaceSet(info.snippets[j], table) << '\n';
             file.active = true;
         }
@@ -149,7 +149,10 @@ void generateMerge(int num, char* files[]) {
             text += regFiles[i]->out.str();
             text += "}";
         }
-        writeFile(regFiles[i]->filename + ".cpp", text);
+        string filename = regFiles[i]->filename + ".cpp";
+        // only write if content is different
+        if (!fileExists(filename) || readFile(filename) != text)
+            writeFile(filename, text);
         delete regFiles[i];
     }
 }

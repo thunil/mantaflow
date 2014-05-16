@@ -102,14 +102,6 @@ static int _$CLASS (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
     }
 });
 
-const string TmpRegisterMethod = STR(
-@IF($CTPL)
-    static const PbRegister _R_$CLASS_$CL_$FUNCNAME ("$CLASS<$CTPL>","$FUNCNAME",$CLASS<$CTPL>::_$FUNCNAME);
-@ELSE
-    static const PbRegister _R_$CLASS_$FUNCNAME ("$CLASS","$FUNCNAME",$CLASS::_$FUNCNAME);
-@END
-);
-
 const string TmpGetSet = STR(
 static PyObject* _GET_$NAME(PyObject* self, void* cl) {
     $CLASS* pbo = dynamic_cast<$CLASS*>(PbClass::fromPyObject(self));
@@ -119,23 +111,30 @@ static int _SET_$NAME(PyObject* self, PyObject* val, void* cl) {
     $CLASS* pbo = dynamic_cast<$CLASS*>(PbClass::fromPyObject(self));
     pbo->$NAME = fromPy<Real >(val); 
     return 0;
-}
+});
 
+const string TmpRegisterMethod = STR(
+@IF($CTPL)
+    static const PbRegister _R_$IDX ("$CLASS<$CT>","$FUNCNAME",$CLASS<$CT>::_$FUNCNAME);
+@ELSE
+    static const PbRegister _R_$IDX ("$CLASS","$FUNCNAME",$CLASS::_$FUNCNAME);
+@END
 );
+
 const string TmpRegisterGetSet = STR(
 @IF($CTPL)
-    static const PbRegister _R_$CLASS_$CL_$NAME ("$CLASS<$CTPL>$","$PYNAME",$CLASS<$CTPL>::_GET_$NAME,$CLASS<$CTPL>::_SET_$NAME);
+    static const PbRegister _R_$IDX ("$CLASS<$CT>$","$PYNAME",$CLASS<$CT>::_GET_$NAME,$CLASS<$CT>::_SET_$NAME);
 @ELSE
-    static const PbRegister _R_$CLASS_$NAME ("$CLASS","$PYNAME",$CLASS::_GET_$NAME,$CLASS::_SET_$NAME);
+    static const PbRegister _R_$IDX ("$CLASS","$PYNAME",$CLASS::_GET_$NAME,$CLASS::_SET_$NAME);
 @END
 );
 
 const string TmpRegisterClass = STR(
-@IF(TPL)
-    static const PbRegister _R_$CLASS_$CL ("$CLASS<$CT>","$PYNAME<$CT>","$BASE$BTPL");
+@IF(CTPL)
+    static const PbRegister _R_$IDX ("$CLASS<$CT>","$PYNAME<$CT>","$BASE$BTPL");
     template<> const char* $CLASS<$CT>::_class = "$CLASS<$CT>";
 @ELSE
-    static const PbRegister _R_$CLASS ("$CLASS","$PYNAME","$BASE$BTPL");
+    static const PbRegister _R_$IDX ("$CLASS","$PYNAME","$BASE$BTPL");
     const char* $CLASS::_class = "$CLASS";
 @END
 );
@@ -273,7 +272,24 @@ void processPythonClass(const Block& block, const string& code, Sink& sink) {
         return;
     }
 
-    // explicit base class instantion ?
+    // register class
+    const string table[] = { "CLASS", cls.name,
+                             "BASE", cls.baseClass.name,
+                             "BTPL", cls.baseClass.isTemplated() ? "<$BT>" : "",
+                             "PYNAME", pythonName,
+                             "CTPL", cls.isTemplated() ? "CT" : "",
+                             "@end" };
+
+    // register class
+    string reg = replaceSet(TmpRegisterClass, table);
+    sink.link << '+' << cls.name << '^' << reg << '\n';
+    // instantiate directly if not templated
+    if (!cls.isTemplated())
+        sink.link << '>' << cls.name << "^\n";
+    // chain the baseclass instantiation
+    if (cls.baseClass.isTemplated())
+        sink.link << '@' << cls.name << '^' << cls.tplString() << '^' 
+                  << cls.baseClass.name << '^' << cls.baseClass.tplString() << '\n';
 
     // write signature
     sink.inplace << block.linebreaks() << cls.minimal << "{";
@@ -288,25 +304,6 @@ void processPythonClass(const Block& block, const string& code, Sink& sink) {
     sink.inplace << "public: PbArgs _args;";
     sink.inplace << "static const char* _class;";
     sink.inplace << "}";
-
-    // register class
-    const string table[] = { "CLASS", cls.name,
-                             "BASE", cls.baseClass.name,
-                             "BTPL", cls.baseClass.isTemplated() ? "<$BT>" : "",
-                             "PYNAME", pythonName,
-                             "TPL", cls.isTemplated() ? "Y" : "",
-                             "@end" };
-
-    // register class
-    string reg = replaceSet(TmpRegisterClass, table);
-    sink.link << '+' << cls.name << '^' << reg << '\n';
-    // instantiate directly if not templated
-    if (!cls.isTemplated())
-        sink.link << '>' << cls.name << "^\n";
-    // chain the baseclass instantiation
-    if (cls.baseClass.isTemplated())
-        sink.link << '@' << cls.name << '^' << cls.tplString() << '^' 
-                  << cls.baseClass.name << '^' << cls.baseClass.tplString() << '\n';
 }
 
 void processPythonInstantiation(const Block& block, const Type& aliasType, const string& aliasName, Sink& sink) {

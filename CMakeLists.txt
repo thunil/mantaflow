@@ -414,9 +414,10 @@ endforeach(it)
 # link reg files
 add_custom_command(OUTPUT ${PP_REGCPP}
                   COMMAND prep link ${PP_REGS}
-                  DEPENDS prep ${SOURCES}
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-#set_source_files_properties(${PP_REGISTRY} PROPERTIES GENERATED 1)
+                  DEPENDS prep ${PP_REGS}
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                  COMMENT "Linking reg files")
+set_source_files_properties(${PP_REGS} ${PP_REGCPP} PROPERTIES GENERATED 1)
 list(APPEND SOURCES ${PP_REGCPP})
     
 #******************************************************************************

@@ -163,7 +163,7 @@ void FluidSolver::saveMeanTimings(string filename) {
     }    
     for(map<string, pair<int,MuTime> >::iterator it=mTimingsTotal.begin(); it!=mTimingsTotal.end(); it++) {
         ofs << it->first << ": " << it->second.second / it->second.first << endl;        
-    }
+    } 
     ofs << endl << "Total : " << total << " (mean " << total/mFrame << ")" << endl;
     ofs.close();
 }

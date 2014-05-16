@@ -129,6 +129,8 @@ public:
     PbClassData* lookup(const std::string& name);
     bool canConvert(PbClassData* from, PbClassData* to);
 private:
+    void registerBaseclasses();
+    void addParentMethods(PbClassData* cls, PbClassData* base);
     PbWrapperRegistry();
     std::map<std::string, PbClassData*> mClasses;
     std::vector<PbClassData*> mClassList;
