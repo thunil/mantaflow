@@ -14,7 +14,7 @@
 #ifndef _GRID_H
 #define _GRID_H
 
-#include "pclass.h"
+#include "manta.h"
 #include "vectorbase.h"
 #include "interpol.h"
 #include "kernel.h"

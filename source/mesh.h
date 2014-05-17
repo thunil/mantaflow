@@ -18,7 +18,7 @@
 #define _MESH_H
 
 #include <vector>
-#include "pclass.h"
+#include "manta.h"
 #include "vectorbase.h"
 #include <set>
 namespace Manta {

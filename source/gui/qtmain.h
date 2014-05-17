@@ -19,7 +19,7 @@
 #include <QMutex>
 #include <QWaitCondition>
 #include "mainwindow.h"
-#include "pclass.h"
+#include "manta.h"
 
 namespace Manta {    
 

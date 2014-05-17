@@ -189,12 +189,14 @@ set(NOPP_SOURCES
     source/pwrapper/pclass.cpp
     source/pwrapper/pvec3.cpp
     source/pwrapper/pconvert.cpp
+    source/pwrapper/registry.cpp
     source/util/vectorbase.cpp
 )
  
 SET(NOPP_HEADERS
     source/pwrapper/pythonInclude.h
     source/pwrapper/pclass.h
+    source/pwrapper/registry.h
     source/pwrapper/pconvert.h
     source/util/integrator.h
     source/util/vectorbase.h
@@ -417,7 +419,7 @@ add_custom_command(OUTPUT ${PP_REGCPP}
                   DEPENDS prep ${PP_REGS}
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMENT "Linking reg files")
-set_source_files_properties(${PP_REGS} ${PP_REGCPP} PROPERTIES GENERATED 1)
+#set_source_files_properties(${PP_REGS} ${PP_REGCPP} PROPERTIES GENERATED 1)
 list(APPEND SOURCES ${PP_REGCPP})
     
 #******************************************************************************

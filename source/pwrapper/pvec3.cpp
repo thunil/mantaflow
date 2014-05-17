@@ -18,7 +18,7 @@
 #include <limits>
 #include "vectorbase.h"
 #include "structmember.h"
-#include "pclass.h"
+#include "manta.h"
 
 using namespace std;
 
@@ -277,6 +277,6 @@ void PbVecInitialize(PyObject* module) {
     Py_INCREF(&PbVec3Type);
     PyModule_AddObject(module, "vec3", (PyObject *)&PbVec3Type);
 }
-PB_REGISTER_EXTERNAL(PbVecInitialize);
+const static Pb::Register _REG(PbVecInitialize);
 
 } // namespace

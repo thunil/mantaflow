@@ -11,30 +11,21 @@
  *
  ******************************************************************************/
 
-// force to load pclass first
-#ifdef _PTYPE_H
+// -----------------------------------------------------------------
+// NOTE:
+// Do not include this file in user code, include "manta.h" instead
+// -----------------------------------------------------------------
+
+#ifdef _MANTA_H
 #ifndef _PCONVERT_H
 #define _PCONVERT_H
 
 #include <string>
 #include <map>
 #include <vector>
-#include "general.h"
-#include "vectorbase.h"
-// forward decl.
-// forward declaration to minimize Python.h includes
-#ifndef PyObject_HEAD
-#ifndef PyObject_Fake
-struct _object;
-typedef _object PyObject;
-#define PyObject_Fake
-#endif
-#endif
 
 namespace Manta { 
 template<class T> class Grid; 
-class PbClass;
-class FluidSolver;
 
 
 //! Locks the given PbClass Arguments until ArgLocker goes out of scope
@@ -52,16 +43,18 @@ PyObject* getPyNone();
 template<class T> T fromPy(PyObject* obj) { 
     if (PbClass::isNullRef(obj)) 
         return 0; 
-    PbClass* pbo = PbClass::fromPyObject(obj); 
-    if (!pbo || !(pbo->canConvertTo("FluidSolver"))) 
-        throw Error("can't convert argument"); 
+    PbClass* pbo = Pb::objFromPy(obj); 
+    const std::string& type = Namify<typename remove_pointers<T>::type>::S;
+    if (!pbo || !(pbo->canConvertTo(type))) 
+        throw Error("can't convert argument to " + type); 
     return (T)(pbo); 
 }
 template<class T> PyObject* toPy(const T& v) { 
     if (v.getPyObject()) 
         return v.getPyObject(); 
     T* co = new T (v); 
-    return co->assignNewPyObject("FluidSolver"); 
+    const std::string& type = Namify<typename remove_pointers<T>::type>::S;
+    return Pb::copyObject(co,type); 
 }
 
 // builtin types

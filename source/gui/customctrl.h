@@ -18,7 +18,7 @@
 #include <QLabel>
 #include <QCheckBox>
 #include <QBoxLayout>
-#include "pclass.h"
+#include "manta.h"
 
 namespace Manta {
 

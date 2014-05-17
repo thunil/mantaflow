@@ -127,7 +127,7 @@ struct Function : Text {
     bool isInline, isVirtual, isConst, noParentheses;
     List<Type> templateTypes;
     List<Argument> arguments;
-    std::string callString() const;
+    std::string callString(const std::string& prefix="") const;
     virtual std::string dynamicClass() { return "Function"; }
 };
 
@@ -194,6 +194,7 @@ bool fileExists(const std::string& name);
 void writeFile(const std::string& name, const std::string& text);
 std::string replaceSet(const std::string& templ, const std::string table[]);
 std::vector<std::string> split(const std::string& text, char sep);
+void stealLinebreaks(std::string& code, int num);
 
 // functions from merge.cpp
 std::string generateMerge(const std::string& text);
@@ -205,8 +206,7 @@ void processText(const std::string& text, int baseline, Sink& sink, const Class 
 void parseBlock(const std::string& kw, const std::vector<Token>& tokens, const Class *parent, Sink& sink);
 
 // functions from codegen_XXX.cpp
-std::string createConverters(const std::string& name, const std::string& tb, const std::string& nl, const std::string& nlr);
-std::string processKernel(const Block& block, const std::string& code);
+void processKernel(const Block& block, const std::string& code, Sink& sink);
 void processPythonFunction(const Block& block, const std::string& code, Sink& sink);
 void processPythonVariable(const Block& block, Sink& sink);
 void processPythonClass(const Block& block, const std::string& code, Sink& sink);

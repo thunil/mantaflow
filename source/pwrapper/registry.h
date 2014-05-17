@@ -1,0 +1,83 @@
+/******************************************************************************
+ *
+ * MantaFlow fluid solver framework
+ * Copyright 2011-2014 Tobias Pfaff, Nils Thuerey 
+ *
+ * This program is free software, distributed under the terms of the
+ * GNU General Public License (GPL) 
+ * http://www.gnu.org/licenses
+ *
+ * Auto python registry
+ *
+ ******************************************************************************/
+
+#ifndef _REGISTRY_H
+#define _REGISTRY_H
+
+#include <string>
+#include <vector>
+
+// forward declaration to minimize Python.h includes
+#ifndef PyObject_HEAD
+#ifndef PyObject_Fake
+struct _object;
+typedef _object PyObject;
+#define PyObject_Fake
+#endif
+#endif
+
+namespace Manta {
+    class PbClass;
+    class PbArgs;
+}
+
+// **************************************************
+//                      NOTE 
+// Everything in this file is intend only for internal
+// use by the generated wrappers or pclass/pconvert.
+// For user code, use the functionality exposed in
+// pclass.h / pconvert.h instead.
+// **************************************************
+
+// Used to turn names into strings
+namespace Manta {
+template<class T> struct Namify {
+    static const char* S;
+};
+}
+namespace Pb {
+
+// internal registry access 
+void setup(const std::string& filename, const std::vector<std::string>& args);
+void finalize();
+bool canConvert(PyObject* obj, const std::string& to);
+Manta::PbClass* objFromPy(PyObject* obj);
+Manta::PbClass* createPy(const std::string& classname, const std::string& name, Manta::PbArgs& args, Manta::PbClass* parent);
+void setReference(Manta::PbClass* cls, PyObject* obj);
+PyObject* copyObject(Manta::PbClass* cls, const std::string& classname);
+
+// callback type
+typedef void (*InitFunc)(PyObject*);
+typedef PyObject* (*GenericFunction)(PyObject* self, PyObject* args, PyObject* kwds);
+typedef int (*Constructor)(PyObject* self, PyObject* args, PyObject* kwds);
+typedef PyObject* (*Getter)(PyObject* self, void* closure);
+typedef int (*Setter)(PyObject* self, PyObject* value, void* closure);
+
+//! Auto registry of python methods and classes
+struct Register {
+    //! register method
+    Register(const std::string& className, const std::string& funcName, GenericFunction func);
+    //! register constructor
+    Register(const std::string& className, const std::string& funcName, Constructor func);
+    //! register getter/setter
+    Register(const std::string& className, const std::string& property, Getter getter, Setter setter);
+    //! register class
+    Register(const std::string& className, const std::string& pyName, const std::string& baseClass);
+    //! register python code
+    Register(const std::string& file, const std::string& pythonCode);
+    //! register external code
+    Register(InitFunc func);
+};
+
+}
+#endif

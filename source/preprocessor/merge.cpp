@@ -77,26 +77,41 @@ void resolveChains(RegFile& file) {
         if (it != chains.end()) {
             Chain& chain = it->second;
             string tpl = mapArgs(req.tpl, chain.tpl, chain.targetTpl);
-            file.req.push_back(Request(chain.target, tpl));
             req.base = tpl;
+            file.req.push_back(Request(chain.target, tpl));
         }
     }
 }
 
 void resolveRequests(RegFile& file) {
-    for (int i=0,idx=0; i<file.req.size(); i++) {
+    // sort request by class
+    map<string, vector<Request*> > sortedReqs;
+    for (int i=0; i<file.req.size(); i++) {
         Request& req = file.req[i];
         ClassInfo& info = classes[req.cls];
-        if (info.tplDone[req.tpl]) continue;
-
-        for (int j=0; j<info.snippets.size(); j++,idx++) {
-            stringstream idxStr;
-            idxStr << idx;
-            const string table[] = {"CT", req.tpl, "BT", req.base, "IDX", idxStr.str(), "@end"};
-            file.out << replaceSet(info.snippets[j], table) << '\n';
-            file.active = true;
+        if (!info.tplDone[req.tpl]) {
+            info.tplDone[req.tpl] = true;
+            sortedReqs[req.cls].push_back(&req);
         }
-        info.tplDone[req.tpl] = true;
+    }
+
+    // process requests
+    int idx = 0;
+    for(map<string,vector<Request*> >::iterator it = sortedReqs.begin(); it != sortedReqs.end(); ++it) {
+        ClassInfo& info = classes[it->first];
+        file.out << "#ifdef _C_" << it->first << '\n';
+        for (int i=0; i<it->second.size(); i++) {
+            Request& req = *(it->second[i]);
+            for (int j=0; j<info.snippets.size(); j++) {
+                stringstream idxStr;
+                idxStr << idx;
+                const string table[] = {"CT", req.tpl, "BT", req.base, "IDX", idxStr.str(), "@end"};
+                file.out << replaceSet(info.snippets[j], table) << '\n';
+                idx++;
+            }
+        }
+        file.out << "#endif\n";
+        file.active = true;
     }
 }
 
@@ -109,7 +124,7 @@ void parseLine(const string& line, RegFile& file) {
     
     if (line[0] == '+')
         classes[cls].snippets.push_back(parts[1]);
-    else if (line[0] == '>')
+    else if (line[0] == '>') 
         file.req.push_back(Request(cls,parts[1]));
     else if (line[0] == '@')
         chains[cls] = Chain(parts[1],parts[2],parts[3]);

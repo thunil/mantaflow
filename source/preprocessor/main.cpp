@@ -85,8 +85,8 @@ void doGenerate(int argc, char* argv[], bool docs) {
         replaceAll(text, "\t", "\\t");
         replaceAll(text, "\"", "<qtm>"); // split into two ops to avoid interference
         replaceAll(text, "<qtm>", "\\\"");
-        sink.link << "#include \"pclass.h\"\n";
-        sink.link << "static const PbRegister _reg(\"" + infile + "\", \"" + text + "\");\n";
+        sink.link << "#include \"registry.h\"\n";
+        sink.link << "static const Pb::Register _reg(\"" + infile + "\", \"" + text + "\");\n";
     } else {
         if (!gDocMode) {
             sink.link << "#include \"" + infile + "\"\n";

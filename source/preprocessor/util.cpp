@@ -99,6 +99,30 @@ void replaceAll(string& source, string const& find, string const& replace)
     }
 }
 
+void stealLinebreaks(string& code, int num) {
+    // list all line breaks
+    vector<int> lb;
+    lb.push_back(-1);
+    for (int i=0; i<code.size(); i++)
+        if (code[i] == '\n')
+            lb.push_back(i);
+    lb.push_back(code.size());
+
+    for (int i=lb.size()-2; i>0; i--) {
+        // make sure we don't mess with comments and defines
+        string curLine = code.substr(lb[i-1]+1,lb[i]-lb[i-1]-1);
+        string nextLine = code.substr(lb[i]+1, lb[i+1]-lb[i]-1);
+        if (curLine.find("//") == string::npos &&
+            curLine.find('#') == string::npos &&
+            nextLine.find('#') == string::npos) {
+            code[lb[i]] = ' ';
+            if (--num == 0)
+                return;
+        }
+    }
+    return;
+}
+
 // Helpers for replaceSet
 static string getBracketArg(const string& a, int &pos) {
     string ret="";
@@ -107,7 +131,7 @@ static string getBracketArg(const string& a, int &pos) {
         if (a[pos]!='(' && a[pos]!=' ' && a[pos]!='$') break;
     }
     for (; pos<a.size(); pos++) {
-        if (a[pos]==')') return ret;
+        if (a[pos]==')' || a[pos]=='$') return ret;
         ret += a[pos];
     }
     return "";
@@ -127,9 +151,10 @@ string replaceSet(const string& templ, const string table[]) {
         key.push_back(table[i]);
         value.push_back(table[i+1]);
     }
-    stack<bool> conditionStack;
-    conditionStack.push(true);
+    vector<bool> conditionStack;
+    conditionStack.push_back(true);
     stringstream s;
+    int elifs = 0;
     for (int i=0; i<templ.size(); i++) {
         char c = templ[i];
         if (c=='@') {
@@ -137,24 +162,36 @@ string replaceSet(const string& templ, const string table[]) {
                 string cond = getBracketArg(templ,i);
                 vector<string>::iterator it = find(key.begin(),key.end(),cond);
                 bool res = (it != key.end()) && (!value[it-key.begin()].empty());
-                conditionStack.push(res);
+                conditionStack.push_back(res);
+            } else if (compareKW(templ,i,"ELIF")) {
+                conditionStack.back() = !conditionStack.back();
+                string cond = getBracketArg(templ,i);
+                vector<string>::iterator it = find(key.begin(),key.end(),cond);
+                bool res = (it != key.end()) && (!value[it-key.begin()].empty());
+                conditionStack.push_back(res);
+                elifs++;
             } else if (compareKW(templ,i,"END")) {
-                conditionStack.pop();
+                for (int k=0; k<elifs+1; k++)
+                    conditionStack.pop_back();
             } else if (compareKW(templ,i,"ELSE")) {
-                conditionStack.top() = !conditionStack.top();
+                conditionStack.back() = !conditionStack.back();
             }
             continue;
         }
-        if (!conditionStack.top()) continue;
+        // check condition
+        bool valid = true;
+        for (int k=0; k<conditionStack.size(); k++)
+            if (!conditionStack[k]) valid = false;
+        if (!valid) continue;
+
         if (c=='$') {
-            int oldi=i;
-            for (int j=0; j<key.size(); j++) {
-                if (compareKW(templ,i,key[j])) {
-                    s << value[j];
-                    break;
-                }
-            }
-            if (oldi != i) continue;
+            string kw = getBracketArg(templ,i);
+            vector<string>::iterator it = find(key.begin(),key.end(),kw);
+            if (it == key.end())
+                s << '$' << kw << '$';
+            else
+                s << value[it - key.begin()];
+            continue;
         }
         s << templ[i];
     }

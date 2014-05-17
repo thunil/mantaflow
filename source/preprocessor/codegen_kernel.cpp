@@ -18,75 +18,307 @@
 #include <iostream>
 using namespace std;
 
-#define kernelAssert(x,msg) if(!(x)){errMsg(line,msg);}
+#define STR(x) #x
 
-string processKernel(const Block& block, const string& code) {
-    // beautify code
-	string nlr = "\n";
-    string nl = gDebugMode ? "\n" : " ";
-    string tb = gDebugMode ? "\t" : "";    
-    string tb2 = tb+tb, tb3=tb2+tb, tb4=tb3+tb, tb5=tb4+tb;
+//******************************************************
+// Templates for code generation
 
-    const List<Argument>& args = block.func.arguments;
-    const string kernelName = block.func.name;
-    const Type& retType = block.func.returnType;
-    const List<Type>& templArgs = block.func.templateTypes;
-    const List<Argument>& opts = block.options;
-    const List<Argument>& returnArg = block.reduceArgs;
-    const int line = block.line0;
+const string TmpKernelPts = STR(
+struct $KERNEL$ : public ParticleKernelBase {
+    $KERNEL$($ARGS$) : ParticleKernelBase(($BASE$).size()) $INIT$ {
+        run();
+    }
+    $KERNEL$(const $KERNEL$ &o) : ParticleKernelBase(o.size) $COPY$ {}
+
+    inline void op(int i, $ARGS$) $CONST$ $CODE$
+    $RUN$
+    $MEMBERS$
+};
+);
+
+const string TmpKernelGrid = STR(
+struct $KERNEL$ : public KernelBase {
+    $KERNEL$($ARGS$) : KernelBase($BASE$,$BND$) $INIT$ {
+        run();
+    }
+    $KERNEL$(const $KERNEL$ &o) : 
+        KernelBase(o.maxX, o.maxY, o.maxZ, o.maxCells, o.minZ, o.X, o.Y, o.Z) {}
+
+@IF(IDX)
+    inline void op(int idx, $ARGS$) $CONST$ $CODE$
+@ELSE
+    inline void op(int i, int j, int k, $ARGS$) $CONST$ $CODE$
+@END
+    $RUN$
+    $MEMBERS$
+};
+);
+
+const string TmpRunSimple = STR(
+void run() {
+@IF(PTS)
+    const int _sz = size;
+    for (int i=0; i < _sz; i++)
+        op(i, $CALL$);
+@ELIF(IDX)
+    const int _maxCells = maxCells;
+    for (int idx=0; idx < _maxCells; idx++)
+        op(idx, $CALL$);
+@ELIF(IJK)
+    const int _maxX = maxX; 
+    const int _maxY = maxY;
+    for (int k=minZ; k< maxZ; k++)
+    for (int j=$BND$; j< _maxY; j++)
+    for (int i=$BND$; i< _maxX; i++)
+        op(i,j,k, $CALL$);
+@END
+}
+);
+
+const string TmpRunTBB = STR(
+void operator() (const tbb::blocked_range<size_t>& r) $CONST$ {
+@IF(IJK)
+    const int _maxX = maxX;
+    const int _maxY = maxY;
+    if (maxZ>1) {
+        for (int k=r.begin(); k!=(int)r.end(); k++)
+        for (int j=$BND$; j<_maxY; j++)
+        for (int i=$BND$; i<_maxX; i++)
+            op(i,j,k,$CALL$);
+    } else {
+        const int k=0;
+        for (int j=r.begin(); j!=(int)r.end(); j++)
+        for (int i=$BND$; i<_maxX; i++)
+            op(i,j,k,$CALL$);
+    }
+@ELSE
+    for (int idx=r.begin(); idx!=(int)r.end(); idx++)
+        op(idx, $CALL$)
+@END
+}
+void run() {
+@IF(PTS)
+    tbb::parallel_$METHOD (tbb::blocked_range<size_t>(0, size), *this);
+@ELIF(IDX)
+    tbb::parallel_$METHOD (tbb::blocked_range<size_t>(0, maxCells), *this);
+@ELIF(IJK)
+    if (maxZ>1)
+        tbb::parallel_$METHOD (tbb::blocked_range<size_t>(minZ, maxZ), *this);
+    else
+        tbb::parallel_$METHOD (tbb::blocked_range<size_t>($BND$, maxY), *this);
+@END
+}
+@IF(REDUCE)
+    @IF(PTS)
+        $KERNEL$ ($KERNEL$& o, tbb::split) : 
+            KernelParticleBase(o.size) $COPY$ {}
+    @ELSE
+        $KERNEL$ ($KERNEL$& o, tbb::split) : 
+            KernelBase(o.maxX, o.maxY, o.maxZ, o.maxCells, o.minZ, o.X, o.Y, o.Z) $COPY$ {}
+    @END
+    void join(const $KERNEL$ & o) {
+        $JOINER$
+    }
+);
+
+const string TmpRunOMP = STR(
+void run() {
+@IF(PTS)
+    const int _sz = size;
+    $PRAGMA$ omp parallel $NL$
+    { 
+        $OMP_DIRECTIVE$ 
+        for (int i=0; i < _sz; i++)
+            op(i,$CALL$);
+        $OMP_POST$
+    }         
+@ELIF(IDX)
+    const int _sz = maxCells;
+    $PRAGMA$ omp parallel $NL$
+    { 
+        $OMP_DIRECTIVE$ 
+        for (int i=0; i < _sz; i++)
+            op(i,$CALL$);
+        $OMP_POST$
+    }         
+@ELIF(IJK)
+    const int _maxX = maxX; 
+    const int _maxY = maxY;
+    if (maxZ > 1) {
+        $PRAGMA$ omp parallel $NL$
+        {
+            $OMP_DIRECTIVE$
+            for (int k=minZ; k < maxZ; k++)
+            for (int j=$BND$; j < _maxY; j++)
+            for (int i=$BND$; i < _maxX; i++)
+               op(i,j,k,$CALL$);
+           $OMP_POST$
+        }
+    } else {
+        const int k=0;
+        $PRAGMA$ omp parallel $NL$
+        {
+            $OMP_DIRECTIVE$
+            for (int j=$BND$; j < _maxY; j++)
+            for (int i=$BND$; i < _maxX; i++)
+                op(i,j,k,$CALL$);
+            $OMP_POST$
+        }
+    }
+}
+);
+
+const string TmpOMPDirective = STR (
+this->threadId = omp_get_thread_num(); 
+this->threadNum = omp_get_num_threads();
+@IF(REDUCE)
+    $OMP_PRE$
+    $PRAGMA$ omp for nowait $NL$
+@ELSE
+    $PRAGMA$ omp for $NL$
+@END
+);
+
+
+#define kernelAssert(x,msg) if(!(x)){errMsg(block.line0,string("KERNEL: ") + msg);}
+
+void processKernel(const Block& block, const string& code, Sink& sink) {
+    const Function& kernel = block.func;
     
     if (gDocMode) {
-        string ds = "//! \\ingroup Kernels\nKERNEL<";
-        for(size_t i=0; i<opts.size(); i++) { if (i!=0) ds+=", "; ds+=opts[i].minimalText; }
-        ds += "> " + kernelName + " (";
-        for(size_t i=0; i<args.size(); i++) { if (i!=0) ds+=", "; ds+=args[i].minimalText;}
-        return ds + " ) {}\n";
+        sink.inplace << "//! \\ingroup Kernels\n" << block.func.minimal << "{}\n";
+        return;
     }
-    
+
     // process options
     bool idxMode = false, reduce = false, pts = false;
     string bnd = "0", reduceOp="";
-	MType mtType = gMTType;
-    for (size_t i=0; i<opts.size(); i++) {
-        if (opts[i].name == "ijk") 
+
+    MType mtType = gMTType;
+    for (size_t i=0; i<block.options.size(); i++) {
+        const string& opt = block.options[i].name;
+        if (opt == "ijk") 
             idxMode = false;
-        else if (opts[i].name == "index" || opts[i].name == "idx")
+        else if (opt == "index" || opt == "idx")
             idxMode = true;
-        else if (opts[i].name == "st" || opts[i].name == "single")
+        else if (opt == "st" || opt == "single")
             mtType = MTNone;
-        else if (opts[i].name == "pts" || opts[i].name == "particle" || opts[i].name == "points")
+        else if (opt == "pts" || opt == "particle" || opt == "points")
             pts = true;
-        else if (opts[i].name == "bnd")
-            bnd = opts[i].value;
-        else if (opts[i].name == "bnd")
-            bnd = opts[i].value;
-        else if (opts[i].name == "reduce") {
+        else if (opt == "bnd")
+            bnd = block.options[i].value;
+        else if (opt == "reduce") {
             reduce = true;
-            reduceOp = opts[i].value;
-            kernelAssert(reduceOp == "+" || reduceOp == "-" || reduceOp == "*" || reduceOp == "/" || reduceOp == "min" || reduceOp == "max",
-                   "invalid 'reduce' operator. Expected reduce= +|-|*|/|min|max");
+            reduceOp = block.options[i].value;
+            if (!(reduceOp == "+" || reduceOp == "-" || reduceOp == "*" ||
+                  reduceOp == "/" || reduceOp == "min" || reduceOp == "max"))
+                errMsg(block.line0, "invalid 'reduce' operator. Expected reduce= +|-|*|/|min|max");
         } else
-            errMsg(line, "KERNEL(opt): illegal kernel option '"+ opts[i].name +"' Supported options are: 'ijk', 'idx', 'bnd=x', 'reduce', 'st', 'pts'");
+            errMsg(block.line0, "illegal kernel option '"+ opt +
+                                "' Supported options are: 'ijk', 'idx', 'bnd=x', 'reduce=x', 'st', 'pts'");
     }
-    string qualifier = (!reduce && mtType==MTTBB) ? "const" : "";
-    string tbbcall = reduce ? "tbb::parallel_reduce" : "tbb::parallel_for";
-    const bool haveOuter = !reduce && !returnArg.empty() && mtType == MTTBB;
-    
-	// point out illegal paramter combinations
-    if (bnd != "0" && idxMode)
-        errMsg(line, "KERNEL(opt): can't combine index mode with bounds iteration.");    
-    if (pts && (idxMode || bnd != "0" ))
-        errMsg(line, "KERNEL(opt): Modes 'ijk', 'idx' and 'bnd' can't be applied to particle kernels.");
+
+    // point out illegal paramter combinations
+    kernelAssert (bnd == "0" || !idxMode, "can't combine index mode with bounds iteration.");    
+    kernelAssert (!pts || (!idxMode && bnd == "0" ), 
+        "KERNEL(opt): Modes 'ijk', 'idx' and 'bnd' can't be applied to particle kernels.");
 
     // check type consistency of first 'returns' with return type
-    if (!returnArg.empty() && retType.name != "void") {
+    /*if (!returnArg.empty() && retType.name != "void") {
         kernelAssert(returnArg.size() == 1, "multiple returns statement only work for 'void' kernels");
         const Type& rt = returnArg[0].type;
         kernelAssert(rt == retType, "return type does not match type in first 'returns' statement");
     }
     if (retType.name != "void" && returnArg.empty())
         errMsg(line, "return argument specified without matching 'returns' initializer");
-    
+    */
+
+    // figure out basegrid
+    string baseGrid;
+    for (int i=0; i<kernel.arguments.size(); i++) {
+        const string& type = kernel.arguments[i].type.name;
+        
+        if (type.find("Grid") != string::npos || pts) { 
+            baseGrid = kernel.arguments[i].name;
+            break;
+        }
+    }
+    kernelAssert(!baseGrid.empty(), ": use at least one grid to call the kernel.");
+
+    // build loaders
+    stringstream init, copy, members;
+    for (int i=0; i<kernel.arguments.size(); i++) {
+        const string& type = kernel.arguments[i].type.minimal;
+        const string& name = kernel.arguments[i].name;
+        init << ",_" << name << '(' << name << ')';
+        copy << ",_" << name << "(o._" << name << ')';
+        members << type << " _" << name << "; ";
+    }
+
+    // build reduce joiners
+    stringstream joiner, preReduce, postReduce;
+    for (int i=0; i<block.reduceArgs.size(); i++) {
+        const string& name = block.reduceArgs[i].name;
+        const string& type = block.reduceArgs[i].type.minimal;
+        preReduce << type << " _L_" << name << " = " << block.reduceArgs[i].value << ";";
+
+        if (reduceOp == "min" || reduceOp == "max") {
+            joiner << name << " = " << reduceOp << "(" << name << ",o." << name << "); ";
+            postReduce << name << " = " << reduceOp << "(" << name << ",_L_" << name << "); ";
+        } else {
+            joiner << name << " " << reduceOp << "= o." << name << "; ";
+            postReduce << name << " " << reduceOp << "= _L_" << name << "; ";
+        }         
+    }
+
+    const string table[] = { "IDX", idxMode ? "Y":"",
+                             "PTS", pts ? "Y":"",
+                             "IJK", (!pts && !idxMode) ? "Y":"",
+                             "REDUCE", reduce ? "Y":"",
+                             "KERNEL", kernel.name,
+                             "ARGS", kernel.arguments.listText,
+                             "BASE", baseGrid,
+                             "INIT", init.str(),
+                             "COPY", copy.str(),
+                             "MEMBERS", members.str(),
+                             "CONST", reduce ? "CONST" : "",
+                             "CODE", code,
+                             "BND", bnd,
+                             "CALL", kernel.callString("_"),
+                             "METHOD", reduce ? "reduce" : "for",
+                             "PRAGMA", "\n#pragma",
+                             "NL", "\n",
+                             "JOINER", joiner.str(),
+                             "OMP_PRE", preReduce.str(),
+                             "OMP_POST", reduce ? "\n#pragma omp critical\n{"+postReduce.str()+"}":"",
+                             "@end" };
+
+    // generate inner call templates
+    string inner;
+    if (mtType == MTTBB) {
+        inner = replaceSet(TmpRunTBB, table);
+    }
+    else if (mtType == MTOpenMP) {
+        string templ = TmpRunOMP;
+        replaceAll(templ, "$OMP_DIRECTIVE$", TmpOMPDirective);
+        inner = replaceSet(templ, table);
+    } 
+    else {
+        inner = replaceSet(TmpRunSimple, table);
+    }
+
+    // generate full block
+    string outer = replaceSet(pts ? TmpKernelPts : TmpKernelGrid, table);
+    replaceAll(outer, "$RUN$", inner);
+
+    // synthesize code
+    sink.inplace << block.linebreaks();
+    if (!kernel.templateTypes.empty())
+        sink.inplace << "template " << kernel.templateTypes.minimal << " ";
+    sink.inplace << outer;
+}
+/*
+void bla() {
     // parse arguments
     string initList = "", argList = "", copier = "", members = "", basegrid="", baseobj="", callList = "", orgArgList="", mCallList, outerCopier="", lineAcc="";
     for (size_t i=0; i<args.size(); i++) {
@@ -417,4 +649,4 @@ string processKernel(const Block& block, const string& code) {
 	//debMsg( line, "Kernel summary '"<< kernelName <<"'. Basegrid: "<< basegrid <<", baseobj: "<<baseobj<<", mt: "<< mtType );
    
 	return block.linebreaks() + kclass + callerClass;
-}
+}*/

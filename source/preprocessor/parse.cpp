@@ -50,25 +50,25 @@ string Text::linebreaks() const {
     return s;
 }
 
-template<class T> inline string enlist(const List<T>& list) {
+template<class T> inline string enlist(const List<T>& list, const string& prefix) {
     stringstream s;
     for (int i=0; i<list.size(); i++) {
-        s << list[i].name;
+        s << prefix << list[i].name;
         if (i != list.size()-1) s << ',';
     }
     return s.str();
 }
 
-string Function::callString() const {
-    return enlist(arguments);
+string Function::callString(const string& prefix) const {
+    return enlist(arguments,prefix);
 }
 
 string Class::tplString() const {
-    return enlist(templateTypes);
+    return enlist(templateTypes,"");
 }
 
 string Type::tplString() const {
-   return enlist(templateTypes);
+   return enlist(templateTypes,"");
 }
 
 //*************************************************************
@@ -317,7 +317,7 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
         tkAssert(tk.curType() == TkCodeBlock && tk.isLast(), 
             "Malformed KERNEL, expected KERNEL(opts...) ret_type name(args...) { code }");
 
-        sink.inplace << processKernel(block, tk.cur().text);
+        processKernel(block, tk.cur().text, sink);
     }
     else if (kw == "PYTHON")
     {

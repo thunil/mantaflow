@@ -22,7 +22,7 @@
 #include <stdio.h>
 //#include <stdlib.h>
 #include <string>
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include "general.h"
 

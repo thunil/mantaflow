@@ -24,118 +24,116 @@ using namespace std;
 // Templates for code generation
 
 const string TmpFunction = STR(
-static PyObject* _P_$FUNCNAME (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+static PyObject* _P_$FUNCNAME$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
     try {
         PbArgs _args(_linargs, _kwds);
         FluidSolver *parent = _args.obtainParent();
-        pbPreparePlugin(parent, "$FUNCNAME" );
+        pbPreparePlugin(parent, "$FUNCNAME$" );
         PyObject *_retval = 0;
         { 
             ArgLocker _lock;
-            $ARGLOADER
-            @IF($RET_VOID)
+            $ARGLOADER$
+            @IF(RET_VOID)
                 _retval = getPyNone();
-                $FUNCNAME($CALLSTRING);
+                $FUNCNAME$($CALLSTRING$);
             @ELSE
-                _retval = toPy($FUNCNAME($CALLSTRING));
+                _retval = toPy($FUNCNAME$($CALLSTRING$));
             @END
             _args.check();
         }
-        pbFinalizePlugin(parent,"$FUNCNAME" );
+        pbFinalizePlugin(parent,"$FUNCNAME$" );
         return _retval;
     } catch(std::exception& e) {
-        pbSetError("$FUNCNAME",e.what());
+        pbSetError("$FUNCNAME$",e.what());
         return 0;
     }
 }
-static const PbRegister _RP_$FUNCNAME ("","$FUNCNAME",_P_$FUNCNAME);
+static const Pb::Register _RP_$FUNCNAME$ ("","$FUNCNAME$",_P_$FUNCNAME$);
 );
 
 const string TmpMemberFunction = STR(
-static PyObject* _$FUNCNAME (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+static PyObject* _$FUNCNAME$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
     try {
         PbArgs _args(_linargs, _kwds);
-        $CLASS* pbo = dynamic_cast<$CLASS*>(PbClass::fromPyObject(_self));
-        pbPreparePlugin(pbo->getParent(), "$CLASS::$FUNCNAME");
+        $CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(_self));
+        pbPreparePlugin(pbo->getParent(), "$CLASS$::$FUNCNAME$");
         PyObject *_retval = 0;
         { 
             ArgLocker _lock;
-            $ARGLOADER
+            $ARGLOADER$
             pbo->_args.copy(_args);
-            @IF($RET_VOID)
+            @IF(RET_VOID)
                 _retval = getPyNone();
-                pbo->$FUNCNAME($CALLSTRING);
+                pbo->$FUNCNAME$($CALLSTRING$);
             @ELSE
-                _retval = toPy(pbo->$FUNCNAME($CALLSTRING));
+                _retval = toPy(pbo->$FUNCNAME$($CALLSTRING$));
             @END
             _args.check();
         }
-        pbFinalizePlugin(pbo->getParent(),"$CLASS::$FUNCNAME");
+        pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$");
         return _retval;
     } catch(std::exception& e) {
-        pbSetError("$CLASS::$FUNCNAME",e.what());
+        pbSetError("$CLASS$::$FUNCNAME$",e.what());
         return 0;
     }
 });
 
 const string TmpConstructor = STR(
-static int _$CLASS (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
-    PbClass* obj = PbClass::fromPyObject(_self); 
+static int _$CLASS$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+    PbClass* obj = Pb::objFromPy(_self); 
     if (obj) delete obj; 
     try {
         PbArgs _args(_linargs, _kwds);
-        pbPreparePlugin(0, "$CLASS::$FUNCNAME" );
+        pbPreparePlugin(0, "$CLASS$::$FUNCNAME$" );
         { 
             ArgLocker _lock;
-            $ARGLOADER
-            obj = new $CLASS($CALLSTRING);
-            std::string _name = _args.getOpt<std::string>("name",""); 
-            obj->setPyObject(_self); 
-            if (!_name.empty()) obj->setName(_name); 
+            $ARGLOADER$
+            obj = new $CLASS$($CALLSTRING$);
+            obj->registerObject(_self, &_args); 
             _args.check();
         }
-        pbFinalizePlugin(obj->getParent(),"$CLASS::$FUNCNAME" );
+        pbFinalizePlugin(obj->getParent(),"$CLASS$::$FUNCNAME$" );
         return 0;
     } catch(std::exception& e) {
-        pbSetError("$CLASS::$FUNCNAME",e.what());
+        pbSetError("$CLASS$::$FUNCNAME$",e.what());
         return -1;
     }
 });
 
 const string TmpGetSet = STR(
-static PyObject* _GET_$NAME(PyObject* self, void* cl) {
-    $CLASS* pbo = dynamic_cast<$CLASS*>(PbClass::fromPyObject(self));
-    return toPy(pbo->$NAME);
+static PyObject* _GET_$NAME$(PyObject* self, void* cl) {
+    $CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(self));
+    return toPy(pbo->$NAME$);
 }
-static int _SET_$NAME(PyObject* self, PyObject* val, void* cl) {
-    $CLASS* pbo = dynamic_cast<$CLASS*>(PbClass::fromPyObject(self));
-    pbo->$NAME = fromPy<Real >(val); 
+static int _SET_$NAME$(PyObject* self, PyObject* val, void* cl) {
+    $CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(self));
+    pbo->$NAME$ = fromPy<Real >(val); 
     return 0;
 });
 
 const string TmpRegisterMethod = STR(
-@IF($CTPL)
-    static const PbRegister _R_$IDX ("$CLASS<$CT>","$FUNCNAME",$CLASS<$CT>::_$FUNCNAME);
+@IF(CTPL)
+    static const Pb::Register _R_$IDX$ ("$CLASS$<$CT$>","$FUNCNAME$",$CLASS$<$CT$>::_$FUNCNAME$);
 @ELSE
-    static const PbRegister _R_$IDX ("$CLASS","$FUNCNAME",$CLASS::_$FUNCNAME);
+    static const Pb::Register _R_$IDX$ ("$CLASS$","$FUNCNAME$",$CLASS$::_$FUNCNAME$);
 @END
 );
 
 const string TmpRegisterGetSet = STR(
-@IF($CTPL)
-    static const PbRegister _R_$IDX ("$CLASS<$CT>$","$PYNAME",$CLASS<$CT>::_GET_$NAME,$CLASS<$CT>::_SET_$NAME);
+@IF(CTPL)
+    static const Pb::Register _R_$IDX$ ("$CLASS$<$CT$>$","$PYNAME$",$CLASS$<$CT$>::_GET_$NAME$,$CLASS$<$CT$>::_SET_$NAME$);
 @ELSE
-    static const PbRegister _R_$IDX ("$CLASS","$PYNAME",$CLASS::_GET_$NAME,$CLASS::_SET_$NAME);
+    static const Pb::Register _R_$IDX$ ("$CLASS$","$PYNAME$",$CLASS$::_GET_$NAME$,$CLASS$::_SET_$NAME$);
 @END
 );
 
 const string TmpRegisterClass = STR(
 @IF(CTPL)
-    static const PbRegister _R_$IDX ("$CLASS<$CT>","$PYNAME<$CT>","$BASE$BTPL");
-    template<> const char* $CLASS<$CT>::_class = "$CLASS<$CT>";
+    static const Pb::Register _R_$IDX$ ("$CLASS$<$CT$>","$PYNAME$<$CT$>","$BASE$$BTPL$");
+    template<> const char* Namify<$CLASS$<$CT$> >::S = "$CLASS$<$CT$>";
 @ELSE
-    static const PbRegister _R_$IDX ("$CLASS","$PYNAME","$BASE$BTPL");
-    const char* $CLASS::_class = "$CLASS";
+    static const Pb::Register _R_$IDX$ ("$CLASS$","$PYNAME$","$BASE$$BTPL$");
+    template<> const char* Namify<$CLASS$ >::S = "$CLASS$";
 @END
 );
 
@@ -207,7 +205,7 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink) {
     const string table[] = { "FUNCNAME", func.name, 
                              "ARGLOADER", loader, 
                              "CLASS", isPlugin ? "" : block.parent->name,
-                             "CTPL", (isPlugin || !block.parent->isTemplated()) ? "" : "$CT",
+                             "CTPL", (isPlugin || !block.parent->isTemplated()) ? "" : "$CT$",
                              "CALLSTRING", func.callString(),
                              "RET_VOID", (func.returnType.name=="void") ? "Y" : "",
                              "@end" };
@@ -239,7 +237,7 @@ void processPythonVariable(const Block& block, Sink& sink) {
     // generate glue layer function
     const string table[] = { "NAME", var.name, 
                              "CLASS", block.parent->name,
-                             "CTPL", !block.parent->isTemplated() ? "" : "$CT",
+                             "CTPL", !block.parent->isTemplated() ? "" : "$CT$",
                              "PYNAME", pythonName,
                              "@end" };
 
@@ -275,7 +273,7 @@ void processPythonClass(const Block& block, const string& code, Sink& sink) {
     // register class
     const string table[] = { "CLASS", cls.name,
                              "BASE", cls.baseClass.name,
-                             "BTPL", cls.baseClass.isTemplated() ? "<$BT>" : "",
+                             "BTPL", cls.baseClass.isTemplated() ? "<$BT$>" : "",
                              "PYNAME", pythonName,
                              "CTPL", cls.isTemplated() ? "CT" : "",
                              "@end" };
@@ -294,16 +292,21 @@ void processPythonClass(const Block& block, const string& code, Sink& sink) {
     // write signature
     sink.inplace << block.linebreaks() << cls.minimal << "{";
 
+    // remove first {, and steal two linebreaks so we can add a #define later
+    string ncode = code.substr(1);
+    stealLinebreaks(ncode, 2);
+    
     // scan code for member functions
     gFoundConstructor = false;
-    processText(code.substr(1), block.line0, sink, &cls);
+    processText(ncode.substr(1), block.line0, sink, &cls);
     if (!gFoundConstructor)
         errMsg(block.line0, "no PYTHON constructor found in class '" + cls.name + "'");
     
     // add secret bonus members to class and close
     sink.inplace << "public: PbArgs _args;";
-    sink.inplace << "static const char* _class;";
-    sink.inplace << "}";
+    sink.inplace << "}\n";
+    // add a define to make commenting out classes, and #ifdefs work correctly
+    sink.inplace << "#define _C_" << cls.name << '\n';
 }
 
 void processPythonInstantiation(const Block& block, const Type& aliasType, const string& aliasName, Sink& sink) {

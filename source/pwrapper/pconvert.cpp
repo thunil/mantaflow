@@ -15,7 +15,7 @@
 #include <sstream>
 #include <algorithm>
 #include "vectorbase.h"
-#include "pclass.h"
+#include "manta.h"
  
 using namespace std;
 
@@ -234,7 +234,7 @@ FluidSolver* PbArgs::obtainParent() {
 	// allow/disallow multiple solver parents...
 
     for(map<string, DataElement>::iterator it = mData.begin(); it != mData.end(); it++) {
-        PbClass* obj = PbClass::fromPyObject(it->second.obj);
+        PbClass* obj = Pb::objFromPy(it->second.obj);
 
         if (obj) {
             if (solver == NULL) 
@@ -244,7 +244,7 @@ FluidSolver* PbArgs::obtainParent() {
         }
     }
     for(vector<DataElement>::iterator it = mLinData.begin(); it != mLinData.end(); it++) {
-        PbClass* obj = PbClass::fromPyObject(it->obj);
+        PbClass* obj = Pb::objFromPy(it->obj);
         
         if (obj) {
             if (solver == NULL) 
@@ -268,7 +268,7 @@ PyObject* PbArgs::getItem(const std::string& key, bool strict, ArgLocker* lk) {
         return NULL;
     }
     lu->second.visited = true;
-    PbClass* pbo = PbClass::fromPyObject(lu->second.obj);
+    PbClass* pbo = Pb::objFromPy(lu->second.obj);
     // try to lock
     if (pbo && lk) lk->add(pbo);        
     return lu->second.obj;
@@ -283,7 +283,7 @@ PyObject* PbArgs::getItem(size_t number, bool strict, ArgLocker* lk) {
         errMsg(s.str());
     }
     mLinData[number].visited = true;
-    PbClass* pbo = PbClass::fromPyObject(mLinData[number].obj);
+    PbClass* pbo = Pb::objFromPy(mLinData[number].obj);
     // try to lock
     if (pbo && lk) lk->add(pbo);    
     return mLinData[number].obj;
