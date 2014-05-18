@@ -286,8 +286,8 @@ void processPythonClass(const Block& block, const string& code, Sink& sink) {
         sink.link << '>' << cls.name << "^\n";
     // chain the baseclass instantiation
     if (cls.baseClass.isTemplated())
-        sink.link << '@' << cls.name << '^' << cls.tplString() << '^' 
-                  << cls.baseClass.name << '^' << cls.baseClass.tplString() << '\n';
+        sink.link << '@' << cls.name << '^' << cls.templateTypes.names() << '^' 
+                  << cls.baseClass.name << '^' << cls.baseClass.templateTypes.names() << '\n';
 
     // write signature
     sink.inplace << block.linebreaks() << cls.minimal << "{";

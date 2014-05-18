@@ -105,6 +105,7 @@ MESSAGE(STATUS "")
 # compile prep
 SET(SOURCES 
     source/preprocessor/main.cpp
+    source/preprocessor/code.cpp
     source/preprocessor/tokenize.cpp
     source/preprocessor/parse.cpp
     source/preprocessor/util.cpp

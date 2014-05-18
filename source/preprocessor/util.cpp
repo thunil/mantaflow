@@ -62,8 +62,8 @@ void writeFile(const string& name, const string& text) {
     ofs.close();
 }
 
-Sink::Sink(const string& outfile):
-    filename(outfile)
+Sink::Sink(const string& infile, const string& outfile):
+    infile(infile), filename(outfile)
 {
     isHeader = outfile.compare(outfile.size()-3, 3, ".py") == 0 ||
                outfile.compare(outfile.size()-2, 2, ".h") == 0;

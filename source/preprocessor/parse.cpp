@@ -21,57 +21,6 @@ using namespace std;
 List<Type> parseTypeList(TokenPointer& parentPtr);
 
 //*************************************************************
-// Helpers
-
-bool Type::operator==(const Type& a) const {
-    if (a.templateTypes.size() != templateTypes.size()) return false;
-    for (size_t i=0; i<templateTypes.size(); i++)
-        if (templateTypes[i].name != a.templateTypes[i].name) return false;
-    return a.name==name && a.isConst==isConst && a.isRef==isRef && a.isPointer==isPointer;
-}
-
-string Type::build() const {
-    string s="";
-    if (isConst) s+= "const ";
-    s += name;
-    if (!templateTypes.empty())
-        s+= templateTypes.minimal;
-    if (isRef) s+= "&";
-    if (isPointer) s+= "*";            
-    return s;
-}
-
-string Text::linebreaks() const {
-    int num = count(original.begin(), original.end(), '\n') - 
-        count(minimal.begin(),minimal.end(), '\n');
-    string s="";
-    for (int i=0; i< num; i++)
-        s += '\n';
-    return s;
-}
-
-template<class T> inline string enlist(const List<T>& list, const string& prefix) {
-    stringstream s;
-    for (int i=0; i<list.size(); i++) {
-        s << prefix << list[i].name;
-        if (i != list.size()-1) s << ',';
-    }
-    return s.str();
-}
-
-string Function::callString(const string& prefix) const {
-    return enlist(arguments,prefix);
-}
-
-string Class::tplString() const {
-    return enlist(templateTypes,"");
-}
-
-string Type::tplString() const {
-   return enlist(templateTypes,"");
-}
-
-//*************************************************************
 // parsers
 
 #define tkAssert(x,msg) {if(!(x)){tk.errorMsg(msg);}}
@@ -305,7 +254,7 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
             tk.next();
             tkAssert(tk.curType() == TkBracketL, "expext opening bracket");
             tk.next();
-            block.reduceArgs.push_back(parseArgument(tk, true, true));
+            block.locals.push_back(parseArgument(tk, true, true));
             tkAssert(tk.curType() == TkBracketR, "expect closing bracket");
             tk.next();            
         }
@@ -317,6 +266,7 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
         tkAssert(tk.curType() == TkCodeBlock && tk.isLast(), 
             "Malformed KERNEL, expected KERNEL(opts...) ret_type name(args...) { code }");
 
+        block.line1 = tk.cur().line;
         processKernel(block, tk.cur().text, sink);
     }
     else if (kw == "PYTHON")

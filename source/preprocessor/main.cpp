@@ -69,7 +69,7 @@ void doGenerate(int argc, char* argv[], bool docs) {
     // pad text for easier lexing lookups
     text += "\n\n\n";
     
-    Sink sink(outfile);
+    Sink sink(infile,outfile);
     if (gDocMode) {
         sink.inplace << "/*! \\file " + infile + " */\n";
     } else {
