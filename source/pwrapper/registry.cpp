@@ -48,7 +48,7 @@ struct GetSet {
 };
 
 struct ClassData {
-    string pythonName, cName;
+    string cName, pyName;
     InitFunc init;
     PyTypeObject typeInfo;
     //PySequenceMethods seqInfo;
@@ -81,7 +81,6 @@ public:
     void addExternalInitializer(InitFunc func);
     void addMethod(const std::string& classname, const std::string& methodname, GenericFunction method);
     void addConstructor(const std::string& classname, Constructor method);
-    void addAlias(const std::string& classname, const std::string& alias);
     void addGetSet(const std::string& classname, const std::string& property, Getter getfunc, Setter setfunc);
     void addPythonPath(const std::string& path);
     void addPythonCode(const std::string& file, const std::string& code);
@@ -96,6 +95,7 @@ public:
 private:
     ClassData* getOrConstructClass(const string& name);
     void registerBaseclasses();
+    void registerAliases();
     void addParentMethods(ClassData* cls, ClassData* base);
     WrapperRegistry();
     std::map<std::string, ClassData*> mClasses;
@@ -157,10 +157,29 @@ ClassData* WrapperRegistry::getOrConstructClass(const string& classname) {
     return data;
 }
 
-void WrapperRegistry::addClass(const string& pythonName, const string& internalName, const string& baseclass) {
+void replaceAll(string& source, string const& find, string const& replace) {
+    for(string::size_type i = 0; (i = source.find(find, i)) != std::string::npos;)
+    {
+        source.replace(i, find.length(), replace);
+        i += replace.length() - find.length() + 1;
+    }
+}
+
+void WrapperRegistry::addClass(const string& pyName, const string& internalName, const string& baseclass) {
     ClassData* data = getOrConstructClass(internalName);
-    data->pythonName = pythonName;
-    data->baseclassName = baseclass;    
+    
+    // regularize python name
+    string pythonName = pyName;
+    replaceAll(pythonName, "<", "_");
+    replaceAll(pythonName, ">", "");
+    replaceAll(pythonName, ",", "_");
+    //cout << pythonName << endl;
+    
+    if (data->pyName.empty()) 
+        data->pyName = pythonName;
+    mClasses[pythonName] = data;
+    if (!baseclass.empty())
+        data->baseclassName = baseclass;    
 }
 
 void WrapperRegistry::addExternalInitializer(InitFunc func) {
@@ -184,10 +203,6 @@ void WrapperRegistry::addGetSet(const string& classname, const string& property,
     }
     if (getfunc) def.getter = getfunc;
     if (setfunc) def.setter = setfunc;
-}
-
-void WrapperRegistry::addAlias(const string& classname, const string& alias) {
-    mClasses[alias] = getOrConstructClass(classname);
 }
 
 void WrapperRegistry::addMethod(const string& classname, const string& methodname, GenericFunction func) {
@@ -233,12 +248,17 @@ void WrapperRegistry::registerBaseclasses() {
     }
 }
 
+void WrapperRegistry::registerAliases() {
+    for (map<string, ClassData*>::iterator it = mClasses.begin(); it != mClasses.end(); ++it) {
+        if (it->first != it->second->pyName && it->first.find('<') == string::npos) {
+            mCode += it->first + " = " + it->second->pyName + "\n";
+        }
+    }
+}
+
 ClassData* WrapperRegistry::lookup(const string& name) {
-    if (mClasses.find(name) != mClasses.end())
-        return mClasses[name];
-    
     for(map<string, ClassData*>::iterator it = mClasses.begin(); it != mClasses.end(); ++it) {
-        if (it->second->pythonName == name)
+        if (it->first == name || it->second->cName == name)
             return it->second;
     }
     return NULL;    
@@ -311,8 +331,10 @@ void WrapperRegistry::runPreInit(const vector<string>& args) {
     cfl+="SCENEFILE='"+mScriptName+"'\n";
     PyRun_SimpleString(cfl.c_str());
     
-    if (!mCode.empty())
+    if (!mCode.empty()) {
+        mCode = "from manta import *\n" + mCode;
         PyRun_SimpleString(mCode.c_str());
+    }
 }
 
 PyObject* WrapperRegistry::createPyObject(const string& classname, const string& name, Manta::PbArgs& args, Manta::PbClass *parent) {
@@ -350,6 +372,7 @@ void WrapperRegistry::construct(const string& scriptname) {
     mScriptName = scriptname;
 
     registerBaseclasses();
+    registerAliases();
     
     // load main extension module
     PyImport_AppendInittab(gDefaultModuleName.c_str(), PyInit_Main);
@@ -401,7 +424,7 @@ PyObject* WrapperRegistry::initModule() {
         // define python classinfo
         PyTypeObject t = {
             PyVarObject_HEAD_INIT(NULL, 0)
-            (char*)data.pythonName.c_str(),// tp_name 
+            (char*)data.pyName.c_str(),// tp_name 
             sizeof(PbObject),          // tp_basicsize 
             0,                         // tp_itemsize 
             (destructor)cbDealloc,     // tp_dealloc 
@@ -446,7 +469,7 @@ PyObject* WrapperRegistry::initModule() {
             continue;
     
         Py_INCREF(&data.typeInfo);
-        PyModule_AddObject(module, (char*)data.pythonName.c_str(), (PyObject*) &data.typeInfo);
+        PyModule_AddObject(module, (char*)data.pyName.c_str(), (PyObject*) &data.typeInfo);
     }
     
     // externals

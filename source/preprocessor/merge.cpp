@@ -31,12 +31,12 @@ struct Request {
 };
 
 struct RegFile {
-    RegFile(const string& name) : filename(name),active(false) {}
+    RegFile(const string& name) : filename(name),idx(0) {}
 
     string filename;
-    ostringstream out, header;
+    ostringstream out, header, footer;
     vector<Request> req;
-    bool active;
+    int idx;
 };
 
 struct ClassInfo {
@@ -96,7 +96,6 @@ void resolveRequests(RegFile& file) {
     }
 
     // process requests
-    int idx = 0;
     for(map<string,vector<Request*> >::iterator it = sortedReqs.begin(); it != sortedReqs.end(); ++it) {
         ClassInfo& info = classes[it->first];
         file.out << "#ifdef _C_" << it->first << '\n';
@@ -104,14 +103,12 @@ void resolveRequests(RegFile& file) {
             Request& req = *(it->second[i]);
             for (int j=0; j<info.snippets.size(); j++) {
                 stringstream idxStr;
-                idxStr << idx;
+                idxStr << file.idx++;
                 const string table[] = {"CT", req.tpl, "BT", req.base, "IDX", idxStr.str(), "@end"};
                 file.out << replaceSet(info.snippets[j], table) << '\n';
-                idx++;
             }
         }
         file.out << "#endif\n";
-        file.active = true;
     }
 }
 
@@ -130,9 +127,13 @@ void parseLine(const string& line, RegFile& file) {
         chains[cls] = Chain(parts[1],parts[2],parts[3]);
     else if (line[0] == '#')
         file.header << line << '\n';
-    else {
+    else if (line[0] == '&') {
+        string txt = line.substr(1);
+        stringstream num; num << file.idx++;
+        replaceAll(txt, "$IDX$", num.str());
+        file.footer << txt << '\n';
+    } else {
         file.out << line << '\n';
-        file.active = true;
     }
 }
 
@@ -155,13 +156,14 @@ void generateMerge(int num, char* files[]) {
         resolveRequests(*regFiles[i]);
 
         string text = "";
-        if (regFiles[i]->active) {
+        if (regFiles[i]->idx > 0) {
             text  = "\n\n\n\n\n// DO NOT EDIT !\n";
             text += "// This file is generated using the MantaFlow preprocessor (prep link).";
             text += "\n\n\n\n\n";
             text += regFiles[i]->header.str();
             text += "namespace Manta {\n";
             text += regFiles[i]->out.str();
+            text += regFiles[i]->footer.str();
             text += "}";
         }
         string filename = regFiles[i]->filename + ".cpp";

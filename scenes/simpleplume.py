@@ -2,6 +2,8 @@
 # Simple example scene (hello world)
 # Simulation of a buoyant smoke density plume
 
+#import pdb; pdb.set_trace()
+
 from manta import *
 
 # solver params

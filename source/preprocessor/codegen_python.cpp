@@ -137,6 +137,10 @@ const string TmpRegisterClass = STR(
 @END
 );
 
+const string TmpAlias = STR(
+static const Pb::Register _R_$IDX$ ("$CLASS$","$PYNAME$","");
+);
+
 //******************************************************
 // Code generation functions
 
@@ -313,6 +317,9 @@ void processPythonInstantiation(const Block& block, const Type& aliasType, const
     if (!sink.isHeader)
         errMsg(block.line0, "instantiate allowed in headers only");
 
+    const string table[] = {"CLASS", strip(aliasType.build()), "PYNAME", aliasName, "@end"};
     sink.link << '>' << aliasType.name << '^' << aliasType.templateTypes.listText << '\n';
-    sink.inplace << block.linebreaks();
+    if (!aliasName.empty())
+        sink.link << '&' << replaceSet(TmpAlias,table) << '\n';
+    sink.link << block.linebreaks();
 }

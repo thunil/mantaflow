@@ -90,6 +90,13 @@ vector<string> split(const string& text, char sep) {
     return bins;
 }
 
+string strip(const string& s0) {
+    string s = s0;
+    while (s[0] == ' ') s=s.substr(1);
+    while (s[s.size()-1] == ' ') s=s.substr(0,s.size()-1);
+    return s;
+}
+
 void replaceAll(string& source, string const& find, string const& replace)
 {
     for(string::size_type i = 0; (i = source.find(find, i)) != std::string::npos;)
