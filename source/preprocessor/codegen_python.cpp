@@ -202,7 +202,7 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink) {
 
     // generate variable loader
     string loader = "";
-    for (int i=0; i<func.arguments.size(); i++)
+    for (int i=0; i<(int)func.arguments.size(); i++)
         loader += generateLoader(func.arguments[i]);
 
     // generate glue layer function

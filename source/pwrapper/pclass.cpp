@@ -15,7 +15,6 @@
 #include "structmember.h"
 #include "manta.h"
 #include "general.h"
-#include "fluidSolver.h"
 
 using namespace std;
 namespace Manta {
@@ -64,11 +63,11 @@ void pbSetError(const string& fn, const string& ex) {
 vector<PbClass*> PbClass::mInstances;
 
 PbClass::PbClass(FluidSolver* parent, const string& name, PyObject* obj)
-    : mName(name), mPyObject(obj), mParent(parent), mHidden(false), mMutex()
+    : mMutex(), mParent(parent), mPyObject(obj), mName(name), mHidden(false)
 {
 }
 
-PbClass::PbClass(const PbClass& a) : mName("_unnamed"), mPyObject(0), mParent(a.mParent), mHidden(false), mMutex()
+PbClass::PbClass(const PbClass& a) : mMutex(), mParent(a.mParent), mPyObject(0), mName("_unnamed"), mHidden(false)
 {
 }
     

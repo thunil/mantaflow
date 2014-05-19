@@ -211,7 +211,7 @@ void WrapperRegistry::addMethod(const string& classname, const string& methodnam
         aclass = "__modclass__";
     
     ClassData* classdef = getOrConstructClass(aclass);
-    for(int i=0; i<classdef->methods.size(); i++)
+    for(int i=0; i<(int)classdef->methods.size(); i++)
         if (classdef->methods[i].name == methodname) return; // avoid duplicates
     classdef->methods.push_back(Method(methodname,methodname,func)); 
 }
@@ -234,7 +234,7 @@ void WrapperRegistry::addParentMethods(ClassData* cur, ClassData* base) {
 }
 
 void WrapperRegistry::registerBaseclasses() {
-    for (int i=0; i<mClassList.size(); i++) {
+    for (int i=0; i<(int)mClassList.size(); i++) {
         string bname = mClassList[i]->baseclassName;
         if(!bname.empty()) {
             mClassList[i]->baseclass = lookup(bname);
@@ -243,7 +243,7 @@ void WrapperRegistry::registerBaseclasses() {
         }
     }
 
-    for (int i=0; i<mClassList.size(); i++) {
+    for (int i=0; i<(int)mClassList.size(); i++) {
         addParentMethods(mClassList[i], mClassList[i]->baseclass);
     }
 }
@@ -378,11 +378,15 @@ void WrapperRegistry::construct(const string& scriptname) {
     PyImport_AppendInittab(gDefaultModuleName.c_str(), PyInit_Main);
 }
 
+inline PyObject* castPy(PyTypeObject* p) { 
+    return reinterpret_cast<PyObject*>(static_cast<void*>(p)); 
+}
+
 PyObject* WrapperRegistry::initModule() {
     // generate and terminate all method lists    
     PyMethodDef sentinelFunc = { NULL, NULL, 0, NULL };
     PyGetSetDef sentinelGetSet = { NULL, NULL, NULL, NULL, NULL };
-    for (int i=0; i<mClassList.size(); i++) {
+    for (int i=0; i<(int)mClassList.size(); i++) {
         ClassData* cls = mClassList[i];
         cls->genMethods.clear();
         cls->genGetSet.clear();
@@ -468,7 +472,7 @@ PyObject* WrapperRegistry::initModule() {
         if (PyType_Ready(&data.typeInfo) < 0)
             continue;
     
-        Py_INCREF(&data.typeInfo);
+        Py_INCREF(castPy(&data.typeInfo));
         PyModule_AddObject(module, (char*)data.pyName.c_str(), (PyObject*) &data.typeInfo);
     }
     

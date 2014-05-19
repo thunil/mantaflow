@@ -28,7 +28,7 @@ void TokenPointer::consumeWhitespace() {
     while (cur().type == TkWhitespace || cur().type == TkComment) {
         string minimal = (!txt->minimal.empty() && *(txt->minimal).rbegin() == ' ') ? "" : " ";
         forward(minimal,cur().text,1);
-        if (ptr >= queue.size())
+        if (ptr >= (int)queue.size())
             errMsg(-1, "Preprocessor ran out of tokens. This shouldn't happen.");
     }
 }

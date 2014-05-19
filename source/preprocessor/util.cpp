@@ -79,7 +79,7 @@ void Sink::write() {
 vector<string> split(const string& text, char sep) {
     vector<string> bins;
     string cur;
-    for (int i=0; i<text.size(); i++) {
+    for (int i=0; i<(int)text.size(); i++) {
         if (text[i]==sep) {
             bins.push_back(cur);
             cur = "";
@@ -110,7 +110,7 @@ void stealLinebreaks(string& code, int num) {
     // list all line breaks
     vector<int> lb;
     lb.push_back(-1);
-    for (int i=0; i<code.size(); i++)
+    for (int i=0; i<(int)code.size(); i++)
         if (code[i] == '\n')
             lb.push_back(i);
     lb.push_back(code.size());
@@ -134,10 +134,10 @@ void stealLinebreaks(string& code, int num) {
 static string getBracketArg(const string& a, int &pos) {
     string ret="";
     pos++;
-    for (;pos<a.size(); pos++) {
+    for (;pos<(int)a.size(); pos++) {
         if (a[pos]!='(' && a[pos]!=' ' && a[pos]!='$') break;
     }
-    for (; pos<a.size(); pos++) {
+    for (; pos<(int)a.size(); pos++) {
         if (a[pos]==')' || a[pos]=='$') return ret;
         ret += a[pos];
     }
@@ -162,7 +162,7 @@ string replaceSet(const string& templ, const string table[]) {
     conditionStack.push_back(true);
     stringstream s;
     int elifs = 0;
-    for (int i=0; i<templ.size(); i++) {
+    for (int i=0; i<(int)templ.size(); i++) {
         char c = templ[i];
         if (c=='@') {
             if (compareKW(templ,i,"IF")) {
@@ -187,7 +187,7 @@ string replaceSet(const string& templ, const string table[]) {
         }
         // check condition
         bool valid = true;
-        for (int k=0; k<conditionStack.size(); k++)
+        for (int k=0; k<(int)conditionStack.size(); k++)
             if (!conditionStack[k]) valid = false;
         if (!valid) continue;
 

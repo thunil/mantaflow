@@ -23,7 +23,7 @@ namespace Manta {
 CustomControl::CustomControl() : PbClass(0) {
 }
 
-CustomCheckbox::CustomCheckbox(string name, bool val) : mVal(val), mCheckbox(0), mSName(name) {
+CustomCheckbox::CustomCheckbox(string name, bool val) : mVal(val), mSName(name), mCheckbox(0) {
 }
 
 void CustomCheckbox::init(QBoxLayout* layout) {
@@ -63,7 +63,7 @@ void CustomSlider::set(float v) {
 }
 
 TextSlider::TextSlider(const string& name, float val, float vmin, float vmax) : 
-    QSlider(Qt::Horizontal), mSName(name.c_str()), mMin(vmin), mMax(vmax)
+    QSlider(Qt::Horizontal), mMin(vmin), mMax(vmax), mSName(name.c_str())
 {
     mLabel = new QLabel();
     mScale = 1000;
@@ -97,7 +97,7 @@ void TextSlider::set(float v) {
 }
 
 TextCheckbox::TextCheckbox(const string& name, bool val) : 
-    QCheckBox(), mSName(name.c_str()), mVal(val)
+    QCheckBox(), mVal(val), mSName(name.c_str())
 {
     mLabel = new QLabel();
     set(val);

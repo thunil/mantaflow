@@ -20,17 +20,17 @@ namespace Manta {
 class Mesh;
     
 struct VortexRing {
-    VortexRing() : circulation(0.),flag(0),isClosed(false) {}
-    VortexRing(Real c, bool closed=false) : circulation(c),flag(0),isClosed(closed) {}
+    VortexRing() : isClosed(false),circulation(0.),flag(0) {} 
+    VortexRing(Real c, bool closed=false) : isClosed(closed),circulation(c),flag(0) {} 
     void renumber(int* _renumber);
     inline int size() const { return indices.size(); }
     inline int idx(int i) const { return indices[(i+indices.size()) % indices.size()]; }
     inline int idx0(int i) const { return indices[i]; }
     inline int idx1(int i) const { return indices[ (i+1) % indices.size() ]; }
     
+    Real circulation;
     bool isClosed;
     int flag;
-    Real circulation;
     std::vector<int> indices;
 };
 

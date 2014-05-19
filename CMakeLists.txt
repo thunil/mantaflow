@@ -337,6 +337,7 @@ if (1)
 	foreach(it ${ZLIB_SRC})
         list(APPEND SILENT_SOURCES dependencies/zlib-1.2.8/${it})
     endforeach(it)
+      set_source_files_properties(${SILENT_SOURCES} PROPERTIES COMPILE_FLAGS "-Wno-implicit-function-declaration")	
 	list(APPEND INCLUDE_PATHS dependencies/zlib-1.2.8)
 else()
 	include(FindZLIB)
@@ -481,13 +482,13 @@ IF(NOT WIN32)
         add_definitions( -DDEBUG )
         add_definitions( -O0 -fno-inline )
         # additional c++ warning
-        SET(CMAKE_CXX_FLAGS_DEBUG " -ggdb  -Wall -Wno-reorder")
+        SET(CMAKE_CXX_FLAGS_DEBUG " -ggdb  -Wall")
         
         # stricter: no optimizations and inlining, comment out if needed...
         #SET(CMAKE_CXX_FLAGS_DEBUG " -O0 -fno-inline ${CMAKE_CXX_FLAGS_DEBUG}   ")              
     ELSE()
         # non-debug, optimized version
-        add_definitions( -O3 -Wall -Wno-reorder)
+        add_definitions( -O3 -Wall)
     ENDIF()
 ELSE()
     # get rid of some MSVC warnings

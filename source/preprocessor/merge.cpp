@@ -55,23 +55,23 @@ string mapArgs(const string& inst, const string& match, const string& target) {
     vector<string> taArg = split(target,',');
     vector<string> destArg = taArg;
     
-    for (int i=0; i<maArg.size(); i++) {
-        for (int j=0; j<taArg.size(); j++) {
+    for (int i=0; i<(int)maArg.size(); i++) {
+        for (int j=0; j<(int)taArg.size(); j++) {
             if (maArg[i] == taArg[j]) {
                 destArg[j] = inArg[i];
             }
         }
     }
     stringstream s;
-    for (int i=0; i<destArg.size(); i++) {
+    for (int i=0; i<(int)destArg.size(); i++) {
         s << destArg[i];
-        if (i != destArg.size()-1) s << ',';
+        if (i != (int)destArg.size()-1) s << ',';
     }
     return s.str();
 }
 
 void resolveChains(RegFile& file) {
-    for (int i=0; i<file.req.size(); i++) {
+    for (int i=0; i<(int)file.req.size(); i++) {
         Request& req = file.req[i];
         map<string, Chain>::iterator it = chains.find(req.cls);
         if (it != chains.end()) {
@@ -86,7 +86,7 @@ void resolveChains(RegFile& file) {
 void resolveRequests(RegFile& file) {
     // sort request by class
     map<string, vector<Request*> > sortedReqs;
-    for (int i=0; i<file.req.size(); i++) {
+    for (int i=0; i<(int)file.req.size(); i++) {
         Request& req = file.req[i];
         ClassInfo& info = classes[req.cls];
         if (!info.tplDone[req.tpl]) {
@@ -99,9 +99,9 @@ void resolveRequests(RegFile& file) {
     for(map<string,vector<Request*> >::iterator it = sortedReqs.begin(); it != sortedReqs.end(); ++it) {
         ClassInfo& info = classes[it->first];
         file.out << "#ifdef _C_" << it->first << '\n';
-        for (int i=0; i<it->second.size(); i++) {
+        for (int i=0; i<(int)it->second.size(); i++) {
             Request& req = *(it->second[i]);
-            for (int j=0; j<info.snippets.size(); j++) {
+            for (int j=0; j<(int)info.snippets.size(); j++) {
                 stringstream idxStr;
                 idxStr << file.idx++;
                 const string table[] = {"CT", req.tpl, "BT", req.base, "IDX", idxStr.str(), "@end"};
@@ -146,7 +146,7 @@ void generateMerge(int num, char* files[]) {
         replaceAll(text,"\r","");
         vector<string> lines = split(text,'\n');
 
-        for (int j=0; j<lines.size(); j++)
+        for (int j=0; j<(int)lines.size(); j++)
             parseLine(lines[j], *regFiles.back());
     }
 

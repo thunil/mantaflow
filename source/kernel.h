@@ -49,8 +49,9 @@ class ParticleBase;
                
     
 struct KernelBase {
-    int maxX, maxY, maxZ, size, minZ;
+    int maxX, maxY, maxZ, minZ;
     int X, Y, Z;
+    int size;
 	//! store thread info for this kernel 
 	int threadId, threadNum;
     

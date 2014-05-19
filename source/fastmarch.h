@@ -23,7 +23,7 @@ namespace Manta {
 template<class T>
 class FmValueTransport {
 public:
-    FmValueTransport() : mpFlags(0), mpVel(0) { };
+    FmValueTransport() : mpVel(0), mpFlags(0) { };
     ~FmValueTransport() { };
 
     void initMarching(MACGrid* vel, FlagGrid* flags) {

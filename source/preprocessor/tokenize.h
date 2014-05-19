@@ -54,8 +54,8 @@ struct TokenPointer {
     inline void reset() { txt->reset(); consumeWhitespace(); if(!done()) txt->line0 = cur().line;  }
     inline TokenType curType() { return done() ? TkEnd : cur().type; }
     inline const Token& cur() { return queue[ptr]; }
-    inline bool done() { return ptr >= queue.size(); }
-    inline bool isLast() { return ptr = queue.size()-1;}
+    inline bool done() { return ptr >= (int)queue.size(); }
+    inline bool isLast() { return ptr == (int)queue.size()-1;}
     void forward(const std::string& minimal, const std::string& original, int offset);
     void next();
     void consumeWhitespace();

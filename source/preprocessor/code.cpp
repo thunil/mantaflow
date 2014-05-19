@@ -50,7 +50,7 @@ string Text::linebreaks() const {
 
 template<> string List<Argument>::full(bool refify) const {
     stringstream s;
-    for (int i=0; i<_data.size(); i++) {
+    for (int i=0; i<(int)_data.size(); i++) {
         s << "," << _data[i].type.build(refify) << " " << _data[i].name;
     }
     return s.str();
@@ -58,7 +58,7 @@ template<> string List<Argument>::full(bool refify) const {
 
 template<class T> string List<T>::names() const {
     stringstream s;
-    for (int i=0; i<_data.size(); i++) {
+    for (int i=0; i<(int)_data.size(); i++) {
         s << _data[i].name;
         if (i != _data.size()-1) s << ',';
     }
@@ -67,14 +67,14 @@ template<class T> string List<T>::names() const {
 
 template<> string List<Argument>::createMembers(bool refify) const {
     stringstream s;
-    for (int i=0; i<_data.size(); i++)
+    for (int i=0; i<(int)_data.size(); i++)
         s << _data[i].type.build(refify) << ' ' << _data[i].name << "; ";
     return s.str();
 }
 
 template<> string List<Argument>::copier(const string& prefix, bool useVal) const {
     stringstream s;
-    for (int i=0; i<_data.size(); i++) {
+    for (int i=0; i<(int)_data.size(); i++) {
         s << ',' << _data[i].name << '(';
         s << (useVal ? _data[i].value : prefix+_data[i].name);
         s << ')';

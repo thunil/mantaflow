@@ -265,7 +265,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
     
     // figure out basegrid
     string baseGrid;
-    for (int i=0; i<kernel.arguments.size(); i++) {
+    for (int i=0; i<(int)kernel.arguments.size(); i++) {
         const string& type = kernel.arguments[i].type.name;
         bool isGrid = type.find("Grid") != string::npos;
         if (isGrid || pts) { 
@@ -279,7 +279,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 
     // build accesors
     stringstream accessors;
-    for (int i=0; i<kernel.arguments.size(); i++) {
+    for (int i=0; i<(int)kernel.arguments.size(); i++) {
         stringstream num; num << i;
         const string table[] = { "TYPE", kernel.arguments[i].type.build(true),
                                  "NAME", kernel.arguments[i].name, 
@@ -290,7 +290,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 
     // build locals, and reduce joiners
     stringstream joiner, preReduce, postReduce;
-    for (int i=0; i<block.locals.size(); i++) {
+    for (int i=0; i<(int)block.locals.size(); i++) {
         const string& name = block.locals[i].name;
         const string type = block.locals[i].type.build();
         const string& value = block.locals[i].value;

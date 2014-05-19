@@ -271,10 +271,14 @@ PyTypeObject PbVec3Type = {
     PbVec3New,                 /* tp_new */
 };
 
+inline PyObject* castPy(PyTypeObject* p) { 
+    return reinterpret_cast<PyObject*>(static_cast<void*>(p)); 
+}
+
 void PbVecInitialize(PyObject* module) {
     if (PyType_Ready(&PbVec3Type) < 0) errMsg("can't initialize Vec3 type");
     
-    Py_INCREF(&PbVec3Type);
+    Py_INCREF(castPy(&PbVec3Type));
     PyModule_AddObject(module, "vec3", (PyObject *)&PbVec3Type);
 }
 const static Pb::Register _REG(PbVecInitialize);

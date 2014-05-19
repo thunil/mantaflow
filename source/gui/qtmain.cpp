@@ -26,7 +26,7 @@ namespace Manta {
 GuiThread* gGuiThread = NULL;    
 MainThread* gMainThread = NULL;    
     
-MainThread::MainThread(vector<string>& args) : mArgs(args), mFinished(false) {
+MainThread::MainThread(vector<string>& args) : mFinished(false), mArgs(args) {
 }
 
 void MainThread::run() {
