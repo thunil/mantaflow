@@ -210,7 +210,7 @@ void WrapperRegistry::addMethod(const string& classname, const string& methodnam
     if (aclass.empty())
         aclass = "__modclass__";
     
-    ClassData* classdef = getOrConstructClass(classname);
+    ClassData* classdef = getOrConstructClass(aclass);
     for(int i=0; i<classdef->methods.size(); i++)
         if (classdef->methods[i].name == methodname) return; // avoid duplicates
     classdef->methods.push_back(Method(methodname,methodname,func)); 
@@ -382,16 +382,17 @@ PyObject* WrapperRegistry::initModule() {
     // generate and terminate all method lists    
     PyMethodDef sentinelFunc = { NULL, NULL, 0, NULL };
     PyGetSetDef sentinelGetSet = { NULL, NULL, NULL, NULL, NULL };
-    for (map<string, ClassData*>::iterator it = mClasses.begin(); it != mClasses.end(); ++it) {
-        it->second->genMethods.clear();
-        it->second->genGetSet.clear();
-        for (vector<Method>::iterator i2 = it->second->methods.begin(); i2 != it->second->methods.end(); ++i2)
-            it->second->genMethods.push_back(i2->def());
-        for (map<string,GetSet>::iterator i2 = it->second->getset.begin(); i2 != it->second->getset.end(); ++i2)
-            it->second->genGetSet.push_back(i2->second.def());
+    for (int i=0; i<mClassList.size(); i++) {
+        ClassData* cls = mClassList[i];
+        cls->genMethods.clear();
+        cls->genGetSet.clear();
+        for (vector<Method>::iterator i2 = cls->methods.begin(); i2 != cls->methods.end(); ++i2)
+            cls->genMethods.push_back(i2->def());
+        for (map<string,GetSet>::iterator i2 = cls->getset.begin(); i2 != cls->getset.end(); ++i2)
+            cls->genGetSet.push_back(i2->second.def());
         
-        it->second->genMethods.push_back(sentinelFunc);
-        it->second->genGetSet.push_back(sentinelGetSet);
+        cls->genMethods.push_back(sentinelFunc);
+        cls->genGetSet.push_back(sentinelGetSet);
     }
     
     // prepare module info
@@ -411,7 +412,6 @@ PyObject* WrapperRegistry::initModule() {
 #else
     PyObject* module = Py_InitModule(gDefaultModuleName.c_str(), &mClasses["__modclass__"]->genMethods[0]);
 #endif
-    
     if (module == NULL)
         return NULL;
     

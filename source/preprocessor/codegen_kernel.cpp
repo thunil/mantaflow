@@ -77,12 +77,12 @@ $TEMPLATE$ struct _$KERNEL$ : public KernelBase {
 };
 
 // outer kernel with accessors
-$TEMPLATE$ struct $KERNEL$ {
-    $KERNEL$($ARGS$) : 
+$TEMPLATE$ struct $KERNEL$ : public KernelBase {
+    $KERNEL$($ARGS$) :
 @IF(PTS) 
-        _inner(KernelBase($BASE$.size()),$CALL$)
+        KernelBase($BASE$.size()) $COMMA$ _inner(KernelBase($BASE$.size()),$CALL$)
 @ELSE
-        _inner(KernelBase($BASE$,$BND$),$CALL$)
+        KernelBase($BASE$,$BND$) $COMMA$ _inner(KernelBase($BASE$,$BND$),$CALL$)
 @END
         $INIT$ $LOCALSET$
     {
@@ -151,11 +151,12 @@ void run() {
 @END
 }
 @IF(REDUCE)
-    _$KERNEL$ (_$KERNEL$& o, tbb::split) : KernelBase(o) $COPY$ $COPYLOCAL$ {}
+    $IKERNEL$ ($IKERNEL$& o, tbb::split) : KernelBase(o) $COPY$ $LOCALSET$ {}
     
-    void join(const _$KERNEL$ & o) {
+    void join(const $IKERNEL$ & o) {
         $JOINER$
     }
+@END
 );
 
 const string TmpRunOMP = STR(
@@ -247,7 +248,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
             errMsg(block.line0, "illegal kernel option '"+ opt +
                                 "' Supported options are: 'ijk', 'idx', 'bnd=x', 'reduce=x', 'st', 'pts'");
     }
-
+    
     // point out illegal paramter combinations
     kernelAssert (bnd == "0" || !idxMode, "can't combine index mode with bounds iteration.");    
     kernelAssert (!pts || (!idxMode && bnd == "0" ), 
@@ -304,7 +305,8 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
         }         
     }
     const string ompPost = reduce ? "\n#pragma omp critical\n{"+postReduce.str()+"}":"";
-
+    bool doubleKernel = mtType == MTTBB && hasRet && !reduce;
+    
     const string table[] = { "IDX", idxMode ? "Y":"",
                              "PTS", pts ? "Y":"",
                              "IJK", (!pts && !idxMode) ? "Y":"",
@@ -312,6 +314,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
                              "TEMPLATE", kernel.isTemplated() ? "template "+kernel.templateTypes.minimal : "",
                              "TPL", kernel.isTemplated() ? "<"+kernel.templateTypes.names()+">" : "",
                              "KERNEL", kernel.name,
+                             "IKERNEL", (doubleKernel ? "_":"") + kernel.name,
                              "ARGS", kernel.arguments.listText,
                              "LOCALARG", block.locals.full(true),
                              "BASE", baseGrid,
@@ -319,7 +322,6 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
                              "LOCALINIT", block.locals.copier("", false),
                              "LOCALSET", block.locals.copier("", true),
                              "COPY", kernel.arguments.copier("o.", false),
-                             "COPYLOCAL", block.locals.copier("o.", false),
                              "MEMBERS", kernel.arguments.createMembers(),
                              "LOCALS", block.locals.createMembers(false),
                              "LOCALS_REF", block.locals.createMembers(true),
@@ -333,13 +335,14 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
                              "METHOD", reduce ? "reduce" : "for",
                              "PRAGMA", "\n#pragma",
                              "NL", "\n",
+                             "COMMA", ",",
                              "JOINER", joiner.str(),
                              "OMP_PRE", preReduce.str(),
                              "OMP_POST", ompPost,
                              "@end" };
 
     // generate kernel
-    string templ = (mtType == MTTBB && hasRet && !reduce) ? TmpDoubleKernel : TmpSingleKernel;
+    string templ = doubleKernel ? TmpDoubleKernel : TmpSingleKernel;
     if (mtType == MTNone)
         replaceAll(templ, "$RUN$", TmpRunSimple);
     else if (mtType == MTTBB)

@@ -68,7 +68,7 @@ static PyObject* _$FUNCNAME$ (PyObject* _self, PyObject* _linargs, PyObject* _kw
             @ELSE
                 _retval = toPy(pbo->$FUNCNAME$($CALLSTRING$));
             @END
-            _args.check();
+            pbo->_args.check();
         }
         pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$");
         return _retval;
@@ -107,7 +107,7 @@ static PyObject* _GET_$NAME$(PyObject* self, void* cl) {
 }
 static int _SET_$NAME$(PyObject* self, PyObject* val, void* cl) {
     $CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(self));
-    pbo->$NAME$ = fromPy<Real >(val); 
+    pbo->$NAME$ = fromPy<$TYPE$ >(val); 
     return 0;
 });
 
@@ -243,6 +243,7 @@ void processPythonVariable(const Block& block, Sink& sink) {
                              "CLASS", block.parent->name,
                              "CTPL", !block.parent->isTemplated() ? "" : "$CT$",
                              "PYNAME", pythonName,
+                             "TYPE", var.returnType.minimal,
                              "@end" };
 
     // output function and accessors
