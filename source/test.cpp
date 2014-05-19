@@ -79,7 +79,7 @@ struct myvec {
 
 KERNEL(pts) returns(myvec vec(size)) 
 myvec testy(vector<int>& a) {
-    vec[i] = a[i];
+    vec[idx] = a[idx];
 }
 
 PYTHON void kernelTest() {

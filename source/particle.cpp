@@ -346,7 +346,7 @@ template class ParticleDataImpl<Vec3>;
 
 KERNEL(pts) template<class T>
 void knSetPdataConst(ParticleDataImpl<T>& pdata, T value) {
-	pdata[i] = value;
+	pdata[idx] = value;
 }
 PYTHON void setConstPdata    (ParticleDataImpl<Real>& pd, Real value=0.) { knSetPdataConst<Real>(pd,value); }
 PYTHON void setConstPdataVec3(ParticleDataImpl<Vec3>& pd, Vec3 value=0.) { knSetPdataConst<Vec3>(pd,value); }

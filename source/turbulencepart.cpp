@@ -81,7 +81,7 @@ void KnSynthesizeTurbulence(TurbulenceParticleSystem& p, FlagGrid& flags, Wavele
                             Real alpha, Real dt, int octaves, Real scale, Real invL0, Real kmin) {
     const Real PERSISTENCE = 0.56123f;
     
-    const Vec3 pos(p[i].pos);
+    const Vec3 pos(p[idx].pos);
     if (flags.isInBounds(pos)) { // && !flags.isObstacle(pos)) {
         Real k2 = kGrid.getInterpolated(pos)-kmin;
         Real ks = k2<0 ? 0.0 : sqrt(k2);
@@ -92,8 +92,8 @@ void KnSynthesizeTurbulence(TurbulenceParticleSystem& p, FlagGrid& flags, Wavele
         Vec3 vel(0.);        
         for (int o=0; o<octaves; o++) {
             //Vec3 ns = noise.evaluateCurl(p[i].pos * multiplier) * amplitude;
-            Vec3 n0 = noise.evaluateCurl(p[i].tex0 * multiplier) * amplitude;
-            Vec3 n1 = noise.evaluateCurl(p[i].tex1 * multiplier) * amplitude;
+            Vec3 n0 = noise.evaluateCurl(p[idx].tex0 * multiplier) * amplitude;
+            Vec3 n1 = noise.evaluateCurl(p[idx].tex1 * multiplier) * amplitude;
             vel += alpha * n0 + (1.0f-alpha) * n1;
             
             // next scale 
@@ -103,9 +103,9 @@ void KnSynthesizeTurbulence(TurbulenceParticleSystem& p, FlagGrid& flags, Wavele
         
         // advection
         Vec3 dx = vel*dt;
-        p[i].pos += dx;
-        p[i].tex0 += dx;
-        p[i].tex1 += dx;
+        p[idx].pos += dx;
+        p[idx].tex0 += dx;
+        p[idx].tex1 += dx;
     }
 }
     

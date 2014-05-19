@@ -90,7 +90,8 @@ void doGenerate(int argc, char* argv[], bool docs) {
     } else {
         if (!gDocMode) {
             sink.link << "#include \"" + infile + "\"\n";
-            sink.inplace << "#line 1 \"" << indir << infile << "\"\n";
+            if (!gDebugMode)
+                sink.inplace << "#line 1 \"" << indir << infile << "\"\n";
         }
         processText(text, 1, sink, 0);
 	}
