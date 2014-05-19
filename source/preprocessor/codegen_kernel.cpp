@@ -295,13 +295,13 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
         const string type = block.locals[i].type.build();
         const string& value = block.locals[i].value;
 
-        preReduce << type << " _L_" << name << " = " << value << ";";
+        preReduce << type << " " << name << " = " << value << ";";
         if (reduceOp == "min" || reduceOp == "max") {
             joiner << name << " = " << reduceOp << "(" << name << ",o." << name << "); ";
-            postReduce << name << " = " << reduceOp << "(" << name << ",_L_" << name << "); ";
+            postReduce << "this->" << name << " = " << reduceOp << "(" << name << ", this->" << name << "); ";
         } else {
             joiner << name << " " << reduceOp << "= o." << name << "; ";
-            postReduce << name << " " << reduceOp << "= _L_" << name << "; ";
+            postReduce << "this->" << name << " " << reduceOp << "= " << name << "; ";
         }         
     }
     const string ompPost = reduce ? "\n#pragma omp critical\n{"+postReduce.str()+"}":"";
