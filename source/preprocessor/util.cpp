@@ -106,6 +106,13 @@ void replaceAll(string& source, string const& find, string const& replace)
     }
 }
 
+bool allCaps(const string& s) {
+    for (int i=0; i<(int)s.size(); i++) {
+        if (s[i] < 'A' || s[i] > 'Z') return false;
+    }
+    return true;
+}
+
 void stealLinebreaks(string& code, int num) {
     // list all line breaks
     vector<int> lb;

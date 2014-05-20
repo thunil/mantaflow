@@ -162,7 +162,7 @@ static $RET$ _$FUNCNAME$ (PyObject* s, PyObject* l, PyObject* kw) {
 
 const string TmpTemplateChecker = STR(
 template $TEMPLATE$
-bool $NAME$ (PbArgs& A) {
+static bool $NAME$ (PbArgs& A) {
     return $CHK$;
 }
 );
@@ -177,11 +177,11 @@ string generateLoader(const Argument& arg) {
         ptrType.isPointer = false;
         ptrType.isRef = false;
         ptrType.isConst = false;
-    } else if (arg.type.isRef) {
+    } /*else if (arg.type.isRef) {
         ptrType.isPointer = true;
         ptrType.isRef = false;
         ptrType.isConst = false;
-    }
+    }*/
     
     stringstream loader;
     loader << arg.type.minimal << " " << arg.name << " = ";
@@ -381,15 +381,9 @@ string buildTemplateChecker(string& out, const Function& func) {
     for (int k=0; k<func.arguments.size(); k++) {
         stringstream num; num << k;    
         Type type = func.arguments[k].type;
-        if (isIntegral(type.name)) {
-            type.isPointer = false;
-            type.isRef = false;
-            type.isConst = false;
-        } else if (type.isRef) {
-            type.isPointer = true;
-            type.isRef = false;
-            type.isConst = false;
-        }    
+        type.isPointer = false;
+        type.isRef = false;
+        type.isConst = false;
         chk << "A.typeCheck<" << type.build() << " >(" 
             << num.str() << ",\"" << func.arguments[k].name << "\")";
 
@@ -413,7 +407,8 @@ void postProcessInstantiations(Sink& sink, vector<Instantiation>& inst) {
     string out = sink.inplace.str();
     for (int i=0; i<(int)inst.size(); i++) {
         Instantiation& cur = inst[i];
-        if (cur.templates.size() == 0) continue;
+        if (cur.templates.size() == 0)
+            errMsg(0, cur.cls + "::" + cur.func.name + " : templated function without instantiation detected.");
 
         string wrapper = "";
         string chkFunc = buildTemplateChecker(wrapper, cur.func);
