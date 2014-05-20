@@ -231,7 +231,7 @@ Class parseClass(TokenPointer& parentPtr) {
 }
 
 // Parse syntax KEYWORD(opt1, opt2, ...) STATEMENTS [ {} or ; ]    
-void parseBlock(const string& kw, const vector<Token>& tokens, const Class* parent, Sink& sink) {
+void parseBlock(const string& kw, const vector<Token>& tokens, const Class* parent, Sink& sink, vector<Instantiation>& inst) {
     Block block = Block();
     block.parent = parent;
     TokenPointer tk(tokens, &block);
@@ -273,15 +273,23 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
     {
         // template instantiation / alias
         if (tk.curType() == TkDescriptor && (tk.cur().text == "alias" || tk.cur().text == "instantiate"))  {
-            tk.next();
-            Type aliasType = parseType(tk);
-            string aliasName = "";
-            if (tk.curType() == TkDescriptor) {
-                aliasName = tk.cur().text;
+            string kw = tk.cur().text;
+            Type aliasType;
+            do {
+                tk.next();
+                aliasType = parseType(tk);
+                processPythonInstantiation(block, aliasType, sink, inst);            
+            } while (tk.curType() == TkComma);
+
+            if (kw == "alias") {
+                tkAssert(tk.curType() == TkDescriptor, "malformed preprocessor block. Expected 'PYTHON alias cname pyname;'");
+                string aliasName = tk.cur().text;
+                processPythonAlias(block, aliasType, aliasName, sink);
                 tk.next();
             }
-            tkAssert(tk.curType() == TkSemicolon && tk.isLast(), "malformed preprocessor block. Expected 'PYTHON alias cname pyname;'");
-            processPythonInstantiation(block, aliasType, aliasName, sink);
+            tkAssert(tk.curType() == TkSemicolon && tk.isLast(), "malformed preprocessor block. Expected 'PYTHON alias/instantiate cname [pyname];'");
+            sink.inplace << block.linebreaks();
+                
             return;
         }
         List<Type> templTypes;
@@ -300,13 +308,15 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
             block.cls.templateTypes = templTypes;
             block.cls.prequel(&templText);
             tkAssert(tk.curType() == TkCodeBlock && tk.isLast(), "malformed preprocessor keyword block. Expected 'PYTHON class name : public X {}'");
-            processPythonClass(block, tk.cur().text, sink);
+            processPythonClass(block, tk.cur().text, sink, inst);
         }
         else // function or member
         {
             bool isConstructor = parent && tk.curType() == TkDescriptor && parent->name == tk.cur().text;
             block.func = parseFunction(tk, false, !isConstructor, false);
-
+            block.func.templateTypes = templTypes;
+            block.func.prequel(&templText);
+            
             if (isConstructor && tk.curType() == TkColon) {
                 // read till end
                 while(!tk.done() && tk.curType() != TkSemicolon && tk.curType() != TkCodeBlock) {
@@ -323,7 +333,7 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
             } else {
                 tkAssert((tk.curType() == TkCodeBlock || tk.curType() == TkSemicolon) && tk.isLast(), 
                     "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]'");
-                processPythonFunction(block, tk.cur().text, sink);
+                processPythonFunction(block, tk.cur().text, sink, inst);
             }
         }
 

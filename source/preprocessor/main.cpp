@@ -93,7 +93,9 @@ void doGenerate(int argc, char* argv[], bool docs) {
             if (!gDebugMode)
                 sink.inplace << "#line 1 \"" << indir << infile << "\"\n";
         }
-        processText(text, 1, sink, 0);
+        std::vector<Instantiation> inst;
+        processText(text, 1, sink, 0, inst);
+        postProcessInstantiations(sink, inst);
 	}
     sink.write();
 }

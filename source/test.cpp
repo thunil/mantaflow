@@ -20,12 +20,12 @@ using namespace std;
 
 namespace Manta {
 
-/*
+
 PYTHON template<class S>
 void addToGrid(Grid<S>& a, S v) {
-    
+    FOR_IDX(a) a[idx] += v;
 }
-*/
+PYTHON instantiate addToGrid<int>, addToGrid<Real>, addToGrid<Vec3>;
 
 //! Kernel: get component (not shifted)
 /*KERNEL(idx) returns(Grid<Real> ret(parent))

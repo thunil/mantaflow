@@ -29,16 +29,18 @@ extern bool gDocMode;
 void generateMerge(int num, char* files[]);
 
 // functions from tokenize.cpp
-void processText(const std::string& text, int baseline, Sink& sink, const Class *parent);
+void processText(const std::string& text, int baseline, Sink& sink, const Class *parent, std::vector<Instantiation>& inst);
 
 // functions from parse.cpp
-void parseBlock(const std::string& kw, const std::vector<Token>& tokens, const Class *parent, Sink& sink);
+void parseBlock(const std::string& kw, const std::vector<Token>& tokens, const Class *parent, Sink& sink, std::vector<Instantiation>& inst);
 
 // functions from codegen_XXX.cpp
 void processKernel(const Block& block, const std::string& code, Sink& sink);
-void processPythonFunction(const Block& block, const std::string& code, Sink& sink);
+void processPythonFunction(const Block& block, const std::string& code, Sink& sink, std::vector<Instantiation>& inst);
 void processPythonVariable(const Block& block, Sink& sink);
-void processPythonClass(const Block& block, const std::string& code, Sink& sink);
-void processPythonInstantiation(const Block& block, const Type& aliasType, const std::string& aliasName, Sink& sink);
+void processPythonClass(const Block& block, const std::string& code, Sink& sink, std::vector<Instantiation>& inst);
+void processPythonInstantiation(const Block& block, const Type& aliasType, Sink& sink, std::vector<Instantiation>& inst);
+void processPythonAlias(const Block& block, const Type& aliasType, const std::string& aliasName, Sink& sink);
+void postProcessInstantiations(Sink& sink, std::vector<Instantiation>& inst);
 
 #endif // _PREP_H

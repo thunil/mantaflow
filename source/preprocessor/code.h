@@ -83,6 +83,14 @@ struct Function : Text {
     virtual std::string dynamicClass() { return "Function"; }
 };
 
+struct Instantiation {
+    Instantiation(const std::string& c, const Function& f) : 
+        cls(c), func(f) {}
+    std::string cls;
+    Function func;
+    std::vector<std::string> templates;    
+};
+
 struct Class : Text {
     Class() {};
 

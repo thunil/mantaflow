@@ -269,7 +269,7 @@ void convertKeywords(vector<Token>& tokens) {
 
 // parse complete file.
 // Defer parts to be processed to processTextBlock, and directly copy the rest
-void processText(const string& text, int baseline, Sink& sink, const Class* parent) {
+void processText(const string& text, int baseline, Sink& sink, const Class* parent, vector<Instantiation>& inst) {
     ostream& newText = sink.inplace;
     
     // no real lexing yet, only track define and comment blocks
@@ -328,7 +328,7 @@ void processText(const string& text, int baseline, Sink& sink, const Class* pare
                     vector<Token> tokens;
                     tokenizeBlock(tokens, word, text, i, line);
                     convertKeywords(tokens);
-                    parseBlock(word, tokens, parent, sink); 
+                    parseBlock(word, tokens, parent, sink, inst); 
                 } else {
                     newText << word;                    
                     newText << c; 

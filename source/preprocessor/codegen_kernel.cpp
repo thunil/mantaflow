@@ -96,9 +96,9 @@ $TEMPLATE$ struct $KERNEL$ : public KernelBase {
     inline $RET_TYPE$ & getRet() { return $RET_NAME$; }
 @END
     $ACCESSORS$
+    _$KERNEL$$TPL$ _inner;
     $MEMBERS$
     $LOCALS$
-    _$KERNEL$$TPL$ _inner;
 };
 );
 

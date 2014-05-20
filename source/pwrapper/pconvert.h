@@ -56,6 +56,13 @@ template<class T> PyObject* toPy(const T& v) {
     const std::string& type = Namify<typename remove_pointers<T>::type>::S;
     return Pb::copyObject(co,type); 
 }
+template<class T> bool isPy(PyObject* obj) {
+    if (PbClass::isNullRef(obj)) 
+        return false; 
+    PbClass* pbo = Pb::objFromPy(obj); 
+    const std::string& type = Namify<typename remove_pointers<T>::type>::S;
+    return pbo && pbo->canConvertTo(type);
+}
 
 // builtin types
 template<> float fromPy<float>(PyObject* obj);
@@ -78,6 +85,17 @@ template<> PyObject* toPy<Vec3i>( const Vec3i& v);
 template<> PyObject* toPy<Vec3>( const Vec3& v);
 typedef PbClass* PbClass_Ptr;
 template<> PyObject* toPy<PbClass*>( const PbClass_Ptr & obj);
+
+template<> bool isPy<float>(PyObject* obj);
+template<> bool isPy<double>(PyObject* obj);
+template<> bool isPy<int>(PyObject *obj);
+template<> bool isPy<PyObject*>(PyObject *obj);
+template<> bool isPy<std::string>(PyObject *obj);
+template<> bool isPy<const char*>(PyObject *obj);
+template<> bool isPy<bool>(PyObject *obj);
+template<> bool isPy<Vec3>(PyObject* obj);
+template<> bool isPy<Vec3i>(PyObject* obj);
+template<> bool isPy<PbType>(PyObject* obj);
 
 // additional indirection somehow needed to resolve specializations in ppreg.cpp
 //template<class T> inline PyObject* d_toPy(T val) { return toPy<T>(val);}
@@ -135,6 +153,14 @@ public:
     template<class T> Grid<T>* getGridOpt(const std::string& key, Grid<T>* defGrid) { 
         return getOpt<Grid<T>*>(key, defGrid);         
     }
+
+    // automatic template type deduction
+    template<class T> bool typeCheck(int num, const std::string& name) {
+        PyObject* o = getItem(name, false, 0);
+        if (!o) 
+            o = getItem(num, false, 0);
+        return o ? isPy<T>(o) : false;
+    }
     
     PbArgs& operator=(const PbArgs& a); // dummy
     void copy(PbArgs& a);
@@ -154,6 +180,7 @@ protected:
     std::vector<DataElement> mLinData;
     PyObject* mLinArgs, *mKwds;    
 };
+
 
 } // namespace
 #endif

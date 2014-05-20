@@ -507,7 +507,7 @@ bool canConvert(PyObject* obj, const string& classname) {
 }
 
 Manta::PbClass* objFromPy(PyObject* obj) {
-    if (obj->ob_type->tp_dealloc != (destructor)cbDealloc) // not a manta object
+    if (Py_TYPE(obj)->tp_dealloc != (destructor)cbDealloc) // not a manta object
         return NULL;
         
     return ((PbObject*) obj)->instance;

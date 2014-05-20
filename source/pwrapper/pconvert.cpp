@@ -155,7 +155,70 @@ template<> PbType fromPy<PbType>(PyObject* obj) {
     return pb;
 }
 
-// fromPy/toPy is automatically instantiated using the preprocessor for registered PbClasses
+template<> bool isPy<float>(PyObject* obj) {
+#if PY_MAJOR_VERSION <= 2
+    if (PyInt_Check(obj)) return true;
+#endif
+    return PyFloat_Check(obj) || PyLong_Check(obj);
+}
+template<> bool isPy<double>(PyObject* obj) {
+#if PY_MAJOR_VERSION <= 2
+    if (PyInt_Check(obj)) return true;
+#endif
+    return PyFloat_Check(obj) || PyLong_Check(obj);
+}
+template<> bool isPy<PyObject*>(PyObject *obj) {
+    return true;
+}
+template<> bool isPy<int>(PyObject *obj) {
+#if PY_MAJOR_VERSION <= 2
+    if (PyInt_Check(obj)) return true;
+#endif
+    if (PyLong_Check(obj)) return true;
+    if (PyFloat_Check(obj)) {
+        double a = PyFloat_AsDouble(obj);
+        return fabs(a-floor(a+0.5)) < 1e-5;
+    }
+    return false;
+}
+template<> bool isPy<string>(PyObject *obj) {
+    if (PyUnicode_Check(obj)) return true; 
+#if PY_MAJOR_VERSION <= 2
+    if (PyString_Check(obj)) return true;
+#endif
+    return false;
+}
+template<> bool isPy<const char*>(PyObject *obj) {
+    if (PyUnicode_Check(obj)) return true; 
+#if PY_MAJOR_VERSION <= 2
+    if (PyString_Check(obj)) return true;
+#endif
+    return false;
+}
+template<> bool isPy<bool>(PyObject *obj) { 
+    return PyBool_Check(obj);
+}
+template<> bool isPy<Vec3>(PyObject* obj) {
+    if (PyObject_IsInstance(obj, (PyObject*)&PbVec3Type)) return true;
+    if (PyTuple_Check(obj) && PyTuple_Size(obj) == 3) {
+        return isPy<Real>(PyTuple_GetItem(obj,0)) &&
+               isPy<Real>(PyTuple_GetItem(obj,1)) &&
+               isPy<Real>(PyTuple_GetItem(obj,2));
+    }
+    return false;
+}
+template<> bool isPy<Vec3i>(PyObject* obj) {
+    if (PyObject_IsInstance(obj, (PyObject*)&PbVec3Type)) return true;
+    if (PyTuple_Check(obj) && PyTuple_Size(obj) == 3) {
+        return isPy<int>(PyTuple_GetItem(obj,0)) &&
+               isPy<int>(PyTuple_GetItem(obj,1)) &&
+               isPy<int>(PyTuple_GetItem(obj,2));
+    }
+    return false;
+}
+template<> bool isPy<PbType>(PyObject* obj) {
+    return PyType_Check(obj);
+}
 
 //******************************************************************************
 // PbArgs class defs

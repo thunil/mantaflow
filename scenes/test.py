@@ -1,63 +1,61 @@
 #
-# Simple example for free-surface simulation
-# with MacCormack advection
+# Simple example scene (hello world)
+# Simulation of a buoyant smoke density plume
+
+#import pdb; pdb.set_trace()
 
 from manta import *
 
 # solver params
-gs = vec3(96,40,40)
-s = Solver(name='main', gridSize = gs)
-s.timestep = 0.5
+res = 64
+gs = vec3(res,1.5*res,res)
+s = FluidSolver(name='main', gridSize = gs)
+s.timestep = 1.0
 
-# prepare grids and particles
+# prepare grids
 flags = s.create(FlagGrid)
 vel = s.create(MACGrid)
+density = s.create(RealGrid)
 pressure = s.create(RealGrid)
-mesh = s.create(Mesh)
-phi = s.create(LevelsetGrid)
-vorty = s.create(RealGrid)
 
-# scene setup
-flags.initDomain(boundaryWidth=0)
-step = s.create(Box, p0=gs*vec3(0.3,0,0), p1=gs*vec3(0.4,0.2,1))
-step.applyToGrid(grid=flags, value=FlagObstacle)
+# noise field
+noise = s.create(NoiseField)
+noise.posScale = vec3(45)
+noise.clamp = True
+noise.clampNeg = 0
+noise.clampPos = 1
+noise.valScale = 1
+noise.valOffset = 0.75
+noise.timeAnim = 0.2
 
-h = 0.6
-riverInit = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1,h,1))
-#riverInit.applyToGrid(grid=flags, value=FlagFluid, respectFlags=flags)
-#riverInit.applyToGrid(grid=vel, value=(0.2,0,0), respectFlags=flags)
-phi.initFromFlags(flags=flags, ignoreWalls = True)
+flags.initDomain()
+flags.fillGrid()
 
 if (GUI):
     gui = Gui()
     gui.show()
-    gui.pause()
+
+source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))
     
 #main loop
-for t in range(2000):
-    
-    # update and advect levelset
-    phi.reinitMarching(flags=flags, velTransport=vel, ignoreWalls = True) #, ignoreWalls=False)
-    getCurl(vel=vel, vort=vorty, comp=2)
-    advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
-    flags.updateFromLevelset(phi)
-    
-    # velocity self-advection
+for t in range(250):
+    if t<100:
+        densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
+     
+    #source.applyToGrid(grid=vel, value=velInflow)
+    advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
     advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
-    addGravity(flags=flags, vel=vel, gravity=vec3(0,-0.005,0))
     
-    # pressure solve
     setWallBcs(flags=flags, vel=vel)    
-    setLiquidBcs(flags=flags, vel=vel)
-    setinflow(flags=flags, vel=vel,phi=phi,h=h)
-    solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=1.5, cgAccuracy=0.001, useResNorm=False, phi=phi, ghostAccuracy=0.0) 
-    setLiquidBcs(flags=flags, vel=vel)    
-    setWallBcs(flags=flags, vel=vel)
-    setinflow(flags=flags, phi=phi, vel=vel,h=h)
-        
-    # note: these meshes are created by fast marching only, should smooth
-    #       geometry and normals before rendering
-    phi.createMesh(mesh)
+    addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags)
     
+    solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True)
+    setWallBcs(flags=flags, vel=vel)
+    #density.save('den%04d.uni' % t)
+    
+    addToGrid(vel,vec3(0,1,0))
+   
+    s.printTimings()    
     s.step()
-    #gui.pause()
+
+
