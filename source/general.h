@@ -77,6 +77,11 @@ struct remove_pointers<T*> {
     typedef T type;
 };
 
+template<typename T>
+struct remove_pointers<T&> {
+    typedef T type;
+};
+
 // Commonly used enums and types
 //! Timing class for preformance measuring
 struct MuTime {

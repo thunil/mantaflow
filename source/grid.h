@@ -142,8 +142,8 @@ public:
     Grid<T>& operator=(const Grid<T>& a);
     Grid<T>& safeDivide(const Grid<T>& a);    
 
-    PYTHON template<class S> void adc(const S& s) { *this += s; }
-    PYTHON instantiate adc<Real>,adc<T>;
+   PYTHON template<class S> void adc(S s) { *this += s; }
+  PYTHON instantiate adc<T>;
 
 	// python helper functions to work with grids in scene files
 	//! set content to added/subtracted values of other two grids

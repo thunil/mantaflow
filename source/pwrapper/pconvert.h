@@ -37,18 +37,21 @@ struct ArgLocker {
 
 PyObject* getPyNone();
 
-// Conversion functions
-
 // for PbClass-derived classes
-template<class T> T fromPy(PyObject* obj) { 
+template<class T> T* fromPyPtr(PyObject* obj) { 
     if (PbClass::isNullRef(obj)) 
         return 0; 
     PbClass* pbo = Pb::objFromPy(obj); 
-    const std::string& type = Namify<typename remove_pointers<T>::type>::S;
+    const std::string& type = Namify<T>::S;
     if (!pbo || !(pbo->canConvertTo(type))) 
         throw Error("can't convert argument to " + type); 
-    return (T)(pbo); 
+    return (T*)(pbo); 
 }
+
+template<class T> T fromPy(PyObject* obj) {
+    return *fromPyPtr<typename remove_pointers<T>::type>(obj);
+}
+
 template<class T> PyObject* toPy(const T& v) { 
     if (v.getPyObject()) 
         return v.getPyObject(); 
@@ -97,9 +100,6 @@ template<> bool isPy<Vec3>(PyObject* obj);
 template<> bool isPy<Vec3i>(PyObject* obj);
 template<> bool isPy<PbType>(PyObject* obj);
 
-// additional indirection somehow needed to resolve specializations in ppreg.cpp
-//template<class T> inline PyObject* d_toPy(T val) { return toPy<T>(val);}
-
 //! Encapsulation of python arguments
 class PbArgs {
 public:
@@ -121,38 +121,34 @@ public:
     template<class T> inline void add(const std::string& key, T arg) {
         DataElement el = { toPy(arg), false };
         mData[key] = el;
-    }    
-    template<class T> inline T get(size_t number) { 
-        return fromPy<T>(getItem(number, true));
     }
-    template<class T> inline T getOpt(size_t number, T defarg) { 
-        PyObject* o = getItem(number, false);
-        return (o) ? fromPy<T>(o) : defarg;
-    }
-    template<class T> inline T get(size_t number, const std::string& key, ArgLocker *lk=NULL) {
+    template<class T> inline T get(const std::string& key, int number=-1, ArgLocker *lk=NULL) {
         PyObject* o = getItem(key, false, lk);
         if (o) return fromPy<T>(o);
         o = getItem(number, false, lk);
         if (o) return fromPy<T>(o);
         errMsg ("Argument '" + key + "' is not defined.");        
     }
-    template<class T> inline T getOpt(size_t number, const std::string& key, T defarg, ArgLocker *lk=NULL) { 
+    template<class T> inline T getOpt(const std::string& key, int number, T defarg, ArgLocker *lk=NULL) { 
         PyObject* o = getItem(key, false, lk);
-        return (o) ? fromPy<T>(o) : getOpt<T>(number, defarg);
-    }
-    template<class T> inline T get(const std::string& key) { 
-        return fromPy<T>(getItem(key, true)); 
-    }
-    template<class T> inline T getOpt(const std::string& key, T defarg) { 
-        PyObject* o = getItem(key, false);
+        if (o) return fromPy<T>(o);
+        if (number >= 0) o = getItem(key, false);
         return (o) ? fromPy<T>(o) : defarg;
     }
-    template<class T> Grid<T>* getGrid(const std::string& key) { 
-        return get<Grid<T>*>(key);         
+    template<class T> inline T* getPtrOpt(const std::string& key, int number, T* defarg, ArgLocker *lk=NULL) {
+        PyObject* o = getItem(key, false, lk);
+        if (o) return fromPyPtr<T>(o);
+        if (number >= 0) o = getItem(number, false);
+        return o ? fromPyPtr<T>(o) : defarg;
     }
-    template<class T> Grid<T>* getGridOpt(const std::string& key, Grid<T>* defGrid) { 
-        return getOpt<Grid<T>*>(key, defGrid);         
+    template<class T> inline T* getPtr(const std::string& key, int number = -1, ArgLocker *lk=NULL) {
+        PyObject* o = getItem(key, false, lk);
+        if (o) return fromPyPtr<T>(o);
+        o = getItem(number, false);
+        if(o) return fromPyPtr<T>(o);
+        errMsg ("Argument '" + key + "' is not defined.");
     }
+
 
     // automatic template type deduction
     template<class T> bool typeCheck(int num, const std::string& name) {

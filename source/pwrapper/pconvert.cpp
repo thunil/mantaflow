@@ -288,7 +288,7 @@ void PbArgs::check() {
 }
 
 FluidSolver* PbArgs::obtainParent() {
-    FluidSolver* solver = getOpt<FluidSolver*>("solver",NULL);
+    FluidSolver* solver = getPtrOpt<FluidSolver>("solver",-1,NULL);
     if (solver != 0) return solver;
     
 	// previous versions returned NULL for different parent solvers of args in the following two loops

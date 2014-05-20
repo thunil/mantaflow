@@ -173,24 +173,24 @@ static bool $NAME$ (PbArgs& A) {
 string generateLoader(const Argument& arg) {
     bool integral = isIntegral(arg.type.name);
     Type ptrType = arg.type;
+    string optCall =  arg.value.empty() ? "get" : "getOpt";
+
+    ptrType.isConst = false;
     if (integral) {
         ptrType.isPointer = false;
         ptrType.isRef = false;
-        ptrType.isConst = false;
-    } /*else if (arg.type.isRef) {
-        ptrType.isPointer = true;
+    } else if (arg.type.isPointer) {
+        ptrType.isPointer = false;
         ptrType.isRef = false;
-        ptrType.isConst = false;
-    }*/
+        optCall = arg.value.empty() ? "getPtr" : "getPtrOpt";
+    }
     
     stringstream loader;
-    loader << arg.type.minimal << " " << arg.name << " = ";
-    if (arg.type.isRef && !integral)
-        loader << "*";
-
-    loader << "_args." << (arg.value.empty() ? "get" : "getOpt");
+    loader << arg.type.build() << " " << arg.name << " = ";
+    loader << "_args." << optCall;
+        
     loader << "<" << ptrType.build() << " >";
-    loader << "(" << arg.index << ",\"" << arg.name << "\",";
+    loader << "(\"" << arg.name << "\"," << arg.index << ",";
     if (!arg.value.empty())
         loader << arg.value << ",";
     loader << "&_lock); ";
