@@ -155,7 +155,9 @@ void generateMerge(int num, char* files[]) {
         resolveChains(*regFiles[i]);
         resolveRequests(*regFiles[i]);
 
-        string text = "";
+        string text = "", fn = regFiles[i]->filename;
+        bool isPython = fn.compare(fn.size()-7, 7, ".py.reg") == 0;
+
         if (regFiles[i]->idx > 0) {
             text  = "\n\n\n\n\n// DO NOT EDIT !\n";
             text += "// This file is generated using the MantaFlow preprocessor (prep link).";
@@ -165,8 +167,10 @@ void generateMerge(int num, char* files[]) {
             text += regFiles[i]->out.str();
             text += regFiles[i]->footer.str();
             text += "}";
+        } else if (isPython) {
+            text = regFiles[i]->header.str() + regFiles[i]->out.str() + regFiles[i]->footer.str();
         }
-        string filename = regFiles[i]->filename + ".cpp";
+        string filename = fn + ".cpp";
         // only write if content is different
         if (!fileExists(filename) || readFile(filename) != text)
             writeFile(filename, text);

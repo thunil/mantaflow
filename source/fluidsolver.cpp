@@ -102,12 +102,12 @@ FluidSolver::~FluidSolver() {
     mGridsVec.free();
 }
 
-PbClass* FluidSolver::create(PbType t, const string& name) {        
+PbClass* FluidSolver::create(PbType t, PbTypeVec T, const string& name) {        
     _args.add("nocheck",true);
-    if (t.str == "")
+    if (t.str() == "")
         errMsg("Need to specify object type. Use e.g. Solver.create(FlagGrid, ...) or Solver.create(type=FlagGrid, ...)");
     
-    return PbClass::createPyObject(t.str, name, _args, this);
+    return PbClass::createPyObject(t.str() + T.str(), name, _args, this);
 }
 
 void FluidSolver::step() {

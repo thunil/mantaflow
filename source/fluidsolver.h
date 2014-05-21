@@ -49,7 +49,7 @@ public:
     PYTHON void step();
     
     //! create a object with the solver as its parent
-    PYTHON PbClass* create(PbType type, const std::string& name = "");
+    PYTHON PbClass* create(PbType type, PbTypeVec T=PbTypeVec(),const std::string& name = "");
     
     // temp grid and plugin stuff: you shouldn't call this manually
     template<class T> T* getGridPointer();

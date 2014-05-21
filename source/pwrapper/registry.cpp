@@ -99,6 +99,7 @@ private:
     ClassData* getOrConstructClass(const string& name);
     void registerBaseclasses();
     void registerAliases();
+    void registerDummyTypes();
     void registerOperators(ClassData* cls);
     void addParentMethods(ClassData* cls, ClassData* base);
     WrapperRegistry();
@@ -113,7 +114,7 @@ private:
 // Callback functions
 
 void cbDealloc(PbObject* self) {
-    cout << "dealloc " << self->instance->getName() << " " << self->classdef->cName << endl;
+    //cout << "dealloc " << self->instance->getName() << " " << self->classdef->cName << endl;
     if (self->instance) {
         // don't delete top-level objects
         if (self->instance->getParent() != self->instance)
@@ -128,10 +129,15 @@ PyObject* cbNew(PyTypeObject *type, PyObject *args, PyObject *kwds) {
         // lookup and link classdef
         self->classdef = WrapperRegistry::instance().lookup(type->tp_name);
         self->instance = NULL;
-        cout << "creating " << self->classdef->cName << endl;
+        //cout << "creating " << self->classdef->cName << endl;
     } else
         errMsg("can't allocate new python class object");
     return (PyObject*) self;
+}
+
+int cbDisableConstructor(PyObject* self, PyObject* args, PyObject* kwds) {
+    errMsg("Can't instantiate a class template without template arguments");
+    return -1;
 }
 
 PyMODINIT_FUNC PyInit_Main(void) {
@@ -159,6 +165,7 @@ ClassData* WrapperRegistry::getOrConstructClass(const string& classname) {
     ClassData* data = new ClassData;
     data->cName = classname;
     data->baseclass = NULL;
+    data->constructor = cbDisableConstructor;
     mClasses[classname] = data;
     mClassList.push_back(data);
     return data;
@@ -293,6 +300,16 @@ void WrapperRegistry::registerOperators(ClassData* cls) {
     }
 }
 
+void WrapperRegistry::registerDummyTypes() {
+    for(vector<ClassData*>::iterator it = mClassList.begin(); it != mClassList.end(); ++it) {        
+        string cName = (*it)->cName;
+        if (cName.find('<') != string::npos) {
+            string name = cName.substr(0,cName.find('<'));
+            addClass(name, name, "");
+        }
+    }
+}
+
 ClassData* WrapperRegistry::lookup(const string& name) {
     for(map<string, ClassData*>::iterator it = mClasses.begin(); it != mClasses.end(); ++it) {
         if (it->first == name || it->second->cName == name)
@@ -342,7 +359,7 @@ void WrapperRegistry::runPreInit(const vector<string>& args) {
     }
     iargs += "']\n";
     PyRun_SimpleString(iargs.c_str());
-    
+
     // provide compile flags
     string cfl = "";
 #ifdef CUDA
@@ -410,6 +427,7 @@ void WrapperRegistry::construct(const string& scriptname) {
 
     registerBaseclasses();
     registerAliases();
+    registerDummyTypes();
     
     // load main extension module
     PyImport_AppendInittab(gDefaultModuleName.c_str(), PyInit_Main);

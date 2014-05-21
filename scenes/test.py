@@ -15,7 +15,7 @@ s.timestep = 1.0
 # prepare grids
 flags = s.create(FlagGrid)
 vel = s.create(MACGrid)
-density = s.create(RealGrid)
+density = s.create(Grid,T=Real)
 pressure = s.create(RealGrid)
 test = s.create(RealGrid)
 

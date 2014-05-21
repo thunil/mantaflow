@@ -40,7 +40,12 @@ class FluidSolver;
 class PbArgs;
 
 struct PbType {
-    std::string str;
+    std::string S;
+    std::string str() const;
+};
+struct PbTypeVec {
+    std::vector<PbType> T;
+    std::string str() const;
 };
 
 //! Base class for all classes exposed to Python
@@ -85,15 +90,6 @@ protected:
     bool mHidden;
         
     static std::vector<PbClass*> mInstances;
-};
-
-class PbRefCounted : public PbClass {
-public:
-    PbRefCounted(FluidSolver* parent, const std::string& name="", PyObject* obj=NULL);
-    //~PbRefCounted();
-
-protected:
-    int mRefCnt;
 };
 
 //!\cond Register

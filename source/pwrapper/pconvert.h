@@ -89,6 +89,7 @@ template<> bool fromPy<bool>(PyObject *obj);
 template<> Vec3 fromPy<Vec3>(PyObject* obj);
 template<> Vec3i fromPy<Vec3i>(PyObject* obj);
 template<> PbType fromPy<PbType>(PyObject* obj);
+template<> PbTypeVec fromPy<PbTypeVec>(PyObject* obj);
 
 template<> PyObject* toPy<int>( const int& v);
 template<> PyObject* toPy<std::string>( const std::string& val);

@@ -11,6 +11,9 @@
 #
 #################################################################################
 
+# mantaflow conventions
+Real = float
+
 # grid flags
 FlagFluid = 1
 FlagObstacle = 2

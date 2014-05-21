@@ -156,8 +156,21 @@ template<> PbType fromPy<PbType>(PyObject* obj) {
         return pb;
     
     const char* tname = ((PyTypeObject*)obj)->tp_name;
-    pb.str = tname;
+    pb.S = tname;
     return pb;
+}
+template<> PbTypeVec fromPy<PbTypeVec>(PyObject* obj) {
+    PbTypeVec vec;
+    if (PyType_Check(obj)) {
+        vec.T.push_back(fromPy<PbType>(obj));
+    } else if (PyTuple_Check(obj)) {
+        int sz = PyTuple_Size(obj);
+        for (int i=0; i< sz; i++)
+            vec.T.push_back(fromPy<PbType>(PyTuple_GetItem(obj,i)));
+    }
+    else
+        errMsg("argument is not a type tuple");
+    return vec;
 }
 
 template<class T> T* tmpAlloc(PyObject* obj,std::vector<void*>* tmp) {

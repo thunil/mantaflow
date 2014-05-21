@@ -156,10 +156,10 @@ void Gui::screenshot(string filename) {
 
 PbClass* Gui::addControl(PbType t) {
     _args.add("nocheck",true);
-    if (t.str == "")
+    if (t.str() == "")
         throw Error("Need to specify object type. Use e.g. gui.create(Slider, ...)");
     
-    PbClass* obj = PbClass::createPyObject(t.str, "", _args, this);
+    PbClass* obj = PbClass::createPyObject(t.str(), "", _args, this);
     if (!obj || !obj->canConvertTo("CustomControl"))
         throw Error("gui.create() can only create CustomControl-based objects");
     

@@ -60,7 +60,7 @@ public:
 	// particle data functions
 
     //! create a particle data object
-    PYTHON PbClass* create(PbType type, const std::string& name = "");
+    PYTHON PbClass* create(PbType type, PbTypeVec T=PbTypeVec(), const std::string& name = "");
 	//! add a particle data field, set its parent particle-system pointer
 	void registerPdata(ParticleDataBase* pdata);
 	void registerPdataReal(ParticleDataImpl<Real>* pdata);

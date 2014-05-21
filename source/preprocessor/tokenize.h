@@ -31,7 +31,9 @@ const std::string unsupportedKeywords[] = {"and", "and", "and_eq", "auto", "bita
     "union", "using", "volatile", "while", "xor", "xor_eq", "" };
 
 inline bool isIntegral(const std::string& t) {
-    return t=="int" || t=="char" || t=="unsigned" || t=="bool" || t=="float" || t=="long" || t=="double" || t=="Real" || t=="Vec3" || t=="Vec3i" || t=="string" || t=="std::string";
+    return t=="int" || t=="char" || t=="unsigned" || t=="bool" || t=="float" || t=="long" || 
+           t=="double" || t=="Real" || t=="Vec3" || t=="Vec3i" || t=="string" || t=="std::string" ||
+           t=="PbType" || t=="PbTypeVec";
 }
 
 struct Token {
