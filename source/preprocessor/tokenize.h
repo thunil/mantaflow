@@ -19,14 +19,14 @@
 #include "code.h"
 
 enum TokenType { TkNone = 0, TkComment, TkWhitespace, TkCodeBlock, TkDescriptor, TkComma, TkBracketL, 
-                 TkBracketR, TkTBracketL, TkTBracketR, TkAssign, TkPointer, TkRef, TkDoubleColon, TkSemicolon, 
+                 TkBracketR, TkTBracketL, TkTBracketR, TkPointer, TkRef, TkDoubleColon, TkSemicolon, 
                  TkSimpleType, TkTypeQualifier, TkConst, TkEnd, TkManta, TkUnsupportedKW, TkClass,
-                 TkInline, TkTemplate, TkStatic, TkVirtual, TkString, TkPublic, TkColon };
+                 TkInline, TkTemplate, TkStatic, TkVirtual, TkString, TkPublic, TkColon, TkOperator };
 
 const std::string unsupportedKeywords[] = {"and", "and", "and_eq", "auto", "bitand", "bitor", "break", 
     "catch", "const_cast", "continue", "default", "delete", "do", "dynamic_cast", "else", "enum", 
     "explicit", "export", "extern", "for", "friend", "goto", "if", "mutable", "namespace", "new", 
-    "not", "not_eq", "or", "or_eq", "operator", "private", "protected", "register", 
+    "not", "not_eq", "or", "or_eq", "private", "protected", "register", 
     "reinterpret_cast", "return", "sizeof", "static_cast", "switch", "this", "throw", "try", "typedef", 
     "union", "using", "volatile", "while", "xor", "xor_eq", "" };
 
@@ -53,6 +53,7 @@ struct TokenPointer {
 
     inline void reset() { txt->reset(); consumeWhitespace(); if(!done()) txt->line0 = cur().line;  }
     inline TokenType curType() { return done() ? TkEnd : cur().type; }
+    TokenType previewType();
     inline const Token& cur() { return queue[ptr]; }
     inline bool done() { return ptr >= (int)queue.size(); }
     inline bool isLast() { return ptr == (int)queue.size()-1;}

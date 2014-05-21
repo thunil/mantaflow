@@ -131,21 +131,20 @@ public:
     inline void setInterpolated(const Vec3& pos, const T& val, Grid<Real>& sumBuffer) const { setInterpol<T>(mData, mSize, mStrideZ, pos, val, &sumBuffer[0]); }
     
     // operators
-    template<class S> Grid<T>& operator+=(const Grid<S>& a);
-    template<class S> Grid<T>& operator+=(const S& a);
-    template<class S> Grid<T>& operator-=(const Grid<S>& a);
-    template<class S> Grid<T>& operator-=(const S& a);
-    template<class S> Grid<T>& operator*=(const Grid<S>& a);
-    template<class S> Grid<T>& operator*=(const S& a);
+    PYTHON template<class S> Grid<T>& operator+=(const Grid<S>& a);
+    PYTHON template<class S> Grid<T>& operator+=(const S& a);
+    PYTHON template<class S> Grid<T>& operator-=(const Grid<S>& a);
+    PYTHON template<class S> Grid<T>& operator-=(const S& a);
+    PYTHON template<class S> Grid<T>& operator*=(const Grid<S>& a);
+    PYTHON template<class S> Grid<T>& operator*=(const S& a);
     template<class S> Grid<T>& operator/=(const Grid<S>& a);
     template<class S> Grid<T>& operator/=(const S& a);
     Grid<T>& operator=(const Grid<T>& a);
     Grid<T>& safeDivide(const Grid<T>& a);    
+    
+    PYTHON instantiate operator+=<T>, operator-=<T>, operator*=<T>;
 
-   PYTHON template<class S> void adc(S s) { *this += s; }
-  PYTHON instantiate adc<T>;
-
-	// python helper functions to work with grids in scene files
+    // python helper functions to work with grids in scene files
 	//! set content to added/subtracted values of other two grids
     PYTHON void add(const Grid<T>& a, const Grid<T>& b);
     PYTHON void sub(const Grid<T>& a, const Grid<T>& b);

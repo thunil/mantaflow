@@ -161,7 +161,7 @@ inline bool compareKW(const string& a, int& pos, const string& kw) {
 
 string replaceSet(const string& templ, const string table[]) {
     vector<string> key, value;
-    for (int i=0;table[i] != "@end";i+=2) {
+    for (int i=0;!table[i].empty();i+=2) {
         key.push_back(table[i]);
         value.push_back(table[i+1]);
     }

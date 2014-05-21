@@ -157,5 +157,12 @@ void PbClass::renameObjects() {
     Py_DECREF(loc_mod);    
 }
 
+//******************************************************************************
+// RefCounted
+
+PbRefCounted::PbRefCounted(FluidSolver* solver, const string& name, PyObject* obj) :
+    PbClass(solver, name, obj), mRefCnt(1)
+{
+}
 
 } // namespace

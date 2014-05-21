@@ -24,7 +24,7 @@ using namespace std;
 // Templates for code generation
 
 const string TmpFunction = STR(
-$TEMPLATE$ static PyObject* _$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+$TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
     try {
         PbArgs _args(_linargs, _kwds);
         FluidSolver *parent = _args.obtainParent();
@@ -51,7 +51,7 @@ $TEMPLATE$ static PyObject* _$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyO
 );
 
 const string TmpMemberFunction = STR(
-$TEMPLATE$ static PyObject* _$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+$TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
     try {
         PbArgs _args(_linargs, _kwds);
         $CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(_self));
@@ -78,7 +78,7 @@ $TEMPLATE$ static PyObject* _$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyO
 });
 
 const string TmpConstructor = STR(
-$TEMPLATE$ static int _$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+$TEMPLATE$ static int _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
     PbClass* obj = Pb::objFromPy(_self); 
     if (obj) delete obj; 
     try {
@@ -99,6 +99,29 @@ $TEMPLATE$ static int _$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObject*
     }
 });
 
+const string TmpBinaryOp = STR(
+$TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* o) {
+    try {
+        PbArgs _args(0,0);
+        _args.addLinArg(o);
+        $CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(_self));
+        pbPreparePlugin(pbo->getParent(), "$CLASS$::$FUNCNAME$");
+        PyObject *_retval = 0;
+        { 
+            ArgLocker _lock;
+            $ARGLOADER$
+            pbo->_args.copy(_args);
+            _retval = toPy(pbo->$FUNCNAME$($CALLSTRING$));
+            pbo->_args.check();
+        }
+        pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$");
+        return _retval;
+    } catch(std::exception& e) {
+        pbSetError("$CLASS$::$FUNCNAME$",e.what());
+        return 0;
+    }
+});
+
 const string TmpGetSet = STR(
 static PyObject* _GET_$NAME$(PyObject* self, void* cl) {
     $CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(self));
@@ -112,11 +135,11 @@ static int _SET_$NAME$(PyObject* self, PyObject* val, void* cl) {
 
 const string TmpRegisterMethod = STR(
 @IF(CTPL)
-    static const Pb::Register _R_$IDX$ ("$CLASS$<$CT$>","$FUNCNAME$",$CLASS$<$CT$>::_$FUNCNAME$);
+    static const Pb::Register _R_$IDX$ ("$CLASS$<$CT$>","$FUNCNAME$",$CLASS$<$CT$>::_W_$REGWRAPPER$);
 @ELIF(CLASS)
-    static const Pb::Register _R_$IDX$ ("$CLASS$","$FUNCNAME$",$CLASS$::_$FUNCNAME$);
+    static const Pb::Register _R_$IDX$ ("$CLASS$","$FUNCNAME$",$CLASS$::_W_$REGWRAPPER$);
 @ELSE
-    static const Pb::Register _RP_$FUNCNAME$ ("","$FUNCNAME$",_$FUNCNAME$);
+    static const Pb::Register _RP_$FUNCNAME$ ("","$FUNCNAME$",_W_$REGWRAPPER$);
 @END
 );
 
@@ -143,7 +166,7 @@ static const Pb::Register _R_$IDX$ ("$CLASS$","$PYNAME$","");
 );
 
 const string TmpTemplateWrapper = STR(
-static $RET$ _$FUNCNAME$ (PyObject* s, PyObject* l, PyObject* kw) {
+static $RET$ _W_$WRAPPER$ (PyObject* s, PyObject* l, PyObject* kw) {
     PbArgs args(l, kw);
     int hits=0;
     $RET$ (*call)(PyObject*,PyObject*,PyObject*);
@@ -157,6 +180,24 @@ static $RET$ _$FUNCNAME$ (PyObject* s, PyObject* l, PyObject* kw) {
     else
         pbSetError("$FUNCNAME$", "Argument matches multiple templates");
     return @IF(CONSTRUCTOR) -1 @ELSE 0 @END ; 
+}
+);
+const string TmpTemplateWrapperOp = STR(
+static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* o) {
+    PbArgs args(0,0);
+    args.addLinArg(o);
+    int hits=0;
+    PyObject* (*call)(PyObject*,PyObject*);
+
+    $TEMPLATE_CHECK$
+    
+    if (hits == 1)
+        return call(_self, o);
+    if (hits == 0)
+        pbSetError("$FUNCNAME$", "Can't deduce template parameters");
+    else
+        pbSetError("$FUNCNAME$", "Argument matches multiple templates");
+    return 0; 
 }
 );
 
@@ -173,7 +214,7 @@ static bool $NAME$ (PbArgs& A) {
 string generateLoader(const Argument& arg) {
     bool integral = isIntegral(arg.type.name);
     Type ptrType = arg.type;
-    string optCall =  arg.value.empty() ? "get" : "getOpt";
+    string optCall =  string("_args.") + (arg.value.empty() ? "get" : "getOpt");
 
     ptrType.isConst = false;
     if (integral) {
@@ -182,12 +223,15 @@ string generateLoader(const Argument& arg) {
     } else if (arg.type.isPointer) {
         ptrType.isPointer = false;
         ptrType.isRef = false;
-        optCall = arg.value.empty() ? "getPtr" : "getPtrOpt";
+        optCall = string("_args.") + (arg.value.empty() ? "getPtr" : "getPtrOpt");
+    } else if (arg.type.isRef) {
+        ptrType.isPointer = false;
+        ptrType.isRef = false;
+        optCall = string("*_args.") + (arg.value.empty() ? "getPtr" : "getPtrOpt");
     }
     
     stringstream loader;
-    loader << arg.type.build() << " " << arg.name << " = ";
-    loader << "_args." << optCall;
+    loader << arg.type.build() << " " << arg.name << " = " << optCall;
         
     loader << "<" << ptrType.build() << " >";
     loader << "(\"" << arg.name << "\"," << arg.index << ",";
@@ -211,10 +255,12 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 
     bool isConstructor = func.returnType.minimal.empty();
     bool isPlugin = !block.parent;
+    bool doRegister = true;
+    string className = isPlugin ? "" : block.parent->name;
     if (isConstructor) gFoundConstructor = true;
     if (isPlugin && sink.isHeader)
         errMsg(block.line0,"plugin python functions can't be defined in headers.");
-
+    
     // replicate function
     const string signature = func.minimal + block.initList;
     if (gDocMode) {
@@ -231,28 +277,45 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
     for (int i=0; i<(int)func.arguments.size(); i++)
         loader += generateLoader(func.arguments[i]);
 
+    // wrapper name
+    static int idx;
+    stringstream wrapper;
+    wrapper << idx++;
+
     // generate glue layer function
     const string table[] = { "FUNCNAME", func.name, 
                              "ARGLOADER", loader, 
                              "TEMPLATE", func.isTemplated() ? "template "+func.templateTypes.minimal : "",
-                             "WRAPPER", (func.isTemplated() ? "T_":"") + func.name,
-                             "CLASS", isPlugin ? "" : block.parent->name,
+                             "WRAPPER", (func.isTemplated() ? "T_":"") + wrapper.str(),
+                             "REGWRAPPER", wrapper.str(),
+                             "CLASS", className,
                              "CTPL", (isPlugin || !block.parent->isTemplated()) ? "" : "$CT$",
                              "CALLSTRING", func.callString(),
                              "RET_VOID", (func.returnType.name=="void") ? "Y" : "",
-                             "@end" };
-    string callerTempl = isConstructor ? TmpConstructor : (isPlugin ? TmpFunction : TmpMemberFunction);
+                             "" };
+    string callerTempl = isPlugin ? TmpFunction : TmpMemberFunction;
+    if (isConstructor) callerTempl = TmpConstructor;
+    else if (func.isOperator) callerTempl = TmpBinaryOp;
     sink.inplace << replaceSet(callerTempl, table);
-
 
     // drop a marker for function template wrapper
     if (func.isTemplated()) {
-        stringstream num; num << inst.size();
-        sink.inplace << "$" << num.str() << "$";
-        inst.push_back(Instantiation(isPlugin ? "" : block.parent->name, func));
+        Instantiation* curInst = 0;
+        for (int i=0; i<(int)inst.size(); i++)
+            if (inst[i].cls == className && inst[i].name == func.name) curInst=&inst[i];
+        if (!curInst) {
+            stringstream num; num << inst.size();
+            sink.inplace << "$" << num.str() << "$";    
+            inst.push_back(Instantiation(className,func.name));
+            curInst = &inst.back();
+        } else
+            doRegister = false;
+        curInst->wrapName.push_back(wrapper.str());
+        curInst->func.push_back(func);
     }
 
     // register functions
+    if (!doRegister) return;
     const string reg = replaceSet(TmpRegisterMethod, table);
     if (isPlugin) {
         sink.inplace << reg;
@@ -282,7 +345,7 @@ void processPythonVariable(const Block& block, Sink& sink) {
                              "CTPL", !block.parent->isTemplated() ? "" : "$CT$",
                              "PYNAME", pythonName,
                              "TYPE", var.returnType.minimal,
-                             "@end" };
+                             "" };
 
     // output function and accessors
     sink.inplace << block.linebreaks() << var.minimal << ";";
@@ -319,7 +382,7 @@ void processPythonClass(const Block& block, const string& code, Sink& sink, vect
                              "BTPL", cls.baseClass.isTemplated() ? "<$BT$>" : "",
                              "PYNAME", pythonName,
                              "CTPL", cls.isTemplated() ? "CT" : "",
-                             "@end" };
+                             "" };
 
     // register class
     string reg = replaceSet(TmpRegisterClass, table);
@@ -357,7 +420,7 @@ void processPythonInstantiation(const Block& block, const Type& aliasType, Sink&
     // for template functions, add to instantiation list
     bool isFunction = false;
     for (int i=0; i<(int)inst.size(); i++) {
-        if (inst[i].cls == parent && inst[i].func.name == aliasType.name) {
+        if (inst[i].cls == parent && inst[i].name == aliasType.name) {
             inst[i].templates.push_back(aliasType.templateTypes.listText);
             isFunction = true;
             break;
@@ -370,7 +433,7 @@ void processPythonInstantiation(const Block& block, const Type& aliasType, Sink&
 }
 
 void processPythonAlias(const Block& block, const Type& aliasType, const string& aliasName, Sink& sink) {
-    const string table[] = {"CLASS", strip(aliasType.build()), "PYNAME", aliasName, "@end"};
+    const string table[] = {"CLASS", strip(aliasType.build()), "PYNAME", aliasName, ""};
     if (!aliasName.empty())
         sink.link << '&' << replaceSet(TmpAlias,table) << '\n';
 }
@@ -397,7 +460,7 @@ string buildTemplateChecker(string& out, const Function& func) {
     const string table[] = { "TEMPLATE", func.templateTypes.minimal,
                              "NAME", name.str(),
                              "CHK", chk.str(),
-                             "@end" };
+                             "" };
     out+= replaceSet(TmpTemplateChecker,table);
     return name.str();
 }
@@ -408,24 +471,28 @@ void postProcessInstantiations(Sink& sink, vector<Instantiation>& inst) {
     for (int i=0; i<(int)inst.size(); i++) {
         Instantiation& cur = inst[i];
         if (cur.templates.size() == 0)
-            errMsg(0, cur.cls + "::" + cur.func.name + " : templated function without instantiation detected.");
+            errMsg(0, cur.cls + "::" + cur.name + " : templated function without instantiation detected.");
 
         string wrapper = "";
-        string chkFunc = buildTemplateChecker(wrapper, cur.func);
         stringstream chkCall;
-
-        // build argument checker        
-        for (int j=0; j<cur.templates.size(); j++) {
-            stringstream num; num << j;
-            chkCall << "if (" << chkFunc << "<" << cur.templates[j] << ">(args)) {";
-            chkCall << "hits++; call = _T_" << cur.func.name << "<" << cur.templates[j] <<">; }";
+        // loop over overloaded functions
+        for (int k=0; k<(int)cur.func.size(); k++) {
+            string chkFunc = buildTemplateChecker(wrapper, cur.func[k]);
+            
+            // build argument checker        
+            for (int j=0; j<cur.templates.size(); j++) {
+                stringstream num; num << j;
+                chkCall << "if (" << chkFunc << "<" << cur.templates[j] << ">(args)) {";
+                chkCall << "hits++; call = _W_T_" << cur.wrapName[k] << "<" << cur.templates[j] <<">; }";
+            }
         }
-        const string table[] = { "CONSTRUCTOR", cur.func.name == cur.cls ? "Y":"",
-                                 "FUNCNAME", cur.func.name,
+        const string table[] = { "CONSTRUCTOR", cur.name == cur.cls ? "Y":"",
+                                 "WRAPPER", cur.wrapName[0],
                                  "TEMPLATE_CHECK", chkCall.str(),
-                                 "RET", cur.func.name == cur.cls ? "int" : "PyObject*",
-                                 "@end" };
-        wrapper += replaceSet(TmpTemplateWrapper, table);
+                                 "FUNCNAME", cur.name,
+                                 "RET", cur.name == cur.cls ? "int" : "PyObject*",
+                                 "" };
+        wrapper += replaceSet(cur.func[0].isOperator ? TmpTemplateWrapperOp : TmpTemplateWrapper, table);
         
         stringstream num; 
         num << "$" << i << "$";

@@ -51,9 +51,11 @@ struct ClassData {
     string cName, pyName;
     InitFunc init;
     PyTypeObject typeInfo;
+    PyNumberMethods numInfo;
     //PySequenceMethods seqInfo;
     vector<Method> methods;
     map<string,GetSet> getset;
+    map<string,OperatorFunction> ops;
     ClassData* baseclass;
     string baseclassName;
     Constructor constructor;
@@ -80,6 +82,7 @@ public:
     void addClass(const std::string& name, const std::string& internalName, const std::string& baseclass);
     void addExternalInitializer(InitFunc func);
     void addMethod(const std::string& classname, const std::string& methodname, GenericFunction method);
+    void addOperator(const std::string& classname, const std::string& methodname, OperatorFunction method);
     void addConstructor(const std::string& classname, Constructor method);
     void addGetSet(const std::string& classname, const std::string& property, Getter getfunc, Setter setfunc);
     void addPythonPath(const std::string& path);
@@ -96,6 +99,7 @@ private:
     ClassData* getOrConstructClass(const string& name);
     void registerBaseclasses();
     void registerAliases();
+    void registerOperators(ClassData* cls);
     void addParentMethods(ClassData* cls, ClassData* base);
     WrapperRegistry();
     std::map<std::string, ClassData*> mClasses;
@@ -142,6 +146,7 @@ PyMODINIT_FUNC PyInit_Main(void) {
 WrapperRegistry::WrapperRegistry() {
     addClass("__modclass__", "__modclass__" , "");
     addClass("PbClass", "PbClass", "");
+    addClass("PbRefCounted", "PbRefCounted", "");
 }
 
 ClassData* WrapperRegistry::getOrConstructClass(const string& classname) {
@@ -216,6 +221,15 @@ void WrapperRegistry::addMethod(const string& classname, const string& methodnam
     classdef->methods.push_back(Method(methodname,methodname,func)); 
 }
 
+void WrapperRegistry::addOperator(const string& classname, const string& methodname, OperatorFunction func) {
+    if (classname.empty())
+        errMsg("PYTHON operators have to be defined within classes.");
+    
+    string op = methodname.substr(8);
+    ClassData* classdef = getOrConstructClass(classname);
+    classdef->ops[op] = func;
+}
+
 void WrapperRegistry::addConstructor(const string& classname, Constructor func) {
     ClassData* classdef = getOrConstructClass(classname);
     classdef->constructor = func;
@@ -229,6 +243,9 @@ void WrapperRegistry::addParentMethods(ClassData* cur, ClassData* base) {
 
     for (map<string,GetSet>::iterator it = base->getset.begin(); it != base->getset.end(); ++it)
         addGetSet(cur->cName, it->first, it->second.getter, it->second.setter);
+
+    for (map<string,OperatorFunction>::iterator it = base->ops.begin(); it != base->ops.end(); ++it)
+        cur->ops[it->first] = it->second;
 
     addParentMethods(cur, base->baseclass);
 }
@@ -253,6 +270,24 @@ void WrapperRegistry::registerAliases() {
         if (it->first != it->second->pyName && it->first.find('<') == string::npos) {
             mCode += it->first + " = " + it->second->pyName + "\n";
         }
+    }
+}
+
+void WrapperRegistry::registerOperators(ClassData* cls) {
+    PyNumberMethods& num = cls->numInfo;
+    for (map<string,OperatorFunction>::iterator it = cls->ops.begin(); it != cls->ops.end(); it++) {
+        const string& op = it->first;
+        OperatorFunction func = it->second;
+        if      (op=="+=") num.nb_inplace_add = func;
+        else if (op=="-=") num.nb_inplace_subtract = func;
+        else if (op=="*=") num.nb_inplace_multiply = func;
+        else if (op=="/=") num.nb_inplace_divide = func;
+        else if (op=="+") num.nb_add = func;
+        else if (op=="-") num.nb_subtract = func;
+        else if (op=="*") num.nb_multiply = func;
+        else if (op=="/") num.nb_divide = func;
+        else
+            errMsg("PYTHON operator " + op + " not supported");
     }
 }
 
@@ -418,13 +453,20 @@ PyObject* WrapperRegistry::initModule() {
 #endif
     if (module == NULL)
         return NULL;
-    
 
     // load classes
-    for(map<string, ClassData*>::iterator it = mClasses.begin(); it != mClasses.end(); ++it) {        
-        char* nameptr = (char*)it->first.c_str();
-        ClassData& data = *it->second;
+    for(vector<ClassData*>::iterator it = mClassList.begin(); it != mClassList.end(); ++it) {        
+        ClassData& data = **it;
+        char* nameptr = (char*)data.pyName.c_str();
         
+        // define numeric substruct
+        PyNumberMethods* num = 0;
+        if (!data.ops.empty()) {
+            num = &data.numInfo;
+            memset(num,0,sizeof(PyNumberMethods));
+            registerOperators(&data);
+        }
+
         // define python classinfo
         PyTypeObject t = {
             PyVarObject_HEAD_INIT(NULL, 0)
@@ -437,7 +479,7 @@ PyObject* WrapperRegistry::initModule() {
             0,                         // tp_setattr 
             0,                         // tp_reserved 
             0,                         // tp_repr 
-            0,                         // tp_as_number 
+            num,                       // tp_as_number 
             0,                         // tp_as_sequence 
             0,                         // tp_as_mapping 
             0,                         // tp_hash  
@@ -538,6 +580,9 @@ void setReference(Manta::PbClass* cls, PyObject* obj) {
 
 Register::Register(const string& className, const string& funcName, GenericFunction func) {
     WrapperRegistry::instance().addMethod(className, funcName, func);
+}
+Register::Register(const string& className, const string& funcName, OperatorFunction func) {
+    WrapperRegistry::instance().addOperator(className, funcName, func);
 }
 Register::Register(const string& className, const string& funcName, Constructor func) {
     WrapperRegistry::instance().addConstructor(className, func);

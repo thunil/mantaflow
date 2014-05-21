@@ -38,23 +38,30 @@ struct ArgLocker {
 PyObject* getPyNone();
 
 // for PbClass-derived classes
-template<class T> T* fromPyPtr(PyObject* obj) { 
+template<class T> T* fromPyPtr(PyObject* obj, std::vector<void*>* tmp) { 
     if (PbClass::isNullRef(obj)) 
         return 0; 
     PbClass* pbo = Pb::objFromPy(obj); 
     const std::string& type = Namify<T>::S;
     if (!pbo || !(pbo->canConvertTo(type))) 
-        throw Error("can't convert argument to " + type); 
+        throw Error("can't convert argument to " + type+"*"); 
     return (T*)(pbo); 
 }
 
-template<class T> T fromPy(PyObject* obj) {
-    return *fromPyPtr<typename remove_pointers<T>::type>(obj);
-}
+template<> float* fromPyPtr<float>(PyObject* obj, std::vector<void*>* tmp);
+template<> double* fromPyPtr<double>(PyObject* obj, std::vector<void*>* tmp);
+template<> int* fromPyPtr<int>(PyObject* obj, std::vector<void*>* tmp);
+template<> std::string* fromPyPtr<std::string>(PyObject* obj, std::vector<void*>* tmp);
+template<> bool* fromPyPtr<bool>(PyObject* obj, std::vector<void*>* tmp);
+template<> Vec3* fromPyPtr<Vec3>(PyObject* obj, std::vector<void*>* tmp);
+template<> Vec3i* fromPyPtr<Vec3i>(PyObject* obj, std::vector<void*>* tmp);
 
+PyObject* incref(PyObject* obj);
 template<class T> PyObject* toPy(const T& v) { 
-    if (v.getPyObject()) 
-        return v.getPyObject(); 
+    PyObject* obj = v.getPyObject();
+    if (obj) {
+        return incref(obj);
+    } 
     T* co = new T (v); 
     const std::string& type = Namify<typename remove_pointers<T>::type>::S;
     return Pb::copyObject(co,type); 
@@ -65,6 +72,10 @@ template<class T> bool isPy(PyObject* obj) {
     PbClass* pbo = Pb::objFromPy(obj); 
     const std::string& type = Namify<typename remove_pointers<T>::type>::S;
     return pbo && pbo->canConvertTo(type);
+}
+
+template<class T> T fromPy(PyObject* obj) {
+    throw Error("Unknown type conversion. Did you pass a PbClass by value? (you shouldn't)");
 }
 
 // builtin types
@@ -104,6 +115,7 @@ template<> bool isPy<PbType>(PyObject* obj);
 class PbArgs {
 public:
     PbArgs(PyObject *linargs = NULL, PyObject* dict = NULL);
+    ~PbArgs();
     void setup(PyObject *linargs = NULL, PyObject* dict = NULL);
     
     void check();
@@ -118,6 +130,8 @@ public:
     inline PyObject* linArgs() { return mLinArgs; }
     inline PyObject* kwds() { return mKwds; }
     
+    void addLinArg(PyObject* obj);
+
     template<class T> inline void add(const std::string& key, T arg) {
         DataElement el = { toPy(arg), false };
         mData[key] = el;
@@ -137,15 +151,15 @@ public:
     }
     template<class T> inline T* getPtrOpt(const std::string& key, int number, T* defarg, ArgLocker *lk=NULL) {
         PyObject* o = getItem(key, false, lk);
-        if (o) return fromPyPtr<T>(o);
+        if (o) return fromPyPtr<T>(o,&mTmpStorage);
         if (number >= 0) o = getItem(number, false);
-        return o ? fromPyPtr<T>(o) : defarg;
+        return o ? fromPyPtr<T>(o,&mTmpStorage) : defarg;
     }
     template<class T> inline T* getPtr(const std::string& key, int number = -1, ArgLocker *lk=NULL) {
         PyObject* o = getItem(key, false, lk);
-        if (o) return fromPyPtr<T>(o);
+        if (o) return fromPyPtr<T>(o,&mTmpStorage);
         o = getItem(number, false);
-        if(o) return fromPyPtr<T>(o);
+        if(o) return fromPyPtr<T>(o,&mTmpStorage);
         errMsg ("Argument '" + key + "' is not defined.");
     }
 
@@ -155,7 +169,7 @@ public:
         PyObject* o = getItem(name, false, 0);
         if (!o) 
             o = getItem(num, false, 0);
-        return o ? isPy<T>(o) : false;
+        return o ? isPy<typename remove_pointers<T>::type>(o) : false;
     }
     
     PbArgs& operator=(const PbArgs& a); // dummy
@@ -175,6 +189,7 @@ protected:
     std::map<std::string, DataElement> mData;
     std::vector<DataElement> mLinData;
     PyObject* mLinArgs, *mKwds;    
+    std::vector<void*> mTmpStorage;
 };
 
 

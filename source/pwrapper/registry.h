@@ -59,6 +59,7 @@ PyObject* copyObject(Manta::PbClass* cls, const std::string& classname);
 // callback type
 typedef void (*InitFunc)(PyObject*);
 typedef PyObject* (*GenericFunction)(PyObject* self, PyObject* args, PyObject* kwds);
+typedef PyObject* (*OperatorFunction)(PyObject* self, PyObject* o);
 typedef int (*Constructor)(PyObject* self, PyObject* args, PyObject* kwds);
 typedef PyObject* (*Getter)(PyObject* self, void* closure);
 typedef int (*Setter)(PyObject* self, PyObject* value, void* closure);
@@ -67,6 +68,8 @@ typedef int (*Setter)(PyObject* self, PyObject* value, void* closure);
 struct Register {
     //! register method
     Register(const std::string& className, const std::string& funcName, GenericFunction func);
+    //! register operator
+    Register(const std::string& className, const std::string& funcName, OperatorFunction func);
     //! register constructor
     Register(const std::string& className, const std::string& funcName, Constructor func);
     //! register getter/setter

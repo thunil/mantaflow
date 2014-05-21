@@ -24,7 +24,6 @@
 using namespace std;
 
 string gFilename;
-string gRegText;
 bool gDebugMode = true;
 bool gDocMode;
 bool gIsHeader;
@@ -61,7 +60,8 @@ void doGenerate(int argc, char* argv[], bool docs) {
     if (!strcmp(argv[3],"OPENMP")) gMTType = MTOpenMP;
     
     // load complete file into buffer    
-    string text = readFile(indir+infile);
+    gFilename = indir+infile;
+    string text = readFile(gFilename);
     if (text.empty()) {
         cerr << "preprocessor error: Can't read file '" << infile << "'" << endl;
         exit(1);

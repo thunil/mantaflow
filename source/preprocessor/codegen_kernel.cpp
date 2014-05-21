@@ -284,7 +284,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
         const string table[] = { "TYPE", kernel.arguments[i].type.build(true),
                                  "NAME", kernel.arguments[i].name, 
                                  "IDX", num.str(), 
-                                 "@end" };
+                                 "" };
         accessors << replaceSet(TmpAccessor, table);
     }
 
@@ -339,7 +339,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
                              "JOINER", joiner.str(),
                              "OMP_PRE", preReduce.str(),
                              "OMP_POST", ompPost,
-                             "@end" };
+                             "" };
 
     // generate kernel
     string templ = doubleKernel ? TmpDoubleKernel : TmpSingleKernel;

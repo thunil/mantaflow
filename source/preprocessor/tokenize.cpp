@@ -23,6 +23,14 @@ using namespace std;
 //*************************************************************************************
 // TokenPointer class members
 
+TokenType TokenPointer::previewType() {
+    for (int i=ptr+1; i < queue.size(); i++) {
+        if (queue[i].type != TkWhitespace && queue[i].type != TkComment)
+            return queue[i].type;
+    }
+    return TkNone;
+}
+
 void TokenPointer::consumeWhitespace() {
     if (done()) return;
     while (cur().type == TkWhitespace || cur().type == TkComment) {
@@ -178,14 +186,11 @@ void tokenizeBlock(vector<Token>& tokens, const string& kw, const string& text, 
         else if (c==' ' || c=='\t' || c=='\n') {
             tokens.push_back(Token(TkWhitespace, line, c));
         }
-        else if (c=='=') {
-            tokens.push_back(Token(TkAssign, line, c));
-        }
         else if (c==',') {
             tokens.push_back(Token(TkComma, line, c));
         }
-        else if (c=='*') {
-            tokens.push_back(Token(TkPointer, line, c));
+        else if (c=='*' || c=='-' || c=='+' || c=='/' || c=='=') {
+            tokens.push_back(Token(TkOperator, line, c));
         }
         else if (c=='&') {
             tokens.push_back(Token(TkRef, line, c));

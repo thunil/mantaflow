@@ -52,7 +52,7 @@ string parseRunaway(TokenPointer& parentPtr) {
 
 void parsePointer(TokenPointer& tk, Type& cur) {
     if (tk.done()) return;
-    if (tk.cur().type == TkPointer) {
+    if (tk.cur().type == TkOperator && tk.cur().text == "*") {
         cur.isPointer = true;
         tk.next();
     } else if (tk.cur().type == TkRef) {
@@ -93,7 +93,13 @@ Type parseType(TokenPointer& parentPtr) {
     typeAssert(tk.curType() == TkDescriptor || tk.curType() == TkSimpleType);
     cur.name = tk.cur().text;
     tk.next();
-
+    if (cur.name == "operator") {
+        while (tk.curType() == TkOperator) {
+            cur.name += tk.cur().text;
+            tk.next();
+        }
+    }
+    
     // namespace
     if (tk.curType() == TkDoubleColon) {
         cur.name += "::";
@@ -127,8 +133,8 @@ Argument parseArgument(TokenPointer& parentPtr, bool requireName, bool requireTy
     tk.next();
 
     // default value ?
-    if (tk.curType() == TkAssign || tk.curType() == TkBracketL) {
-        if (tk.curType() == TkAssign)
+    if (tk.curType() == TkBracketL || (tk.curType() == TkOperator && tk.cur().text == "=")) {
+        if (tk.curType() == TkOperator)
             tk.next();
         cur.value = parseRunaway(tk);
     }
@@ -198,6 +204,15 @@ Function parseFunction(TokenPointer& parentPtr, bool requireNames, bool requireT
     tkAssert(tk.curType() == TkDescriptor, "malformed function/kernel");
     cur.name = tk.cur().text;
     tk.next();
+
+    if (cur.name == "operator") {
+        cur.isOperator = true;
+        while(tk.curType() == TkOperator) {
+            cur.name += tk.cur().text;
+            tk.next();
+        }
+    }
+
     if (requireArgs || tk.curType() == TkBracketL)
         cur.arguments = parseArgumentList(tk, requireNames, true);
     else
@@ -207,7 +222,6 @@ Function parseFunction(TokenPointer& parentPtr, bool requireNames, bool requireT
         cur.isConst = true;
         tk.next();
     }
-
     return cur;
 }
 
@@ -312,7 +326,8 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
         }
         else // function or member
         {
-            bool isConstructor = parent && tk.curType() == TkDescriptor && parent->name == tk.cur().text;
+            bool isConstructor = parent && tk.curType() == TkDescriptor && 
+                 parent->name == tk.cur().text && tk.previewType() == TkBracketL;
             block.func = parseFunction(tk, false, !isConstructor, false);
             block.func.templateTypes = templTypes;
             block.func.prequel(&templText);

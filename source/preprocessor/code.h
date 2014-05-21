@@ -71,11 +71,11 @@ struct Argument : Text {
 };
 
 struct Function : Text {
-    Function() : returnType(),isInline(false),isVirtual(false),isConst(false),noParentheses(false) {}
+    Function() : returnType(),isInline(false),isVirtual(false),isConst(false),noParentheses(false),isOperator(false) {}
 
     std::string name;
     Type returnType;
-    bool isInline, isVirtual, isConst, noParentheses;
+    bool isInline, isVirtual, isConst, noParentheses, isOperator;
     List<Type> templateTypes;
     List<Argument> arguments;
     inline std::string callString() const { return arguments.names(); }
@@ -84,10 +84,11 @@ struct Function : Text {
 };
 
 struct Instantiation {
-    Instantiation(const std::string& c, const Function& f) : 
-        cls(c), func(f) {}
-    std::string cls;
-    Function func;
+    Instantiation(const std::string& c, const std::string& n) : 
+        cls(c), name(n) {}
+    std::string cls, name;
+    std::vector<std::string> wrapName;
+    std::vector<Function> func;
     std::vector<std::string> templates;    
 };
 

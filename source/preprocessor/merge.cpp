@@ -104,7 +104,7 @@ void resolveRequests(RegFile& file) {
             for (int j=0; j<(int)info.snippets.size(); j++) {
                 stringstream idxStr;
                 idxStr << file.idx++;
-                const string table[] = {"CT", req.tpl, "BT", req.base, "IDX", idxStr.str(), "@end"};
+                const string table[] = {"CT", req.tpl, "BT", req.base, "IDX", idxStr.str(), ""};
                 file.out << replaceSet(info.snippets[j], table) << '\n';
             }
         }

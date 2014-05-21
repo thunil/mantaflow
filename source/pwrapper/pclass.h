@@ -87,6 +87,15 @@ protected:
     static std::vector<PbClass*> mInstances;
 };
 
+class PbRefCounted : public PbClass {
+public:
+    PbRefCounted(FluidSolver* parent, const std::string& name="", PyObject* obj=NULL);
+    //~PbRefCounted();
+
+protected:
+    int mRefCnt;
+};
+
 //!\cond Register
 
 void pbFinalizePlugin(FluidSolver* parent, const std::string& name);

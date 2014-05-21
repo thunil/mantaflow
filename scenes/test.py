@@ -17,6 +17,7 @@ flags = s.create(FlagGrid)
 vel = s.create(MACGrid)
 density = s.create(RealGrid)
 pressure = s.create(RealGrid)
+test = s.create(RealGrid)
 
 # noise field
 noise = s.create(NoiseField)
@@ -53,7 +54,9 @@ for t in range(250):
     setWallBcs(flags=flags, vel=vel)
     #density.save('den%04d.uni' % t)
     
-    addToGrid(vel,vec3(0,1,0))
+    vel += vec3(0,1,0)
+    test = pressure
+    #addToGrid(vel,vec3(0,1,0))
    
     s.printTimings()    
     s.step()

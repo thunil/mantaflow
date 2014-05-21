@@ -34,6 +34,11 @@ PyObject* getPyNone() {
     Py_INCREF(Py_None);
     return Py_None;
 }
+PyObject* incref(PyObject* obj) {
+    Py_INCREF(obj);
+    return obj;
+}
+
 
 /*template<> PyObject* toPy<PyObject*>(PyObject* obj) {
     return obj;     
@@ -155,6 +160,22 @@ template<> PbType fromPy<PbType>(PyObject* obj) {
     return pb;
 }
 
+template<class T> T* tmpAlloc(PyObject* obj,std::vector<void*>* tmp) {
+    if (!tmp) throw Error("dynamic de-ref not supported for this type");
+    void* ptr = malloc(sizeof(T));
+    tmp->push_back(ptr);
+
+    *((T*)ptr) = fromPy<T>(obj); 
+    return (T*)ptr;
+}
+template<> float* fromPyPtr<float>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<float>(obj,tmp); }
+template<> double* fromPyPtr<double>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<double>(obj,tmp); }
+template<> int* fromPyPtr<int>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<int>(obj,tmp); }
+template<> std::string* fromPyPtr<std::string>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<std::string>(obj,tmp); }
+template<> bool* fromPyPtr<bool>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<bool>(obj,tmp); }
+template<> Vec3* fromPyPtr<Vec3>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<Vec3>(obj,tmp); }
+template<> Vec3i* fromPyPtr<Vec3i>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<Vec3i>(obj,tmp); }
+
 template<> bool isPy<float>(PyObject* obj) {
 #if PY_MAJOR_VERSION <= 2
     if (PyInt_Check(obj)) return true;
@@ -228,11 +249,18 @@ PbArgs PbArgs::EMPTY(NULL,NULL);
 PbArgs::PbArgs(PyObject* linarg, PyObject* dict) : mLinArgs(0), mKwds(0) {
     setup(linarg, dict);
 }
+PbArgs::~PbArgs() {
+    for(int i=0; i<(int)mTmpStorage.size(); i++)
+        free(mTmpStorage[i]);
+    mTmpStorage.clear();
+}
+
 void PbArgs::copy(PbArgs& a) {
     mKwds = a.mKwds;
     mData = a.mData;
     mLinData = a.mLinData;
     mLinArgs = a.mLinArgs;
+
 }
 void PbArgs::clear() {
     mLinArgs = 0;
@@ -269,6 +297,11 @@ void PbArgs::setup(PyObject* linarg, PyObject* dict) {
         }
         mLinArgs = linarg;
     }
+}
+
+void PbArgs::addLinArg(PyObject* obj) {
+    DataElement el = { obj, false };
+    mLinData.push_back(el);
 }
 
 void PbArgs::check() {
