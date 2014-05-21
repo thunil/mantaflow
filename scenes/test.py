@@ -55,7 +55,6 @@ for t in range(250):
     #density.save('den%04d.uni' % t)
     
     vel += vec3(0,1,0)
-    test = pressure
     #addToGrid(vel,vec3(0,1,0))
    
     s.printTimings()    

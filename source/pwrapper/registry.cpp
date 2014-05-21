@@ -113,6 +113,7 @@ private:
 // Callback functions
 
 void cbDealloc(PbObject* self) {
+    cout << "dealloc " << self->instance->getName() << " " << self->classdef->cName << endl;
     if (self->instance) {
         // don't delete top-level objects
         if (self->instance->getParent() != self->instance)
@@ -127,6 +128,7 @@ PyObject* cbNew(PyTypeObject *type, PyObject *args, PyObject *kwds) {
         // lookup and link classdef
         self->classdef = WrapperRegistry::instance().lookup(type->tp_name);
         self->instance = NULL;
+        cout << "creating " << self->classdef->cName << endl;
     } else
         errMsg("can't allocate new python class object");
     return (PyObject*) self;

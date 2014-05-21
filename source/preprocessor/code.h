@@ -78,6 +78,7 @@ struct Function : Text {
     bool isInline, isVirtual, isConst, noParentheses, isOperator;
     List<Type> templateTypes;
     List<Argument> arguments;
+    std::string signature() const;
     inline std::string callString() const { return arguments.names(); }
     inline bool isTemplated() const { return !templateTypes.empty(); }
     virtual std::string dynamicClass() { return "Function"; }

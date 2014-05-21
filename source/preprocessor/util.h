@@ -27,7 +27,7 @@ std::string replaceSet(const std::string& templ, const std::string table[]);
 std::vector<std::string> split(const std::string& text, char sep);
 void stealLinebreaks(std::string& code, int num);
 std::string strip(const std::string& s);
-bool allCaps(const std::string& s);
+std::string makeSafe(const std::string& s);
 inline bool isNameChar(char c) {
     return (c>='A' && c<='Z') || (c>='a' && c<='z') || (c>='0' && c<='9') || c=='_';
 }

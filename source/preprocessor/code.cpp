@@ -48,6 +48,20 @@ string Text::linebreaks() const {
     return s;
 }
 
+string Function::signature() const {
+    string s;
+    if (isTemplated())
+        s = "template " + templateTypes.minimal;
+    if (isVirtual)
+        s += "virtual ";
+    if (isInline)
+        s += "inline ";
+    s+= returnType.minimal + name + arguments.minimal;
+    if (isConst)
+        s += "const ";
+    return s;    
+}
+
 template<> string List<Argument>::full(bool refify) const {
     stringstream s;
     for (int i=0; i<(int)_data.size(); i++) {

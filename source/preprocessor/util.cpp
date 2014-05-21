@@ -106,11 +106,15 @@ void replaceAll(string& source, string const& find, string const& replace)
     }
 }
 
-bool allCaps(const string& s) {
+string makeSafe(const string& s) {
+    string t="_X_";
+    string source = "+=-<>!()";
+    string trans  = "12345678";
     for (int i=0; i<(int)s.size(); i++) {
-        if (s[i] < 'A' || s[i] > 'Z') return false;
+        int idx = source.find(s[i]);
+        t += (idx == string::npos) ? s[i] : trans[idx];
     }
-    return true;
+    return t;
 }
 
 void stealLinebreaks(string& code, int num) {

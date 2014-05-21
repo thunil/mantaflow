@@ -250,7 +250,11 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 
     // PYTHON(...) keyword options
     for (size_t i=0; i<block.options.size(); i++) {
-        errMsg(block.line0, "unknown keyword " + block.options[i].name);    
+        if (block.options[i].name == "only") {
+            ((Function&)func).name = makeSafe(func.name);
+        }
+        else
+            errMsg(block.line0, "unknown keyword " + block.options[i].name);    
     }
 
     bool isConstructor = func.returnType.minimal.empty();
@@ -262,15 +266,14 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
         errMsg(block.line0,"plugin python functions can't be defined in headers.");
     
     // replicate function
-    const string signature = func.minimal + block.initList;
     if (gDocMode) {
         // document free plugins
         if (isPlugin)
             sink.inplace << "//! \\ingroup Plugins\n";
-        sink.inplace << "PYTHON " << signature << "{}\n";
+        sink.inplace << "PYTHON " << func.signature() << "{}\n";
         return;
     }
-    sink.inplace << block.linebreaks() << signature << code;
+    sink.inplace << block.linebreaks() << func.signature() << block.initList << code;
 
     // generate variable loader
     string loader = "";
