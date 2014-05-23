@@ -299,9 +299,42 @@ void knExtrapolateIntoBnd (FlagGrid& flags, MACGrid& vel)
 		vel(i,j,k) = v/(Real)c;
 	}
 }
+
+inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
+    if (i > data.getSizeX()-2) i= data.getSizeX()-2;
+    if (i < 1) i = 1;
+    if (j > data.getSizeY()-2) j= data.getSizeY()-2;
+    if (j < 1) j = 1;
+
+	int kd = 1;
+	if(data.is3D()) {
+    if (k > data.getSizeZ()-2) k= data.getSizeZ()-2;
+    if (k < 1) k = 1; 
+	} else { kd=0; }
+
+    return Vec3( data(i+1,j  ,k   ) - data(i-1,j  ,k   ) ,
+                 data(i  ,j+1,k   ) - data(i  ,j-1,k   ) ,
+                 data(i  ,j  ,k+kd) - data(i  ,j  ,k-kd) );
+}
+KERNEL(bnd=1)
+void knUnprojectNormalComp (FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Real maxDist)
+{
+	//if(phi(i,j,k)>maxDist || phi(i,j,k)<-maxDist) return;
+	if(phi(i,j,k)>0. || phi(i,j,k)<-maxDist) return;
+
+		 //vel(i,j,k) = Vec3(-1,-1,0);
+	Vec3 n = getNormal(phi, i,j,k);
+		// NT_DEBUG vel(i,j,k) = getNormalized(n); return;
+	Vec3 v = vel(i,j,k);
+	if(dot(n,v) < 0.) { 
+		normalize(n);
+		Real l = dot(n,v);
+		vel(i,j,k) -= n*l;
+	}
+}
 // a simple extrapolation step , used for cases where there's no levelset
 // (note, less accurate than fast marching extrapolation!)
-PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4) 
+PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4, LevelsetGrid* phiObs=NULL ) 
 {
     Grid<int> tmp( flags.getParent() );
 	int dim = (flags.is3D() ? 3:2);
@@ -326,6 +359,10 @@ PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 
 		for(int d=1; d<1+distance; ++d) {
 			knExtrapolateMACSimple(vel, distance, tmp, d, c);
 		} // d
+	}
+
+	if(phiObs) {
+		knUnprojectNormalComp( flags, vel, *phiObs, distance );
 	}
 
 	// copy tangential values into sides
