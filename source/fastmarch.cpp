@@ -319,12 +319,10 @@ inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
 KERNEL(bnd=1)
 void knUnprojectNormalComp (FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Real maxDist)
 {
-	//if(phi(i,j,k)>maxDist || phi(i,j,k)<-maxDist) return;
+	// apply inside, within range near obstacle surface
 	if(phi(i,j,k)>0. || phi(i,j,k)<-maxDist) return;
 
-		 //vel(i,j,k) = Vec3(-1,-1,0);
 	Vec3 n = getNormal(phi, i,j,k);
-		// NT_DEBUG vel(i,j,k) = getNormalized(n); return;
 	Vec3 v = vel(i,j,k);
 	if(dot(n,v) < 0.) { 
 		normalize(n);
