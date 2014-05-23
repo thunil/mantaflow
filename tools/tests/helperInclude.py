@@ -7,8 +7,6 @@ import os
 import shutil
 
 
-
-
 def outputFilename( file, gridname ):
 	return file +"_"+ gridname + "_out.uni" 
 
@@ -99,11 +97,11 @@ def doTestGrid( file , name, solver , grid, threshold=0, thresholdStrict=0, inve
 	# now we should only have real & vec3 grids
 
 	# create temp grid
-	if ( type(grid).__name__ == "RealGrid" ):
+	if ( grid._class == "Grid" and grid._T == "Real" ):
 		compareTmpGrid = solver.create(RealGrid)
-	elif ( type(grid).__name__ == "VecGrid" ):
+	elif ( grid._class == "Grid" and grid._T == "Vec3" ):
 		compareTmpGrid = solver.create(VecGrid)
-	elif ( type(grid).__name__ == "IntGrid" ):
+	elif ( grid._class == "Grid" and grid._T == "int" ):
 		compareTmpGrid = solver.create(IntGrid)
 	else:
 		print( "Error doTestGrid - unknown grid type " + type(grid).__name__ )
@@ -121,11 +119,11 @@ def doTestGrid( file , name, solver , grid, threshold=0, thresholdStrict=0, inve
 		compareTmpGrid.load( referenceFilename( file, name ) )
 
 		errVal = 1e10
-		if ( type(grid).__name__ == "RealGrid" ):
+		if ( grid._class == "Grid" and grid._T == "Real" ):
 			errVal = gridMaxDiff    ( grid, compareTmpGrid )
-		elif ( type(grid).__name__ == "VecGrid" ):
+		elif ( grid._class == "Grid" and grid._T == "Vec3" ):
 			errVal = gridMaxDiffVec3( grid, compareTmpGrid )
-		elif ( type(grid).__name__ == "IntGrid" ):
+		elif ( grid._class == "Grid" and grid._T == "int" ):
 			errVal = gridMaxDiffInt ( grid, compareTmpGrid )
 
 		# finally, compare max error to allowed threshold, and return result

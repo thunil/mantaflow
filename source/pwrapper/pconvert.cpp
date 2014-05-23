@@ -322,7 +322,7 @@ void PbArgs::check() {
     
     for(map<string, DataElement>::iterator it = mData.begin(); it != mData.end(); it++) {
         if (!it->second.visited)
-            errMsg("Argument '" + it->first + "' given, which is not defined");
+            errMsg("Argument '" + it->first + "' unknown");
     }
     for(size_t i=0; i<mLinData.size(); i++) {
         if (!mLinData[i].visited) {
@@ -369,6 +369,14 @@ FluidSolver* PbArgs::obtainParent() {
     return solver;    
 }
 
+void PbArgs::visit(int number, const string& key) {
+    if (number >= 0 && number < mLinData.size())
+        mLinData[number].visited = true;
+    map<string, DataElement>::iterator lu = mData.find(key);
+    if (lu != mData.end()) 
+        lu->second.visited = true;
+}
+
 PyObject* PbArgs::getItem(const std::string& key, bool strict, ArgLocker* lk) {
     map<string, DataElement>::iterator lu = mData.find(key);
     if (lu == mData.end()) {
@@ -376,7 +384,6 @@ PyObject* PbArgs::getItem(const std::string& key, bool strict, ArgLocker* lk) {
             errMsg ("Argument '" + key + "' is not defined.");
         return NULL;
     }
-    lu->second.visited = true;
     PbClass* pbo = Pb::objFromPy(lu->second.obj);
     // try to lock
     if (pbo && lk) lk->add(pbo);        
@@ -391,7 +398,6 @@ PyObject* PbArgs::getItem(size_t number, bool strict, ArgLocker* lk) {
         s << "Argument number #" << number << " not specified.";
         errMsg(s.str());
     }
-    mLinData[number].visited = true;
     PbClass* pbo = Pb::objFromPy(mLinData[number].obj);
     // try to lock
     if (pbo && lk) lk->add(pbo);    

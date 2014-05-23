@@ -35,7 +35,7 @@ struct Method {
     }
 };
 struct GetSet {
-    GetSet() {}
+    GetSet() : getter(0),setter(0) {}
     GetSet(const string& n, const string& d, Getter g, Setter s) : name(n), doc(d), getter(g), setter(s) {}
     string name, doc;
     Getter getter;
@@ -49,6 +49,7 @@ struct GetSet {
 
 struct ClassData {
     string cName, pyName;
+    string cPureName, cTemplate;
     InitFunc init;
     PyTypeObject typeInfo;
     PyNumberMethods numInfo;
@@ -88,18 +89,19 @@ public:
     void addPythonPath(const std::string& path);
     void addPythonCode(const std::string& file, const std::string& code);
     PyObject* createPyObject(const std::string& classname, const std::string& name, Manta::PbArgs& args, Manta::PbClass *parent);
-    void construct(const std::string& scriptname);
+    void construct(const std::string& scriptname, const vector<string>& args);
     void cleanup();
     void renameObjects();
-    void runPreInit(const std::vector<std::string>& args);
+    void runPreInit();
     PyObject* initModule();
     ClassData* lookup(const std::string& name);
     bool canConvert(ClassData* from, ClassData* to);
 private:
     ClassData* getOrConstructClass(const string& name);
     void registerBaseclasses();
-    void registerAliases();
     void registerDummyTypes();
+    void registerMeta();
+    void addConstants(PyObject* module);
     void registerOperators(ClassData* cls);
     void addParentMethods(ClassData* cls, ClassData* base);
     WrapperRegistry();
@@ -108,10 +110,19 @@ private:
     std::vector<InitFunc> mExtInitializers;
     std::vector<std::string> mPaths;
     std::string mCode, mScriptName;
+    std::vector<std::string> args;
 };
 
 //******************************************************************************
 // Callback functions
+
+PyObject* cbGetClass(PbObject* self, void* cl) {
+    return Manta::toPy(self->classdef->cPureName);
+}
+
+PyObject* cbGetTemplate(PbObject* self, void* cl) {
+    return Manta::toPy(self->classdef->cTemplate);
+}
 
 void cbDealloc(PbObject* self) {
     //cout << "dealloc " << self->instance->getName() << " " << self->classdef->cName << endl;
@@ -154,7 +165,6 @@ PyMODINIT_FUNC PyInit_Main(void) {
 WrapperRegistry::WrapperRegistry() {
     addClass("__modclass__", "__modclass__" , "");
     addClass("PbClass", "PbClass", "");
-    addClass("PbRefCounted", "PbRefCounted", "");
 }
 
 ClassData* WrapperRegistry::getOrConstructClass(const string& classname) {
@@ -164,6 +174,13 @@ ClassData* WrapperRegistry::getOrConstructClass(const string& classname) {
         return it->second;
     ClassData* data = new ClassData;
     data->cName = classname;
+    data->cPureName = classname;
+    data->cTemplate = "";
+    int tplIdx = classname.find('<');
+    if (tplIdx != string::npos) {
+        data->cPureName = classname.substr(0,tplIdx);
+        data->cTemplate = classname.substr(tplIdx+1, classname.find('>')-tplIdx-1);
+    }
     data->baseclass = NULL;
     data->constructor = cbDisableConstructor;
     mClasses[classname] = data;
@@ -187,7 +204,6 @@ void WrapperRegistry::addClass(const string& pyName, const string& internalName,
     replaceAll(pythonName, "<", "_");
     replaceAll(pythonName, ">", "");
     replaceAll(pythonName, ",", "_");
-    //cout << pythonName << endl;
     
     if (data->pyName.empty()) 
         data->pyName = pythonName;
@@ -274,11 +290,10 @@ void WrapperRegistry::registerBaseclasses() {
     }
 }
 
-void WrapperRegistry::registerAliases() {
-    for (map<string, ClassData*>::iterator it = mClasses.begin(); it != mClasses.end(); ++it) {
-        if (it->first != it->second->pyName && it->first.find('<') == string::npos) {
-            mCode += it->first + " = " + it->second->pyName + "\n";
-        }
+void WrapperRegistry::registerMeta() {
+    for (int i=0; i<(int)mClassList.size(); i++) {
+        mClassList[i]->getset["_class"] = GetSet("_class", "C class name", (Getter)cbGetClass, 0);
+        mClassList[i]->getset["_T"] = GetSet("_T", "C template argument", (Getter)cbGetTemplate, 0);
     }
 }
 
@@ -301,13 +316,14 @@ void WrapperRegistry::registerOperators(ClassData* cls) {
 }
 
 void WrapperRegistry::registerDummyTypes() {
+    vector<string> add;
     for(vector<ClassData*>::iterator it = mClassList.begin(); it != mClassList.end(); ++it) {        
         string cName = (*it)->cName;
-        if (cName.find('<') != string::npos) {
-            string name = cName.substr(0,cName.find('<'));
-            addClass(name, name, "");
-        }
+        if (cName.find('<') != string::npos)
+            add.push_back(cName.substr(0,cName.find('<')));
     }
+    for (int i=0; i<(int)add.size(); i++)
+        addClass(add[i],add[i],"");
 }
 
 ClassData* WrapperRegistry::lookup(const string& name) {
@@ -338,7 +354,38 @@ bool WrapperRegistry::canConvert(ClassData* from, ClassData* to) {
     return false;
 }
 
-void WrapperRegistry::runPreInit(const vector<string>& args) {
+void WrapperRegistry::addConstants(PyObject* module) {
+    // expose arguments
+    PyObject* list = PyList_New(args.size());
+    for (int i=0; i<(int)args.size(); i++)
+        PyList_SET_ITEM(list,i,Manta::toPy(args[i]));
+    PyModule_AddObject(module, "args", list);
+    PyModule_AddObject(module,"CUDA",Manta::toPy(mScriptName));
+
+    // expose compile flags
+#ifdef CUDA
+    PyModule_AddObject(module,"CUDA",Manta::toPy<bool>(true));
+#else
+    PyModule_AddObject(module,"CUDA",Manta::toPy<bool>(false));
+#endif
+#ifdef DEBUG
+    PyModule_AddObject(module,"DEBUG",Manta::toPy<bool>(true));
+#else
+    PyModule_AddObject(module,"DEBUG",Manta::toPy<bool>(false));
+#endif
+#ifdef MT
+    PyModule_AddObject(module,"MT",Manta::toPy<bool>(true));
+#else
+    PyModule_AddObject(module,"MT",Manta::toPy<bool>(false));
+#endif
+#ifdef GUI
+    PyModule_AddObject(module,"GUI",Manta::toPy<bool>(true));
+#else
+    PyModule_AddObject(module,"GUI",Manta::toPy<bool>(false));
+#endif
+}
+
+void WrapperRegistry::runPreInit() {
     // add python directories to path
     PyObject *sys_path = PySys_GetObject((char*)"path");
     for (size_t i=0; i<mPaths.size(); i++) {
@@ -348,43 +395,6 @@ void WrapperRegistry::runPreInit(const vector<string>& args) {
         }
         Py_DECREF(path);
     }
-    
-    // run preinit code
-    
-    // provide arguments
-    string iargs = "args = ['";
-    for (size_t i=1; i<args.size(); i++) {
-        if (i>1) iargs+="', '";
-        iargs+=args[i];
-    }
-    iargs += "']\n";
-    PyRun_SimpleString(iargs.c_str());
-
-    // provide compile flags
-    string cfl = "";
-#ifdef CUDA
-    cfl+="CUDA=True\n";
-#else
-    cfl+="CUDA=False\n";
-#endif
-#ifdef DEBUG
-    cfl+="DEBUG=True\n";
-#else
-    cfl+="DEBUG=False\n";
-#endif
-#ifdef MT
-    cfl+="MT=True\n";
-#else
-    cfl+="MT=False\n";
-#endif
-#ifdef GUI
-    cfl+="GUI=True\n";
-#else
-    cfl+="GUI=False\n";
-#endif
-    cfl+="SCENEFILE='"+mScriptName+"'\n";
-    PyRun_SimpleString(cfl.c_str());
-    
     if (!mCode.empty()) {
         mCode = "from manta import *\n" + mCode;
         PyRun_SimpleString(mCode.c_str());
@@ -422,11 +432,12 @@ PyObject* WrapperRegistry::createPyObject(const string& classname, const string&
 }
 
 // prepare typeinfo and register python module
-void WrapperRegistry::construct(const string& scriptname) {
+void WrapperRegistry::construct(const string& scriptname, const vector<string>& args) {
     mScriptName = scriptname;
+    this->args = args;
 
     registerBaseclasses();
-    registerAliases();
+    registerMeta();
     registerDummyTypes();
     
     // load main extension module
@@ -534,14 +545,21 @@ PyObject* WrapperRegistry::initModule() {
         if (PyType_Ready(&data.typeInfo) < 0)
             continue;
     
-        Py_INCREF(castPy(&data.typeInfo));
-        PyModule_AddObject(module, (char*)data.pyName.c_str(), (PyObject*) &data.typeInfo);
+        for(map<string,ClassData*>::iterator i2 = mClasses.begin(); i2 != mClasses.end(); ++i2) {
+            if (*it != i2->second) continue;
+            // register all aliases
+            Py_INCREF(castPy(&data.typeInfo));
+            PyModule_AddObject(module, (char*)i2->first.c_str(), (PyObject*) &data.typeInfo);
+        }        
     }
     
     // externals
     for(vector<InitFunc>::iterator it = mExtInitializers.begin(); it != mExtInitializers.end(); ++it) {
         (*it)(module);
-    }    
+    }
+
+    addConstants(module);
+
     return module;
 }
 
@@ -550,9 +568,9 @@ PyObject* WrapperRegistry::initModule() {
 // Register members and exposed functions
 
 void setup(const std::string& filename, const std::vector<std::string>& args) {
-    WrapperRegistry::instance().construct(filename);
+    WrapperRegistry::instance().construct(filename,args);
     Py_Initialize();
-    WrapperRegistry::instance().runPreInit(args);
+    WrapperRegistry::instance().runPreInit();
 }
 
 void finalize() {

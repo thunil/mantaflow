@@ -138,6 +138,7 @@ public:
         mData[key] = el;
     }
     template<class T> inline T get(const std::string& key, int number=-1, ArgLocker *lk=NULL) {
+        visit(number, key);
         PyObject* o = getItem(key, false, lk);
         if (o) return fromPy<T>(o);
         o = getItem(number, false, lk);
@@ -145,21 +146,24 @@ public:
         errMsg ("Argument '" + key + "' is not defined.");        
     }
     template<class T> inline T getOpt(const std::string& key, int number, T defarg, ArgLocker *lk=NULL) { 
+        visit(number, key);
         PyObject* o = getItem(key, false, lk);
         if (o) return fromPy<T>(o);
-        if (number >= 0) o = getItem(key, false);
+        if (number >= 0) o = getItem(key, false, lk);
         return (o) ? fromPy<T>(o) : defarg;
     }
     template<class T> inline T* getPtrOpt(const std::string& key, int number, T* defarg, ArgLocker *lk=NULL) {
+        visit(number, key);
         PyObject* o = getItem(key, false, lk);
         if (o) return fromPyPtr<T>(o,&mTmpStorage);
-        if (number >= 0) o = getItem(number, false);
+        if (number >= 0) o = getItem(number, false, lk);
         return o ? fromPyPtr<T>(o,&mTmpStorage) : defarg;
     }
     template<class T> inline T* getPtr(const std::string& key, int number = -1, ArgLocker *lk=NULL) {
+        visit(number, key);
         PyObject* o = getItem(key, false, lk);
         if (o) return fromPyPtr<T>(o,&mTmpStorage);
-        o = getItem(number, false);
+        o = getItem(number, false, lk);
         if(o) return fromPyPtr<T>(o,&mTmpStorage);
         errMsg ("Argument '" + key + "' is not defined.");
     }
@@ -176,6 +180,7 @@ public:
     PbArgs& operator=(const PbArgs& a); // dummy
     void copy(PbArgs& a);
     void clear();
+    void visit(int num, const std::string& key);
     
     static PbArgs EMPTY;
     
