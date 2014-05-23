@@ -41,12 +41,19 @@ protected:
     GridPainter<int>* mGridRef;
     ParticleBase* mLocal;
     QLabel* mInfo;
-    int mMode;    
+
+	//! for standard particle systems, this is used to select the data channel (display is changed with displayMode below)
+    int mMode; 
+	//! for BasicParticleSystem , change the way data channels are displayed
+	int mDisplayMode; 
+
 	int mLastPdata;
 	bool mHavePdata;
 	Real mMaxVal;
 	std::string mPdataInfo;
     std::map<PbClass*, Real> mValScale;
+
+    void paintBasicSys();
 };    
     
 } // namespace
