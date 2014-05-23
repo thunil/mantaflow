@@ -34,7 +34,7 @@ public:
 		EventScaleVecUp, EventScaleVecDown, EventScaleRealUp, EventScaleRealDown, EventChangePlane, 
 		EventSetPlane, EventSetDim, EventNextInt, EventNextReal, EventNextVec, EventNextVelDisplayMode,
 		EventNextMesh, EventMeshMode, EventToggleGridDisplay, EventScaleMeshUp, EventScaleMeshDown, EventMeshColorMode,
-		EventNextSystem, EventToggleParticles, EventToggleBackgroundMesh, EventSetMax,
+		EventNextSystem, EventToggleParticles, EventNextParticleDisplayMode, EventToggleBackgroundMesh, EventSetMax,
 		EventScalePdataDown, EventScalePdataUp };
 
     enum VelDisplayModes { VelDispOff=0, VelDispCentered, VelDispStaggered, VelDispUv, NumVelDispModes };

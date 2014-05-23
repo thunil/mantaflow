@@ -25,7 +25,7 @@ using namespace std;
 namespace Manta {
 
 ParticlePainter::ParticlePainter(GridPainter<int>* gridRef, QWidget* par) 
-    : LockedObjPainter(par), mMode(PaintVel), mLocal(0), mGridRef(gridRef),
+    : LockedObjPainter(par), mMode(PaintVel), mDisplayMode(0), mLocal(0), mGridRef(gridRef),
 	mLastPdata(-1), mHavePdata(false), mMaxVal(0.)
 {    
     mInfo = new QLabel();
@@ -77,6 +77,9 @@ void ParticlePainter::processKeyEvent(PainterEvent e, int param) {
         mMode++;  // apply modulo later depending on particle system
 		//if(mMode>PaintVel) mMode=PaintOff;
     }
+    else if (e == EventNextParticleDisplayMode) {
+        mDisplayMode++;
+    }
     else return;
         
     updateText();
@@ -113,16 +116,9 @@ void ParticlePainter::paint() {
 	mHavePdata = false;
 	mMaxVal = 0.;
     
-    Real scale = getScale(); 
-    
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST); // disable depth test for particles, clashes with display plane for regular ones
     glDisable(GL_LIGHTING);
-    
-    // obtain current plane
-    int dim = mGridRef->getDim();
-    Real factor = mGridRef->getMax() / mLocal->getParent()->getGridSize()[dim];
-    int plane = factor * mGridRef->getPlane();
     
     // draw points
     if(mLocal->getType() == ParticleBase::VORTEX) {
@@ -174,6 +170,8 @@ void ParticlePainter::paint() {
         glEnd();
         
     } else if(mLocal->getType() == ParticleBase::PARTICLE) {
+		paintBasicSys();
+#if 0
         BasicParticleSystem* bp = (BasicParticleSystem*) mLocal;
 
 		// draw other particle data, if available
@@ -292,10 +290,170 @@ void ParticlePainter::paint() {
 		}
         
 		// draw basic part sys done
+#endif
     }
 
     glPointSize(1.0);
     glEnable(GL_DEPTH_TEST); 
+}
+
+void ParticlePainter::paintBasicSys() {
+	BasicParticleSystem* bp = (BasicParticleSystem*) mLocal;
+    //int dim = mGridRef->getDim();
+    
+    // obtain current plane & draw settings
+    int dim = mGridRef->getDim();
+    Real factor = mGridRef->getMax() / mLocal->getParent()->getGridSize()[dim];
+    int plane = factor * mGridRef->getPlane();
+    Real scale = getScale(); 
+    float dx = mLocal->getParent()->getDx();
+
+	// draw other particle data, if available
+	int pdataId = mMode % (bp->getNumPdata() + 2);
+	std::ostringstream infoStr;
+	bool drewPoints = false;
+
+	if( pdataId==0 ) {
+		// dont draw any points
+		infoStr << "Off\n";
+		drewPoints = true;
+	} else if( pdataId==1 ) {
+		// dont draw data, only flags with center below
+		infoStr << "Drawing center & flags\n";
+	} else if (bp->getNumPdata() > 0)  {
+		int pdNum = pdataId-2; // start at 0
+		ParticleDataBase* pdb = bp->getPdata(pdNum);
+
+		switch (pdb->getType() ) {
+
+		case ParticleDataBase::DATA_REAL: {
+			ParticleDataImpl<Real>* pdi = dynamic_cast<ParticleDataImpl<Real>*>(pdb);
+			if(!pdi) break;
+			mHavePdata = true;
+			drewPoints = true;
+			glPointSize(1.5);
+			glBegin(GL_POINTS); 
+			for(int i=0; i<(int)bp->size(); i++) {
+				if (!bp->isActive(i)) continue;
+				Vec3 pos = (*bp)[i].pos; 
+				if (pos[dim] < plane || pos[dim] > plane + 1.0f) continue;
+				mMaxVal = std::max( pdi->get(i), mMaxVal );
+				Real val = pdi->get(i) * scale;
+				glColor3f(0,val,0);
+				glVertex(pos, dx); 
+			}   
+			glEnd();
+			infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", real\n";
+			} break;
+
+		case ParticleDataBase::DATA_INT: {
+			ParticleDataImpl<int>* pdi = dynamic_cast<ParticleDataImpl<int>*>(pdb);
+			if(!pdi) break;
+			mHavePdata = true;
+			drewPoints = true;
+			glPointSize(1.5);
+			glBegin(GL_POINTS); 
+			for(int i=0; i<(int)bp->size(); i++) {
+				if (!bp->isActive(i)) continue;
+				Vec3 pos = (*bp)[i].pos; 
+				if (pos[dim] < plane || pos[dim] > plane + 1.0f) continue;
+				Real val = pdi->get(i);
+				mMaxVal = std::max( val, mMaxVal );
+				val *= scale;
+				glColor3f(0,val,0);
+				glVertex(pos, dx); 
+			}   
+			glEnd();
+			infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", int\n";
+			} break;
+
+		case ParticleDataBase::DATA_VEC3: { 
+			ParticleDataImpl<Vec3>* pdi = dynamic_cast<ParticleDataImpl<Vec3>*>(pdb);
+			if(!pdi) break;
+			mHavePdata = true;
+
+			// particle vector data can be drawn in different ways...
+			mDisplayMode = mDisplayMode%2;
+
+			switch(mDisplayMode) {
+			case 0: // lines
+				glBegin(GL_LINES); 
+				for(int i=0; i<(int)bp->size(); i++) {
+					if (!bp->isActive(i)) continue;
+					Vec3 pos = (*bp)[i].pos; 
+					if (pos[dim] < plane || pos[dim] > plane + 1.0f) continue;
+					mMaxVal = std::max( norm(pdi->get(i)), mMaxVal );
+					Vec3 val = pdi->get(i) * scale;
+					glColor3f(0.5,0.0,0);
+					glVertex(pos, dx); 
+					pos += val;
+					glColor3f(0.5,1.0,0);
+					glVertex(pos, dx); 
+				}   
+				glEnd();
+				break;
+			case 1:
+				// colored points
+				glPointSize(2.0);
+				glBegin(GL_POINTS); 
+				for(int i=0; i<(int)bp->size(); i++) {
+					if (!bp->isActive(i)) continue;
+					Vec3 pos = (*bp)[i].pos; 
+					if (pos[dim] < plane || pos[dim] > plane + 1.0f) continue;
+					mMaxVal = std::max( norm(pdi->get(i)), mMaxVal );
+					Vec3 val = pdi->get(i) * scale;
+					for(int c=0; c<3; ++c) val[c] = fmod( (Real)val[c], (Real)1.);
+
+					glColor3f(val[0],val[1],val[2]);
+					glVertex(pos, dx); 
+					//pos += val;
+					//glColor3f(0.5,1.0,0);
+					//glVertex(pos, dx); 
+				}   
+				glEnd();
+				drewPoints = true;
+				break;
+			}
+
+			infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", vec3\n";
+			} break;
+
+		default: {
+				// skip...
+			} break;
+		}
+	}
+
+	mPdataInfo = infoStr.str(); 
+	// enforce refresh upon change
+	if(mLastPdata!=pdataId) {
+		mLastPdata = pdataId;
+		updateText();
+	}
+
+	// otherwise draw center
+	if(!drewPoints) {
+		glPointSize(1.5);
+		glBegin(GL_POINTS);
+
+		for(int i=0; i<(int)bp->size(); i++) {
+			Vec3 pos = (*bp)[i].pos;
+			if (pos[dim] < plane || pos[dim] > plane + 1.0f) continue;
+			
+			if(!bp->isActive(i) ) {
+				glColor3f(1.0, 0., 0.); // deleted, red
+			} else if(bp->getStatus(i) & ParticleBase::PNEW ) {
+				glColor3f(0.0, 1.0, 0.); // new, greem
+			} else {
+				glColor3f(0, 0.0, 1.0); // regular, blue
+			}
+			glVertex(pos, dx);
+			
+		}   
+		glEnd();
+	}
+	
+	// draw basic part sys done
 }
 
 } // namespace

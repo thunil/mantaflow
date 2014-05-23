@@ -216,19 +216,22 @@ void GridPainter<Vec3>::processSpecificKeyEvent(PainterEvent e, int param) {
 
 template<> void GridPainter<int>::updateText() {
     stringstream s;
-    s << "Display Plane " << mPlane << " [" << (char)('X' + mDim) << "]" << endl << endl;
-    
-    if (mObject) {
-        s << "Solver '" << mLocalGrid->getParent()->getName() << "'" << endl;
-        s << "Grid resolution [" << mLocalGrid->getSizeX() << ", " << mLocalGrid->getSizeY() << ", " << mLocalGrid->getSizeZ() << "]" << endl;
-        if (!mHide)
-            s << "Int Grid '" << mLocalGrid->getName() << "'" << endl;
+    if (mObject && (!mHide)) {
+		s << "Int Grid '" << mLocalGrid->getName() << "'" << endl;
     }    
     mInfo->setText(s.str().c_str());    
 }
 
 template<> void GridPainter<Real>::updateText() {
     stringstream s;
+	
+    s << "Display Plane " << mPlane << " [" << (char)('X' + mDim) << "]" << endl << endl;
+    if (mObject) {
+        s << "Solver '" << mLocalGrid->getParent()->getName() << "'" << endl;
+        s << "Grid resolution [" << mLocalGrid->getSizeX() << ", " << mLocalGrid->getSizeY() << ", " << mLocalGrid->getSizeZ() << "]" << endl;
+        s << endl;
+    }    
+
     if (mObject && !mHide) {
         s << "Real Grid '" << mLocalGrid->getName() << "'" << endl;
         s << "-> Max " << fixed << setprecision(2) << mMaxVal << "  Scale " << getScale() << endl;
@@ -327,7 +330,7 @@ void glBox(const Vec3& p0, const Vec3& p1, const float dx) {
 
 // Paint gridlines
 template<> void GridPainter<int>::paint() {
-     if (!mObject || mPlane <0 || mPlane >= mLocalGrid->getSize()[mDim])
+     if (!mObject || mHide || mPlane <0 || mPlane >= mLocalGrid->getSize()[mDim])
         return;
     float dx = mLocalGrid->getDx();
     Vec3 box[4];
@@ -428,8 +431,7 @@ template<> void GridPainter<Real>::paint() {
 		}
 
 	} else {
-		// "new" drawing style
-
+		// "new" drawing style 
 		// ignore flags, its a bit dangerous to skip outside info
 
 		FOR_P_SLICE(mLocalGrid, mDim, mPlane) 
@@ -514,7 +516,10 @@ template<> void GridPainter<Vec3>::paint() {
 		FOR_P_SLICE(mLocalGrid, mDim, mPlane) 
 		{ 
 			Vec3 v = mLocalGrid->get(p) * scale; 
-			for(int c=0; c<3; ++c) v[c] = fmod( (Real)v[c], (Real)1.);
+			for(int c=0; c<3; ++c) {
+				if(v[c]<0.) v[c] *= -1.;
+				v[c] = fmod( (Real)v[c], (Real)1.);
+			}
 			//v *= mLocalGrid->get(0)[0]; // debug, show uv grid weight as brightness of values
 			glColor3f(v[0],v[1],v[2]); 
 			getCellCoordinates(p, box, mDim);
