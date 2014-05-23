@@ -8,7 +8,7 @@ from manta import *
 res = 64
 gs = vec3(res,res,1)
 s = Solver(name='main', gridSize = gs, dim=2)
-s.timestep = 2.0
+s.timestep = 1.0
 
 # prepare grids
 flags = s.create(FlagGrid)
@@ -32,7 +32,7 @@ for t in range(400):
         source.applyToGrid(grid=density, value=1)
         
     advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-    advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+    advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2 )
     
     setWallBcs(flags=flags, vel=vel)    
     addBuoyancy(density=density, vel=vel, gravity=vec3(0,-4e-3,0), flags=flags)
