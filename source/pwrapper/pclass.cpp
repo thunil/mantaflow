@@ -65,7 +65,7 @@ string PbTypeVec::str() const {
     string s="<";
     for (int i=0; i<(int)T.size(); i++) {
         s += T[i].str();
-        s += (i!=T.size()-1) ? ',' : '>';
+        s += (i!=(int)T.size()-1) ? ',' : '>';
     }
     return s;
 }

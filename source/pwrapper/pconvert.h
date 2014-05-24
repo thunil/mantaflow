@@ -149,7 +149,7 @@ public:
         visit(number, key);
         PyObject* o = getItem(key, false, lk);
         if (o) return fromPy<T>(o);
-        if (number >= 0) o = getItem(key, false, lk);
+        if (number >= 0) o = getItem(number, false, lk);
         return (o) ? fromPy<T>(o) : defarg;
     }
     template<class T> inline T* getPtrOpt(const std::string& key, int number, T* defarg, ArgLocker *lk=NULL) {

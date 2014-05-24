@@ -176,7 +176,7 @@ ClassData* WrapperRegistry::getOrConstructClass(const string& classname) {
     data->cName = classname;
     data->cPureName = classname;
     data->cTemplate = "";
-    int tplIdx = classname.find('<');
+    size_t tplIdx = classname.find('<');
     if (tplIdx != string::npos) {
         data->cPureName = classname.substr(0,tplIdx);
         data->cTemplate = classname.substr(tplIdx+1, classname.find('>')-tplIdx-1);

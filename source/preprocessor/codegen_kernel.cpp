@@ -26,7 +26,7 @@ using namespace std;
 // TP: why do we need getArg? just directly access the argument via its name...
 const string TmpAccessor = STR(
 inline $TYPE$ getArg$IDX$() { return $NAME$; }
-typedef $TYPE$ type$IDX$;
+typedef $TYPE_NOREF$ type$IDX$;
 );
 
 // Single kernel, default
@@ -281,7 +281,10 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
     stringstream accessors;
     for (int i=0; i<(int)kernel.arguments.size(); i++) {
         stringstream num; num << i;
+        Type noref = kernel.arguments[i].type;
+        noref.isPointer = noref.isRef = noref.isConst = false;
         const string table[] = { "TYPE", kernel.arguments[i].type.build(true),
+                                 "TYPE_NOREF", noref.build(),
                                  "NAME", kernel.arguments[i].name, 
                                  "IDX", num.str(), 
                                  "" };

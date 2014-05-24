@@ -111,7 +111,7 @@ string makeSafe(const string& s) {
     string source = "+=-<>!()";
     string trans  = "12345678";
     for (int i=0; i<(int)s.size(); i++) {
-        int idx = source.find(s[i]);
+        size_t idx = source.find(s[i]);
         t += (idx == string::npos) ? s[i] : trans[idx];
     }
     return t;

@@ -24,7 +24,7 @@ using namespace std;
 // TokenPointer class members
 
 TokenType TokenPointer::previewType() {
-    for (int i=ptr+1; i < queue.size(); i++) {
+    for (int i=ptr+1; i < (int)queue.size(); i++) {
         if (queue[i].type != TkWhitespace && queue[i].type != TkComment)
             return queue[i].type;
     }

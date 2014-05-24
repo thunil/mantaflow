@@ -370,7 +370,7 @@ FluidSolver* PbArgs::obtainParent() {
 }
 
 void PbArgs::visit(int number, const string& key) {
-    if (number >= 0 && number < mLinData.size())
+    if (number >= 0 && number < (int)mLinData.size())
         mLinData[number].visited = true;
     map<string, DataElement>::iterator lu = mData.find(key);
     if (lu != mData.end()) 

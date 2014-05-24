@@ -74,7 +74,7 @@ template<class T> string List<T>::names() const {
     stringstream s;
     for (int i=0; i<(int)_data.size(); i++) {
         s << _data[i].name;
-        if (i != _data.size()-1) s << ',';
+        if (i != (int)_data.size()-1) s << ',';
     }
     return s.str();
 }

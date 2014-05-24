@@ -444,7 +444,7 @@ void processPythonAlias(const Block& block, const Type& aliasType, const string&
 // build the template argument checker needed for template deduction in the wrapper
 string buildTemplateChecker(string& out, const Function& func) {
     stringstream chk;
-    for (int k=0; k<func.arguments.size(); k++) {
+    for (int k=0; k<(int)func.arguments.size(); k++) {
         stringstream num; num << k;    
         Type type = func.arguments[k].type;
         type.isPointer = false;
@@ -453,7 +453,7 @@ string buildTemplateChecker(string& out, const Function& func) {
         chk << "A.typeCheck<" << type.build() << " >(" 
             << num.str() << ",\"" << func.arguments[k].name << "\")";
 
-        if (k != func.arguments.size()-1)
+        if (k != (int)func.arguments.size()-1)
             chk << " && ";
     }
 
@@ -483,7 +483,7 @@ void postProcessInstantiations(Sink& sink, vector<Instantiation>& inst) {
             string chkFunc = buildTemplateChecker(wrapper, cur.func[k]);
             
             // build argument checker        
-            for (int j=0; j<cur.templates.size(); j++) {
+            for (int j=0; j<(int)cur.templates.size(); j++) {
                 stringstream num; num << j;
                 chkCall << "if (" << chkFunc << "<" << cur.templates[j] << ">(args)) {";
                 chkCall << "hits++; call = _W_T_" << cur.wrapName[k] << "<" << cur.templates[j] <<">; }";
