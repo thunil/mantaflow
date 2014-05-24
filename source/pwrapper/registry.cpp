@@ -124,6 +124,10 @@ PyObject* cbGetTemplate(PbObject* self, void* cl) {
     return Manta::toPy(self->classdef->cTemplate);
 }
 
+PyObject* cbGetCName(PbObject* self, void* cl) {
+    return Manta::toPy(self->classdef->cName);
+}
+
 void cbDealloc(PbObject* self) {
     //cout << "dealloc " << self->instance->getName() << " " << self->classdef->cName << endl;
     if (self->instance) {
@@ -293,6 +297,7 @@ void WrapperRegistry::registerBaseclasses() {
 void WrapperRegistry::registerMeta() {
     for (int i=0; i<(int)mClassList.size(); i++) {
         mClassList[i]->getset["_class"] = GetSet("_class", "C class name", (Getter)cbGetClass, 0);
+        mClassList[i]->getset["_cname"] = GetSet("_cname", "Full C name", (Getter)cbGetCName, 0);
         mClassList[i]->getset["_T"] = GetSet("_T", "C template argument", (Getter)cbGetTemplate, 0);
     }
 }
