@@ -18,7 +18,7 @@
 #include <limits>
 #include "vectorbase.h"
 #include "structmember.h"
-#include "pclass.h"
+#include "manta.h"
 
 using namespace std;
 
@@ -271,12 +271,16 @@ PyTypeObject PbVec3Type = {
     PbVec3New,                 /* tp_new */
 };
 
+inline PyObject* castPy(PyTypeObject* p) { 
+    return reinterpret_cast<PyObject*>(static_cast<void*>(p)); 
+}
+
 void PbVecInitialize(PyObject* module) {
     if (PyType_Ready(&PbVec3Type) < 0) errMsg("can't initialize Vec3 type");
     
-    Py_INCREF(&PbVec3Type);
+    Py_INCREF(castPy(&PbVec3Type));
     PyModule_AddObject(module, "vec3", (PyObject *)&PbVec3Type);
 }
-PB_REGISTER_EXTERNAL(PbVecInitialize);
+const static Pb::Register _REG(PbVecInitialize);
 
 } // namespace

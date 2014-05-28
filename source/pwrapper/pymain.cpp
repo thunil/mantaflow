@@ -13,8 +13,7 @@
 
 #include "pythonInclude.h"
 #include <stdio.h>
-#include "pclass.h"
-#include "pconvert.h"
+#include "manta.h"
 #include "general.h"
 #include "wchar.h"
 
@@ -42,9 +41,7 @@ void runScript(vector<string>& args) {
     
     // Initialize extension classes and wrappers
     srand(0);
-    PbWrapperRegistry::instance().construct(filename);
-    Py_Initialize();
-    PbWrapperRegistry::instance().runPreInit(args);
+    Pb::setup(filename, args);
         
     // Pass through the command line arguments
     // for Py3k compatability, convert to wstring
@@ -60,7 +57,7 @@ void runScript(vector<string>& args) {
     FILE* fp = fopen(filename.c_str(),"rb");
     if (fp == NULL) {
         debMsg("Cannot open '" << filename << "'", 0);
-        Py_Finalize();
+        Pb::finalize();
         return;
     }
     
@@ -89,9 +86,8 @@ void runScript(vector<string>& args) {
 #endif
 
     // finalize
-    Py_Finalize();
-    PbWrapperRegistry::instance().cleanup();    
-
+    Pb::finalize();
+    
     delete [] cargs;
 }
 

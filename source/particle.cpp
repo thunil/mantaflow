@@ -69,13 +69,13 @@ void ParticleBase::deregister(ParticleDataBase* pdata) {
 		errMsg("Invalid pointer given, not registered!");
 }
 
-PbClass* ParticleBase::create(PbType t, const string& name) {        
+PbClass* ParticleBase::create(PbType t, PbTypeVec T, const string& name) {        
     _args.add("nocheck",true);
-    if (t.str == "")
+    if (t.str() == "")
         errMsg("Specify particle data type to create");
 	//debMsg( "Pdata creating '"<< t.str , 5 );
     
-    PbClass* pyObj = PbClass::createPyObject(t.str, name, _args, this->getParent() );
+    PbClass* pyObj = PbClass::createPyObject(t.str() + T.str(), name, _args, this->getParent() );
 
 	ParticleDataBase* pdata = dynamic_cast<ParticleDataBase*>(pyObj);
 	if(!pdata) {
@@ -346,7 +346,7 @@ template class ParticleDataImpl<Vec3>;
 
 KERNEL(pts) template<class T>
 void knSetPdataConst(ParticleDataImpl<T>& pdata, T value) {
-	pdata[i] = value;
+	pdata[idx] = value;
 }
 PYTHON void setConstPdata    (ParticleDataImpl<Real>& pd, Real value=0.) { knSetPdataConst<Real>(pd,value); }
 PYTHON void setConstPdataVec3(ParticleDataImpl<Vec3>& pd, Vec3 value=0.) { knSetPdataConst<Vec3>(pd,value); }

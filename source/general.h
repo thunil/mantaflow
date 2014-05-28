@@ -17,7 +17,6 @@
 #include <iostream>
 #include <sstream>
 #include <cmath>
-#include <algorithm>
 
 namespace Manta {
 
@@ -62,10 +61,26 @@ inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 #else
 #   define DEBUG_ONLY(a)
 #endif
-#define throwError(msg)      { std::ostringstream __s; __s << msg << std::endl << "Error raised in " << __FILE__ << ":" << __LINE__; throw Error(__s.str()); }
+#define throwError(msg)      { std::ostringstream __s; __s << msg << std::endl << "Error raised in " << __FILE__ << ":" << __LINE__; throw Manta::Error(__s.str()); }
 #define errMsg(msg)          throwError(msg);
 #define assertMsg(cond,msg)  if(!(cond)) throwError(msg)
 #define assertDeb(cond,msg)  DEBUG_ONLY( assertMsg(cond,msg) )
+
+// template tricks
+template<typename T>
+struct remove_pointers {
+    typedef T type;
+};
+
+template<typename T>
+struct remove_pointers<T*> {
+    typedef T type;
+};
+
+template<typename T>
+struct remove_pointers<T&> {
+    typedef T type;
+};
 
 // Commonly used enums and types
 //! Timing class for preformance measuring

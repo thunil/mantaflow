@@ -196,12 +196,12 @@ void Mesh::rebuildChannels() {
 
 KERNEL(pts) returns(vector<Vec3> u(size))
 vector<Vec3> KnAdvectMeshInGrid(vector<Node>& nodes, const FlagGrid& flags, const MACGrid& vel, const Real dt) {
-    if (nodes[i].flags & Mesh::NfFixed) 
-        u[i] = _0;
-    else if (!flags.isInBounds(nodes[i].pos,1)) 
-        u[i] = _0;
+    if (nodes[idx].flags & Mesh::NfFixed) 
+        u[idx] = _0;
+    else if (!flags.isInBounds(nodes[idx].pos,1)) 
+        u[idx] = _0;
     else 
-        u[i] = vel.getInterpolated(nodes[i].pos) * dt;
+        u[idx] = vel.getInterpolated(nodes[idx].pos) * dt;
 }
 
 // advection plugin

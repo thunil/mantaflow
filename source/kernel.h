@@ -49,36 +49,21 @@ class ParticleBase;
                
     
 struct KernelBase {
-    int maxX, maxY, maxZ, maxCells, minZ;
+    int maxX, maxY, maxZ, minZ;
     int X, Y, Z;
+    int size;
 	//! store thread info for this kernel 
 	int threadId, threadNum;
     
+    KernelBase(int num);
     KernelBase(const GridBase* base, int bnd);
-    KernelBase(int _maxX, int _maxY, int _maxZ, int _maxC, int _minZ, int _X, int _Y, int _Z);
+    //KernelBase(int _maxX, int _maxY, int _maxZ, int _maxC, int _minZ, int _X, int _Y, int _Z);
     
     // specify in your derived classes:
     
     // kernel operators    
     // ijk mode: void operator() (size_t idx)
     // idx mode: void operator() (size_t i, size_t j, size_t k)
-    
-    // reduce mode: 
-    // void join(classname& other)
-    // void setup()    
-};
-
-struct ParticleKernelBase {
-    int size;
-	//! store thread info for this kernel 
-	int threadId, threadNum;
-    
-    ParticleKernelBase(int sz);
-    
-    // specify in your derived classes:
-    
-    // kernel operators    
-    // void operator() (size_t idx)
     
     // reduce mode: 
     // void join(classname& other)

@@ -23,8 +23,8 @@ class Shape;
 
     
 struct TurbulenceParticleData {
-    TurbulenceParticleData() : pos(_0),tex0(_0),tex1(_0),flag(0),color(1.) {}
-    TurbulenceParticleData(const Vec3& p, const Vec3& color = Vec3(1.)) : pos(p),tex0(p),tex1(p),flag(0),color(color) {}
+    TurbulenceParticleData() : pos(_0),color(1.),tex0(_0),tex1(_0),flag(0) {}
+    TurbulenceParticleData(const Vec3& p, const Vec3& color = Vec3(1.)) : pos(p),color(color),tex0(p),tex1(p),flag(0) {}
     Vec3 pos, color;
     Vec3 tex0, tex1;
     int flag;

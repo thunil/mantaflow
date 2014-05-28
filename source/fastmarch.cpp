@@ -23,7 +23,7 @@ namespace Manta {
 template<class COMP, int TDIR>
 FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, 
 		MACGrid* velTransport, Grid<Real>* velMag )
-    : mLevelset(levelset), mFmFlags(fmFlags), mFlags(flags)
+    : mLevelset(levelset), mFlags(flags), mFmFlags(fmFlags)
 {
     if (velTransport)
         mVelTransport.initMarching(velTransport, &flags);

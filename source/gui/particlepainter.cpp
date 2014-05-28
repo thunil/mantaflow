@@ -17,7 +17,7 @@
 #include <iomanip>
 #include <QtOpenGL>
 #include "vortexpart.h"
-#include "vortexfilament.h"
+//#include "vortexfilament.h"
 #include "turbulencepart.h"
 
 using namespace std;
@@ -25,7 +25,7 @@ using namespace std;
 namespace Manta {
 
 ParticlePainter::ParticlePainter(GridPainter<int>* gridRef, QWidget* par) 
-    : LockedObjPainter(par), mMode(PaintVel), mDisplayMode(0), mLocal(0), mGridRef(gridRef),
+    : LockedObjPainter(par), mGridRef(gridRef), mLocal(0), mMode(PaintVel), mDisplayMode(0),
 	mLastPdata(-1), mHavePdata(false), mMaxVal(0.)
 {    
     mInfo = new QLabel();
@@ -136,7 +136,8 @@ void ParticlePainter::paint() {
             }
         }        
     } else if (mLocal->getType() == ParticleBase::FILAMENT) {
-        VortexFilamentSystem* fp = (VortexFilamentSystem*) mLocal;
+        // Filaments don't work yet
+        /*VortexFilamentSystem* fp = (VortexFilamentSystem*) mLocal;
         glColor3f(1,1,0);
             
         for(int i=0; i<fp->segSize(); i++) {
@@ -150,12 +151,7 @@ void ParticlePainter::paint() {
                 glVertex( (*fp)[r.idx1(j)].pos, dx);
             }
             glEnd();
-            
-            /*glPointSize(3.0);
-            glBegin(GL_POINTS);
-            glVertex((*fp)[r.idx0(0)].pos,dx);
-            glEnd();        */
-        }   
+        }   */
     } else if(mLocal->getType() == ParticleBase::TURBULENCE) {
         TurbulenceParticleSystem* vp = (TurbulenceParticleSystem*) mLocal;
         glPointSize(2.5);

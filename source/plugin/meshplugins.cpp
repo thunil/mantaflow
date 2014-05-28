@@ -34,9 +34,9 @@ namespace Manta {
 //! Mesh smoothing 
 /*! see Desbrun 99 "Implicit fairing of of irregular meshes using diffusion and curvature flow"*/
 PYTHON void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLength=1e-5) {
-    const Real dt = parent->getDt();
-    const Real str = min(dt * strength, (Real)1); 
-	mesh.rebuildQuickCheck(); 
+    const Real dt = mesh.getParent()->getDt();
+    const Real str = min(dt * strength, (Real)1);
+    mesh.rebuildQuickCheck(); 
     
     // calculate original mesh volume
     Vec3 origCM;

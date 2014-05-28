@@ -15,10 +15,8 @@
 #include <sstream>
 #include <algorithm>
 #include "vectorbase.h"
-#include "pconvert.h"
-#define _PCLASS_NOFLUIDSOLVER
-#include "pclass.h"
-
+#include "manta.h"
+ 
 using namespace std;
 
 //******************************************************************************
@@ -36,37 +34,42 @@ PyObject* getPyNone() {
     Py_INCREF(Py_None);
     return Py_None;
 }
+PyObject* incref(PyObject* obj) {
+    Py_INCREF(obj);
+    return obj;
+}
+
 
 /*template<> PyObject* toPy<PyObject*>(PyObject* obj) {
     return obj;     
 }*/
-template<> PyObject* toPy<int>( int& v) {
+template<> PyObject* toPy<int>( const int& v) {
     return PyLong_FromLong(v);     
 }
 /*template<> PyObject* toPy<char*>(const (char*) & val) {
     return PyUnicode_DecodeLatin1(val,strlen(val),"replace");
 }*/
-template<> PyObject* toPy<string>( string& val) {
+template<> PyObject* toPy<string>( const string& val) {
     return PyUnicode_DecodeLatin1(val.c_str(),val.length(),"replace");
 }
-template<> PyObject* toPy<float>( float& v) {
+template<> PyObject* toPy<float>( const float& v) {
     return PyFloat_FromDouble(v);     
 }
-template<> PyObject* toPy<double>( double& v) {
+template<> PyObject* toPy<double>( const double& v) {
     return PyFloat_FromDouble(v);     
 }
-template<> PyObject* toPy<bool>( bool& v) {
+template<> PyObject* toPy<bool>( const bool& v) {
     return PyBool_FromLong(v);     
 }
-template<> PyObject* toPy<Vec3i>( Vec3i& v) {
+template<> PyObject* toPy<Vec3i>(const Vec3i& v) {
     float x=(float)v.x, y=(float)v.y, z=(float)v.z;
     return PyObject_CallFunction((PyObject*)&PbVec3Type, (char*)"fff", x, y, z);
 }
-template<> PyObject* toPy<Vec3>( Vec3& v) {
+template<> PyObject* toPy<Vec3>(const Vec3& v) {
     float x=(float)v.x, y=(float)v.y, z=(float)v.z;
     return PyObject_CallFunction((PyObject*)&PbVec3Type, (char*)"fff", x, y, z);
 }
-template<> PyObject* toPy<PbClass*>( PbClass*& obj) {
+template<> PyObject* toPy<PbClass*>(const PbClass_Ptr& obj) {
     return obj->getPyObject();
 }
 
@@ -153,18 +156,103 @@ template<> PbType fromPy<PbType>(PyObject* obj) {
         return pb;
     
     const char* tname = ((PyTypeObject*)obj)->tp_name;
-    pb.str = tname;
+    pb.S = tname;
     return pb;
 }
-
-// PbClass derived objects
-template<> PbClass* fromPy<PbClass*>(PyObject* obj) {
-    PbClass* pbo = PbClass::fromPyObject(obj);
-    if (!pbo) return NULL;    
-    return pbo;
+template<> PbTypeVec fromPy<PbTypeVec>(PyObject* obj) {
+    PbTypeVec vec;
+    if (PyType_Check(obj)) {
+        vec.T.push_back(fromPy<PbType>(obj));
+    } else if (PyTuple_Check(obj)) {
+        int sz = PyTuple_Size(obj);
+        for (int i=0; i< sz; i++)
+            vec.T.push_back(fromPy<PbType>(PyTuple_GetItem(obj,i)));
+    }
+    else
+        errMsg("argument is not a type tuple");
+    return vec;
 }
 
-// fromPy/toPy is automatically instantiated using the preprocessor for registered PbClasses
+template<class T> T* tmpAlloc(PyObject* obj,std::vector<void*>* tmp) {
+    if (!tmp) throw Error("dynamic de-ref not supported for this type");
+    void* ptr = malloc(sizeof(T));
+    tmp->push_back(ptr);
+
+    *((T*)ptr) = fromPy<T>(obj); 
+    return (T*)ptr;
+}
+template<> float* fromPyPtr<float>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<float>(obj,tmp); }
+template<> double* fromPyPtr<double>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<double>(obj,tmp); }
+template<> int* fromPyPtr<int>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<int>(obj,tmp); }
+template<> std::string* fromPyPtr<std::string>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<std::string>(obj,tmp); }
+template<> bool* fromPyPtr<bool>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<bool>(obj,tmp); }
+template<> Vec3* fromPyPtr<Vec3>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<Vec3>(obj,tmp); }
+template<> Vec3i* fromPyPtr<Vec3i>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<Vec3i>(obj,tmp); }
+
+template<> bool isPy<float>(PyObject* obj) {
+#if PY_MAJOR_VERSION <= 2
+    if (PyInt_Check(obj)) return true;
+#endif
+    return PyFloat_Check(obj) || PyLong_Check(obj);
+}
+template<> bool isPy<double>(PyObject* obj) {
+#if PY_MAJOR_VERSION <= 2
+    if (PyInt_Check(obj)) return true;
+#endif
+    return PyFloat_Check(obj) || PyLong_Check(obj);
+}
+template<> bool isPy<PyObject*>(PyObject *obj) {
+    return true;
+}
+template<> bool isPy<int>(PyObject *obj) {
+#if PY_MAJOR_VERSION <= 2
+    if (PyInt_Check(obj)) return true;
+#endif
+    if (PyLong_Check(obj)) return true;
+    if (PyFloat_Check(obj)) {
+        double a = PyFloat_AsDouble(obj);
+        return fabs(a-floor(a+0.5)) < 1e-5;
+    }
+    return false;
+}
+template<> bool isPy<string>(PyObject *obj) {
+    if (PyUnicode_Check(obj)) return true; 
+#if PY_MAJOR_VERSION <= 2
+    if (PyString_Check(obj)) return true;
+#endif
+    return false;
+}
+template<> bool isPy<const char*>(PyObject *obj) {
+    if (PyUnicode_Check(obj)) return true; 
+#if PY_MAJOR_VERSION <= 2
+    if (PyString_Check(obj)) return true;
+#endif
+    return false;
+}
+template<> bool isPy<bool>(PyObject *obj) { 
+    return PyBool_Check(obj);
+}
+template<> bool isPy<Vec3>(PyObject* obj) {
+    if (PyObject_IsInstance(obj, (PyObject*)&PbVec3Type)) return true;
+    if (PyTuple_Check(obj) && PyTuple_Size(obj) == 3) {
+        return isPy<Real>(PyTuple_GetItem(obj,0)) &&
+               isPy<Real>(PyTuple_GetItem(obj,1)) &&
+               isPy<Real>(PyTuple_GetItem(obj,2));
+    }
+    return false;
+}
+template<> bool isPy<Vec3i>(PyObject* obj) {
+    if (PyObject_IsInstance(obj, (PyObject*)&PbVec3Type)) return true;
+    if (PyTuple_Check(obj) && PyTuple_Size(obj) == 3) {
+        return isPy<int>(PyTuple_GetItem(obj,0)) &&
+               isPy<int>(PyTuple_GetItem(obj,1)) &&
+               isPy<int>(PyTuple_GetItem(obj,2));
+    }
+    return false;
+}
+template<> bool isPy<PbType>(PyObject* obj) {
+    return PyType_Check(obj);
+}
 
 //******************************************************************************
 // PbArgs class defs
@@ -174,11 +262,18 @@ PbArgs PbArgs::EMPTY(NULL,NULL);
 PbArgs::PbArgs(PyObject* linarg, PyObject* dict) : mLinArgs(0), mKwds(0) {
     setup(linarg, dict);
 }
+PbArgs::~PbArgs() {
+    for(int i=0; i<(int)mTmpStorage.size(); i++)
+        free(mTmpStorage[i]);
+    mTmpStorage.clear();
+}
+
 void PbArgs::copy(PbArgs& a) {
     mKwds = a.mKwds;
     mData = a.mData;
     mLinData = a.mLinData;
     mLinArgs = a.mLinArgs;
+
 }
 void PbArgs::clear() {
     mLinArgs = 0;
@@ -217,12 +312,17 @@ void PbArgs::setup(PyObject* linarg, PyObject* dict) {
     }
 }
 
+void PbArgs::addLinArg(PyObject* obj) {
+    DataElement el = { obj, false };
+    mLinData.push_back(el);
+}
+
 void PbArgs::check() {
     if (has("nocheck")) return;
     
     for(map<string, DataElement>::iterator it = mData.begin(); it != mData.end(); it++) {
         if (!it->second.visited)
-            errMsg("Argument '" + it->first + "' given, which is not defined");
+            errMsg("Argument '" + it->first + "' unknown");
     }
     for(size_t i=0; i<mLinData.size(); i++) {
         if (!mLinData[i].visited) {
@@ -234,7 +334,7 @@ void PbArgs::check() {
 }
 
 FluidSolver* PbArgs::obtainParent() {
-    FluidSolver* solver = getOpt<FluidSolver*>("solver",NULL);
+    FluidSolver* solver = getPtrOpt<FluidSolver>("solver",-1,NULL);
     if (solver != 0) return solver;
     
 	// previous versions returned NULL for different parent solvers of args in the following two loops
@@ -243,7 +343,7 @@ FluidSolver* PbArgs::obtainParent() {
 	// allow/disallow multiple solver parents...
 
     for(map<string, DataElement>::iterator it = mData.begin(); it != mData.end(); it++) {
-        PbClass* obj = PbClass::fromPyObject(it->second.obj);
+        PbClass* obj = Pb::objFromPy(it->second.obj);
 
         if (obj) {
             if (solver == NULL) 
@@ -253,7 +353,7 @@ FluidSolver* PbArgs::obtainParent() {
         }
     }
     for(vector<DataElement>::iterator it = mLinData.begin(); it != mLinData.end(); it++) {
-        PbClass* obj = PbClass::fromPyObject(it->obj);
+        PbClass* obj = Pb::objFromPy(it->obj);
         
         if (obj) {
             if (solver == NULL) 
@@ -269,6 +369,14 @@ FluidSolver* PbArgs::obtainParent() {
     return solver;    
 }
 
+void PbArgs::visit(int number, const string& key) {
+    if (number >= 0 && number < (int)mLinData.size())
+        mLinData[number].visited = true;
+    map<string, DataElement>::iterator lu = mData.find(key);
+    if (lu != mData.end()) 
+        lu->second.visited = true;
+}
+
 PyObject* PbArgs::getItem(const std::string& key, bool strict, ArgLocker* lk) {
     map<string, DataElement>::iterator lu = mData.find(key);
     if (lu == mData.end()) {
@@ -276,8 +384,7 @@ PyObject* PbArgs::getItem(const std::string& key, bool strict, ArgLocker* lk) {
             errMsg ("Argument '" + key + "' is not defined.");
         return NULL;
     }
-    lu->second.visited = true;
-    PbClass* pbo = PbClass::fromPyObject(lu->second.obj);
+    PbClass* pbo = Pb::objFromPy(lu->second.obj);
     // try to lock
     if (pbo && lk) lk->add(pbo);        
     return lu->second.obj;
@@ -291,8 +398,7 @@ PyObject* PbArgs::getItem(size_t number, bool strict, ArgLocker* lk) {
         s << "Argument number #" << number << " not specified.";
         errMsg(s.str());
     }
-    mLinData[number].visited = true;
-    PbClass* pbo = PbClass::fromPyObject(mLinData[number].obj);
+    PbClass* pbo = Pb::objFromPy(mLinData[number].obj);
     // try to lock
     if (pbo && lk) lk->add(pbo);    
     return mLinData[number].obj;

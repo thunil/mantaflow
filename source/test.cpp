@@ -20,14 +20,21 @@ using namespace std;
 
 namespace Manta {
 
+
+PYTHON template<class S>
+void addToGrid(Grid<S>& a, S v) {
+    FOR_IDX(a) a[idx] += v;
+}
+PYTHON instantiate addToGrid<int>, addToGrid<Real>, addToGrid<Vec3>;
+
 //! Kernel: get component (not shifted)
-KERNEL(idx) returns(Grid<Real> ret(parent))
+/*KERNEL(idx) returns(Grid<Real> ret(parent))
 Grid<Real> GetComponent2(const Grid<Vec3>& grid, int dim) {
     ret[idx] = grid[idx][dim];
 };
 
 PYTHON void testp(Grid<Vec3>& b) {
-    Grid<Real> d(parent);
+    Grid<Real> d(b.getParent());
     b(20,20,20) = Vec3(21,22,23); 
     {
         cout <<"middle" << endl;        
@@ -37,7 +44,7 @@ PYTHON void testp(Grid<Vec3>& b) {
     }
     cout << "end" << endl;errMsg("f");
 }
-
+*/
 
 KERNEL(idx, reduce=+) returns (double sum=0)
 double ddtest(const Grid<Real>& v)
@@ -72,7 +79,7 @@ struct myvec {
 
 KERNEL(pts) returns(myvec vec(size)) 
 myvec testy(vector<int>& a) {
-    vec[i] = a[i];
+    vec[idx] = a[idx];
 }
 
 PYTHON void kernelTest() {
@@ -87,7 +94,7 @@ PYTHON void kernelTest() {
 }
 
 PYTHON void getCurl(MACGrid& vel, Grid<Real>& vort, int comp) {
-    Grid<Vec3> velCenter(parent), curl(parent);
+    Grid<Vec3> velCenter(vel.getParent()), curl(vel.getParent());
     
     GetCentered(velCenter, vel);
     CurlOp(velCenter, curl);

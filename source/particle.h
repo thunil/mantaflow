@@ -60,7 +60,7 @@ public:
 	// particle data functions
 
     //! create a particle data object
-    PYTHON PbClass* create(PbType type, const std::string& name = "");
+    PYTHON PbClass* create(PbType type, PbTypeVec T=PbTypeVec(), const std::string& name = "");
 	//! add a particle data field, set its parent particle-system pointer
 	void registerPdata(ParticleDataBase* pdata);
 	void registerPdataReal(ParticleDataImpl<Real>* pdata);
@@ -383,17 +383,17 @@ KERNEL(pts) template<class S> returns(std::vector<Vec3> u(size))
 std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flags, Real dt,
 		bool deleteInObstacle )
 {
-    if (p[i].flag & ParticleBase::PDELETE) {
-        u[i] =_0;
-	} else if (!flags.isInBounds(p[i].pos,1) || flags.isObstacle(p[i].pos)) {
-        u[i] = _0;
+    if (p[idx].flag & ParticleBase::PDELETE) {
+        u[idx] =_0;
+	} else if (!flags.isInBounds(p[idx].pos,1) || flags.isObstacle(p[idx].pos)) {
+        u[idx] = _0;
 
 		// for simple tracer particles, its convenient to delete particles right away
 		// for other sim types, eg flip, we can try to fix positions later on
 		if(deleteInObstacle) 
-			p[i].flag |= ParticleBase::PDELETE;
+			p[idx].flag |= ParticleBase::PDELETE;
     } else {
-        u[i] = vel.getInterpolated(p[i].pos) * dt;
+        u[idx] = vel.getInterpolated(p[idx].pos) * dt;
 	}
 };
 
@@ -401,17 +401,17 @@ std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const
 // (similar to particle advection kernel)
 KERNEL(pts) template<class S>
 void KnDeleteInObstacle(std::vector<S>& p, const FlagGrid& flags) {
-    if (p[i].flag & ParticleBase::PDELETE) return;
-	if (!flags.isInBounds(p[i].pos,1) || flags.isObstacle(p[i].pos)) {
-		p[i].flag |= ParticleBase::PDELETE;
+    if (p[idx].flag & ParticleBase::PDELETE) return;
+	if (!flags.isInBounds(p[idx].pos,1) || flags.isObstacle(p[idx].pos)) {
+		p[idx].flag |= ParticleBase::PDELETE;
     } 
 }
 // at least make sure all particles are inside domain
 KERNEL(pts) template<class S>
 void KnClampPositions(std::vector<S>& p, const FlagGrid& flags) {
-    if (p[i].flag & ParticleBase::PDELETE) return;
-	if (!flags.isInBounds(p[i].pos,0) ) {
-		p[i].pos = clamp( p[i].pos, Vec3(0.), toVec3(flags.getSize())-Vec3(1.) );
+    if (p[idx].flag & ParticleBase::PDELETE) return;
+	if (!flags.isInBounds(p[idx].pos,0) ) {
+		p[idx].pos = clamp( p[idx].pos, Vec3(0.), toVec3(flags.getSize())-Vec3(1.) );
     } 
 }
 
@@ -430,9 +430,9 @@ void KnProjectParticles(ParticleSystem<S>& part, Grid<Vec3>& gradient) {
     static RandomStream rand (3123984);
     const double jlen = 0.1;
     
-    if (part.isActive(i)) {
+    if (part.isActive(idx)) {
         // project along levelset gradient
-        Vec3 p = part[i].pos;
+        Vec3 p = part[idx].pos;
         if (gradient.isInBounds(p)) {
             Vec3 n = gradient.getInterpolated(p);
             Real dist = normalize(n);
@@ -442,7 +442,7 @@ void KnProjectParticles(ParticleSystem<S>& part, Grid<Vec3>& gradient) {
         // clamp to outer boundaries (+jitter)
         const double jlen = 0.1;
         Vec3 jitter = jlen * rand.getVec3();
-        part[i].pos = clamp(p, Vec3(1,1,1)+jitter, toVec3(gradient.getSize()-1)-jitter);
+        part[idx].pos = clamp(p, Vec3(1,1,1)+jitter, toVec3(gradient.getSize()-1)-jitter);
     }
 }
 

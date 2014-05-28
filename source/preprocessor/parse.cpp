@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ * Copyright 2011-2014 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL) 
@@ -13,425 +13,344 @@
 
 #include <iostream>
 #include <cstdlib>
+#include <algorithm>
 #include "prep.h"
 
 using namespace std;
 
-string stripWS(const string& s) {
-    string t;
-    for (size_t i=0; i<s.length(); i++) {
-        if (s[i] != ' ' && s[i] != '\r' && s[i] != '\t' && s[i] != '\n') t += s[i];
+List<Type> parseTypeList(TokenPointer& parentPtr);
+
+//*************************************************************
+// parsers
+
+#define tkAssert(x,msg) {if(!(x)){tk.errorMsg(msg);}}
+#define typeAssert(x) tkAssert(x," is not a valid type.")
+#define argAssert(x) tkAssert(x," is not a valid argument.")
+
+string parseRunaway(TokenPointer& parentPtr) {
+    Text text;
+    TokenPointer tk(parentPtr, &text);
+
+    // don't validate, just track bracket level
+    BracketStack stack;
+    for(;!tk.done();tk.next()) {
+        if (stack.empty() && (tk.curType() == TkComma || 
+            tk.curType() == TkBracketR || tk.curType() == TkTBracketR)) {
+                break;
+        }
+        if (tk.curType() == TkBracketL || tk.curType() == TkTBracketL) {
+            stack.push_back(tk.cur().text[0]);
+        } else if (tk.curType() == TkBracketR) {
+            argAssert(stack.pop() == '(');
+        } else if (tk.curType() == TkTBracketR) {
+            argAssert(stack.pop() == '<');
+        }
     }
-    return t;
+    argAssert(stack.empty());
+    return text.minimal;
 }
 
-// ignore whitspaces, return number of lines
-int consumeWS(const vector<Token>& tokens, size_t& index) {
-    int linebreaks = 0;
-    while (tokens[index].type == TkWhitespace || tokens[index].type == TkComment) {
-        if (tokens[index].text.find('\n') != string::npos)
-            linebreaks++;
-        index++;
-        if (index >= tokens.size())
-            errMsg(-1, "Preprocessor ran out of tokens. This shouldn't happen.");
+void parsePointer(TokenPointer& tk, Type& cur) {
+    if (tk.done()) return;
+    if (tk.cur().type == TkOperator && tk.cur().text == "*") {
+        cur.isPointer = true;
+        tk.next();
+    } else if (tk.cur().type == TkRef) {
+        cur.isRef = true;
+        tk.next();
     }
-    return linebreaks;
 }
 
-// parse a single argument
-Argument parseSingleArg(const vector<Token>& tokens, size_t& index, bool expectType, bool expectName, bool isList, int& lb) {
-    const int firstStage = expectType ? 0 : 4;
+Type parseType(TokenPointer& parentPtr) {
+    Type cur = Type();
+    TokenPointer tk(parentPtr, &cur);
+
+    // constness
+    if (tk.curType() == TkConst) {
+        cur.isConst = true;
+        tk.next();
+    }
+    typeAssert(!tk.done());
     
-    lb += consumeWS(tokens, index);
-    
-    // tokenizer already established that open brackets are closed eventually, so no need to check that
-    Argument cur = Argument();    
-    int stage = firstStage; // 0: type, 1: template open / modifiers / name 2: template, 3: template close 4: name / modifiers, 5: assignOp 6+: defaults
-    int openTBrackets=0, openBrackets=0;
-    bool endPossible = false, endToken = false;
-    bool bracketInitializer = false;
-        
-    do {
-        TokenType t = tokens[index].type;
-        string text = tokens[index].text;
-        int line = tokens[index].line;
-        
-        if (t==TkBracketL) openBrackets++;
-        if (t==TkBracketR) openBrackets--;
-        if (t==TkTBracketL) openTBrackets++;
-        if (t==TkTBracketR) openTBrackets--;
-        
-        //cout << index << ":" << stage << "," << t << "," << text << " : " << cur.complete << endl;
-        endPossible = openBrackets == 0 && openTBrackets == 0;
-        endToken = false;
-        if (t == TkWhitespace || t == TkComment) {
-            if (text[0]=='\n') lb++;
-            else if (text[0]!='\r') cur.complete += text;
+    // signed / unsigned
+    if (tk.curType() == TkTypeQualifier) {
+        cur.name = tk.cur().text;
+        tk.next();
+        if (tk.done())
+            return cur;
+        typeAssert(tk.curType() == TkSimpleType);
+        cur.name += " " + tk.cur().text;
+        tk.next();
+        parsePointer(tk, cur);
+        return cur;
+    }
+
+    // template argument
+    if (tk.curType() == TkClass) {
+        tk.next();
+    }
+
+    typeAssert(tk.curType() == TkDescriptor || tk.curType() == TkSimpleType);
+    cur.name = tk.cur().text;
+    tk.next();
+    if (cur.name == "operator") {
+        while (tk.curType() == TkOperator) {
+            cur.name += tk.cur().text;
+            tk.next();
         }
-        else
-        {
-            cur.complete += text;
-            switch (stage) {
-                case 0:
-                    // type name
-                    assert(t==TkDescriptor, "incomplete argument! expect argument of the form '[type] name [= default]'");
-                    if (text == "const") {
-                        cur.isConst = true;     
-                        endPossible = false;
-                    } 
-                    else {
-                        cur.type += text;
-                        stage++;
-                        if (expectName) endPossible = false;
-                    }
-                    break;
-                case 1:
-                    if (t == TkColon && tokens[index+1].type == TkColon) { // type had namespace
-                        cur.type += "::";
-                        cur.complete += ":";
-                        index++;
-                        stage=0;
-                        endPossible = false;
-                        break;
-                    } // else : fallthough to name
-                case 4:
-                    // template open / name / modifiers
-                    if (t == TkTBracketL && stage == 1) {
-                        stage = 2;
-                        endPossible = false;
-                    } else if (t == TkRef) {
-                        cur.isRef = true;
-                        stage = 4;
-                        if (expectName) endPossible = false;
-                    } else if (t == TkPointer) {
-                        cur.isPointer = true;
-                        stage = 4;
-                        if (expectName) endPossible = false;
-                    } else if (t == TkDescriptor) {
-                        assert(expectName, "Argument '"+ cur.complete +"': only type expected");
-                        cur.name = text;
-                        stage = 5;
-                    } else 
-                        errMsg(line, "incomplete argument '" + cur.complete + "'");
-                    break;
-                case 2:
-                    // template
-                    endPossible = false;
-                    assert(t == TkDescriptor, "incomplete argument type '" + cur.complete + "'! expect type<Template> [*|&]");
-                    cur.templ += text;
-                    stage++;
-                    break;
-                case 3:
-                    // template close
-                    endPossible = false;
-                    if (t == TkTBracketR)
-                        stage = 4;
-                    else if (t == TkComma) {
-                        cur.templ += ",";
-                        stage = 2;
-                    } else if (t == TkColon && tokens[index+1].type == TkColon) { 
-                        // template type had namespace
-                        cur.templ += "::";
-                        cur.complete += ":";
-                        index++;
-                        stage=2;
-                        endPossible = false;
-                        break;
-                    } else                   
-                        errMsg(line, "incomplete argument type '"+ cur.complete +"'! expect type<Template> [*|&]");
-                    break;
-                case 5:
-                    // assign op
-                    endPossible = false;
-                    assert(t == TkAssign || TkBracketL, "incomplete argument! expect argument of the form '[type] name [= default]'");
-                    if (t== TkBracketL) bracketInitializer = true;
-                    stage++;
-                    break;
-                case 6:
-                    // default values, stage 6+
-                    if (t == TkNone || t == TkDescriptor || t==TkColon || t==TkComma || t==TkBracketL || t==TkBracketR || t==TkPointer || t==TkRef ||
-                        t == TkTBracketL || t == TkTBracketR )
-                        cur.value += text;
-                    else 
-                        errMsg(line, "incomplete argument '" + cur.complete + "'");
-                    break;
-                default:
-                    errMsg(line, "internal parser error, invalid stage");
-                    break;
-            }
-        }
-        index++;
-        if (index >= tokens.size())
-            errMsg(-1, "Preprocessor ran out of tokens. This shouldn't happen.");
-        endToken = (!isList && tokens[index].type == TkDescriptor) ||
-                   (isList && (tokens[index].type == TkBracketR || tokens[index].type == TkComma || tokens[index].type == TkTBracketR));
-    } while(!endPossible || !endToken);
+    }
     
-    if (bracketInitializer && !cur.value.empty())
-        cur.value = cur.value.substr(0,cur.value.size()-1); // strip closing bracket
-    
-    //cout << "Complete Type : " << cur.complete << endl;
-    
+    // namespace
+    if (tk.curType() == TkDoubleColon) {
+        cur.name += "::";
+        tk.next();
+        typeAssert(tk.curType() == TkDescriptor || tk.curType() == TkSimpleType);
+        cur.name += tk.cur().text;
+        tk.next();
+    }
+
+    // template
+    if (tk.curType() == TkTBracketL) {
+        cur.templateTypes = parseTypeList(tk);
+    }
+
+    parsePointer(tk, cur);
     return cur;
 }
 
+Argument parseArgument(TokenPointer& parentPtr, bool requireName, bool requireType) {
+    Argument cur = Argument();
+    TokenPointer tk(parentPtr, &cur);
 
-// parse argument list tokens of the form (int a = 12, bool* b, Grid<float>& grid)
-// or <class T, int A> if isTemplate is specified
-ArgList parseArgs(const vector<Token>& tokens, size_t& index, bool expectType, int &lb, bool isTemplate) {    
-    ArgList args;
-    TokenType openBracket = isTemplate ? TkTBracketL : TkBracketL;
-    TokenType closeBracket = isTemplate ? TkTBracketR : TkBracketR;
-    
-    // ignore trailing whitespaces, remove first bracket
-    lb += consumeWS(tokens, index);
-    if (tokens[index].type != openBracket) return args;
-    index++;
-    lb += consumeWS(tokens, index);
-    int number = 0;
-    
-    for(;;) {
-        if (tokens[index].type == closeBracket) 
-            break;
-        
-        Argument cur = parseSingleArg(tokens, index, expectType, true, true, lb);
-        cur.number = number++;
-        args.push_back(cur);
-        
-        if (tokens[index].type == closeBracket) 
-            break;
-        else if (tokens[index].type != TkComma)
-            errMsg(tokens[index].line, "invalid argument list !");
-        index++;
-        lb += consumeWS(tokens, index);
+    if (requireType)
+        cur.type = parseType(tk);
+
+    if (tk.curType() != TkDescriptor && !requireName) 
+        return cur;
+
+    argAssert(tk.curType() == TkDescriptor);
+    cur.name = tk.cur().text;
+    tk.next();
+
+    // default value ?
+    if (tk.curType() == TkBracketL || (tk.curType() == TkOperator && tk.cur().text == "=")) {
+        if (tk.curType() == TkOperator)
+            tk.next();
+        cur.value = parseRunaway(tk);
     }
+    return cur;
+}
+
+List<Type> parseTypeList(TokenPointer& parentPtr) {
+    List<Type> list;
+    TokenPointer tk(parentPtr, &list);
     
-    index++; // consume closing bracket
+    tkAssert(tk.curType() == TkTBracketL, "expect template opening bracket");
+    tk.next();
+    if (tk.curType() != TkTBracketR) {
+        for(;;) {
+            list.push_back(parseType(tk));
+            if (tk.curType() == TkTBracketR) 
+                break;
+            tkAssert(tk.curType() == TkComma, "expect comma or closing bracket");
+            tk.next();
+        }
+    }
+    list.listText = list.minimal.substr(1);
+    tkAssert(tk.curType() == TkTBracketR, "expect template closing bracket");
+    tk.next();
+    return list;
+}
+
+List<Argument> parseArgumentList(TokenPointer& parentPtr, bool requireName, bool requireType) {
+    List<Argument> list;
+    TokenPointer tk(parentPtr, &list);
     
-    // ignore WS
-    lb += consumeWS(tokens, index);    
-    return args;
+    tkAssert(tk.curType() == TkBracketL, "expect opening bracket");
+    tk.next();
+    if (tk.curType() != TkBracketR) {
+        for(int idx=0;;idx++) {
+            list.push_back(parseArgument(tk, requireName, requireType));
+            list.back().index = idx;
+            if (tk.curType() == TkBracketR) 
+                break;
+            tkAssert(tk.curType() == TkComma, "expect comma or closing bracket");
+            tk.next();
+        }
+    }
+    list.listText = list.minimal.substr(1);
+    tkAssert(tk.curType() == TkBracketR, "expect closing bracket");
+    tk.next();
+    return list;
+}
+
+Function parseFunction(TokenPointer& parentPtr, bool requireNames, bool requireType, bool requireArgs) {
+    Function cur;
+    TokenPointer tk(parentPtr, &cur);
+
+    // templated
+    if (tk.curType() == TkTemplate) {
+        tk.next();
+        cur.templateTypes = parseTypeList(tk);            
+    }
+
+    for (;tk.curType() == TkInline || tk.curType() == TkVirtual; tk.next()) {
+        if (tk.curType() == TkInline) cur.isInline = true;
+        if (tk.curType() == TkVirtual) cur.isVirtual = true;
+    }
+
+    if (requireType)
+        cur.returnType = parseType(tk);
+    tkAssert(tk.curType() == TkDescriptor, "malformed function/kernel");
+    cur.name = tk.cur().text;
+    tk.next();
+
+    if (cur.name == "operator") {
+        cur.isOperator = true;
+        while(tk.curType() == TkOperator) {
+            cur.name += tk.cur().text;
+            tk.next();
+        }
+    }
+
+    if (requireArgs || tk.curType() == TkBracketL)
+        cur.arguments = parseArgumentList(tk, requireNames, true);
+    else
+        cur.noParentheses = true;
+
+    if (tk.curType() == TkConst) {
+        cur.isConst = true;
+        tk.next();
+    }
+    return cur;
+}
+
+Class parseClass(TokenPointer& parentPtr) {
+    Class cur;
+    TokenPointer tk(parentPtr, &cur);
+
+    tkAssert(tk.curType() == TkClass, "");
+    tk.next();
+    tkAssert(tk.curType() == TkDescriptor, "malformed preprocessor keyword block. Expected 'PYTHON class name : public X {}'");
+    cur.name = tk.cur().text;
+    tk.next();
+    tkAssert(tk.curType() == TkColon, "PYTHON class must publicly derive from PbClass (or a subclass)");
+    tk.next();
+    tkAssert(tk.curType() == TkPublic, "PYTHON class must publicly derive from PbClass (or a subclass)");
+    tk.next();
+    tkAssert(tk.curType() == TkDescriptor, "PYTHON class must publicly derive from PbClass (or a subclass)");
+    cur.baseClass = parseType(tk);
+
+    return cur;
 }
 
 // Parse syntax KEYWORD(opt1, opt2, ...) STATEMENTS [ {} or ; ]    
-string parseBlock(const string& kw, const vector<Token>& tokens, int line) {    
-    
-    // parse keyword options
-    Keyword key = checkKeyword(kw);
-    size_t index = 0;
-    int lb = 0;
-    
-    ArgList options = parseArgs(tokens, index, false, lb, false);
-    
-    assert(tokens[index].type == TkDescriptor, "malformed preprocessor keyword block. Expected '" + kw + "(opt1, opt2, ...) STATEMENTS [{}|;]'");
-    
-    // keyword dependent processing. 
-    // No need to check for index overflow, as long as test each type, since sequence will end in ; or {}
-    if (key == KwKernel) {
-        string text = tokens[index].text;
-        ArgList templArgs;
-        ArgList returnArg;
-        
-        // resolve template class or instantiation
-        if (text == "template") {
-            // templateted kernel
-            lb += consumeWS(tokens, ++index);
-            assert (tokens[index].type == TkTBracketL, "syntax error. expected KERNEL(...) template<class T> [class] ...");
-            templArgs = parseArgs(tokens, index, true, lb, true);
-            assert(tokens[index].type == TkDescriptor, "syntax error. expected KERNEL(...) template<class T> [class] ...");
-            text = tokens[index].text;            
-        }                
-        
-        // initialize return value
-        while (text == "returns") {
-            lb += consumeWS(tokens, ++index);
-            assert (tokens[index].type == TkBracketL, "syntax error. expected KERNEL(...) returns(type val [=x]) ...");
-            returnArg.push_back(parseSingleArg(tokens, ++index, true, true, true, lb));
-            assert (tokens[index].type == TkBracketR, "syntax error. expected KERNEL(...) returns(type val [=x]) ...");
-            lb += consumeWS(tokens, ++index);
-            assert (tokens[index].type == TkDescriptor, "syntax error. expected KERNEL(...) returns(type val [=x]) ...");
-            text = tokens[index].text;
-        }
-        
-        if (text == "class" || text == "struct")
-            errMsg(line, "KERNEL struct/class not supported anymore. Use reduce/returns keywords instead");
-        
-        // parse return type 
-        Argument retType = parseSingleArg(tokens, index, true, false, false, lb);
-        
-        assert (tokens[index].type == TkDescriptor, "Malformed KERNEL, expected: KERNEL ret_type/struct name(args...) { code }");
-        string name = tokens[index++].text;
-        ArgList args = parseArgs(tokens, index, true, lb, false);
-        
-        if (tokens[index].type != TkCodeBlock || index+1 != tokens.size())
-            errMsg(line, "Malformed KERNEL, expected: KERNEL(opts...) ret_type name(args...) { code }");
-        
-        return processKernel(lb, name, options, retType, returnArg, templArgs, args, tokens[index].text, line);
-    }
-    else if (key == KwPython) 
-    {
-        ArgList templArgs;
-        string type = tokens[index].text; 
-        
-        // resolve template alias
-        if (type == "alias") {            
-            // template instantiation
-            
-            lb += consumeWS(tokens, ++index);
-            assert (tokens[index].type == TkDescriptor, "syntax error. expected PYTHON alias type<T> name;");
-            string classname = tokens[index++].text;
-            
-            templArgs = parseArgs(tokens, index, false, lb, true);
-            
-            assert (tokens[index].type == TkDescriptor, "syntax error. expected PYTHON alias type<T> name;");
-            string aliasname = tokens[index++].text;
-            lb += consumeWS(tokens, index);
-            
-            if (tokens[index].type != TkSemicolon || index+1 != tokens.size())
-                errMsg(line, "syntax error. expected PYTHON alias type<T> name;");            
-            return processPythonInstantiation(lb, classname, templArgs, aliasname, line);
-        }
-        // resolve template class
-        else if (type == "template") {
-            
-            lb += consumeWS(tokens, ++index);        
-            if (tokens[index].type == TkTBracketL) {
-                // class template                
-                templArgs = parseArgs(tokens, index, true, lb, true);
-                
-                if (tokens[index].type != TkDescriptor)
-                    errMsg(line, "syntax error. expected PYTHON template<class T> class ...");
-                type = tokens[index].text;                
-            }
-            else 
-                errMsg(line, "syntax error. expected PYTHON class name<T>; or PYTHON template<class T> class name...");                
-        }
-                
-        if (type == "class") {
-            lb += consumeWS(tokens, ++index);                    
-            assert(tokens[index].type == TkDescriptor, "malformed preprocessor keyword block. Expected 'PYTHON class name : public X {}'");
-            string name = tokens[index++].text;
-            
-            lb += consumeWS(tokens, index);
-            assert(tokens[index++].type == TkColon, "PYTHON class '" + name + "' must publicly derive from PbClass (or a subclass)");
-            
-            lb += consumeWS(tokens, index);
-            assert(tokens[index].type == TkDescriptor && tokens[index++].text == "public", "PYTHON class '" + name + "' must publicly derive from PbClass (or a subclass)");
-            
-            lb += consumeWS(tokens, index);
-            assert(tokens[index].type == TkDescriptor, "PYTHON class '" + name + "' must publicly derive from PbClass (or a subclass)");
-            string baseclassName = tokens[index++].text;
-            
-            lb += consumeWS(tokens, index);
-            ArgList baseclassTempl;
-            if (tokens[index].type == TkTBracketL) {
-                baseclassTempl = parseArgs(tokens, index, false, lb, true);
-            }
-            
-            lb += consumeWS(tokens, index);
-            if (tokens[index].type != TkCodeBlock || index+1 != tokens.size())
-                errMsg(line, "malformed preprocessor keyword block. Expected 'PYTHON class name : public baseclass { code }'");
-            
-            return processPythonClass(lb, name, options, templArgs, baseclassName, baseclassTempl, tokens[index].text, line);
-        } 
-        else if (type == gParent){
-            lb += consumeWS(tokens, ++index);                    
-            // constructor
-            string name = type;
-            type = "";
-            
-            ArgList args = parseArgs(tokens, index, true, lb, false);
-            
-            // if constructor list, collect until codeblock
-            string cb = "";
-            if (tokens[index].type == TkColon) {
-                while(tokens[index].type != TkSemicolon && tokens[index].type != TkCodeBlock) {
-                    cb += tokens[index].text;
-                    index++;
-                    assert(index != tokens.size(), "malformed constructor.");
-                }
-            }
-            
-            if ( (tokens[index].type != TkCodeBlock && tokens[index].type != TkSemicolon) || index+1 != tokens.size())
-                errMsg(line, "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]");
-            return processPythonFunction(lb, name, options, type, args, cb, false, false, false, tokens[index].text, line);
-        } else {
-            bool isInline=false, isConst=false, isVirtual=false;
-            // parse return type
-            Argument retType = parseSingleArg(tokens, index, true, false, false, lb);
-            type = stripWS(retType.complete);
-            if (type == "virtual") {
-                retType = parseSingleArg(tokens, index, true, false, false, lb);
-                type = stripWS(retType.complete);
-                isVirtual = true;
-            }
-            if (type == "inline") {
-                retType = parseSingleArg(tokens, index, true, false, false, lb);
-                type = stripWS(retType.complete);
-                isInline = true;
-            }
-            
-            // function or member function
-            assert(tokens[index].type == TkDescriptor, "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]'");
-            string name = tokens[index++].text;
-            
-            lb += consumeWS(tokens, index);
-            if (tokens[index].type == TkSemicolon) {
-                // member variable
-                return processPythonVariable(lb, name, options, type, line);
-            }
-            ArgList args = parseArgs(tokens, index, true, lb, false);
-            if (tokens[index].type == TkDescriptor && tokens[index].text == "const") {
-                isConst = true;
-                lb += consumeWS(tokens, ++index);
-            }
-            
-            if ( (tokens[index].type != TkCodeBlock && tokens[index].type != TkSemicolon) || index+1 != tokens.size())
-                errMsg(line, "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]");
-            return processPythonFunction(lb, name, options, type, args, "", isInline, isConst, isVirtual, tokens[index].text, line);
-        }
-    }
-    else 
-        errMsg(-1, "preprocessor error, unimplemented Keyword '"+kw+"'. This shouldn't happen.");
-    
-    return "";
-}
+void parseBlock(const string& kw, const vector<Token>& tokens, const Class* parent, Sink& sink, vector<Instantiation>& inst) {
+    Block block = Block();
+    block.parent = parent;
+    TokenPointer tk(tokens, &block);
 
-// find a function inside a code-snippet and replace the text
-string replaceFunctionHeader(const string& text, const string& funcname, const string& header, const string& finalizer, int line) {
-    size_t cursor = 0;
-    int dline = 0;
-    vector<Token> tokens = tokenizeBlock("class", text, cursor, dline, true);
-    string newText = "";
-    bool found = false;
-    
-    for (size_t i=0; i < tokens.size(); i++) {
-        if (tokens[i].type == TkDescriptor && tokens[i].text == "void") {
-            int oldi = i;
-            i++;
-            consumeWS(tokens, i);
-            if (tokens[i].type == TkDescriptor && tokens[i].text == funcname) {            
-                i++;
-                consumeWS(tokens, i);
-                assert(tokens[i++].type == TkBracketL, "malformed member function. Expected void " + funcname + "(...) {...}");
-                while (tokens[i++].type != TkBracketR) {};
-                consumeWS(tokens, i);
-                assert(tokens[i].type == TkCodeBlock, "malformed member function. Expected void " + funcname + "(...) {...}");
+    // parse keyword options
+    if (tk.curType() == TkBracketL)
+        block.options = parseArgumentList(tk, true, false);
+
+    if (kw == "KERNEL") {
+        List<Type> templTypes;
+
+        // templated kernel
+        if (tk.curType() == TkTemplate) {
+            tk.next();
+            templTypes = parseTypeList(tk);            
+        }
+        
+        // return values
+        while (tk.curType() == TkDescriptor && tk.cur().text == "returns") {
+            tk.next();
+            tkAssert(tk.curType() == TkBracketL, "expext opening bracket");
+            tk.next();
+            block.locals.push_back(parseArgument(tk, true, true));
+            tkAssert(tk.curType() == TkBracketR, "expect closing bracket");
+            tk.next();            
+        }
+
+        block.func = parseFunction(tk, true, true, true);
+        if (!templTypes.empty())
+            block.func.templateTypes = templTypes;
+
+        tkAssert(tk.curType() == TkCodeBlock && tk.isLast(), 
+            "Malformed KERNEL, expected KERNEL(opts...) ret_type name(args...) { code }");
+
+        block.line1 = tk.cur().line;
+        processKernel(block, tk.cur().text, sink);
+    }
+    else if (kw == "PYTHON")
+    {
+        // template instantiation / alias
+        if (tk.curType() == TkDescriptor && (tk.cur().text == "alias" || tk.cur().text == "instantiate"))  {
+            string kw = tk.cur().text;
+            Type aliasType;
+            do {
+                tk.next();
+                aliasType = parseType(tk);
+                processPythonInstantiation(block, aliasType, sink, inst);            
+            } while (tk.curType() == TkComma);
+
+            if (kw == "alias") {
+                tkAssert(tk.curType() == TkDescriptor, "malformed preprocessor block. Expected 'PYTHON alias cname pyname;'");
+                string aliasName = tk.cur().text;
+                processPythonAlias(block, aliasType, aliasName, sink);
+                tk.next();
+            }
+            tkAssert(tk.curType() == TkSemicolon && tk.isLast(), "malformed preprocessor block. Expected 'PYTHON alias/instantiate cname [pyname];'");
+            sink.inplace << block.linebreaks();
                 
-                // ok, replace
-                newText += header;
-                newText += tokens[i].text.substr(1, tokens[i].text.size()-2); // remove brackets
-                newText += finalizer;
-                found = true;
-                continue;
+            return;
+        }
+        List<Type> templTypes;
+
+        // resolve template class
+        Text templText;
+        if (tk.curType() == TkTemplate) {
+            TokenPointer t2(tk, &templText);
+            t2.next();
+            templTypes = parseTypeList(t2);            
+        }
+
+        // python class
+        if (tk.curType() == TkClass && tk.cur().text != "typename") {
+            block.cls = parseClass(tk);
+            block.cls.templateTypes = templTypes;
+            block.cls.prequel(&templText);
+            tkAssert(tk.curType() == TkCodeBlock && tk.isLast(), "malformed preprocessor keyword block. Expected 'PYTHON class name : public X {}'");
+            processPythonClass(block, tk.cur().text, sink, inst);
+        }
+        else // function or member
+        {
+            bool isConstructor = parent && tk.curType() == TkDescriptor && 
+                 parent->name == tk.cur().text && tk.previewType() == TkBracketL;
+            block.func = parseFunction(tk, false, !isConstructor, false);
+            block.func.templateTypes = templTypes;
+            block.func.prequel(&templText);
+            
+            if (isConstructor && tk.curType() == TkColon) {
+                // read till end
+                while(!tk.done() && tk.curType() != TkSemicolon && tk.curType() != TkCodeBlock) {
+                    block.initList += tk.cur().text;
+                    tk.next();
+                }
+                tkAssert(!tk.done(), "Constructor initializer list not limited");
+            }
+
+            if (tk.curType() == TkSemicolon && block.func.noParentheses) {
+                tkAssert(tk.curType() == TkSemicolon && tk.isLast(), 
+                    "malformed preprocessor keyword block. Expected 'PYTHON type varname;'");
+                processPythonVariable(block, sink);
             } else {
-                i=oldi;
+                tkAssert((tk.curType() == TkCodeBlock || tk.curType() == TkSemicolon) && tk.isLast(), 
+                    "malformed preprocessor keyword block. Expected 'PYTHON type funcname(args) [{}|;]'");
+                processPythonFunction(block, tk.cur().text, sink, inst);
             }
         }
-        newText += tokens[i].text;
+
     }
-    
-    assert(found, "preprocessing custom class: can't find member function void " + funcname + "(...)");
-    
-    return newText;
 }

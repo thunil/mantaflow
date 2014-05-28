@@ -52,7 +52,7 @@ PYTHON void texcoordInflow(VortexSheetMesh& mesh, Shape* shape, MACGrid& vel)
         }
     }
     meanV /= (Real) cnt;
-    t0 -= parent->getDt() * meanV;
+    t0 -= mesh.getParent()->getDt() * meanV;
     mesh.setReferenceTexOffset(t0);
 
     // apply mean velocity
@@ -84,9 +84,9 @@ PYTHON void vorticitySource(VortexSheetMesh& mesh, Vec3 gravity,
                             MACGrid* vel=NULL, MACGrid* velOld=NULL,
                             Real scale = 0.1, Real maxAmount = 0, Real mult = 1.0)
 {
-    Real dt = parent->getDt();
-    Real dx = parent->getDx();
-    MACGrid acceleration(parent);
+    Real dt = mesh.getParent()->getDt();
+    Real dx = mesh.getParent()->getDx();
+    MACGrid acceleration(mesh.getParent());
     if (vel)
         KnAcceleration(acceleration, *vel, *velOld, 1.0/dt);
     const Real A= -1.0;
@@ -167,8 +167,8 @@ PYTHON void smoothVorticity(VortexSheetMesh& mesh, int iter=1, Real sigma=0.2, R
 
 //! Seed Vortex Particles inside shape with K41 characteristics
 PYTHON void VPseedK41(VortexParticleSystem& system, Shape* shape, Real strength=0, Real sigma0=0.2, Real sigma1=1.0, Real probability=1.0, Real N=3.0) {
-    Grid<Real> temp(parent);
-    const Real dt = parent->getDt();
+    Grid<Real> temp(system.getParent());
+    const Real dt = system.getParent()->getDt();
     static RandomStream rand(3489572);
     Real s0 = pow( (Real)sigma0, (Real)(-N+1.0) );
     Real s1 = pow( (Real)sigma1, (Real)(-N+1.0) );
@@ -196,7 +196,7 @@ PYTHON void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, F
     const Real fac = 16.0; // experimental factor to balance out regularization
     
     // if no vort grid is given, use a temporary one
-    Grid<Vec3> vortTemp(parent);    
+    Grid<Vec3> vortTemp(mesh.getParent());    
     Grid<Vec3>& vort = (vorticity) ? (*vorticity) : (vortTemp);
     vort.clear();
     
@@ -248,20 +248,20 @@ PYTHON void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, F
     }
     
     // Prepare grids for poisson solve
-    Grid<Vec3> vortexCurl(parent);
-    Grid<Real> rhs(parent);
-    Grid<Real> solution(parent);
-    Grid<Real> residual(parent);
-    Grid<Real> search(parent);
-    Grid<Real> temp1(parent);
-    Grid<Real> A0(parent);
-    Grid<Real> Ai(parent);
-    Grid<Real> Aj(parent);
-    Grid<Real> Ak(parent);
-    Grid<Real> pca0(parent);
-    Grid<Real> pca1(parent);
-    Grid<Real> pca2(parent);
-    Grid<Real> pca3(parent);
+    Grid<Vec3> vortexCurl(mesh.getParent());
+    Grid<Real> rhs(mesh.getParent());
+    Grid<Real> solution(mesh.getParent());
+    Grid<Real> residual(mesh.getParent());
+    Grid<Real> search(mesh.getParent());
+    Grid<Real> temp1(mesh.getParent());
+    Grid<Real> A0(mesh.getParent());
+    Grid<Real> Ai(mesh.getParent());
+    Grid<Real> Aj(mesh.getParent());
+    Grid<Real> Ak(mesh.getParent());
+    Grid<Real> pca0(mesh.getParent());
+    Grid<Real> pca1(mesh.getParent());
+    Grid<Real> pca2(mesh.getParent());
+    Grid<Real> pca3(mesh.getParent());
     
     MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak);    
     CurlOp(vort, vortexCurl);    

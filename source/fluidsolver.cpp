@@ -90,7 +90,7 @@ void FluidSolver::pluginStop(const string& name) {
 // FluidSolver members
 
 FluidSolver::FluidSolver(Vec3i gridsize, int dim)
-    : PbClass(this), mDt(1.0), mScale(1.0), mFrame(0), mGridSize(gridsize), mDim(dim), mTimeTotal(0.)
+    : PbClass(this), mDt(1.0), mGridSize(gridsize), mDim(dim),  mTimeTotal(0.), mScale(1.0), mFrame(0)
 {    
     assertMsg(dim==2 || dim==3, "Can only create 2D and 3D solvers");
     assertMsg(dim!=2 || gridsize.z == 1, "Trying to create 2D solver with size.z != 1");
@@ -102,12 +102,12 @@ FluidSolver::~FluidSolver() {
     mGridsVec.free();
 }
 
-PbClass* FluidSolver::create(PbType t, const string& name) {        
+PbClass* FluidSolver::create(PbType t, PbTypeVec T, const string& name) {        
     _args.add("nocheck",true);
-    if (t.str == "")
+    if (t.str() == "")
         errMsg("Need to specify object type. Use e.g. Solver.create(FlagGrid, ...) or Solver.create(type=FlagGrid, ...)");
     
-    return PbClass::createPyObject(t.str, name, _args, this);
+    return PbClass::createPyObject(t.str() + T.str(), name, _args, this);
 }
 
 void FluidSolver::step() {
@@ -147,7 +147,7 @@ void FluidSolver::printMemInfo() {
 	printf("%s\n", msg.str().c_str() );
 }
 
-PYTHON(noparent) void printBuildInfo() {
+PYTHON() void printBuildInfo() {
 	debMsg( "Build info: "<<buildInfoString().c_str()<<" ",1);
 }
 
@@ -163,7 +163,7 @@ void FluidSolver::saveMeanTimings(string filename) {
     }    
     for(map<string, pair<int,MuTime> >::iterator it=mTimingsTotal.begin(); it!=mTimingsTotal.end(); it++) {
         ofs << it->first << ": " << it->second.second / it->second.first << endl;        
-    }
+    } 
     ofs << endl << "Total : " << total << " (mean " << total/mFrame << ")" << endl;
     ofs.close();
 }

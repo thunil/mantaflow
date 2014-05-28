@@ -43,11 +43,11 @@ PYTHON void densityInflow(FlagGrid& flags, Grid<Real>& density, WaveletNoiseFiel
 //! sample noise field and set pdata with its values (for convenience, scale the noise values)
 KERNEL(pts) template<class T>
 void knSetPdataNoise(BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale) {
-	pdata[i] = noise.evaluate( parts.getPos(i) ) * scale;
+	pdata[idx] = noise.evaluate( parts.getPos(idx) ) * scale;
 }
 KERNEL(pts) template<class T>
 void knSetPdataNoiseVec(BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale) {
-	pdata[i] = noise.evaluateVec( parts.getPos(i) ) * scale;
+	pdata[idx] = noise.evaluateVec( parts.getPos(idx) ) * scale;
 }
 PYTHON void setNoisePdata    (BasicParticleSystem& parts, ParticleDataImpl<Real>& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoise<Real>(parts, pd,noise,scale); }
 PYTHON void setNoisePdataVec3(BasicParticleSystem& parts, ParticleDataImpl<Vec3>& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoiseVec<Vec3>(parts, pd,noise,scale); }
@@ -55,8 +55,8 @@ PYTHON void setNoisePdataInt (BasicParticleSystem& parts, ParticleDataImpl<int >
 
 //! SDF gradient from obstacle flags
 PYTHON Grid<Vec3> obstacleGradient(FlagGrid& flags) {
-    LevelsetGrid levelset(parent,false);
-    Grid<Vec3> gradient(parent);
+    LevelsetGrid levelset(flags.getParent(),false);
+    Grid<Vec3> gradient(flags.getParent());
     
     // rebuild obstacle levelset
     FOR_IDX(levelset) {
@@ -79,8 +79,8 @@ PYTHON Grid<Vec3> obstacleGradient(FlagGrid& flags) {
 }
 
 PYTHON LevelsetGrid obstacleLevelset(FlagGrid& flags) {
-   LevelsetGrid levelset(parent,false);
-    Grid<Vec3> gradient(parent);
+   LevelsetGrid levelset(flags.getParent(),false);
+    Grid<Vec3> gradient(flags.getParent());
 
     // rebuild obstacle levelset
     FOR_IDX(levelset) {

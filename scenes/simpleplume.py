@@ -2,12 +2,14 @@
 # Simple example scene (hello world)
 # Simulation of a buoyant smoke density plume
 
+#import pdb; pdb.set_trace()
+
 from manta import *
 
 # solver params
 res = 64
 gs = vec3(res,1.5*res,res)
-s = Solver(name='main', gridSize = gs)
+s = FluidSolver(name='main', gridSize = gs)
 s.timestep = 1.0
 
 # prepare grids

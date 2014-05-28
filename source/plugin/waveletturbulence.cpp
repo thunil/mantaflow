@@ -189,7 +189,7 @@ PYTHON void computeWaveletCoeffs(Grid<Real>& input)
 
 // note - alomst the same as for vorticity confinement
 PYTHON void computeVorticity(MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* norm) {
-    Grid<Vec3> velCenter(parent);
+    Grid<Vec3> velCenter(vel.getParent());
     GetCentered(velCenter, vel);
     CurlOp(velCenter, vorticity);
     if(norm) GridNorm( *norm, vorticity);
@@ -217,7 +217,7 @@ void KnComputeStrainRateMag(const MACGrid& vel, const Grid<Vec3>& velCenter, Gri
     prod(i,j,k) = S2;
 }
 PYTHON void computeStrainRateMag(MACGrid& vel, Grid<Real>& mag) {
-    Grid<Vec3> velCenter(parent);
+    Grid<Vec3> velCenter(vel.getParent());
     GetCentered(velCenter, vel);
     KnComputeStrainRateMag(vel, velCenter, mag);
 }

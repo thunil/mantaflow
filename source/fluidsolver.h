@@ -14,7 +14,7 @@
 #ifndef _FLUIDSOLVER_H
 #define _FLUIDSOLVER_H
 
-#include "pclass.h"
+#include "manta.h"
 #include "vectorbase.h"
 #include <vector>
 #include <map>
@@ -49,13 +49,15 @@ public:
     PYTHON void step();
     
     //! create a object with the solver as its parent
-    PYTHON PbClass* create(PbType type, const std::string& name = "");
+    PYTHON PbClass* create(PbType type, PbTypeVec T=PbTypeVec(),const std::string& name = "");
     
     // temp grid and plugin stuff: you shouldn't call this manually
     template<class T> T* getGridPointer();
     template<class T> void freeGridPointer(T* ptr);    
     void pluginStart(const std::string& name);
-    void pluginStop(const std::string& name);        
+    void pluginStop(const std::string& name);      
+
+    PYTHON(name=timestep) Real mDt;  
 protected:
     //! subclass for managing grid memory
     //! stored as a stack to allow fast allocation
@@ -71,7 +73,6 @@ protected:
     
     Vec3i mGridSize;
     const int mDim;
-    PYTHON(name=timestep) Real mDt;
     Real mTimeTotal, mScale;
     int mFrame;
         

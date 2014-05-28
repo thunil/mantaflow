@@ -223,7 +223,7 @@ void Box::generateLevelset(Grid<Real>& phi) {
 }
 
 Sphere::Sphere (FluidSolver* parent, Vec3 center, Real radius, Vec3 scale) 
-    : Shape(parent), mCenter(center), mRadius(radius), mScale(scale)
+    : Shape(parent), mCenter(center), mScale(scale), mRadius(radius)
 {
     mType = TypeSphere;
 }

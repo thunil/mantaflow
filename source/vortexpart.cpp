@@ -53,18 +53,18 @@ inline Vec3 VortexKernel(const Vec3& p, const vector<VortexParticleData>& vp, Re
 
 KERNEL(pts) returns(vector<Vec3> u(size))
 vector<Vec3> KnVpAdvectMesh(vector<Node>& nodes, const vector<VortexParticleData>& vp, Real scale) {
-    if (nodes[i].flags & Mesh::NfFixed)
-        u[i] = _0;
+    if (nodes[idx].flags & Mesh::NfFixed)
+        u[idx] = _0;
     else
-        u[i] = VortexKernel(nodes[i].pos, vp, scale);
+        u[idx] = VortexKernel(nodes[idx].pos, vp, scale);
 }
 
 KERNEL(pts) returns(vector<Vec3> u(size))
 vector<Vec3> KnVpAdvectSelf(vector<VortexParticleData>& vp, Real scale) {
-    if (vp[i].flag & ParticleBase::PDELETE) 
-        u[i] = _0;
+    if (vp[idx].flag & ParticleBase::PDELETE) 
+        u[idx] = _0;
     else
-        u[i] = VortexKernel(vp[i].pos, vp, scale);
+        u[idx] = VortexKernel(vp[idx].pos, vp, scale);
 }
     
 VortexParticleSystem::VortexParticleSystem(FluidSolver* parent) :

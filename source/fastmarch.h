@@ -40,7 +40,7 @@ inline T fmInterpolateNeighbors(GRID* mpVal, int x,int y,int z, Real *weights) {
 template<class GRID, class T>
 class FmValueTransportScalar {
 public:
-    FmValueTransportScalar() : mpFlags(0), mpVal(0) { };
+    FmValueTransportScalar() : mpVal(0),mpFlags(0) { };
     ~FmValueTransportScalar() { }; 
     void initMarching(GRID* val, FlagGrid* flags) {
         mpVal = val;
@@ -62,7 +62,7 @@ protected:
 template<class GRID, class T>
 class FmValueTransportVec3 {
 public:
-    FmValueTransportVec3() : mpFlags(0), mpVal(0) { };
+    FmValueTransportVec3() : mpVal(0), mpFlags(0) { };
     ~FmValueTransportVec3() { };
     inline bool isInitialized() { return mpVal != 0; } 
     void initMarching(GRID* val, FlagGrid* flags) {

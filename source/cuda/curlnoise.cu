@@ -14,7 +14,7 @@
 #include "curlnoise.h"
 #include "cudatools.h"
 #include "noisefield.h"
-#include "pclass.h"
+#include "manta.h"
 
 using namespace std;
 

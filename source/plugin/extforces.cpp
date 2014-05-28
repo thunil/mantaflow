@@ -49,7 +49,7 @@ KERNEL(bnd=1) void KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
 
 //! add gravity forces to all fluid cells
 PYTHON void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {    
-    Vec3 f = gravity * parent->getDt() / flags.getDx();
+    Vec3 f = gravity * flags.getParent()->getDt() / flags.getDx();
     KnAddForce(flags, vel, f);
 }
 
@@ -66,7 +66,7 @@ KERNEL(bnd=1) void KnAddBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& 
 
 //! add Buoyancy force based on smoke density
 PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravity) {
-    Vec3 f = - gravity * parent->getDt() / parent->getDx();
+    Vec3 f = - gravity * flags.getParent()->getDt() / flags.getParent()->getDx();
     KnAddBuoyancy(flags,density, vel, f);
 }
 
@@ -110,8 +110,8 @@ KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const 
 }
 
 PYTHON void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
-    Grid<Vec3> velCenter(parent), curl(parent), force(parent);
-    Grid<Real> norm(parent);
+    Grid<Vec3> velCenter(flags.getParent()), curl(flags.getParent()), force(flags.getParent());
+    Grid<Real> norm(flags.getParent());
     
     GetCentered(velCenter, vel);
     CurlOp(velCenter, curl);

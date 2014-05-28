@@ -253,7 +253,7 @@ typedef struct {
 } UniHeader;
 
 //! for test run debugging
-PYTHON(noparent) void printUniFileInfoString(const string& name) {
+PYTHON() void printUniFileInfoString(const string& name) {
 #	if NO_ZLIB!=1
     gzFile gzf = gzopen(name.c_str(), "rb");
     if (gzf) { 
@@ -273,7 +273,7 @@ PYTHON(noparent) void printUniFileInfoString(const string& name) {
 }
 
 //! for auto-init & check of results of test runs
-PYTHON(noparent) Vec3 getUniFileSize(const string& name) {
+PYTHON() Vec3 getUniFileSize(const string& name) {
 	Vec3 s(0.);
 #	if NO_ZLIB!=1
     gzFile gzf = gzopen(name.c_str(), "rb");

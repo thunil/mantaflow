@@ -14,7 +14,7 @@
 #ifndef _SHAPES_H
 #define _SHAPES_H
 
-#include "pclass.h"
+#include "manta.h"
 #include "vectorbase.h"
 #include "levelset.h"
 

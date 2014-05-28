@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ * Copyright 2011-2014 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL) 
@@ -18,408 +18,488 @@
 #include <iostream>
 using namespace std;
 
-string buildline(int lb) {
-    string lbs="";
-    for (int i=0; i<lb; i++) lbs+="\n";
-    return lbs;
+#define STR(x) #x
+
+//******************************************************
+// Templates for code generation
+
+const string TmpFunction = STR(
+$TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+    try {
+        PbArgs _args(_linargs, _kwds);
+        FluidSolver *parent = _args.obtainParent();
+        pbPreparePlugin(parent, "$FUNCNAME$" );
+        PyObject *_retval = 0;
+        { 
+            ArgLocker _lock;
+            $ARGLOADER$
+            @IF(RET_VOID)
+                _retval = getPyNone();
+                $FUNCNAME$($CALLSTRING$);
+            @ELSE
+                _retval = toPy($FUNCNAME$($CALLSTRING$));
+            @END
+            _args.check();
+        }
+        pbFinalizePlugin(parent,"$FUNCNAME$" );
+        return _retval;
+    } catch(std::exception& e) {
+        pbSetError("$FUNCNAME$",e.what());
+        return 0;
+    }
 }
+);
 
-enum FunctionType { FtPlugin, FtMember, FtConstructor };
-void createPythonWrapper(const ArgList& args, const string& fname, const string& totalname, FunctionType ftype, string& header, string& footer, string& callList, bool isClass, bool hasParent) {
-    // beautify code for debug mode
-    string nl  = (gDebugMode && ftype != FtConstructor) ? "\n" : " ";
-    string tb  = (gDebugMode && ftype != FtConstructor) ? (isClass ? "\t\t" : "\t") : "";
-    string tb1 = (gDebugMode && ftype != FtConstructor) ? (isClass ? "\t" : "") : "";
-    string tb2 = tb1+tb;
+const string TmpMemberFunction = STR(
+$TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+    try {
+        PbArgs _args(_linargs, _kwds);
+        $CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(_self));
+        pbPreparePlugin(pbo->getParent(), "$CLASS$::$FUNCNAME$");
+        PyObject *_retval = 0;
+        { 
+            ArgLocker _lock;
+            $ARGLOADER$
+            pbo->_args.copy(_args);
+            @IF(RET_VOID)
+                _retval = getPyNone();
+                pbo->$FUNCNAME$($CALLSTRING$);
+            @ELSE
+                _retval = toPy(pbo->$FUNCNAME$($CALLSTRING$));
+            @END
+            pbo->_args.check();
+        }
+        pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$");
+        return _retval;
+    } catch(std::exception& e) {
+        pbSetError("$CLASS$::$FUNCNAME$",e.what());
+        return 0;
+    }
+});
 
-    const string argstr = (ftype == FtMember) ? "__args" : "_args";
-    // load arguments from python
-    callList = "";
-    string loader = "", argList = "";
-    for (size_t i=0; i<args.size(); i++) {
-        string type = args[i].type;        
-        bool itype = isIntegral(args[i].type);
-        string name = args[i].name;
-        stringstream num; num << args[i].number;
-        if (!args[i].templ.empty()) type+= "<" + args[i].templ + ">";
-        if (args[i].isPointer) type += "*";        
-        string completeType = (args[i].isConst) ? ("const " + type) : type;
-                
-        if (args[i].isRef) {
-            if (args[i].value.empty()) {                
-                // for strings etc. direct get, for PbClass use pointers
-                if (itype)
-                    loader += tb2+ completeType + "& " + name + " = " + argstr + ".get< " + type + " > (" + num.str() + ",\"" + name + "\", &_lock);" + nl;
-                else
-                    loader += tb2+ completeType + "& " + name + " = *" + argstr + ".get< " + type + "* > (" + num.str() + ",\"" + name + "\", &_lock);" + nl;
-            } else {                
-                // for strings etc. direct get, for PbClass use pointers
-                if (itype) {
-                    loader += tb2+ completeType + "& " + name + " = " + argstr + ".getOpt< " + type + " > (" + num.str() + ",\"" + name + "\", " + args[i].value + ", &_lock);" + nl;
-                } else {
-                    loader += tb2+ completeType + "* _ptr_" + name + " = " + argstr + ".getOpt< " + type + "* > (" + num.str() + ",\"" + name + "\", 0, &_lock);" + nl;
-                    loader += tb2+ completeType + "& " + name + " = (_ptr_" + name + ") ? (*_ptr_" + name + ") : (" + args[i].value + ");" + nl; 
-                }
-            }
-            type += "&";
+const string TmpConstructor = STR(
+$TEMPLATE$ static int _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
+    PbClass* obj = Pb::objFromPy(_self); 
+    if (obj) delete obj; 
+    try {
+        PbArgs _args(_linargs, _kwds);
+        pbPreparePlugin(0, "$CLASS$::$FUNCNAME$" );
+        { 
+            ArgLocker _lock;
+            $ARGLOADER$
+            obj = new $CLASS$($CALLSTRING$);
+            obj->registerObject(_self, &_args); 
+            _args.check();
         }
-        else {
-            loader += tb2+ completeType + " " + name + " = ";
-            if (args[i].value.empty()) {
-                loader += argstr + ".get< " + type + " > (" + num.str() + ",\"" + name + "\", &_lock);" + nl;
-            } else {
-                loader += argstr + ".getOpt< " + type + " > (" + num.str() + ",\"" + name + "\", " + args[i].value + ", &_lock);" + nl;
-            }
+        pbFinalizePlugin(obj->getParent(),"$CLASS$::$FUNCNAME$" );
+        return 0;
+    } catch(std::exception& e) {
+        pbSetError("$CLASS$::$FUNCNAME$",e.what());
+        return -1;
+    }
+});
+
+const string TmpBinaryOp = STR(
+$TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* o) {
+    try {
+        PbArgs _args(0,0);
+        _args.addLinArg(o);
+        $CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(_self));
+        pbPreparePlugin(pbo->getParent(), "$CLASS$::$FUNCNAME$");
+        PyObject *_retval = 0;
+        { 
+            ArgLocker _lock;
+            $ARGLOADER$
+            pbo->_args.copy(_args);
+            _retval = toPy(pbo->$FUNCNAME$($CALLSTRING$));
+            pbo->_args.check();
         }
-        if (i!=0) callList +=", ";
-        callList += name;
+        pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$");
+        return _retval;
+    } catch(std::exception& e) {
+        pbSetError("$CLASS$::$FUNCNAME$",e.what());
+        return 0;
+    }
+});
+
+const string TmpGetSet = STR(
+static PyObject* _GET_$NAME$(PyObject* self, void* cl) {
+    $CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(self));
+    return toPy(pbo->$NAME$);
+}
+static int _SET_$NAME$(PyObject* self, PyObject* val, void* cl) {
+    $CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(self));
+    pbo->$NAME$ = fromPy<$TYPE$ >(val); 
+    return 0;
+});
+
+const string TmpRegisterMethod = STR(
+@IF(CTPL)
+    static const Pb::Register _R_$IDX$ ("$CLASS$<$CT$>","$FUNCNAME$",$CLASS$<$CT$>::_W_$REGWRAPPER$);
+@ELIF(CLASS)
+    static const Pb::Register _R_$IDX$ ("$CLASS$","$FUNCNAME$",$CLASS$::_W_$REGWRAPPER$);
+@ELSE
+    static const Pb::Register _RP_$FUNCNAME$ ("","$FUNCNAME$",_W_$REGWRAPPER$);
+@END
+);
+
+const string TmpRegisterGetSet = STR(
+@IF(CTPL)
+    static const Pb::Register _R_$IDX$ ("$CLASS$<$CT$>$","$PYNAME$",$CLASS$<$CT$>::_GET_$NAME$,$CLASS$<$CT$>::_SET_$NAME$);
+@ELSE
+    static const Pb::Register _R_$IDX$ ("$CLASS$","$PYNAME$",$CLASS$::_GET_$NAME$,$CLASS$::_SET_$NAME$);
+@END
+);
+
+const string TmpRegisterClass = STR(
+@IF(CTPL)
+    static const Pb::Register _R_$IDX$ ("$CLASS$<$CT$>","$PYNAME$<$CT$>","$BASE$$BTPL$");
+    template<> const char* Namify<$CLASS$<$CT$> >::S = "$CLASS$<$CT$>";
+@ELSE
+    static const Pb::Register _R_$IDX$ ("$CLASS$","$PYNAME$","$BASE$$BTPL$");
+    template<> const char* Namify<$CLASS$ >::S = "$CLASS$";
+@END
+);
+
+const string TmpAlias = STR(
+static const Pb::Register _R_$IDX$ ("$CLASS$","$PYNAME$","");
+);
+
+const string TmpTemplateWrapper = STR(
+static $RET$ _W_$WRAPPER$ (PyObject* s, PyObject* l, PyObject* kw) {
+    PbArgs args(l, kw);
+    int hits=0;
+    $RET$ (*call)(PyObject*,PyObject*,PyObject*);
+
+    $TEMPLATE_CHECK$
+    
+    if (hits == 1)
+        return call(s,l,kw);
+    if (hits == 0)
+        pbSetError("$FUNCNAME$", "Can't deduce template parameters");
+    else
+        pbSetError("$FUNCNAME$", "Argument matches multiple templates");
+    return @IF(CONSTRUCTOR) -1 @ELSE 0 @END ; 
+}
+);
+const string TmpTemplateWrapperOp = STR(
+static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* o) {
+    PbArgs args(0,0);
+    args.addLinArg(o);
+    int hits=0;
+    PyObject* (*call)(PyObject*,PyObject*);
+
+    $TEMPLATE_CHECK$
+    
+    if (hits == 1)
+        return call(_self, o);
+    if (hits == 0)
+        pbSetError("$FUNCNAME$", "Can't deduce template parameters");
+    else
+        pbSetError("$FUNCNAME$", "Argument matches multiple templates");
+    return 0; 
+}
+);
+
+const string TmpTemplateChecker = STR(
+template $TEMPLATE$
+static bool $NAME$ (PbArgs& A) {
+    return $CHK$;
+}
+);
+
+//******************************************************
+// Code generation functions
+
+string generateLoader(const Argument& arg) {
+    bool integral = isIntegral(arg.type.name);
+    Type ptrType = arg.type;
+    string optCall =  string("_args.") + (arg.value.empty() ? "get" : "getOpt");
+
+    ptrType.isConst = false;
+    if (integral) {
+        ptrType.isPointer = false;
+        ptrType.isRef = false;
+    } else if (arg.type.isPointer) {
+        ptrType.isPointer = false;
+        ptrType.isRef = false;
+        optCall = string("_args.") + (arg.value.empty() ? "getPtr" : "getPtrOpt");
+    } else if (arg.type.isRef) {
+        ptrType.isPointer = false;
+        ptrType.isRef = false;
+        optCall = string("*_args.") + (arg.value.empty() ? "getPtr" : "getPtrOpt");
     }
     
-    // generate header & footer
-    if (ftype == FtConstructor) {
-        header = "int " + fname + " (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {" + nl;
-        header += tb2+ "PbClass* obj = PbClass::fromPyObject(_self);" + nl;
-        header += tb2+ "if (obj) delete obj;" + nl;                
-    } else
-        header = "PyObject* " + fname + " (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {" + nl;
-    header += tb+"try {" + nl;
-    header += tb2+ "PbArgs " + argstr + "(_linargs, _kwds);" + nl;
-    if (ftype == FtMember)
-        header += tb2+ "PyObject *_retval = NULL;" + nl;
-    if (ftype == FtPlugin) {
-		if(hasParent) header += tb2+ "FluidSolver *parent = _args.obtainParent();" + nl;
-		else          header += tb2+ "FluidSolver *parent = NULL;" + nl;
-        header += tb2+ "pbPreparePlugin(parent, \""+totalname+"\" );" + nl;
-        header += tb2+ "PyObject *_retval = NULL;" + nl;
-    } else if (ftype == FtMember)
-        header += tb2+ "pbPreparePlugin(this->mParent, \""+totalname+"\");" + nl;        
-    else 
-        header += tb2+ "pbPreparePlugin(0, \""+totalname+"\");" + nl;    
-    header += tb2+ "{ ArgLocker _lock;" + nl;
-    header += loader;
-    if (ftype == FtMember)
-        header += tb2+ "this->_args.copy(__args);" + nl;
-            
-    if (ftype == FtConstructor) {
-        footer =  tb2+ "std::string _name = _args.getOpt<std::string>(\"name\",\"\");" + nl;
-        footer += tb2+ "obj->setPyObject(_self);" + nl;
-        footer += tb2+ "if (!_name.empty()) obj->setName(_name);" + nl;
-        footer += tb2+ "_args.check(); }" + nl;
-        footer += tb2+ "pbFinalizePlugin(obj->getParent(),\"" +totalname+"\");" + nl;
-        footer += tb2+ "return 0;" + nl;
-    } else if (ftype == FtMember) {
-        footer =  tb2+ "this->_args.check(); }" + nl;
-        footer += tb2+ "pbFinalizePlugin(this->mParent,\"" +totalname+"\");" + nl;
-        footer += tb2+ "return _retval;" + nl;    
-    } else if (ftype == FtPlugin) {
-        footer =  tb2+ "_args.check(); }" + nl;
-        footer += tb2+ "pbFinalizePlugin(parent,\"" +totalname+"\" );" + nl;
-        footer += tb2+ "return (_retval) ? _retval : getPyNone();" + nl;    
+    stringstream loader;
+    loader << arg.type.build() << " " << arg.name << " = " << optCall;
+        
+    loader << "<" << ptrType.build() << " >";
+    loader << "(\"" << arg.name << "\"," << arg.index << ",";
+    if (!arg.value.empty())
+        loader << arg.value << ",";
+    loader << "&_lock); ";
+
+    return loader.str();
+}
+
+// global for tracking state between python class and python function registrations
+bool gFoundConstructor = false;
+
+void processPythonFunction(const Block& block, const string& code, Sink& sink, vector<Instantiation>& inst) {
+    const Function& func = block.func;
+
+    // PYTHON(...) keyword options
+    for (size_t i=0; i<block.options.size(); i++) {
+        if (block.options[i].name == "only") {
+            ((Function&)func).name = makeSafe(func.name);
+        }
+        else
+            errMsg(block.line0, "unknown keyword " + block.options[i].name);    
     }
-    footer += tb+ "} catch(std::exception& e) {" + nl;
-    footer += tb2+ "pbSetError(\"" + totalname + "\",e.what());" + nl;
-    footer += tb2+ "return " + ((ftype==FtConstructor) ? "-1;" : "0;") + nl;
-    footer += tb+ "}" + nl;
-    footer += tb1+ "}" + nl;
-}
 
-string createConverters(const string& name, const string& tb, const string& nl, const string& nlr) {
-    return "template<> " + name + "* fromPy<" + name + "*>(PyObject* obj) {" + nl +
-           tb+ "if (PbClass::isNullRef(obj)) return 0;" + nl +
-           tb+ "PbClass* pbo = PbClass::fromPyObject(obj);" + nl +
-           tb+ "if (!pbo || !(pbo->canConvertTo(\"" + name + "\")))" + nl +
-           tb+tb+ "throw Error(\"can't convert argument to type '" + name + "'\");" + nl +
-           tb+ "return dynamic_cast<" + name + "*>(pbo);" + nl +
-           "}" + nlr +
-           "template<> PyObject* toPy< " + name + " >( " + name + "& v) {" + nl +
-           tb+ "if (v.getPyObject()) return v.getPyObject();" + nl +
-           tb+ name + "* co = new " + name + " (v); " +
-           tb+ "return co->assignNewPyObject(\""+name+"\");" + nl +
-           "}" + nlr;
-}
-
-// globals for tracking state between python class and python function registrations
-string gLocalReg, gParent;
-bool gFoundConstructor = false, gIsTemplated=false;
-
-string processPythonFunction(int lb, const string& name, const ArgList& opts, const string& type, const ArgList& args, const string& initlist, bool isInline, bool isConst, bool isVirtual, const string& code, int) {
-    // beautify code
-    string nl = gDebugMode ? "\n" : "";
-    string tb = (gDebugMode) ? "\t" : "";
-    
-    string inlineS = isInline ? "inline " : "";
-    if (isVirtual) inlineS += "virtual ";
-    const string constS = isConst ? " const" : "";
-
-	// PYTHON(...) keyword options
-	bool hasParent = true;
-    for (size_t i=0; i<opts.size(); i++) {
-        if (opts[i].name == "noparent") {
-            hasParent = false;
-		}
-	}
-    
-    // is header file ?
-    bool isHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
-    bool isConstructor = type.empty();
-    bool isPlugin = gParent.empty();
+    bool isConstructor = func.returnType.minimal.empty();
+    bool isPlugin = !block.parent;
+    bool doRegister = true;
+    string className = isPlugin ? "" : block.parent->name;
     if (isConstructor) gFoundConstructor = true;
-        
-    // generate caller
-    string clname = "_" + gParent + (gIsTemplated ? "@" : "");
-    string fname = "_" + name;
-    if (isPlugin) {
-        clname = ""; fname = "_plugin_" + name;
-    }
-    string codeInline = code;
-    if (code[0] != ';') {
-        codeInline = "{" + nl;
-        codeInline += code.substr(1,code.size()-1) + nl;        
-    }
-        
-    // document free plugins
-    if (isPlugin && gDocMode) {
-        string ds = "//! \\ingroup Plugins\nPYTHON " + fname + "( ";
-        for(size_t i=0; i<args.size(); i++) {  if (i!=0) ds+=", "; ds+=args[i].complete;}
-        return ds + " ) {}\n";
-    }
+    if (isPlugin && sink.isHeader)
+        errMsg(block.line0,"plugin python functions can't be defined in headers.");
     
-    string header, footer, callList;
-    FunctionType funcType = isConstructor ? FtConstructor : FtMember;
-    if (isPlugin) funcType = FtPlugin;
-    const string displayName = gParent.empty() ? name : (gParent+"::"+name);
-    createPythonWrapper(args, isConstructor ? (clname+clname) : fname, displayName, funcType, header, footer, callList, !isPlugin, hasParent); 
+    // replicate function
+    if (gDocMode) {
+        // document free plugins
+        if (isPlugin)
+            sink.inplace << "//! \\ingroup Plugins\n";
+        sink.inplace << "PYTHON " << func.signature() << "{}\n";
+        return;
+    }
+    sink.inplace << block.linebreaks() << func.signature() << block.initList << code;
 
-    string caller = (isPlugin ? "" : tb ) + header + nl;
-    if (isPlugin) {
-        if (!callList.empty()) callList +=", ";
-        callList += "parent";
+    // generate variable loader
+    string loader = "";
+    for (int i=0; i<(int)func.arguments.size(); i++)
+        loader += generateLoader(func.arguments[i]);
+
+    // wrapper name
+    static int idx;
+    stringstream wrapper;
+    wrapper << idx++;
+
+    // generate glue layer function
+    const string table[] = { "FUNCNAME", func.name, 
+                             "ARGLOADER", loader, 
+                             "TEMPLATE", func.isTemplated() ? "template "+func.templateTypes.minimal : "",
+                             "WRAPPER", (func.isTemplated() ? "T_":"") + wrapper.str(),
+                             "REGWRAPPER", wrapper.str(),
+                             "CLASS", className,
+                             "CTPL", (isPlugin || !block.parent->isTemplated()) ? "" : "$CT$",
+                             "CALLSTRING", func.callString(),
+                             "RET_VOID", (func.returnType.name=="void") ? "Y" : "",
+                             "" };
+    string callerTempl = isPlugin ? TmpFunction : TmpMemberFunction;
+    if (isConstructor) callerTempl = TmpConstructor;
+    else if (func.isOperator) callerTempl = TmpBinaryOp;
+    sink.inplace << replaceSet(callerTempl, table);
+
+    // drop a marker for function template wrapper
+    if (func.isTemplated()) {
+        Instantiation* curInst = 0;
+        for (int i=0; i<(int)inst.size(); i++)
+            if (inst[i].cls == className && inst[i].name == func.name) curInst=&inst[i];
+        if (!curInst) {
+            stringstream num; num << inst.size();
+            sink.inplace << "$" << num.str() << "$";    
+            inst.push_back(Instantiation(className,func.name));
+            curInst = &inst.back();
+        } else
+            doRegister = false;
+        curInst->wrapName.push_back(wrapper.str());
+        curInst->func.push_back(func);
     }
-    if (type == "void") {
-        caller += tb+tb+tb+ "_retval = getPyNone();" + nl;
-        caller += tb+tb+tb+ name + "(" + callList + ");" + nl + nl;
-    } else
-        caller += tb+tb+tb+ "_retval = d_toPy(" + name + "(" + callList + ") );" + nl + nl;
-    caller += footer;
+
+    // register functions
+    if (!doRegister) return;
+    const string reg = replaceSet(TmpRegisterMethod, table);
+    if (isPlugin) {
+        sink.inplace << reg;
+    } else {
+        sink.link << '+' << block.parent->name << '^' << reg << '\n';
+    }
+}
+
+void processPythonVariable(const Block& block, Sink& sink) {
+    const Function& var = block.func;
+
+    if (!block.parent)
+        errMsg(block.line0, "python variables can only be used inside classes");
+
+    // process options
+    string pythonName = var.name;
+    for (size_t i=0; i<block.options.size(); i++) {
+        if (block.options[i].name == "name") 
+            pythonName = block.options[i].value;
+        else
+            errMsg(block.line0, "PYTHON(opt): illegal option. Supported options are: 'name'");
+    }
+
+    // generate glue layer function
+    const string table[] = { "NAME", var.name, 
+                             "CLASS", block.parent->name,
+                             "CTPL", !block.parent->isTemplated() ? "" : "$CT$",
+                             "PYNAME", pythonName,
+                             "TYPE", var.returnType.minimal,
+                             "" };
+
+    // output function and accessors
+    sink.inplace << block.linebreaks() << var.minimal << ";";
+    sink.inplace << replaceSet(TmpGetSet, table);
+
+    // register accessors
+    const string reg = replaceSet(TmpRegisterGetSet, table);
+    sink.link << '+' << block.parent->name << '^' << reg << '\n';
+}
+
+void processPythonClass(const Block& block, const string& code, Sink& sink, vector<Instantiation>& inst) {
+    const Class& cls = block.cls;
+    string pythonName = cls.name;
+
+    if (!sink.isHeader)
+        errMsg(block.line0, "PYTHON classes can only be defined in header files.");
     
-    // replicate original function
-    string func = inlineS + type + " " + name + "(" + listArgs(args);
-    if (isPlugin) {
-        // add parent as argument
-        if (args.size()>0) func += ",";
-        func += " FluidSolver* parent = NULL, PbArgs& _args = PbArgs::EMPTY";
-    }
-    func += ") " + constS + initlist + codeInline + nl;
-        
-    // register
-    string regname = clname + (isConstructor ? clname : fname);
-    string regHeader = (isConstructor ? "int " : "PyObject* ") + regname + " (PyObject* _self, PyObject* _linargs, PyObject* _kwds)";
-    string regDecl = "", regCall = "";
-    if (isConstructor) {
-        caller = "";
-        if (gIsTemplated) {
-            regDecl = "@template " + gParent + " " + header + "obj = new " + gParent + "<$$> (" + callList + ");" + footer;
-            regCall = "@template " + gParent + " PbWrapperRegistry::instance().addConstructor(\"" + gParent + "<$$>\", " + regname + ");";        
-        } else {
-            regDecl = header + "obj = new " + gParent + "(" + callList + ");" + footer;
-            regCall = "PbWrapperRegistry::instance().addConstructor(\"" + gParent + "\", " + regname + ");";
-        }
-    } else {
-        if (gIsTemplated) {
-            regDecl = "@template " + gParent + " " + regHeader + " { return dynamic_cast<" + gParent +"<$$>*>(PbClass::fromPyObject(_self))->_" + name + "(_self, _linargs, _kwds); }";
-            regCall = "@template " + gParent + " PbWrapperRegistry::instance().addMethod(\"" + gParent + "<$$>\", \"" + name + "\", " + regname + ");";
-        } else {
-            regDecl = regHeader + " { return fromPy<" + gParent +"*>(_self)->_" + name + "(_self, _linargs, _kwds); }";
-            regCall = "PbWrapperRegistry::instance().addMethod(\"" + gParent + "\", \"" + name + "\", " + regname + ");";
-        }
-    }
-    if (isHeader) {
-        gRegText += regDecl + "\n" + regCall + "\n";
-    } else {
-        gLocalReg += regDecl + nl;
-        gRegText += "extern " + regHeader + ";\n" + regCall + "\n";
+    // PYTHON(...) keyword options
+    for (size_t i=0; i<block.options.size(); i++) {
+        if (block.options[i].name == "name") 
+            pythonName = block.options[i].value;
+        else
+            errMsg(block.line0, "PYTHON(opt): illegal kernel option. Supported options are: 'name'");
     }
     
     if (gDocMode) {
-        caller = "";
-        func = "PYTHON " + func;
-    }    
-    return buildline(lb) + func + nl + caller;
-}
+        sink.inplace << "//! \\ingroup PyClasses\nPYTHON " << cls.minimal;
+        return;
+    }
 
-string processPythonVariable(int lb, const string& name, const ArgList& opts, const string& type, int line) {
-    // beautify code
-    string nl = gDebugMode ? "\n" : "";
-    string tb = gDebugMode ? "\t" : "";
-    
-    // is header file ?
-    bool isHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
-    
-    if (gParent.empty())
-        errMsg(line, "PYTHON variables con only be used inside classes");
-    
-    string pname = name;
-    
-    // process options
-    for (size_t i=0; i<opts.size(); i++) {
-        if (opts[i].name == "name") 
-            pname = opts[i].value;
-        else
-            errMsg(line, "PYTHON(opt): illegal option. Supported options are: 'name'");
-    }
-    
-    // define getter / setter
-    string nn = gParent + "_" +name;
-    string gethdr = "PyObject* _get_" + nn + "(PyObject* self, void* cl)";
-    string sethdr = "int _set_" + nn + "(PyObject* self, PyObject* val, void* cl)";
-    
-    // replicate original code plus accessor
-    string code = "";
-    code += type + " " + name + ";" + nl;
-    code += tb + "friend " + gethdr + ";" + nl;
-    code += tb + "friend " + sethdr + ";" + nl;
-    
-    // add get/setter
-    string getter = gethdr+" { return d_toPy(fromPy<" + gParent+"*>(self)->" + name + "); }";
-    string setter = sethdr+" { fromPy<" + gParent+"*>(self)->" + name + "=fromPy<" + type + " >(val); return 0;}";
-        
-    // register
-    gRegText += "PbWrapperRegistry::instance().addGetSet(\""+gParent+"\",\""+pname+"\",_get_"+nn+ ",_set_"+nn+");\n";
-    if (isHeader) {
-        gRegText += getter+"\n"+setter+"\n";
-    } else {
-        gLocalReg += getter + nl + setter + nl;
-        gRegText += "extern " + gethdr + ";\nextern " + sethdr + ";\n";
-    }
-    
-    return buildline(lb) + code;
-}
-
-string processPythonClass(int lb, const string& name, const ArgList& opts, const ArgList& templArgs, const string& baseclassName, const ArgList& baseclassTempl, const string& code, int line) {
-    // beautify code
-    string nl = gDebugMode ? "\n" : "";
-    string tb = gDebugMode ? "\t" : "";
-        
-    // is header file ?
-    bool isHeader = gFilename[gFilename.size()-2] == '.' && gFilename[gFilename.size()-1] == 'h';
-    
-    if (!isHeader && !templArgs.empty())
-        errMsg(line, "PYTHON template classes can only be defined in header files.");
-    
-    string pname = name; // for now
-    
-    // process options
-    for (size_t i=0; i<opts.size(); i++) {
-        if (opts[i].name == "name") 
-            pname = opts[i].value;
-        else
-            errMsg(line, "PYTHON(opt): illegal kernel option. Supported options are: 'name'");
-    }
-    
-    // class registry
-    string baseclass = baseclassName, modBase = baseclassName, registry = "", implInst = "";
-    if (!baseclassTempl.empty()) {
-        // baseclass known ? try to implicitly instantiate base class
-        string targ="", tcarg="" ,bclist="";
-        bool chain=false;
-        for (size_t i=0; i<baseclassTempl.size(); i++) {
-            // check if template arg            
-            int index = -1;
-            for (size_t j=0; j<templArgs.size(); j++) {
-                if (templArgs[j].name == baseclassTempl[i].name) {
-                    index = j;
-                    chain=true;
-                    break;
-                }
-            }
-            if (index>=0) {
-                targ += "@"+baseclassTempl[i].name+"@";
-                stringstream s;
-                s << "$" << index << "$";
-                bclist += s.str();
-            } else {
-                targ += baseclassTempl[i].name;
-                bclist += baseclassTempl[i].name;
-            }
-            if (i!=baseclassTempl.size()-1) { targ += ","; bclist += ","; }
-        }
-        for (size_t i=0; i<templArgs.size(); i++) {
-            tcarg += "@" + templArgs[i].name + "@";
-            if (i!=templArgs.size()-1) tcarg += ",";
-        }
-        string aliasn = "_" + baseclassName + "_" + targ;
-        replaceAll(aliasn,",","_");
-        
-        // need defer chain ?
-        if (chain){
-            gRegText += "@chain " + name + " " + tcarg + " " + baseclassName + " " + targ + "\n";
-        } else {
-            gRegText += "@instance " + baseclassName + " " + targ + " " + aliasn + "\n";    
-        }
-        modBase += "<" + bclist + ">";
-        baseclass += "<" + listArgs(baseclassTempl) + ">";
-    }
-    if (templArgs.empty())
-        registry = "PbWrapperRegistry::instance().addClass(\"" + pname + "\", \"" + name + "\", \"" + modBase + "\");";
-    else {
-        registry = "@template " + name + " PbWrapperRegistry::instance().addClass(\"@\", \"" + name + "<$$>\", \"" + modBase + "\");";
-    }
-    
     // register class
-    if (isHeader) {
-        // make sure we
-        string fn = gFilename;
-        const size_t p = fn.find_last_of('/');
-        if (p != string::npos) fn=fn.substr(p+1);
-        gRegText += "#include \"" + fn + "\"\n";        
-    }
-    gRegText += registry + "\n";
+    const string table[] = { "CLASS", cls.name,
+                             "BASE", cls.baseClass.name,
+                             "BTPL", cls.baseClass.isTemplated() ? "<$BT$>" : "",
+                             "PYNAME", pythonName,
+                             "CTPL", cls.isTemplated() ? "CT" : "",
+                             "" };
+
+    // register class
+    string reg = replaceSet(TmpRegisterClass, table);
+    sink.link << '+' << cls.name << '^' << reg << '\n';
+    // instantiate directly if not templated
+    if (!cls.isTemplated())
+        sink.link << '>' << cls.name << "^\n";
+    // chain the baseclass instantiation
+    if (cls.baseClass.isTemplated())
+        sink.link << '@' << cls.name << '^' << cls.templateTypes.names() << '^' 
+                  << cls.baseClass.name << '^' << cls.baseClass.templateTypes.names() << '\n';
+
+    // write signature
+    sink.inplace << block.linebreaks() << cls.minimal << "{";
+
+    // remove first {, and steal two linebreaks so we can add a #define later
+    string ncode = code.substr(1);
+    stealLinebreaks(ncode, 2);
     
-    // register converters
-    gLocalReg = ""; 
-    if (templArgs.empty()) {
-        if (isHeader)
-            gRegText += createConverters(name, "", " ", "\n");
-        else
-            gLocalReg += createConverters(name, tb, nl, nl);
-    }
-    
-    // tokenize and parse contained python functions
-    gParent = name;
-    gIsTemplated = !templArgs.empty();
+    // scan code for member functions
     gFoundConstructor = false;
-    string newText = processText(code.substr(1), line);
-    gParent = "";    
+    processText(ncode.substr(1), block.line0, sink, &cls, inst);
     if (!gFoundConstructor)
-        errMsg(line, "no PYTHON constructor found in class '" + name + "'");
-    if (!isHeader && gIsTemplated)
-        errMsg(line, "PYTHON class template can only be used in header files.");
+        errMsg(block.line0, "no PYTHON constructor found in class '" + cls.name + "'");
     
-    // create class
-    string pclass = "";
-    if (gDocMode) {
-        pclass += "//! \\ingroup PyClasses\nPYTHON ";
-    }
-    if (gIsTemplated)
-        pclass += "template<" + listArgs(templArgs) + "> " + nl;
-    pclass += "class " + name + " : public " + baseclass + " {" + nl;
-    pclass += newText + nl;
-    if (!gDocMode) {
-        pclass += "public:" + nl;
-        pclass += tb+"PbArgs _args;" + nl;
-    }
-    pclass += "};" + nl;
-    
-    return buildline(lb) + implInst + pclass + gLocalReg;
+    // add secret bonus members to class and close
+    sink.inplace << "public: PbArgs _args;";
+    sink.inplace << "}\n";
+    // add a define to make commenting out classes, and #ifdefs work correctly
+    sink.inplace << "#define _C_" << cls.name << '\n';
 }
 
-set<string> gAliasRegister;
-string processPythonInstantiation(int lb, const string& name, const ArgList& templArgs, const string& aliasname, int) {
-    gRegText += "@instance " + name + " " + listArgs(templArgs) + " " + aliasname + "\n";
-    
-    if (gAliasRegister.find(aliasname) == gAliasRegister.end()) {
-        gAliasRegister.insert(aliasname);
-        return buildline(lb) + "typedef " + name + "<" + listArgs(templArgs) + "> " + aliasname + "; ";
+void processPythonInstantiation(const Block& block, const Type& aliasType, Sink& sink, vector<Instantiation>& inst) {
+    string parent = block.parent ? block.parent->name : "";
+    // for template functions, add to instantiation list
+    bool isFunction = false;
+    for (int i=0; i<(int)inst.size(); i++) {
+        if (inst[i].cls == parent && inst[i].name == aliasType.name) {
+            inst[i].templates.push_back(aliasType.templateTypes.listText);
+            isFunction = true;
+            break;
+        }
     }
-    return buildline(lb);
+    // otherwise, assume it's a class, and put down a link-time instantiation request
+    if (!isFunction) {
+        sink.link << '>' << aliasType.name << '^' << aliasType.templateTypes.listText << '\n';    
+    }
+}
+
+void processPythonAlias(const Block& block, const Type& aliasType, const string& aliasName, Sink& sink) {
+    const string table[] = {"CLASS", strip(aliasType.build()), "PYNAME", aliasName, ""};
+    if (!aliasName.empty())
+        sink.link << '&' << replaceSet(TmpAlias,table) << '\n';
+}
+
+// build the template argument checker needed for template deduction in the wrapper
+string buildTemplateChecker(string& out, const Function& func) {
+    stringstream chk;
+    for (int k=0; k<(int)func.arguments.size(); k++) {
+        stringstream num; num << k;    
+        Type type = func.arguments[k].type;
+        type.isPointer = false;
+        type.isRef = false;
+        type.isConst = false;
+        chk << "A.typeCheck<" << type.build() << " >(" 
+            << num.str() << ",\"" << func.arguments[k].name << "\")";
+
+        if (k != (int)func.arguments.size()-1)
+            chk << " && ";
+    }
+
+    static int idx = 0;
+    stringstream name; 
+    name << "_K_" << idx++;
+    const string table[] = { "TEMPLATE", func.templateTypes.minimal,
+                             "NAME", name.str(),
+                             "CHK", chk.str(),
+                             "" };
+    out+= replaceSet(TmpTemplateChecker,table);
+    return name.str();
+}
+
+// add a wrapper for all templated function 
+void postProcessInstantiations(Sink& sink, vector<Instantiation>& inst) {
+    string out = sink.inplace.str();
+    for (int i=0; i<(int)inst.size(); i++) {
+        Instantiation& cur = inst[i];
+        if (cur.templates.size() == 0)
+            errMsg(0, cur.cls + "::" + cur.name + " : templated function without instantiation detected.");
+
+        string wrapper = "";
+        stringstream chkCall;
+        // loop over overloaded functions
+        for (int k=0; k<(int)cur.func.size(); k++) {
+            string chkFunc = buildTemplateChecker(wrapper, cur.func[k]);
+            
+            // build argument checker        
+            for (int j=0; j<(int)cur.templates.size(); j++) {
+                stringstream num; num << j;
+                chkCall << "if (" << chkFunc << "<" << cur.templates[j] << ">(args)) {";
+                chkCall << "hits++; call = _W_T_" << cur.wrapName[k] << "<" << cur.templates[j] <<">; }";
+            }
+        }
+        const string table[] = { "CONSTRUCTOR", cur.name == cur.cls ? "Y":"",
+                                 "WRAPPER", cur.wrapName[0],
+                                 "TEMPLATE_CHECK", chkCall.str(),
+                                 "FUNCNAME", cur.name,
+                                 "RET", cur.name == cur.cls ? "int" : "PyObject*",
+                                 "" };
+        wrapper += replaceSet(cur.func[0].isOperator ? TmpTemplateWrapperOp : TmpTemplateWrapper, table);
+        
+        stringstream num; 
+        num << "$" << i << "$";
+        replaceAll(out, num.str(), wrapper);
+    }
+    sink.inplace.str(out);
 }

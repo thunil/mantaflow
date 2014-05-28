@@ -99,11 +99,13 @@ MESSAGE(STATUS "")
 # compile prep
 SET(SOURCES 
     source/preprocessor/main.cpp
+    source/preprocessor/code.cpp
+    source/preprocessor/tokenize.cpp
     source/preprocessor/parse.cpp
+    source/preprocessor/util.cpp
     source/preprocessor/merge.cpp
     source/preprocessor/codegen_python.cpp
-    source/preprocessor/codegen_kernel.cpp
-    source/preprocessor/tokenize.cpp
+    source/preprocessor/codegen_kernel.cpp    
 )
 add_executable(prep ${SOURCES})
 if (NOT WIN32)
@@ -117,6 +119,7 @@ SET(F_LIBS "" )
 SET(F_LIB_PATHS)
 SET(F_LINKADD "") # additional linker flags, not a list
 set(PP_PATH "pp")
+SET(SILENT_SOURCES)
 
 # need pre-processing
 SET(PP_SOURCES
@@ -135,7 +138,7 @@ SET(PP_SOURCES
     source/noisefield.cpp
     source/kernel.cpp
     source/vortexsheet.cpp
-    source/vortexfilament.cpp
+    #source/vortexfilament.cpp
     source/vortexpart.cpp
     source/turbulencepart.cpp
     source/edgecollapse.cpp
@@ -163,7 +166,7 @@ SET(PP_HEADERS
     source/shapes.h
     source/noisefield.h
     source/vortexsheet.h
-    source/vortexfilament.h
+    #source/vortexfilament.h
     source/general.h
     source/kernel.h
     source/flip.h
@@ -181,12 +184,14 @@ set(NOPP_SOURCES
     source/pwrapper/pclass.cpp
     source/pwrapper/pvec3.cpp
     source/pwrapper/pconvert.cpp
+    source/pwrapper/registry.cpp
     source/util/vectorbase.cpp
 )
  
 SET(NOPP_HEADERS
     source/pwrapper/pythonInclude.h
     source/pwrapper/pclass.h
+    source/pwrapper/registry.h
     source/pwrapper/pconvert.h
     source/util/integrator.h
     source/util/vectorbase.h
@@ -285,8 +290,9 @@ if(DOXYGEN_FOUND)
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${DX_PATH}/${CURPATH}")
         set(CURDX "${DX_PATH}/${it}")
         string(REPLACE "/" "_" TGT ${CURDX})
+        string(REPLACE "source/" "" INFILE ${it})
         add_custom_command(OUTPUT ${TGT} 
-                        COMMAND prep docgen "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURDX}"
+                        COMMAND prep docgen "0" ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURDX}"
                         DEPENDS prep
                         IMPLICIT_DEPENDS CXX ${it}
                         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -325,6 +331,7 @@ if (1)
 	foreach(it ${ZLIB_SRC})
         list(APPEND SILENT_SOURCES dependencies/zlib-1.2.8/${it})
     endforeach(it)
+      set_source_files_properties(${SILENT_SOURCES} PROPERTIES COMPILE_FLAGS "-Wno-implicit-function-declaration")	
 	list(APPEND INCLUDE_PATHS dependencies/zlib-1.2.8)
 else()
 	include(FindZLIB)
@@ -377,7 +384,7 @@ add_custom_command(OUTPUT ${HGINFO}
 
 set(SOURCES ${NOPP_SOURCES} ${SILENT_SOURCES})
 set(HEADERS ${NOPP_HEADERS})
-set(PP_REGISTRY "${PP_PATH}/ppreg.cpp")
+set(PP_REGCPP)
 set(PP_REGS)
 set(PP_PREPD "0")
 if (PREPDEBUG)
@@ -385,26 +392,33 @@ if (PREPDEBUG)
 endif()
 foreach(it ${PP_SOURCES} ${PP_HEADERS})
     get_filename_component(CURPATH ${it} PATH)
-    #get_filename_component(CUREXT ${it} EXT)
+    get_filename_component(CUREXT ${it} EXT)
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${CURPATH}")
     set(CURPP "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${it}")
+    string(REPLACE "source/" "" INFILE ${it})
     # preprocessor
     add_custom_command(OUTPUT ${CURPP}
-                       COMMAND prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/${it}" "${CURPP}"
+                       COMMAND prep generate ${PP_PREPD} ${MT_TYPE} "${CMAKE_CURRENT_SOURCE_DIR}/source/" "${INFILE}" "${CURPP}"
                        DEPENDS prep
                        IMPLICIT_DEPENDS CXX ${it}
                        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    list(APPEND PP_REGS "${CURPP}.reg")
-    list(APPEND SOURCES ${CURPP})    
+    if ("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
+        list(APPEND PP_REGS "${CURPP}.reg")
+        list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
+        set_source_files_properties("${CURPP}.reg.cpp" OBJECT_DEPENDS "${CURPP}")
+    endif()
+    list(APPEND SOURCES ${CURPP})
 endforeach(it)
 
-# merge reg files
-add_custom_command(OUTPUT ${PP_REGISTRY}
-                  COMMAND prep merge ${PP_REGISTRY} ${PP_REGS}
-                  DEPENDS prep ${SOURCES}
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-set_source_files_properties(${PP_REGISTRY} PROPERTIES GENERATED 1)
-
+# link reg files
+add_custom_command(OUTPUT ${PP_REGCPP}
+                  COMMAND prep link ${PP_REGS}
+                  DEPENDS prep ${PP_REGS}
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                  COMMENT "Linking reg files")
+#set_source_files_properties(${PP_REGS} ${PP_REGCPP} PROPERTIES GENERATED 1)
+list(APPEND SOURCES ${PP_REGCPP})
+    
 #******************************************************************************
 # QT for GUI
 
@@ -463,13 +477,13 @@ IF(NOT WIN32)
         add_definitions( -DDEBUG )
         add_definitions( -O0 -fno-inline )
         # additional c++ warning
-        SET(CMAKE_CXX_FLAGS_DEBUG " -ggdb  -Wall -Wno-reorder")
+        SET(CMAKE_CXX_FLAGS_DEBUG " -ggdb  -Wall")
         
         # stricter: no optimizations and inlining, comment out if needed...
         #SET(CMAKE_CXX_FLAGS_DEBUG " -O0 -fno-inline ${CMAKE_CXX_FLAGS_DEBUG}   ")              
     ELSE()
         # non-debug, optimized version
-        add_definitions( -O3 -Wall -Wno-reorder)
+        add_definitions( -O3 -Wall)
     ENDIF()
 ELSE()
     # get rid of some MSVC warnings

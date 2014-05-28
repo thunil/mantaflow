@@ -307,13 +307,13 @@ PYTHON void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid,
     
     // determine type of grid    
     if (grid->getType() & GridBase::TypeReal) {
-        fnAdvectSemiLagrange< Grid<Real> >(parent, *flags, *vel, *((Grid<Real>*) grid), order, strength);
+        fnAdvectSemiLagrange< Grid<Real> >(flags->getParent(), *flags, *vel, *((Grid<Real>*) grid), order, strength);
     }
     else if (grid->getType() & GridBase::TypeMAC) {    
-        fnAdvectSemiLagrange< MACGrid >(parent, *flags, *vel, *((MACGrid*) grid), order, strength);
+        fnAdvectSemiLagrange< MACGrid >(flags->getParent(), *flags, *vel, *((MACGrid*) grid), order, strength);
     }
     else if (grid->getType() & GridBase::TypeVec3) {    
-        fnAdvectSemiLagrange< Grid<Vec3> >(parent, *flags, *vel, *((Grid<Vec3>*) grid), order, strength);
+        fnAdvectSemiLagrange< Grid<Vec3> >(flags->getParent(), *flags, *vel, *((Grid<Vec3>*) grid), order, strength);
     }
     else
         errMsg("AdvectSemiLagrange: Grid Type is not supported (only Real, Vec3, MAC, Levelset)");    

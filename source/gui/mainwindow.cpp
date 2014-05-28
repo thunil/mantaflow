@@ -27,7 +27,7 @@ using namespace std;
 
 namespace Manta {
 
-MainWnd::MainWnd() : mPaused(true), mRequestPause(false), mRequestClose(false), mStep(0), QMainWindow(0)
+MainWnd::MainWnd() : QMainWindow(0), mPaused(true), mRequestPause(false), mRequestClose(false), mStep(0)
 {
     // Frame info label
     mInfo = new QLabel;
