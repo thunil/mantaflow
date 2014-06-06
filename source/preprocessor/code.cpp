@@ -62,24 +62,23 @@ string Function::signature() const {
     return s;    
 }
 
-
-template<> string List<Argument>::full(bool refify) const {
-    stringstream s;
+template<> std::string List<Argument>::full(bool refify) const {
+	std::stringstream s;
     for (int i=0; i<(int)_data.size(); i++) {
         s << "," << _data[i].type.build(refify) << " " << _data[i].name;
     }
     return s.str();
 }
 
-template<> string List<Argument>::createMembers(bool refify) const {
-    stringstream s;
+template<> std::string List<Argument>::createMembers(bool refify) const {
+	std::stringstream s;
     for (int i=0; i<(int)_data.size(); i++)
         s << _data[i].type.build(refify) << ' ' << _data[i].name << "; ";
     return s.str();
 }
 
-template<> string List<Argument>::copier(const string& prefix, bool useVal) const {
-    stringstream s;
+template<> std::string List<Argument>::copier(const std::string& prefix, bool useVal) const {
+	std::stringstream s;
     for (int i=0; i<(int)_data.size(); i++) {
         s << ',' << _data[i].name << '(';
         s << (useVal ? _data[i].value : prefix+_data[i].name);
@@ -90,3 +89,4 @@ template<> string List<Argument>::copier(const string& prefix, bool useVal) cons
 
 template struct List<Argument>;
 template struct List<Type>;
+

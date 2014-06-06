@@ -47,15 +47,6 @@ struct List : Text {
 	virtual std::string dynamicClass() { return "List"; }
 };
 
-template<class T> std::string List<T>::names() const {
-	std::stringstream s;
-	for (int i=0; i<(int)_data.size(); i++) {
-		s << _data[i].name;
-		if (i != (int)_data.size()-1) s << ',';
-	}
-	return s.str();
-}
-
 struct Type : Text {
 	Type() : isConst(false), isRef(false), isPointer(false) {};
 	
@@ -126,5 +117,18 @@ struct Block : Text {
 	virtual std::string dynamicClass() { return "Block"; }
 };
 
+// list functions , notify compiler of specializations in code.cpp
+
+template<class T> std::string List<T>::names() const {
+	std::stringstream s;
+	for (int i=0; i<(int)_data.size(); i++) {
+		s << _data[i].name;
+		if (i != (int)_data.size()-1) s << ',';
+	}
+	return s.str();
+} 
+template<> std::string List<Argument>::full(bool refify) const;
+template<> std::string List<Argument>::createMembers(bool refify) const;
+template<> std::string List<Argument>::copier(const std::string& prefix, bool useVal) const;
 
 #endif
