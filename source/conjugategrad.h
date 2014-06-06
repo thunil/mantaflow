@@ -26,8 +26,8 @@ static const bool CG_DEBUG = false;
 class GridCgInterface {
 	public:
 		enum PreconditionType { PC_None=0, PC_ICP, PC_mICP };
-        
-        GridCgInterface() : mUseResNorm(true) {};
+		
+		GridCgInterface() : mUseResNorm(true) {};
 		virtual ~GridCgInterface() {};
 
 		// solving functions
@@ -55,30 +55,30 @@ class GridCgInterface {
 
 //! Run single iteration of the cg solver
 /*! the template argument determines the type of matrix multiplication,
-    typically a ApplyMatrix kernel, another one is needed e.g. for the
-    mesh-based wave equation solver */
+	typically a ApplyMatrix kernel, another one is needed e.g. for the
+	mesh-based wave equation solver */
 template<class APPLYMAT>
 class GridCg : public GridCgInterface {
 	public:
-        //! constructor
+		//! constructor
 		GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual, Grid<Real>& search, FlagGrid& flags, Grid<Real>& tmp, 
 				Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk);
-        ~GridCg() {}
-        
-        void doInit();
-        bool iterate();
-        void solve(int maxIter);
-        //! init pointers, and copy values from "normal" matrix
-        void setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak);
-        
-        // Accessors        
-        Real getSigma() const { return mSigma; }
-        Real getIterations() const { return mIterations; }
+		~GridCg() {}
+		
+		void doInit();
+		bool iterate();
+		void solve(int maxIter);
+		//! init pointers, and copy values from "normal" matrix
+		void setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak);
+		
+		// Accessors        
+		Real getSigma() const { return mSigma; }
+		Real getIterations() const { return mIterations; }
 
-        Real getResNorm() const { return mResNorm; }
+		Real getResNorm() const { return mResNorm; }
 
-        void setAccuracy(Real set) { mAccuracy=set; }
-        Real getAccuracy() const { return mAccuracy; }
+		void setAccuracy(Real set) { mAccuracy=set; }
+		Real getAccuracy() const { return mAccuracy; }
 
 	protected:
 		bool mInited;
@@ -109,56 +109,56 @@ class GridCg : public GridCgInterface {
 //! Kernel: Apply symmetric stored Matrix
 KERNEL(idx) 
 void ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
-                  Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
+				  Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
 {
-    if (!flags.isFluid(idx)) {
-        dst[idx] = src[idx];
-        return;
-    }    
-    dst[idx] =  src[idx] * A0[idx]
-                + src[idx-X] * Ai[idx-X]
-                + src[idx+X] * Ai[idx]
-                + src[idx-Y] * Aj[idx-Y]
-                + src[idx+Y] * Aj[idx]
-                + src[idx-Z] * Ak[idx-Z] 
-                + src[idx+Z] * Ak[idx];
+	if (!flags.isFluid(idx)) {
+		dst[idx] = src[idx];
+		return;
+	}    
+	dst[idx] =  src[idx] * A0[idx]
+				+ src[idx-X] * Ai[idx-X]
+				+ src[idx+X] * Ai[idx]
+				+ src[idx-Y] * Aj[idx-Y]
+				+ src[idx+Y] * Aj[idx]
+				+ src[idx-Z] * Ak[idx-Z] 
+				+ src[idx+Z] * Ak[idx];
 }
 
 //! Kernel: Apply symmetric stored Matrix. 2D version
 KERNEL(idx) 
 void ApplyMatrix2D (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
-                    Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
+					Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
 {
-    unusedParameter(Ak); // only there for parameter compatibility with ApplyMatrix
-    
-    if (!flags.isFluid(idx)) {
-        dst[idx] = src[idx];
-        return;
-    }    
-    dst[idx] =  src[idx] * A0[idx]
-                + src[idx-X] * Ai[idx-X]
-                + src[idx+X] * Ai[idx]
-                + src[idx-Y] * Aj[idx-Y]
-                + src[idx+Y] * Aj[idx];
+	unusedParameter(Ak); // only there for parameter compatibility with ApplyMatrix
+	
+	if (!flags.isFluid(idx)) {
+		dst[idx] = src[idx];
+		return;
+	}    
+	dst[idx] =  src[idx] * A0[idx]
+				+ src[idx-X] * Ai[idx-X]
+				+ src[idx+X] * Ai[idx]
+				+ src[idx-Y] * Aj[idx-Y]
+				+ src[idx+Y] * Aj[idx];
 }
 
 //! Kernel: Construct the matrix for the poisson equation
 KERNEL (bnd=1) 
 void MakeLaplaceMatrix(FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) {
-    if (!flags.isFluid(i,j,k))
-        return;
-    
-    // center
-    if (!flags.isObstacle(i-1,j,k)) A0(i,j,k) += 1.;
-    if (!flags.isObstacle(i+1,j,k)) A0(i,j,k) += 1.;
-    if (!flags.isObstacle(i,j-1,k)) A0(i,j,k) += 1.;
-    if (!flags.isObstacle(i,j+1,k)) A0(i,j,k) += 1.;
-    if (flags.is3D() && !flags.isObstacle(i,j,k-1)) A0(i,j,k) += 1.;
-    if (flags.is3D() && !flags.isObstacle(i,j,k+1)) A0(i,j,k) += 1.;
-    
-    if (flags.isFluid(i+1,j,k)) Ai(i,j,k) = -1.;
-    if (flags.isFluid(i,j+1,k)) Aj(i,j,k) = -1.;
-    if (flags.is3D() && flags.isFluid(i,j,k+1)) Ak(i,j,k) = -1.;    
+	if (!flags.isFluid(i,j,k))
+		return;
+	
+	// center
+	if (!flags.isObstacle(i-1,j,k)) A0(i,j,k) += 1.;
+	if (!flags.isObstacle(i+1,j,k)) A0(i,j,k) += 1.;
+	if (!flags.isObstacle(i,j-1,k)) A0(i,j,k) += 1.;
+	if (!flags.isObstacle(i,j+1,k)) A0(i,j,k) += 1.;
+	if (flags.is3D() && !flags.isObstacle(i,j,k-1)) A0(i,j,k) += 1.;
+	if (flags.is3D() && !flags.isObstacle(i,j,k+1)) A0(i,j,k) += 1.;
+	
+	if (flags.isFluid(i+1,j,k)) Ai(i,j,k) = -1.;
+	if (flags.isFluid(i,j+1,k)) Aj(i,j,k) = -1.;
+	if (flags.is3D() && flags.isFluid(i,j,k+1)) Ak(i,j,k) = -1.;    
 }
 
 

@@ -49,13 +49,13 @@
 // to be sure not to fail a comparison because of roundoff errors, use this
 // value as a threshold.
 #if FLOATINGPOINT_PRECISION==1
-    typedef float Real;
+	typedef float Real;
 #   define FP_REAL_MAX __FLT_MAX__
 #   define VECTOR_EPSILON (1e-6f)
 #   define _0 0.0f
 #   define _1 1.0f
 #else
-    typedef double Real;
+	typedef double Real;
 #   define FP_REAL_MAX __DBL_MAX__
 #   define VECTOR_EPSILON (1e-10)
 #   define _0 0.0
@@ -94,146 +94,146 @@ template<class S>
 class Vector3D
 {
 public:
-    //! Constructor
-    inline Vector3D() : x(0),y(0),z(0) {}
-    
-    //! Copy-Constructor
-    inline Vector3D ( const Vector3D<S> &v ) : x(v.x), y(v.y), z(v.z) {}
+	//! Constructor
+	inline Vector3D() : x(0),y(0),z(0) {}
+	
+	//! Copy-Constructor
+	inline Vector3D ( const Vector3D<S> &v ) : x(v.x), y(v.y), z(v.z) {}
 
-    //! Copy-Constructor
-    inline Vector3D ( const float * v) : x((S)v[0]), y((S)v[1]), z((S)v[2]) {}
+	//! Copy-Constructor
+	inline Vector3D ( const float * v) : x((S)v[0]), y((S)v[1]), z((S)v[2]) {}
 
-    //! Copy-Constructor
-    inline Vector3D ( const double * v) : x((S)v[0]), y((S)v[1]), z((S)v[2]) {}
-    
-    //! Construct a vector from one S
-    inline Vector3D ( S v) : x(v), y(v), z(v) {}
-        
-    //! Construct a vector from three Ss
-    inline Vector3D ( S vx, S vy, S vz) : x(vx), y(vy), z(vz) {}
+	//! Copy-Constructor
+	inline Vector3D ( const double * v) : x((S)v[0]), y((S)v[1]), z((S)v[2]) {}
+	
+	//! Construct a vector from one S
+	inline Vector3D ( S v) : x(v), y(v), z(v) {}
+		
+	//! Construct a vector from three Ss
+	inline Vector3D ( S vx, S vy, S vz) : x(vx), y(vy), z(vz) {}
 
-    // Operators
-    
-    //! Assignment operator
-    inline const Vector3D<S>& operator= ( const Vector3D<S>& v ) {
-        x = v.x;
-        y = v.y;
-        z = v.z;
-        return *this;
-    }
-    //! Assignment operator
-    inline const Vector3D<S>& operator= ( S s ) {
-        x = y = z = s;
-        return *this;
-    }
-    //! Assign and add operator
-    inline const Vector3D<S>& operator+= ( const Vector3D<S>& v ) {
-        x += v.x;
-        y += v.y;
-        z += v.z;
-        return *this;
-    }
-    //! Assign and add operator
-    inline const Vector3D<S>& operator+= ( S s ) {
-        x += s;
-        y += s;
-        z += s;
-        return *this;
-    }
-    //! Assign and sub operator
-    inline const Vector3D<S>& operator-= ( const Vector3D<S>& v ) {
-        x -= v.x;
-        y -= v.y;
-        z -= v.z;
-        return *this;
-    }
-    //! Assign and sub operator
-    inline const Vector3D<S>& operator-= ( S s ) {
-        x -= s;
-        y -= s;
-        z -= s;
-        return *this;
-    }
-    //! Assign and mult operator
-    inline const Vector3D<S>& operator*= ( const Vector3D<S>& v ) {
-        x *= v.x;
-        y *= v.y;
-        z *= v.z;
-        return *this;
-    }
-    //! Assign and mult operator
-    inline const Vector3D<S>& operator*= ( S s ) {
-        x *= s;
-        y *= s;
-        z *= s;
-        return *this;
-    }
-    //! Assign and div operator
-    inline const Vector3D<S>& operator/= ( const Vector3D<S>& v ) {
-        x /= v.x;
-        y /= v.y;
-        z /= v.z;
-        return *this;        
-    }
-    //! Assign and div operator
-    inline const Vector3D<S>& operator/= ( S s ) {        
-        x /= s;
-        y /= s;
-        z /= s;
-        return *this;        
-    }
-    //! Negation operator
-    inline Vector3D<S> operator- () const {
-        return Vector3D<S> (-x, -y, -z);        
-    }
-    
-    //! Get smallest component 
-    inline S min() const {
-    return ( x<y ) ? ( ( x<z ) ? x:z ) : ( ( y<z ) ? y:z );
-    }
-    //! Get biggest component
-    inline S max() const {
-        return ( x>y ) ? ( ( x>z ) ? x:z ) : ( ( y>z ) ? y:z );
-    }
-        
-    //! Test if all components are zero
-    inline bool empty() {
-        return x==0 && y==0 && z==0;
-    }
+	// Operators
+	
+	//! Assignment operator
+	inline const Vector3D<S>& operator= ( const Vector3D<S>& v ) {
+		x = v.x;
+		y = v.y;
+		z = v.z;
+		return *this;
+	}
+	//! Assignment operator
+	inline const Vector3D<S>& operator= ( S s ) {
+		x = y = z = s;
+		return *this;
+	}
+	//! Assign and add operator
+	inline const Vector3D<S>& operator+= ( const Vector3D<S>& v ) {
+		x += v.x;
+		y += v.y;
+		z += v.z;
+		return *this;
+	}
+	//! Assign and add operator
+	inline const Vector3D<S>& operator+= ( S s ) {
+		x += s;
+		y += s;
+		z += s;
+		return *this;
+	}
+	//! Assign and sub operator
+	inline const Vector3D<S>& operator-= ( const Vector3D<S>& v ) {
+		x -= v.x;
+		y -= v.y;
+		z -= v.z;
+		return *this;
+	}
+	//! Assign and sub operator
+	inline const Vector3D<S>& operator-= ( S s ) {
+		x -= s;
+		y -= s;
+		z -= s;
+		return *this;
+	}
+	//! Assign and mult operator
+	inline const Vector3D<S>& operator*= ( const Vector3D<S>& v ) {
+		x *= v.x;
+		y *= v.y;
+		z *= v.z;
+		return *this;
+	}
+	//! Assign and mult operator
+	inline const Vector3D<S>& operator*= ( S s ) {
+		x *= s;
+		y *= s;
+		z *= s;
+		return *this;
+	}
+	//! Assign and div operator
+	inline const Vector3D<S>& operator/= ( const Vector3D<S>& v ) {
+		x /= v.x;
+		y /= v.y;
+		z /= v.z;
+		return *this;        
+	}
+	//! Assign and div operator
+	inline const Vector3D<S>& operator/= ( S s ) {        
+		x /= s;
+		y /= s;
+		z /= s;
+		return *this;        
+	}
+	//! Negation operator
+	inline Vector3D<S> operator- () const {
+		return Vector3D<S> (-x, -y, -z);        
+	}
+	
+	//! Get smallest component 
+	inline S min() const {
+	return ( x<y ) ? ( ( x<z ) ? x:z ) : ( ( y<z ) ? y:z );
+	}
+	//! Get biggest component
+	inline S max() const {
+		return ( x>y ) ? ( ( x>z ) ? x:z ) : ( ( y>z ) ? y:z );
+	}
+		
+	//! Test if all components are zero
+	inline bool empty() {
+		return x==0 && y==0 && z==0;
+	}
 
-    //! access operator
-    inline S& operator[] ( unsigned int i ) { 
-        return value[i];
-    }
-    //! constant access operator
-    inline const S& operator[] ( unsigned int i ) const {
-        return value[i];
-    }
+	//! access operator
+	inline S& operator[] ( unsigned int i ) { 
+		return value[i];
+	}
+	//! constant access operator
+	inline const S& operator[] ( unsigned int i ) const {
+		return value[i];
+	}
 
-    //! debug output vector to a string
-    std::string toString() const;
-    
-    //! test if nans are present
-    bool isValid() const; 
+	//! debug output vector to a string
+	std::string toString() const;
+	
+	//! test if nans are present
+	bool isValid() const; 
 
-    //! actual values
-    union {
-        S value[3];
-        struct {
-            S x;
-            S y;
-            S z;
-        };
-        struct {
-            S X;
-            S Y;
-            S Z;
-        };
-    };
+	//! actual values
+	union {
+		S value[3];
+		struct {
+			S x;
+			S y;
+			S z;
+		};
+		struct {
+			S X;
+			S Y;
+			S Z;
+		};
+	};
 
-    // zero element
-    static const Vector3D<S> Zero, Invalid;
-    
+	// zero element
+	static const Vector3D<S> Zero, Invalid;
+	
 protected:
 
 };
@@ -245,77 +245,77 @@ protected:
 //! Addition operator
 template<class S> 
 inline Vector3D<S> operator+ ( const Vector3D<S> &v1, const Vector3D<S> &v2 ) {
-    return Vector3D<S> ( v1.x+v2.x, v1.y+v2.y, v1.z+v2.z );
+	return Vector3D<S> ( v1.x+v2.x, v1.y+v2.y, v1.z+v2.z );
 }
 //! Addition operator
 template<class S, class S2> 
 inline Vector3D<S> operator+ ( const Vector3D<S>& v, S2 s ) {
-    return Vector3D<S> ( v.x+s, v.y+s, v.z+s );
+	return Vector3D<S> ( v.x+s, v.y+s, v.z+s );
 }
 //! Addition operator
 template<class S, class S2> 
 inline Vector3D<S> operator+ ( S2 s, const Vector3D<S>& v ) {
-    return Vector3D<S> ( v.x+s, v.y+s, v.z+s );
+	return Vector3D<S> ( v.x+s, v.y+s, v.z+s );
 }
 
 //! Subtraction operator
 template<class S> 
 inline Vector3D<S> operator- ( const Vector3D<S> &v1, const Vector3D<S> &v2 ) {
-    return Vector3D<S> ( v1.x-v2.x, v1.y-v2.y, v1.z-v2.z );
+	return Vector3D<S> ( v1.x-v2.x, v1.y-v2.y, v1.z-v2.z );
 }
 //! Subtraction operator
 template<class S, class S2> 
 inline Vector3D<S> operator- ( const Vector3D<S>& v, S2 s ) {
-    return Vector3D<S> ( v.x-s, v.y-s, v.z-s );
+	return Vector3D<S> ( v.x-s, v.y-s, v.z-s );
 }
 //! Subtraction operator
 template<class S, class S2>
 inline Vector3D<S> operator- ( S2 s, const Vector3D<S>& v ) {
-    return Vector3D<S> ( s-v.x, s-v.y, s-v.z );
+	return Vector3D<S> ( s-v.x, s-v.y, s-v.z );
 }
 
 //! Multiplication operator
 template<class S>
 inline Vector3D<S> operator* ( const Vector3D<S> &v1, const Vector3D<S> &v2 ) {
-    return Vector3D<S> ( v1.x*v2.x, v1.y*v2.y, v1.z*v2.z );
+	return Vector3D<S> ( v1.x*v2.x, v1.y*v2.y, v1.z*v2.z );
 }
 //! Multiplication operator
 template<class S, class S2>
 inline Vector3D<S> operator* ( const Vector3D<S>& v, S2 s ) {
-    return Vector3D<S> ( v.x*s, v.y*s, v.z*s );
+	return Vector3D<S> ( v.x*s, v.y*s, v.z*s );
 }
 //! Multiplication operator
 template<class S, class S2> 
 inline Vector3D<S> operator* ( S2 s, const Vector3D<S>& v ) {
-    return Vector3D<S> ( s*v.x, s*v.y, s*v.z );
+	return Vector3D<S> ( s*v.x, s*v.y, s*v.z );
 }
 
 //! Division operator
 template<class S>
 inline Vector3D<S> operator/ ( const Vector3D<S> &v1, const Vector3D<S> &v2 ) {
-    return Vector3D<S> ( v1.x/v2.x, v1.y/v2.y, v1.z/v2.z );
+	return Vector3D<S> ( v1.x/v2.x, v1.y/v2.y, v1.z/v2.z );
 }
 //! Division operator
 template<class S, class S2>
 inline Vector3D<S> operator/ ( const Vector3D<S>& v, S2 s ) {
-    return Vector3D<S> ( v.x/s, v.y/s, v.z/s );
+	return Vector3D<S> ( v.x/s, v.y/s, v.z/s );
 }
 //! Division operator
 template<class S, class S2> 
 inline Vector3D<S> operator/ ( S2 s, const Vector3D<S>& v ) {
-    return Vector3D<S> ( s/v.x, s/v.y, s/v.z );
+	return Vector3D<S> ( s/v.x, s/v.y, s/v.z );
 }
 
 //! Comparison operator
 template<class S>
 inline bool operator== (const Vector3D<S>& s1, const Vector3D<S>& s2) {
-    return s1.x == s2.x && s1.y == s2.y && s1.z == s2.z;
+	return s1.x == s2.x && s1.y == s2.y && s1.z == s2.z;
 }
 
 //! Comparison operator
 template<class S>
 inline bool operator!= (const Vector3D<S>& s1, const Vector3D<S>& s2) {
-    return s1.x != s2.x || s1.y != s2.y || s1.z != s2.z;
+	return s1.x != s2.x || s1.y != s2.y || s1.z != s2.z;
 }
 
 //************************************************************************
@@ -325,17 +325,17 @@ inline bool operator!= (const Vector3D<S>& s1, const Vector3D<S>& s2) {
 //! Dot product
 template<class S>
 inline S dot ( const Vector3D<S> &t, const Vector3D<S> &v ) {
-    return t.x*v.x + t.y*v.y + t.z*v.z;    
+	return t.x*v.x + t.y*v.y + t.z*v.z;    
 }
 
 //! Cross product
 template<class S>
 inline Vector3D<S> cross ( const Vector3D<S> &t, const Vector3D<S> &v ) {
-    Vector3D<S> cp (
-        ( ( t.y*v.z ) - ( t.z*v.y ) ),
-        ( ( t.z*v.x ) - ( t.x*v.z ) ),
-        ( ( t.x*v.y ) - ( t.y*v.x ) ) );
-    return cp;
+	Vector3D<S> cp (
+		( ( t.y*v.z ) - ( t.z*v.y ) ),
+		( ( t.z*v.x ) - ( t.x*v.z ) ),
+		( ( t.x*v.y ) - ( t.y*v.x ) ) );
+	return cp;
 }
 
 //! Project a vector into a plane, defined by its normal
@@ -346,54 +346,54 @@ inline Vector3D<S> cross ( const Vector3D<S> &t, const Vector3D<S> &v ) {
   \return The projected vector */
 template<class S>
 inline const Vector3D<S>& projectNormalTo ( const Vector3D<S>& v, const Vector3D<S> &n) {
-    S sprod = dot (v, n);
-    return v - n * dot(v, n);
+	S sprod = dot (v, n);
+	return v - n * dot(v, n);
 }
 
 //! Compute the magnitude (length) of the vector
 template<class S>
 inline S norm ( const Vector3D<S>& v ) {
-    S l = v.x*v.x + v.y*v.y + v.z*v.z;
-    return ( fabs ( l-1. ) < VECTOR_EPSILON*VECTOR_EPSILON ) ? 1. : sqrt ( l );
+	S l = v.x*v.x + v.y*v.y + v.z*v.z;
+	return ( fabs ( l-1. ) < VECTOR_EPSILON*VECTOR_EPSILON ) ? 1. : sqrt ( l );
 }
 
 //! Compute squared magnitude
 template<class S>
 inline S normSquare ( const Vector3D<S>& v ) {
-    return v.x*v.x + v.y*v.y + v.z*v.z;
+	return v.x*v.x + v.y*v.y + v.z*v.z;
 }
 
 //! Returns a normalized vector
 template<class S>
 inline Vector3D<S> getNormalized ( const Vector3D<S>& v ) {
-    S l = v.x*v.x + v.y*v.y + v.z*v.z;
-    if ( fabs ( l-1. ) < VECTOR_EPSILON*VECTOR_EPSILON )
-        return v; /* normalized "enough"... */
-    else if ( l > VECTOR_EPSILON*VECTOR_EPSILON )
-    {
-        S fac = 1./sqrt ( l );
-        return Vector3D<S> ( v.x*fac, v.y*fac, v.z*fac );
-    }
-    else
-        return Vector3D<S> ( ( S ) 0 );
+	S l = v.x*v.x + v.y*v.y + v.z*v.z;
+	if ( fabs ( l-1. ) < VECTOR_EPSILON*VECTOR_EPSILON )
+		return v; /* normalized "enough"... */
+	else if ( l > VECTOR_EPSILON*VECTOR_EPSILON )
+	{
+		S fac = 1./sqrt ( l );
+		return Vector3D<S> ( v.x*fac, v.y*fac, v.z*fac );
+	}
+	else
+		return Vector3D<S> ( ( S ) 0 );
 }
 
 //! Compute the norm of the vector and normalize it.
 /*! \return The value of the norm */
 template<class S>
 inline S normalize ( Vector3D<S> &v ) {
-    S norm;
-    S l = v.x*v.x + v.y*v.y + v.z*v.z;
-    if ( fabs ( l-1. ) < VECTOR_EPSILON*VECTOR_EPSILON ) {
-        norm = 1.;
-    } else if ( l > VECTOR_EPSILON*VECTOR_EPSILON ) {
-        norm = sqrt ( l );
-        v *= 1./norm;        
-    } else {
-        v = Vector3D<S>::Zero;
-        norm = 0.;
-    }
-    return ( S ) norm;
+	S norm;
+	S l = v.x*v.x + v.y*v.y + v.z*v.z;
+	if ( fabs ( l-1. ) < VECTOR_EPSILON*VECTOR_EPSILON ) {
+		norm = 1.;
+	} else if ( l > VECTOR_EPSILON*VECTOR_EPSILON ) {
+		norm = sqrt ( l );
+		v *= 1./norm;        
+	} else {
+		v = Vector3D<S>::Zero;
+		norm = 0.;
+	}
+	return ( S ) norm;
 }
 
 //! Obtain an orthogonal vector
@@ -402,18 +402,18 @@ inline S normalize ( Vector3D<S> &v ) {
  *  \return The orthonormal vector */
 template<class S> 
 Vector3D<S> getOrthogonalVector(const Vector3D<S>& v) {
-    // Determine the  component with max. absolute value
-    int maxIndex= ( fabs ( v.x ) > fabs ( v.y ) ) ? 0 : 1;
-    maxIndex= ( fabs ( v[maxIndex] ) > fabs ( v.z ) ) ? maxIndex : 2;
+	// Determine the  component with max. absolute value
+	int maxIndex= ( fabs ( v.x ) > fabs ( v.y ) ) ? 0 : 1;
+	maxIndex= ( fabs ( v[maxIndex] ) > fabs ( v.z ) ) ? maxIndex : 2;
 
-    // Choose another axis than the one with max. component and project
-    // orthogonal to self
-    Vector3D<S> o ( 0.0 );
-    o[ ( maxIndex+1 ) %3]= 1;
-    
-    Vector3D<S> c = cross(v, o);
-    normalize(c);
-    return c;    
+	// Choose another axis than the one with max. component and project
+	// orthogonal to self
+	Vector3D<S> o ( 0.0 );
+	o[ ( maxIndex+1 ) %3]= 1;
+	
+	Vector3D<S> c = cross(v, o);
+	normalize(c);
+	return c;    
 }
 
 //! Convert vector to polar coordinates
@@ -425,23 +425,23 @@ Vector3D<S> getOrthogonalVector(const Vector3D<S>& v) {
 template<class S>
 inline void vecToAngle ( const Vector3D<S>& v, S& phi, S& theta )
 {
-    if ( fabs ( v.y ) < VECTOR_EPSILON )
-        theta = M_PI/2;
-    else if ( fabs ( v.x ) < VECTOR_EPSILON && fabs ( v.z ) < VECTOR_EPSILON )
-        theta = ( v.y>=0 ) ? 0:M_PI;
-    else
-        theta = atan ( sqrt ( v.x*v.x+v.z*v.z ) /v.y );
-    if ( theta<0 ) theta+=M_PI;
+	if ( fabs ( v.y ) < VECTOR_EPSILON )
+		theta = M_PI/2;
+	else if ( fabs ( v.x ) < VECTOR_EPSILON && fabs ( v.z ) < VECTOR_EPSILON )
+		theta = ( v.y>=0 ) ? 0:M_PI;
+	else
+		theta = atan ( sqrt ( v.x*v.x+v.z*v.z ) /v.y );
+	if ( theta<0 ) theta+=M_PI;
 
-    if ( fabs ( v.x ) < VECTOR_EPSILON )
-        phi = M_PI/2;
-    else
-        phi = atan ( v.z/v.x );
-    if ( phi<0 ) phi+=M_PI;
-    if ( fabs ( v.z ) < VECTOR_EPSILON )
-        phi = ( v.x>=0 ) ? 0 : M_PI;
-    else if ( v.z < 0 )
-        phi += M_PI;
+	if ( fabs ( v.x ) < VECTOR_EPSILON )
+		phi = M_PI/2;
+	else
+		phi = atan ( v.z/v.x );
+	if ( phi<0 ) phi+=M_PI;
+	if ( fabs ( v.z ) < VECTOR_EPSILON )
+		phi = ( v.x>=0 ) ? 0 : M_PI;
+	else if ( v.z < 0 )
+		phi += M_PI;
 }
 
 //! Compute vector reflected at a surface
@@ -454,8 +454,8 @@ inline void vecToAngle ( const Vector3D<S>& v, S& phi, S& theta )
   */
 template<class S>
 inline Vector3D<S> reflectVector ( const Vector3D<S>& t, const Vector3D<S>& n ) {
-    Vector3D<S> nn= ( dot ( t, n ) > 0.0 ) ? ( n*-1.0 ) : n;
-    return ( t - nn * ( 2.0 * dot ( nn, t ) ) );
+	Vector3D<S> nn= ( dot ( t, n ) > 0.0 ) ? ( n*-1.0 ) : n;
+	return ( t - nn * ( 2.0 * dot ( nn, t ) ) );
 }
 
 //! Compute vector refracted at a surface
@@ -468,46 +468,46 @@ inline Vector3D<S> reflectVector ( const Vector3D<S>& t, const Vector3D<S>& n ) 
 */
 template<class S>
 inline Vector3D<S> refractVector ( const Vector3D<S> &t, const Vector3D<S> &normal, S nt, S nair, int &refRefl ) {
-    // from Glassner's book, section 5.2 (Heckberts method)
-    S eta = nair / nt;
-    S n = -dot ( t, normal );
-    S tt = 1.0 + eta*eta* ( n*n-1.0 );
-    if ( tt<0.0 ) {
-        // we have total reflection!
-        refRefl = 1;
-    } else {
-        // normal reflection
-        tt = eta*n - sqrt ( tt );
-        return ( t*eta + normal*tt );
-    }
-    return t;
+	// from Glassner's book, section 5.2 (Heckberts method)
+	S eta = nair / nt;
+	S n = -dot ( t, normal );
+	S tt = 1.0 + eta*eta* ( n*n-1.0 );
+	if ( tt<0.0 ) {
+		// we have total reflection!
+		refRefl = 1;
+	} else {
+		// normal reflection
+		tt = eta*n - sqrt ( tt );
+		return ( t*eta + normal*tt );
+	}
+	return t;
 }
 
 //! Outputs the object in human readable form as string
 template<class S> std::string Vector3D<S>::toString() const {
-    char buf[256];
-    snprintf ( buf,256,"[%+4.6f,%+4.6f,%+4.6f]", ( double ) ( *this ) [0], ( double ) ( *this ) [1], ( double ) ( *this ) [2] );
+	char buf[256];
+	snprintf ( buf,256,"[%+4.6f,%+4.6f,%+4.6f]", ( double ) ( *this ) [0], ( double ) ( *this ) [1], ( double ) ( *this ) [2] );
 	// for debugging, optionally increase precision:
-    //snprintf ( buf,256,"[%+4.16f,%+4.16f,%+4.16f]", ( double ) ( *this ) [0], ( double ) ( *this ) [1], ( double ) ( *this ) [2] );
-    return std::string ( buf );
+	//snprintf ( buf,256,"[%+4.16f,%+4.16f,%+4.16f]", ( double ) ( *this ) [0], ( double ) ( *this ) [1], ( double ) ( *this ) [2] );
+	return std::string ( buf );
 }
 
 //! Outputs the object in human readable form to stream
 /*! Output format [x,y,z] */
 template<class S>
 std::ostream& operator<< ( std::ostream& os, const Vector3D<S>& i ) {
-    os << i.toString();
-    return os;
+	os << i.toString();
+	return os;
 }
 
 //! Reads the contents of the object from a stream 
 /*! Input format [x,y,z] */
 template<class S>
 std::istream& operator>> ( std::istream& is, Vector3D<S>& i ) {
-    char c;
-    char dummy[3];
-    is >> c >> i[0] >> dummy >> i[1] >> dummy >> i[2] >> c;
-    return is;
+	char c;
+	char dummy[3];
+	is >> c >> i[0] >> dummy >> i[1] >> dummy >> i[2] >> c;
+	return is;
 }
 
 /**************************************************************************/
@@ -522,44 +522,44 @@ typedef Vector3D<int>  Vec3i;
 
 //! convert to Real Vector
 template<class T> inline Vec3 toVec3 ( T v ) {
-    return Vec3 ( v[0],v[1],v[2] );
+	return Vec3 ( v[0],v[1],v[2] );
 }
 
 //! convert to int Vector
 template<class T> inline Vec3i toVec3i ( T v ) {
-    return Vec3i ( ( int ) v[0], ( int ) v[1], ( int ) v[2] );
+	return Vec3i ( ( int ) v[0], ( int ) v[1], ( int ) v[2] );
 }
 
 //! convert to int Vector
 template<class T> inline Vec3i toVec3i ( T v0, T v1, T v2 ) {
-    return Vec3i ( ( int ) v0, ( int ) v1, ( int ) v2 );
+	return Vec3i ( ( int ) v0, ( int ) v1, ( int ) v2 );
 }
 
 //! round, and convert to int Vector
 template<class T> inline Vec3i toVec3iRound ( T v ) {
-    return Vec3i ( ( int ) round ( v[0] ), ( int ) round ( v[1] ), ( int ) round ( v[2] ) );
+	return Vec3i ( ( int ) round ( v[0] ), ( int ) round ( v[1] ), ( int ) round ( v[2] ) );
 }
 
 //! convert to int Vector if values are close enough to an int
 template<class T> inline Vec3i toVec3iChecked ( T v ) {    
-    Vec3i ret;
-    for (size_t i=0; i<3; i++) {
-        Real a = v[i];
-        if (fabs(a-floor(a+0.5)) > 1e-5)
-            errMsg("argument is not an int, cannot convert");    
-        ret[i] = (int) (a+0.5);
-    }
-    return ret;
+	Vec3i ret;
+	for (size_t i=0; i<3; i++) {
+		Real a = v[i];
+		if (fabs(a-floor(a+0.5)) > 1e-5)
+			errMsg("argument is not an int, cannot convert");    
+		ret[i] = (int) (a+0.5);
+	}
+	return ret;
 }
 
 //! convert to double Vector
 template<class T> inline Vector3D<double> toVec3d ( T v ) {
-    return Vector3D<double> ( v[0], v[1], v[2] );
+	return Vector3D<double> ( v[0], v[1], v[2] );
 }
 
 //! convert to float Vector
 template<class T> inline Vector3D<float> toVec3f ( T v ) {
-    return Vector3D<float> ( v[0], v[1], v[2] );
+	return Vector3D<float> ( v[0], v[1], v[2] );
 }
 
 
@@ -568,15 +568,15 @@ template<class T> inline Vector3D<float> toVec3f ( T v ) {
 /**************************************************************************/
 
 template<> inline Vec3 clamp<Vec3>(const Vec3& a, const Vec3& b, const Vec3& c) {
-    return Vec3 ( clamp(a.x, b.x, c.x),
-                  clamp(a.y, b.y, c.y),
-                  clamp(a.z, b.z, c.z) );    
+	return Vec3 ( clamp(a.x, b.x, c.x),
+				  clamp(a.y, b.y, c.y),
+				  clamp(a.z, b.z, c.z) );    
 }
 template<> inline Vec3 safeDivide<Vec3>(const Vec3 &a, const Vec3& b) { 
-    return Vec3(safeDivide(a.x,b.x), safeDivide(a.y,b.y), safeDivide(a.z,b.z));
+	return Vec3(safeDivide(a.x,b.x), safeDivide(a.y,b.y), safeDivide(a.z,b.z));
 }
 template<> inline Vec3 nmod<Vec3>(const Vec3& a, const Vec3& b) {
-    return Vec3(nmod(a.x,b.x),nmod(a.y,b.y),nmod(a.z,b.z));
+	return Vec3(nmod(a.x,b.x),nmod(a.y,b.y),nmod(a.z,b.z));
 }
 
 }; // namespace

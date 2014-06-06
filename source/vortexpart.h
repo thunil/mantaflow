@@ -18,25 +18,25 @@
 
 namespace Manta {
 class Mesh;
-    
+	
 struct VortexParticleData {
-    VortexParticleData() : pos(_0),vorticity(_0),sigma(0),flag(0) {}
-    VortexParticleData(const Vec3& p, const Vec3& v, Real sig) : pos(p),vorticity(v),sigma(sig),flag(0) {}
-    Vec3 pos, vorticity;
-    Real sigma;
-    int flag;    
-    static ParticleBase::SystemType getType() { return ParticleBase::VORTEX; }
+	VortexParticleData() : pos(_0),vorticity(_0),sigma(0),flag(0) {}
+	VortexParticleData(const Vec3& p, const Vec3& v, Real sig) : pos(p),vorticity(v),sigma(sig),flag(0) {}
+	Vec3 pos, vorticity;
+	Real sigma;
+	int flag;    
+	static ParticleBase::SystemType getType() { return ParticleBase::VORTEX; }
 };
 
 //! Vortex particles
 PYTHON class VortexParticleSystem : public ParticleSystem<VortexParticleData> {
 public:
-    PYTHON VortexParticleSystem(FluidSolver* parent);
+	PYTHON VortexParticleSystem(FluidSolver* parent);
   
-    PYTHON void advectSelf(Real scale=1.0, int integrationMode=IntRK4);
-    PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, int integrationMode=IntRK4);
-    
-    virtual ParticleBase* clone();
+	PYTHON void advectSelf(Real scale=1.0, int integrationMode=IntRK4);
+	PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, int integrationMode=IntRK4);
+	
+	virtual ParticleBase* clone();
 };
 
 } // namespace

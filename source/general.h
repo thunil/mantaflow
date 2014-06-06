@@ -69,54 +69,54 @@ inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 // template tricks
 template<typename T>
 struct remove_pointers {
-    typedef T type;
+	typedef T type;
 };
 
 template<typename T>
 struct remove_pointers<T*> {
-    typedef T type;
+	typedef T type;
 };
 
 template<typename T>
 struct remove_pointers<T&> {
-    typedef T type;
+	typedef T type;
 };
 
 // Commonly used enums and types
 //! Timing class for preformance measuring
 struct MuTime {
-    MuTime() { get(); }
-    MuTime operator-(const MuTime& a) { MuTime b; b.time = time - a.time; return b; };
-    MuTime operator+(const MuTime& a) { MuTime b; b.time = time + a.time; return b; };
-    MuTime operator/(unsigned long a) { MuTime b; b.time = time / a; return b; };
-    MuTime& operator+=(const MuTime& a) { time += a.time; return *this; }
-    MuTime& operator-=(const MuTime& a) { time -= a.time; return *this; }
-    MuTime& operator/=(unsigned long a) { time /= a; return *this; }
-    std::string toString();
-    
-    void clear() { time = 0; }
-    void get();
-    MuTime update();
-    
-    unsigned long time;
+	MuTime() { get(); }
+	MuTime operator-(const MuTime& a) { MuTime b; b.time = time - a.time; return b; };
+	MuTime operator+(const MuTime& a) { MuTime b; b.time = time + a.time; return b; };
+	MuTime operator/(unsigned long a) { MuTime b; b.time = time / a; return b; };
+	MuTime& operator+=(const MuTime& a) { time += a.time; return *this; }
+	MuTime& operator-=(const MuTime& a) { time -= a.time; return *this; }
+	MuTime& operator/=(unsigned long a) { time /= a; return *this; }
+	std::string toString();
+	
+	void clear() { time = 0; }
+	void get();
+	MuTime update();
+	
+	unsigned long time;
 };
 std::ostream& operator<< (std::ostream& os, const MuTime& t);
-    
+	
 //! generate a string with infos about the current mantaflow build
 std::string buildInfoString();
 
 // Some commonly used math helpers
 template<class T> inline T square(T a) {
-    return a*a;
+	return a*a;
 }
 template<class T> inline T cubed(T a) {
-    return a*a;
+	return a*a;
 }
 
 template<class T> inline T clamp(const T& val, const T& vmin, const T& vmax) {
-    if (val < vmin) return vmin;
-    if (val > vmax) return vmax;
-    return val;
+	if (val < vmin) return vmin;
+	if (val > vmax) return vmax;
+	return val;
 }
 
 template<class T> inline T nmod(const T& a, const T& b);
@@ -129,8 +129,8 @@ template<> inline float safeDivide<float>(const float &a, const float& b) { retu
 template<> inline double safeDivide<double>(const double &a, const double& b) { return (b) ? (a/b) : a; }
 
 inline bool c_isnan(float c) { 
-    volatile float d=c;
-    return d != d;
+	volatile float d=c;
+	return d != d;
 }
 
 } // namespace

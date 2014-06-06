@@ -38,9 +38,9 @@ flags.fillGrid()
 
 # obstacle grid
 for i in range(4):
-    for j in range(4):
-        obs = s.create(Sphere, center=gs*vec3(0.2,(i+1)/5.0,(j+1)/5.0), radius=res*0.025)
-        obs.applyToGrid(grid=flags,value=FlagObstacle)
+	for j in range(4):
+		obs = s.create(Sphere, center=gs*vec3(0.2,(i+1)/5.0,(j+1)/5.0), radius=res*0.025)
+		obs.applyToGrid(grid=flags,value=FlagObstacle)
 
 sdfgrad = obstacleGradient(flags)
 sdf = obstacleLevelset(flags)
@@ -59,48 +59,48 @@ prodMult = 2.5
 enableDiffuse = True
 
 if (GUI):
-    gui = Gui()
-    gui.setBackgroundMesh(bgr)
-    gui.show()
-    # unused: sliderL0 = gui.addControl(Slider, text='turbulent lengthscale', val=L0, min=0.001, max=0.5)
-    sliderMult = gui.addControl(Slider, text='turbulent mult', val=mult, min=0, max=1)
-    sliderProd = gui.addControl(Slider, text='production mult', val=prodMult, min=0.1, max=5)
-    checkDiff = gui.addControl(Checkbox, text='enable RANS', val=enableDiffuse)
+	gui = Gui()
+	gui.setBackgroundMesh(bgr)
+	gui.show()
+	# unused: sliderL0 = gui.addControl(Slider, text='turbulent lengthscale', val=L0, min=0.001, max=0.5)
+	sliderMult = gui.addControl(Slider, text='turbulent mult', val=mult, min=0, max=1)
+	sliderProd = gui.addControl(Slider, text='production mult', val=prodMult, min=0.1, max=5)
+	checkDiff = gui.addControl(Checkbox, text='enable RANS', val=enableDiffuse)
 
 KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=True)
 
 #main loop
 for t in range(10000):
-    if (GUI):
-        mult = sliderMult.get()
+	if (GUI):
+		mult = sliderMult.get()
 		# unused: K0 = sliderL0.get()
-        enableDiffuse = checkDiff.get()
-        prodMult = sliderProd.get()
-    
-    turb.seed(box,500)
-    turb.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4)
-    turb.synthesize(flags=flags, octaves=1, k=k, switchLength=5, L0=L0, scale=mult, inflowBias=velInflow)
-    #turb.projectOutside(sdfgrad)
-    turb.deleteInObstacle(flags)
+		enableDiffuse = checkDiff.get()
+		prodMult = sliderProd.get()
+	
+	turb.seed(box,500)
+	turb.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4)
+	turb.synthesize(flags=flags, octaves=1, k=k, switchLength=5, L0=L0, scale=mult, inflowBias=velInflow)
+	#turb.projectOutside(sdfgrad)
+	turb.deleteInObstacle(flags)
 
-    KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=False)
-    advectSemiLagrange(flags=flags, vel=vel, grid=k, order=1)
-    advectSemiLagrange(flags=flags, vel=vel, grid=eps, order=1)
-    KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=False)
-    KEpsilonComputeProduction(vel=vel, k=k, eps=eps, prod=prod, nuT=nuT, strain=strain, pscale=prodMult) 
-    KEpsilonSources(k=k, eps=eps, prod=prod)
-    
-    if enableDiffuse:
-        KEpsilonGradientDiffusion(k=k, eps=eps, vel=vel, nuT=nuT, sigmaU=10.0);
+	KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=False)
+	advectSemiLagrange(flags=flags, vel=vel, grid=k, order=1)
+	advectSemiLagrange(flags=flags, vel=vel, grid=eps, order=1)
+	KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=False)
+	KEpsilonComputeProduction(vel=vel, k=k, eps=eps, prod=prod, nuT=nuT, strain=strain, pscale=prodMult) 
+	KEpsilonSources(k=k, eps=eps, prod=prod)
+	
+	if enableDiffuse:
+		KEpsilonGradientDiffusion(k=k, eps=eps, vel=vel, nuT=nuT, sigmaU=10.0);
 
-    # base solver
-    advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
-    setWallBcs(flags=flags, vel=vel)
-    setInflowBcs(vel=vel,dir='xXyYzZ',value=velInflow)
-    solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5)
-    setWallBcs(flags=flags, vel=vel)
-    setInflowBcs(vel=vel,dir='xXyYzZ',value=velInflow)
-    
-    s.printTimings()
-    s.step()
-    
+	# base solver
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+	setWallBcs(flags=flags, vel=vel)
+	setInflowBcs(vel=vel,dir='xXyYzZ',value=velInflow)
+	solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5)
+	setWallBcs(flags=flags, vel=vel)
+	setInflowBcs(vel=vel,dir='xXyYzZ',value=velInflow)
+	
+	s.printTimings()
+	s.step()
+	

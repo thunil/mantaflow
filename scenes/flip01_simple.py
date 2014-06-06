@@ -37,34 +37,34 @@ flags.updateFromLevelset(phiInit)
 # note, there's no resamplig here, so we need _LOTS_ of particles...
 sampleFlagsWithParticles( flags=flags, parts=pp, discretization=particleNumber, randomness=0.2 )
 
-    
+	
 if (GUI):
-    gui = Gui()
-    gui.show()
-    #gui.pause()
-    
+	gui = Gui()
+	gui.show()
+	#gui.pause()
+	
 #main loop
 for t in range(2500):
-    
-    # FLIP 
-    pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False ) 
-    mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=tmpVec3 ) 
-    extrapolateMACFromWeight( vel=vel , distance=2, weight=tmpVec3 ) 
-    markFluidCells( parts=pp, flags=flags )
+	
+	# FLIP 
+	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False ) 
+	mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=tmpVec3 ) 
+	extrapolateMACFromWeight( vel=vel , distance=2, weight=tmpVec3 ) 
+	markFluidCells( parts=pp, flags=flags )
 
-    addGravity(flags=flags, vel=vel, gravity=(0,-0.002,0))
+	addGravity(flags=flags, vel=vel, gravity=(0,-0.002,0))
 
-    # pressure solve
-    setWallBcs(flags=flags, vel=vel)    
-    solvePressure(flags=flags, vel=vel, pressure=pressure)
-    setWallBcs(flags=flags, vel=vel)
+	# pressure solve
+	setWallBcs(flags=flags, vel=vel)    
+	solvePressure(flags=flags, vel=vel, pressure=pressure)
+	setWallBcs(flags=flags, vel=vel)
 
-    # we dont have any levelset, ie no extrapolation, so make sure the velocities are valid
-    extrapolateMACSimple( flags=flags, vel=vel )
-    
-    # FLIP velocity update
-    flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97 )
-    
-    #gui.screenshot( 'flipt_%04d.png' % t );
-    s.step()
+	# we dont have any levelset, ie no extrapolation, so make sure the velocities are valid
+	extrapolateMACSimple( flags=flags, vel=vel )
+	
+	# FLIP velocity update
+	flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97 )
+	
+	#gui.screenshot( 'flipt_%04d.png' % t );
+	s.step()
 

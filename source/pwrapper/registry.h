@@ -27,8 +27,8 @@ typedef _object PyObject;
 #endif
 
 namespace Manta {
-    class PbClass;
-    class PbArgs;
+	class PbClass;
+	class PbArgs;
 }
 
 // **************************************************
@@ -42,7 +42,7 @@ namespace Manta {
 // Used to turn names into strings
 namespace Manta {
 template<class T> struct Namify {
-    static const char* S;
+	static const char* S;
 };
 }
 namespace Pb {
@@ -66,20 +66,20 @@ typedef int (*Setter)(PyObject* self, PyObject* value, void* closure);
 
 //! Auto registry of python methods and classes
 struct Register {
-    //! register method
-    Register(const std::string& className, const std::string& funcName, GenericFunction func);
-    //! register operator
-    Register(const std::string& className, const std::string& funcName, OperatorFunction func);
-    //! register constructor
-    Register(const std::string& className, const std::string& funcName, Constructor func);
-    //! register getter/setter
-    Register(const std::string& className, const std::string& property, Getter getter, Setter setter);
-    //! register class
-    Register(const std::string& className, const std::string& pyName, const std::string& baseClass);
-    //! register python code
-    Register(const std::string& file, const std::string& pythonCode);
-    //! register external code
-    Register(InitFunc func);
+	//! register method
+	Register(const std::string& className, const std::string& funcName, GenericFunction func);
+	//! register operator
+	Register(const std::string& className, const std::string& funcName, OperatorFunction func);
+	//! register constructor
+	Register(const std::string& className, const std::string& funcName, Constructor func);
+	//! register getter/setter
+	Register(const std::string& className, const std::string& property, Getter getter, Setter setter);
+	//! register class
+	Register(const std::string& className, const std::string& pyName, const std::string& baseClass);
+	//! register python code
+	Register(const std::string& file, const std::string& pythonCode);
+	//! register external code
+	Register(InitFunc func);
 };
 
 }

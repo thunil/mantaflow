@@ -19,41 +19,41 @@
 namespace Manta {
 // fwd decl
 class Mesh;
-    
+	
 //! Painter object for Meshes
 class MeshPainter : public LockedObjPainter {
-    Q_OBJECT
+	Q_OBJECT
 public:
-    enum DisplayMode { ModeTrans=0, ModeLines, ModePoints, ModeFlatShade, ModeInvisible, Num_DisplayModes };
-    enum BackgroundMode { BModeNormal=0, BModeTrans, BModeInvisible, Num_BackgroundModes };
-    enum VorticityMode { VModeFull=0, VModeSmoothed, VModeDiff, VModeSmoke, VModeTex, VModeNone, Num_VorticityModes };
-    
-    MeshPainter(QWidget* par = 0);
-    ~MeshPainter();
-    
-    void paint();
-    void attachWidget(QLayout* layout);
-    
+	enum DisplayMode { ModeTrans=0, ModeLines, ModePoints, ModeFlatShade, ModeInvisible, Num_DisplayModes };
+	enum BackgroundMode { BModeNormal=0, BModeTrans, BModeInvisible, Num_BackgroundModes };
+	enum VorticityMode { VModeFull=0, VModeSmoothed, VModeDiff, VModeSmoke, VModeTex, VModeNone, Num_VorticityModes };
+	
+	MeshPainter(QWidget* par = 0);
+	~MeshPainter();
+	
+	void paint();
+	void attachWidget(QLayout* layout);
+	
 public slots:
-    void setBackgroundMesh(Mesh* bgr);
-    
+	void setBackgroundMesh(Mesh* bgr);
+	
 protected:
-    std::string getID();    
-    void update();
-    void updateText();
-    void processKeyEvent(PainterEvent e, int param);
-    void processSpecificKeyEvent(PainterEvent e, int param);
-    void setupLights(bool specular);
-    
-    Real mColorScale;
-    DisplayMode mMode;    
-    VorticityMode mVorticityMode;
-    BackgroundMode mBackgroundMode;    
-    Mesh* mLocalMesh, *mBackground;
-    QLabel* mInfo;
-    bool mHide;    
+	std::string getID();    
+	void update();
+	void updateText();
+	void processKeyEvent(PainterEvent e, int param);
+	void processSpecificKeyEvent(PainterEvent e, int param);
+	void setupLights(bool specular);
+	
+	Real mColorScale;
+	DisplayMode mMode;    
+	VorticityMode mVorticityMode;
+	BackgroundMode mBackgroundMode;    
+	Mesh* mLocalMesh, *mBackground;
+	QLabel* mInfo;
+	bool mHide;    
 };
-    
+	
 } // namespace
 
 #endif

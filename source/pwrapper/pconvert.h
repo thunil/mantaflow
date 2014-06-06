@@ -30,22 +30,22 @@ template<class T> class Grid;
 
 //! Locks the given PbClass Arguments until ArgLocker goes out of scope
 struct ArgLocker {    
-    void add(PbClass* p);
-    ~ArgLocker();
-    std::vector<PbClass*> locks;
+	void add(PbClass* p);
+	~ArgLocker();
+	std::vector<PbClass*> locks;
 };
 
 PyObject* getPyNone();
 
 // for PbClass-derived classes
 template<class T> T* fromPyPtr(PyObject* obj, std::vector<void*>* tmp) { 
-    if (PbClass::isNullRef(obj)) 
-        return 0; 
-    PbClass* pbo = Pb::objFromPy(obj); 
-    const std::string& type = Namify<T>::S;
-    if (!pbo || !(pbo->canConvertTo(type))) 
-        throw Error("can't convert argument to " + type+"*"); 
-    return (T*)(pbo); 
+	if (PbClass::isNullRef(obj)) 
+		return 0; 
+	PbClass* pbo = Pb::objFromPy(obj); 
+	const std::string& type = Namify<T>::S;
+	if (!pbo || !(pbo->canConvertTo(type))) 
+		throw Error("can't convert argument to " + type+"*"); 
+	return (T*)(pbo); 
 }
 
 template<> float* fromPyPtr<float>(PyObject* obj, std::vector<void*>* tmp);
@@ -58,24 +58,24 @@ template<> Vec3i* fromPyPtr<Vec3i>(PyObject* obj, std::vector<void*>* tmp);
 
 PyObject* incref(PyObject* obj);
 template<class T> PyObject* toPy(const T& v) { 
-    PyObject* obj = v.getPyObject();
-    if (obj) {
-        return incref(obj);
-    } 
-    T* co = new T (v); 
-    const std::string& type = Namify<typename remove_pointers<T>::type>::S;
-    return Pb::copyObject(co,type); 
+	PyObject* obj = v.getPyObject();
+	if (obj) {
+		return incref(obj);
+	} 
+	T* co = new T (v); 
+	const std::string& type = Namify<typename remove_pointers<T>::type>::S;
+	return Pb::copyObject(co,type); 
 }
 template<class T> bool isPy(PyObject* obj) {
-    if (PbClass::isNullRef(obj)) 
-        return false; 
-    PbClass* pbo = Pb::objFromPy(obj); 
-    const std::string& type = Namify<typename remove_pointers<T>::type>::S;
-    return pbo && pbo->canConvertTo(type);
+	if (PbClass::isNullRef(obj)) 
+		return false; 
+	PbClass* pbo = Pb::objFromPy(obj); 
+	const std::string& type = Namify<typename remove_pointers<T>::type>::S;
+	return pbo && pbo->canConvertTo(type);
 }
 
 template<class T> T fromPy(PyObject* obj) {
-    throw Error("Unknown type conversion. Did you pass a PbClass by value? (you shouldn't)");
+	throw Error("Unknown type conversion. Did you pass a PbClass by value? (you shouldn't)");
 }
 
 // builtin types
@@ -115,87 +115,87 @@ template<> bool isPy<PbType>(PyObject* obj);
 //! Encapsulation of python arguments
 class PbArgs {
 public:
-    PbArgs(PyObject *linargs = NULL, PyObject* dict = NULL);
-    ~PbArgs();
-    void setup(PyObject *linargs = NULL, PyObject* dict = NULL);
-    
-    void check();
-    FluidSolver* obtainParent();
-    
-    inline int numLinArgs() { return mLinData.size(); }
-    
-    inline bool has(const std::string& key) {
-        return getItem(key, false) != NULL;
-    }
-    
-    inline PyObject* linArgs() { return mLinArgs; }
-    inline PyObject* kwds() { return mKwds; }
-    
-    void addLinArg(PyObject* obj);
+	PbArgs(PyObject *linargs = NULL, PyObject* dict = NULL);
+	~PbArgs();
+	void setup(PyObject *linargs = NULL, PyObject* dict = NULL);
+	
+	void check();
+	FluidSolver* obtainParent();
+	
+	inline int numLinArgs() { return mLinData.size(); }
+	
+	inline bool has(const std::string& key) {
+		return getItem(key, false) != NULL;
+	}
+	
+	inline PyObject* linArgs() { return mLinArgs; }
+	inline PyObject* kwds() { return mKwds; }
+	
+	void addLinArg(PyObject* obj);
 
-    template<class T> inline void add(const std::string& key, T arg) {
-        DataElement el = { toPy(arg), false };
-        mData[key] = el;
-    }
-    template<class T> inline T get(const std::string& key, int number=-1, ArgLocker *lk=NULL) {
-        visit(number, key);
-        PyObject* o = getItem(key, false, lk);
-        if (o) return fromPy<T>(o);
-        o = getItem(number, false, lk);
-        if (o) return fromPy<T>(o);
-        errMsg ("Argument '" + key + "' is not defined.");        
-    }
-    template<class T> inline T getOpt(const std::string& key, int number, T defarg, ArgLocker *lk=NULL) { 
-        visit(number, key);
-        PyObject* o = getItem(key, false, lk);
-        if (o) return fromPy<T>(o);
-        if (number >= 0) o = getItem(number, false, lk);
-        return (o) ? fromPy<T>(o) : defarg;
-    }
-    template<class T> inline T* getPtrOpt(const std::string& key, int number, T* defarg, ArgLocker *lk=NULL) {
-        visit(number, key);
-        PyObject* o = getItem(key, false, lk);
-        if (o) return fromPyPtr<T>(o,&mTmpStorage);
-        if (number >= 0) o = getItem(number, false, lk);
-        return o ? fromPyPtr<T>(o,&mTmpStorage) : defarg;
-    }
-    template<class T> inline T* getPtr(const std::string& key, int number = -1, ArgLocker *lk=NULL) {
-        visit(number, key);
-        PyObject* o = getItem(key, false, lk);
-        if (o) return fromPyPtr<T>(o,&mTmpStorage);
-        o = getItem(number, false, lk);
-        if(o) return fromPyPtr<T>(o,&mTmpStorage);
-        errMsg ("Argument '" + key + "' is not defined.");
-    }
+	template<class T> inline void add(const std::string& key, T arg) {
+		DataElement el = { toPy(arg), false };
+		mData[key] = el;
+	}
+	template<class T> inline T get(const std::string& key, int number=-1, ArgLocker *lk=NULL) {
+		visit(number, key);
+		PyObject* o = getItem(key, false, lk);
+		if (o) return fromPy<T>(o);
+		o = getItem(number, false, lk);
+		if (o) return fromPy<T>(o);
+		errMsg ("Argument '" + key + "' is not defined.");        
+	}
+	template<class T> inline T getOpt(const std::string& key, int number, T defarg, ArgLocker *lk=NULL) { 
+		visit(number, key);
+		PyObject* o = getItem(key, false, lk);
+		if (o) return fromPy<T>(o);
+		if (number >= 0) o = getItem(number, false, lk);
+		return (o) ? fromPy<T>(o) : defarg;
+	}
+	template<class T> inline T* getPtrOpt(const std::string& key, int number, T* defarg, ArgLocker *lk=NULL) {
+		visit(number, key);
+		PyObject* o = getItem(key, false, lk);
+		if (o) return fromPyPtr<T>(o,&mTmpStorage);
+		if (number >= 0) o = getItem(number, false, lk);
+		return o ? fromPyPtr<T>(o,&mTmpStorage) : defarg;
+	}
+	template<class T> inline T* getPtr(const std::string& key, int number = -1, ArgLocker *lk=NULL) {
+		visit(number, key);
+		PyObject* o = getItem(key, false, lk);
+		if (o) return fromPyPtr<T>(o,&mTmpStorage);
+		o = getItem(number, false, lk);
+		if(o) return fromPyPtr<T>(o,&mTmpStorage);
+		errMsg ("Argument '" + key + "' is not defined.");
+	}
 
 
-    // automatic template type deduction
-    template<class T> bool typeCheck(int num, const std::string& name) {
-        PyObject* o = getItem(name, false, 0);
-        if (!o) 
-            o = getItem(num, false, 0);
-        return o ? isPy<typename remove_pointers<T>::type>(o) : false;
-    }
-    
-    PbArgs& operator=(const PbArgs& a); // dummy
-    void copy(PbArgs& a);
-    void clear();
-    void visit(int num, const std::string& key);
-    
-    static PbArgs EMPTY;
-    
+	// automatic template type deduction
+	template<class T> bool typeCheck(int num, const std::string& name) {
+		PyObject* o = getItem(name, false, 0);
+		if (!o) 
+			o = getItem(num, false, 0);
+		return o ? isPy<typename remove_pointers<T>::type>(o) : false;
+	}
+	
+	PbArgs& operator=(const PbArgs& a); // dummy
+	void copy(PbArgs& a);
+	void clear();
+	void visit(int num, const std::string& key);
+	
+	static PbArgs EMPTY;
+	
 protected:
-    PyObject* getItem(const std::string& key, bool strict, ArgLocker* lk = NULL);
-    PyObject* getItem(size_t number, bool strict, ArgLocker* lk = NULL);    
-    
-    struct DataElement {
-        PyObject *obj;
-        bool visited;
-    };
-    std::map<std::string, DataElement> mData;
-    std::vector<DataElement> mLinData;
-    PyObject* mLinArgs, *mKwds;    
-    std::vector<void*> mTmpStorage;
+	PyObject* getItem(const std::string& key, bool strict, ArgLocker* lk = NULL);
+	PyObject* getItem(size_t number, bool strict, ArgLocker* lk = NULL);    
+	
+	struct DataElement {
+		PyObject *obj;
+		bool visited;
+	};
+	std::map<std::string, DataElement> mData;
+	std::vector<DataElement> mLinData;
+	PyObject* mLinArgs, *mKwds;    
+	std::vector<void*> mTmpStorage;
 };
 
 

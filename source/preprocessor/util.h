@@ -29,7 +29,7 @@ void stealLinebreaks(std::string& code, int num);
 std::string strip(const std::string& s);
 std::string makeSafe(const std::string& s);
 inline bool isNameChar(char c) {
-    return (c>='A' && c<='Z') || (c>='a' && c<='z') || (c>='0' && c<='9') || c=='_';
+	return (c>='A' && c<='Z') || (c>='a' && c<='z') || (c>='0' && c<='9') || c=='_';
 }
 
 // file tools
@@ -38,25 +38,25 @@ bool fileExists(const std::string& name);
 void writeFile(const std::string& name, const std::string& text);
 
 struct Sink {
-    Sink(const std::string& infile,const std::string& outfile);
-    void write();
+	Sink(const std::string& infile,const std::string& outfile);
+	void write();
 
-    std::ostringstream inplace;
-    std::ostringstream link;
-    bool isHeader;
-    std::string infile;
+	std::ostringstream inplace;
+	std::ostringstream link;
+	bool isHeader;
+	std::string infile;
 private:
-    std::string filename;
+	std::string filename;
 };
 
 // simple string-based stack
 struct BracketStack {
-    bool empty() { return stack.empty(); }
-    char top() { return empty() ? '\0' : *(stack.rbegin()); }
-    void push_back(char c) { stack += c; }
-    char pop() { if (empty()) return '\0'; char c = *(stack.rbegin()); stack.erase(stack.end()-1); return c; }
-    
-    std::string stack;
+	bool empty() { return stack.empty(); }
+	char top() { return empty() ? '\0' : *(stack.rbegin()); }
+	void push_back(char c) { stack += c; }
+	char pop() { if (empty()) return '\0'; char c = *(stack.rbegin()); stack.erase(stack.end()-1); return c; }
+	
+	std::string stack;
 };
 
 
