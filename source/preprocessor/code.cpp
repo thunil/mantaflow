@@ -62,19 +62,11 @@ string Function::signature() const {
     return s;    
 }
 
+
 template<> string List<Argument>::full(bool refify) const {
     stringstream s;
     for (int i=0; i<(int)_data.size(); i++) {
         s << "," << _data[i].type.build(refify) << " " << _data[i].name;
-    }
-    return s.str();
-}
-
-template<class T> string List<T>::names() const {
-    stringstream s;
-    for (int i=0; i<(int)_data.size(); i++) {
-        s << _data[i].name;
-        if (i != (int)_data.size()-1) s << ',';
     }
     return s.str();
 }
@@ -95,5 +87,6 @@ template<> string List<Argument>::copier(const string& prefix, bool useVal) cons
     }
     return s.str();
 }
+
 template struct List<Argument>;
 template struct List<Type>;

@@ -310,11 +310,16 @@ void WrapperRegistry::registerOperators(ClassData* cls) {
         if      (op=="+=") num.nb_inplace_add = func;
         else if (op=="-=") num.nb_inplace_subtract = func;
         else if (op=="*=") num.nb_inplace_multiply = func;
+        else if (op=="+")  num.nb_add = func;
+        else if (op=="-")  num.nb_subtract = func;
+        else if (op=="*")  num.nb_multiply = func;
+#		if PY_MAJOR_VERSION < 3
         else if (op=="/=") num.nb_inplace_divide = func;
-        else if (op=="+") num.nb_add = func;
-        else if (op=="-") num.nb_subtract = func;
-        else if (op=="*") num.nb_multiply = func;
-        else if (op=="/") num.nb_divide = func;
+        else if (op=="/")  num.nb_divide = func;
+#		else
+        else if (op=="/=") num.nb_inplace_true_divide = func;
+        else if (op=="/")  num.nb_true_divide = func;
+#		endif
         else
             errMsg("PYTHON operator " + op + " not supported");
     }
