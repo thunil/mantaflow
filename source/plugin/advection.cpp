@@ -87,12 +87,13 @@ void MacCormackCorrect(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd
 {
 	// note, replacement for isNotFluidMAC and isNotFluid
 	bool skip = false;
-    if (!flags.isFluid(idx                   ) )     skip = true;
+
+    if (!flags.isFluid(idx)) skip = true;
 	if(!isMAC) {
-    if (!flags.isFluid(idx-flags.getStrideX()) )     skip = true; 
-    if (!flags.isFluid(idx-flags.getStrideY()) )     skip = true; 
+    if( (idx>=flags.getStrideX()) && 	(!flags.isFluid(idx-flags.getStrideX()) )) skip = true; 
+    if( (idx>=flags.getStrideY()) && 	(!flags.isFluid(idx-flags.getStrideY()) )) skip = true; 
 	if ( flags.is3D() ) {
-    	if (!flags.isFluid(idx-flags.getStrideY()) ) skip = true;
+   		if( (idx>=flags.getStrideZ()) &&(!flags.isFluid(idx-flags.getStrideZ()) )) skip = true;
 	} }
     if ( skip ) {
         dst[idx] = isLevelSet ? fwd[idx] : (T)0.0;
