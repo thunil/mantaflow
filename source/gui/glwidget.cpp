@@ -207,10 +207,10 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
 	bool ctrl  = (modifier & Qt::ControlModifier); 
 	if      (key == Qt::Key_A) { mMoveState[MoveLeft]  = down; mMoveFast = shift; }
 	else if (key == Qt::Key_D) { mMoveState[MoveRight] = down; mMoveFast = shift; }
-	else if (key == Qt::Key_W) { mMoveState[MoveIn]    = down; mMoveFast = shift; }
-	else if (key == Qt::Key_S) { mMoveState[MoveOut]   = down; mMoveFast = shift; }
-	else if (key == Qt::Key_Q) { mMoveState[MoveUp]    = down; mMoveFast = shift; }
-	else if (key == Qt::Key_E) { mMoveState[MoveDown]  = down; mMoveFast = shift; }
+	else if (key == Qt::Key_W) { mMoveState[MoveUp]    = down; mMoveFast = shift; }
+	else if (key == Qt::Key_S) { mMoveState[MoveDown]  = down; mMoveFast = shift; }
+	else if (key == Qt::Key_Q) { mMoveState[MoveIn]    = down; mMoveFast = shift; }
+	else if (key == Qt::Key_E) { mMoveState[MoveOut]   = down; mMoveFast = shift; }
 	else if (down) 
 	{
 		// only press events
@@ -223,17 +223,17 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
 		// real
 		else if (key == Qt::Key_C && shift)         { /* real display mdoes, not yet used */ }
 		else if (key == Qt::Key_C)                  { emit painterEvent(Painter::EventNextReal); updatePlane(mPlane); } 
+		else if ((key == Qt::Key_Less) ||      
+			    (key == Qt::Key_Comma) )            { emit painterEvent(Painter::EventScaleRealDown); }
+		else if ((key == Qt::Key_Greater) ||
+			    (key == Qt::Key_Period) )           { emit painterEvent(Painter::EventScaleRealUp); }
 
 		// vec3 grids, scaling can be used with two key combinations (the second one is for international keyboards)
 		else if (key == Qt::Key_V && shift)         { emit painterEvent(Painter::EventNextVelDisplayMode); }
 		else if (key == Qt::Key_V)                  { emit painterEvent(Painter::EventNextVec);  updatePlane(mPlane); }
-		else if (key == Qt::Key_BraceLeft )         { emit painterEvent(Painter::EventScaleVecDown); }
-		else if (key == Qt::Key_BraceRight)         { emit painterEvent(Painter::EventScaleVecUp); }
 		// grid scaling
-		else if (key == Qt::Key_BracketLeft  && shift) { emit painterEvent(Painter::EventScaleVecDown); }
-		else if (key == Qt::Key_BracketRight && shift) { emit painterEvent(Painter::EventScaleVecUp); }
-		else if (key == Qt::Key_BracketLeft)        { emit painterEvent(Painter::EventScaleRealDown); }
-		else if (key == Qt::Key_BracketRight)       { emit painterEvent(Painter::EventScaleRealUp); }
+		else if (key == Qt::Key_Semicolon)          { emit painterEvent(Painter::EventScaleVecDown); }
+		else if (key == Qt::Key_Apostrophe)         { emit painterEvent(Painter::EventScaleVecUp); }
 
 		// particles
 		else if (key == Qt::Key_B && shift)         { emit painterEvent(Painter::EventNextParticleDisplayMode); }
@@ -241,26 +241,32 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
 		else if (key == Qt::Key_B)                  { emit painterEvent(Painter::EventToggleParticles); }
 
 		else if((key == Qt::Key_ParenLeft) ||         // ugly, but for some reason parentheses dont work in some cases... fall back with dual assignment
-			   ((key == Qt::Key_9) && shift) )        { emit painterEvent(Painter::EventScalePdataDown); }
+			   ((key == Qt::Key_9) && shift) )      { emit painterEvent(Painter::EventScalePdataDown); }
 		else if((key == Qt::Key_ParenRight) ||
-			   ((key == Qt::Key_0) && shift ) )       { emit painterEvent(Painter::EventScalePdataUp);   }
+			   ((key == Qt::Key_0) && shift ) )     { emit painterEvent(Painter::EventScalePdataUp);   }
 
 		// mesh display
 		else if (key == Qt::Key_M && shift)           emit painterEvent(Painter::EventMeshMode);
-		else if((key == Qt::Key_Less) ||      
-			   ((key == Qt::Key_Comma) && shift) )     { emit painterEvent(Painter::EventScaleMeshDown); }
-		else if((key == Qt::Key_Greater) ||
-			   ((key == Qt::Key_Period) && shift ) )   { emit painterEvent(Painter::EventScaleMeshUp); }
+		else if (key == Qt::Key_BraceLeft )           { emit painterEvent(Painter::EventScaleMeshDown); }
+		else if (key == Qt::Key_BracketLeft)          { emit painterEvent(Painter::EventScaleMeshDown); }
+		else if (key == Qt::Key_BraceRight)           { emit painterEvent(Painter::EventScaleMeshUp); }
+		else if (key == Qt::Key_BracketRight)         { emit painterEvent(Painter::EventScaleMeshUp); }
 		// special mesh display modes
 		else if (key == Qt::Key_M && alt)             emit painterEvent(Painter::EventMeshColorMode);
 		else if (key == Qt::Key_M && ctrl)            emit painterEvent(Painter::EventToggleBackgroundMesh); 
 		else if (key == Qt::Key_M)                    emit painterEvent(Painter::EventNextMesh);
 		
 		// switch display planes
-		else if (key == Qt::Key_Asterisk) {
+		else if ( (key == Qt::Key_Asterisk) || (key == Qt::Key_8) ) {
 			mPlaneDim = (mPlaneDim+1) % 3;            
 			emit painterEvent(Painter::EventSetDim, mPlaneDim);
 			emit painterEvent(Painter::EventSetMax, mGridsize[mPlaneDim]);
+		} 
+		// move plane (+shift is faster)
+		else if (shift && ((key == Qt::Key_Plus)  || (key == Qt::Key_Equal)) ) { 
+			updatePlane(mPlane + 10);
+		} else if (shift && ((key == Qt::Key_Minus) || (key == Qt::Key_Underscore)) ) { 
+			updatePlane(mPlane - 10);
 		} else if (key == Qt::Key_Plus || key == Qt::Key_Equal) { 
 			updatePlane(mPlane + 1);
 		} else if (key == Qt::Key_Minus) { 
