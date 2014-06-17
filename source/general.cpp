@@ -31,53 +31,54 @@ int gDebugLevel = 1;
  
 void MuTime::get() {    
 #if defined(WIN32) || defined(_WIN32)
-    LARGE_INTEGER liTimerFrequency;
-    QueryPerformanceFrequency(&liTimerFrequency);
-    LARGE_INTEGER liLastTime;
-    QueryPerformanceCounter(&liLastTime);
-    time = (INT)( ((double)liLastTime.QuadPart / liTimerFrequency.QuadPart)*1000 );
+	LARGE_INTEGER liTimerFrequency;
+	QueryPerformanceFrequency(&liTimerFrequency);
+	LARGE_INTEGER liLastTime;
+	QueryPerformanceCounter(&liLastTime);
+	time = (INT)( ((double)liLastTime.QuadPart / liTimerFrequency.QuadPart)*1000 );
 #else
-    struct timeval tv;
-    struct timezone tz;
-    tz.tz_minuteswest = 0;
-    tz.tz_dsttime = 0;
-    gettimeofday(&tv,&tz);
-    time = (tv.tv_sec*1000)+(tv.tv_usec/1000);
+	struct timeval tv;
+	struct timezone tz;
+	tz.tz_minuteswest = 0;
+	tz.tz_dsttime = 0;
+	gettimeofday(&tv,&tz);
+	time = (tv.tv_sec*1000)+(tv.tv_usec/1000);
 #endif    
 }
 
 MuTime MuTime::update() {
-    MuTime o = *this;
-    get();
-    return *this - o;
+	MuTime o = *this;
+	get();
+	return *this - o;
 }
 
 string MuTime::toString() {
-    stringstream ss;
-    ss << *this;
-    return ss.str();
+	stringstream ss;
+	ss << *this;
+	return ss.str();
 }
 
 ostream& operator<<(ostream& os, const MuTime& t) {
-    unsigned long ms = (unsigned long)(   (double)t.time / (60.0*1000.0)  );
-    unsigned long ss = (unsigned long)(  ((double)t.time / 1000.0) - ((double)ms*60.0)  );
-    int      ps = (int)(       ((double)t.time - (double)ss*1000.0)/1.0 );
+	unsigned long ms = (unsigned long)(   (double)t.time / (60.0*1000.0)  );
+	unsigned long ss = (unsigned long)(  ((double)t.time / 1000.0) - ((double)ms*60.0)  );
+	int      ps = (int)(       ((double)t.time - (double)ss*1000.0)/1.0 );
 
-    if(ms>0) {
-        os << ms<<"m"<< ss<<"s" ;
-    } else {
-        if(ps>0) {
-            os << ss<<".";
-            if(ps<10) { os <<"0"; }
-            if(ps<100) { os <<"0"; }
-            os <<ps<<"s" ;
-        } else {
-            os << ss<<"s" ;
-        }
-    }
-    return os;
+	if(ms>0) {
+		os << ms<<"m"<< ss<<"s" ;
+	} else {
+		if(ps>0) {
+			os << ss<<".";
+			if(ps<10) { os <<"0"; }
+			if(ps<100) { os <<"0"; }
+			os <<ps<<"s" ;
+		} else {
+			os << ss<<"s" ;
+		}
+	}
+	return os;
 }
 
+// print info about this mantaflow build, used eg by printBuildInfo in fluidsolver.cpp
 std::string buildInfoString() {
 	std::ostringstream infoStr;
 	infoStr << "mantaflow";

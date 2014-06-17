@@ -22,50 +22,50 @@
 
 namespace Manta {
 class Mesh;    
-    
+	
 class MainWnd : public QMainWindow
 {
 Q_OBJECT
 public:    
-    enum EventType { EventFullUpdate = QEvent::User, EventGuiShow, EventStepUpdate, EventFinalUpdate, EventInstantKill };
-    
-    MainWnd();
-    virtual ~MainWnd();
-    bool event(QEvent* e);
-    void keyPressEvent(QKeyEvent* e);
+	enum EventType { EventFullUpdate = QEvent::User, EventGuiShow, EventStepUpdate, EventFinalUpdate, EventInstantKill };
+	
+	MainWnd();
+	virtual ~MainWnd();
+	bool event(QEvent* e);
+	void keyPressEvent(QKeyEvent* e);
 	void keyReleaseEvent(QKeyEvent* e);
-    inline bool pauseRequest() { return mRequestPause && !mRequestClose;  }
-    inline bool closeRequest() { return mRequestClose;  }
-    void setPauseStatus(bool v);
-    void stepReset(bool fullUpdate) { if (mStep == 1 || (mStep == 2 && fullUpdate)) {mRequestPause = true; mStep = 0;} }
-    void requestClose() { mRequestClose =true; }
-    void setFrame(int f);
-    void setBackground(Mesh *m) { emit setBackgroundMesh(m); }
-    
+	inline bool pauseRequest() { return mRequestPause && !mRequestClose;  }
+	inline bool closeRequest() { return mRequestClose;  }
+	void setPauseStatus(bool v);
+	void stepReset(bool fullUpdate) { if (mStep == 1 || (mStep == 2 && fullUpdate)) {mRequestPause = true; mStep = 0;} }
+	void requestClose() { mRequestClose =true; }
+	void setFrame(int f);
+	void setBackground(Mesh *m) { emit setBackgroundMesh(m); }
+	
 public slots:
-    void pause();
-    void play();
-    void step();
-    void addControl(void* ctrl);
-    void screenshot(QString file);
-    void clickLine(QPoint pos, float p0, float p1,float p2, float q0, float q1, float q2);
-    
+	void pause();
+	void play();
+	void step();
+	void addControl(void* ctrl);
+	void screenshot(QString file);
+	void clickLine(QPoint pos, float p0, float p1,float p2, float q0, float q1, float q2);
+	
 signals:
-    void painterEvent(int e, int param=0);    
-    void wakeMain();
-    void setBackgroundMesh(Mesh* bgr);
-    void killMain();
-    void exitApp();
-    
+	void painterEvent(int e, int param=0);    
+	void wakeMain();
+	void setBackgroundMesh(Mesh* bgr);
+	void killMain();
+	void exitApp();
+	
 protected:
-    bool mPaused, mRequestPause, mRequestClose;
-    int mStep;
-    GLWidget* mGlWidget;
-    QAction* mAcPlay, *mAcPause;
-    std::vector<Painter*> mPainter;
-    std::vector<CustomControl*> mCtrls;
-    QLabel* mInfo;
-    QVBoxLayout* mPainterLayout;
+	bool mPaused, mRequestPause, mRequestClose;
+	int mStep;
+	GLWidget* mGlWidget;
+	QAction* mAcPlay, *mAcPause;
+	std::vector<Painter*> mPainter;
+	std::vector<CustomControl*> mCtrls;
+	QLabel* mInfo;
+	QVBoxLayout* mPainterLayout;
 };
 
 }

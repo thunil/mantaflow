@@ -35,35 +35,35 @@ mov = s.create(MovingObstacle)
 mov.add(box)
 
 if (GUI):
-    gui = Gui()
-    gui.show()
+	gui = Gui()
+	gui.show()
 
 #main loop
 for t in range(400):
-    
-    # FLIP advect and writeback
-    flip.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4)
-    mov.projectOutside(flags=flags,flip=flip)
-    flip.velocitiesToGrid(vel=vel, flags=flags)
-    flip.markFluidCells(flags=flags)
-    #advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
-    
-    addGravity(flags=flags, vel=vel, gravity=(0,-0.002,0))
-    
-    # pressure solve
-    setWallBcs(flags=flags, vel=vel)
-    setLiquidBcs(flags=flags, vel=vel)
-    mov.moveLinear(t=t,t0=0,t1=140,p0=obsFrom,p1=obsTo,flags=flags,vel=vel,smooth=True)
-    solvePressure(flags=flags, vel=vel, pressure=pressure)
-    setLiquidBcs(flags=flags, vel=vel)    
-    setWallBcs(flags=flags, vel=vel)
-    mov.moveLinear(t=t,t0=0,t1=140,p0=obsFrom,p1=obsTo,flags=flags,vel=vel,smooth=True)
-    
-    # recompute levelset, extrapolate velocities
-    phi.initFromFlags(flags=flags)
-    phi.reinitMarching(flags=flags, velTransport=vel)
-    
-    # FLIP load
-    flip.velocitiesFromGrid(vel=vel, flags=flags, flipRatio=0.96)
-    
-    s.step()
+	
+	# FLIP advect and writeback
+	flip.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4)
+	mov.projectOutside(flags=flags,flip=flip)
+	flip.velocitiesToGrid(vel=vel, flags=flags)
+	flip.markFluidCells(flags=flags)
+	#advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+	
+	addGravity(flags=flags, vel=vel, gravity=(0,-0.002,0))
+	
+	# pressure solve
+	setWallBcs(flags=flags, vel=vel)
+	setLiquidBcs(flags=flags, vel=vel)
+	mov.moveLinear(t=t,t0=0,t1=140,p0=obsFrom,p1=obsTo,flags=flags,vel=vel,smooth=True)
+	solvePressure(flags=flags, vel=vel, pressure=pressure)
+	setLiquidBcs(flags=flags, vel=vel)    
+	setWallBcs(flags=flags, vel=vel)
+	mov.moveLinear(t=t,t0=0,t1=140,p0=obsFrom,p1=obsTo,flags=flags,vel=vel,smooth=True)
+	
+	# recompute levelset, extrapolate velocities
+	phi.initFromFlags(flags=flags)
+	phi.reinitMarching(flags=flags, velTransport=vel)
+	
+	# FLIP load
+	flip.velocitiesFromGrid(vel=vel, flags=flags, flipRatio=0.96)
+	
+	s.step()

@@ -18,7 +18,7 @@
 #define _MESH_H
 
 #include <vector>
-#include "pclass.h"
+#include "manta.h"
 #include "vectorbase.h"
 #include <set>
 namespace Manta {
@@ -30,8 +30,8 @@ class Shape;
 
 //! Node position and flags
 struct Node {
-    Node() : pos(Vec3::Zero), normal(Vec3::Zero), flags(0) {}
-    Node(const Vec3& p) : pos(p), flags(0) {}
+    Node() : flags(0), pos(Vec3::Zero), normal(Vec3::Zero) {}
+    Node(const Vec3& p) : flags(0), pos(p) {}
     int flags;
     Vec3 pos, normal;
 };
@@ -47,8 +47,8 @@ struct Triangle {
 
 //! For fast access to nodes and neighboring triangles
 struct Corner {
-    Corner() : tri(-1), node(-1), next(-1), prev(-1), opposite(-1) {};
-    Corner(int t, int n) : tri(t), node(n), next(-1), prev(-1), opposite(-1) {}    
+    Corner() : tri(-1), node(-1), opposite(-1), next(-1), prev(-1) {};
+    Corner(int t, int n) : tri(t), node(n), opposite(-1), next(-1), prev(-1) {}    
     
     int tri;
     int node;

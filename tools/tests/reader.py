@@ -104,8 +104,8 @@ for t in range(startFrame, endFrame):
 		print("Max difference in step " +str(t) + " = "+ str(realErrMax) )
 
 	if(nameVec3 != ""):
-		tryToLoad( mac1, basename1, "vel"  , t, appendNumber, buildInfo )
-		tryToLoad( mac2, basename2, "vel"  , t, appendNumber, buildInfo )
+		tryToLoad( mac1, basename1, nameVec3  , t, appendNumber, buildInfo )
+		tryToLoad( mac2, basename2, nameVec3  , t, appendNumber, buildInfo )
 		macErr.setSub(mac1,mac2);
 		macErrMax = gridMaxDiffVec3(mac1, mac2)
 	

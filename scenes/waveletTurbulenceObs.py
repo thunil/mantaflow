@@ -149,7 +149,7 @@ for t in range(200):
 	
 	solvePressure(flags=flags, vel=vel, pressure=pressure , openBound='Y', \
 		cgMaxIterFac=1.0, cgAccuracy=0.01 )
-   	setWallBcs(flags=flags, vel=vel)
+	setWallBcs(flags=flags, vel=vel)
 	
 	# determine weighting
 	computeEnergy(flags=flags, vel=vel, energy=energy)

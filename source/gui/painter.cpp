@@ -19,66 +19,66 @@
 using namespace std;
 
 namespace Manta {
-    
+	
 //******************************************************************************
 // Base class
-    
+	
 void LockedObjPainter::doEvent(int e, int param) {
-    // try to obtain valid handle
-     if (!mObject)
-         nextObject();
-        
-    // filter update events
-    if (e == UpdateFull) {
-        // always update
-        if (mObject) {
-            mObject->lock();
-            update();
-            mObject->unlock();
-            mRequestUpdate = false;
-        }
-    } else if (e == UpdateRequest) {
-        // update if resource is available, otherwise wait until next step
-        mRequestUpdate = true;        
-        if (mObject) {
-            if (mObject->tryLock()) {
-                update();
-                mRequestUpdate = false;
-                mObject->unlock();
-            }
-        }
-    } else if (e == UpdateStep) {
-        // update if requested only
-        if (mRequestUpdate) {
-            if (mObject) {
-                mObject->lock();
-                update();
-                mObject->unlock();
-                mRequestUpdate = false;
-            }
-        }
-    } else {    
-        // pass on all other events
-        processKeyEvent((PainterEvent)e, param);
-    }
+	// try to obtain valid handle
+	 if (!mObject)
+		 nextObject();
+		
+	// filter update events
+	if (e == UpdateFull) {
+		// always update
+		if (mObject) {
+			mObject->lock();
+			update();
+			mObject->unlock();
+			mRequestUpdate = false;
+		}
+	} else if (e == UpdateRequest) {
+		// update if resource is available, otherwise wait until next step
+		mRequestUpdate = true;        
+		if (mObject) {
+			if (mObject->tryLock()) {
+				update();
+				mRequestUpdate = false;
+				mObject->unlock();
+			}
+		}
+	} else if (e == UpdateStep) {
+		// update if requested only
+		if (mRequestUpdate) {
+			if (mObject) {
+				mObject->lock();
+				update();
+				mObject->unlock();
+				mRequestUpdate = false;
+			}
+		}
+	} else {    
+		// pass on all other events
+		processKeyEvent((PainterEvent)e, param);
+	}
 }
 
 void LockedObjPainter::nextObject() {
-    if (PbClass::getNumInstances() == 0) return;
-    
-    int oldIndex = mObjIndex;
-    for(;;) {
-        mObjIndex = (mObjIndex + 1) % PbClass::getNumInstances();
-        if (oldIndex == mObjIndex) break;
-        
-        PbClass* obj = PbClass::getInstance(mObjIndex);
-        if (obj->canConvertTo(getID()) && !obj->isHidden()) {
-            mObject = obj;
-            doEvent(UpdateRequest);
-            return;
-        }
-        if (oldIndex < 0) oldIndex = 0; // prevent endless loop on first run
-    } 
+	if (PbClass::getNumInstances() == 0) return;
+	
+	int oldIndex = mObjIndex;
+	for(;;) {
+		mObjIndex = (mObjIndex + 1) % PbClass::getNumInstances();
+		if (oldIndex == mObjIndex) break;
+		
+		PbClass* obj = PbClass::getInstance(mObjIndex);
+		if (obj->canConvertTo(getID()) && !obj->isHidden()) {
+			mObject = obj;
+			doEvent(UpdateRequest);
+			return;
+		}
+		if (oldIndex < 0) oldIndex = 0; // prevent endless loop on first run
+	} 
 }
 
 //******************************************************************************
@@ -86,53 +86,53 @@ void LockedObjPainter::nextObject() {
 
 template<class T>
 GridPainter<T>::GridPainter(FlagGrid** flags, QWidget* par) 
-    : LockedObjPainter(par), mMaxVal(0), mDim(0), mPlane(0), mMax(0), mLocalGrid(NULL), 
+	: LockedObjPainter(par), mMaxVal(0), mDim(0), mPlane(0), mMax(0), mLocalGrid(NULL), 
 	  mFlags(flags), mInfo(NULL), mHide(false), mHideLocal(false), mVelMode(VelDispCentered), mValScale()
 {
-    mDim = 2; // Z plane
-    mPlane = 0;
-    mInfo = new QLabel();
-    
+	mDim = 2; // Z plane
+	mPlane = 0;
+	mInfo = new QLabel();
+	
 }
 
 template<class T>
 GridPainter<T>::~GridPainter() {
-    if (mLocalGrid)
-        delete mLocalGrid;
+	if (mLocalGrid)
+		delete mLocalGrid;
 }
 
 template<class T>
 void GridPainter<T>::attachWidget(QLayout* layout) {
-    layout->addWidget(mInfo);
+	layout->addWidget(mInfo);
 }
 
 template<class T>
 void GridPainter<T>::update() {
-    Grid<T>* src = (Grid<T>*) mObject;
-    
-    if (!mLocalGrid) {
-        mLocalGrid = new Grid<T>(src->getParent());
-        // int grid is base for resolution
-        if (src->getType() & GridBase::TypeInt)
-            emit setViewport(src->getSize());
-    }
-    // reallocate if dimensions changed
-    if (mLocalGrid->getSize() != src->getSize()) {
-        delete mLocalGrid;
-        mLocalGrid = new Grid<T>(src->getParent());
-        // int grid is base for resolution
-        if (src->getType() & GridBase::TypeInt)
-            emit setViewport(src->getSize());
-    }
-    
-    *mLocalGrid = *src; // copy grid data and type marker
-    mLocalGrid->setName(src->getName());
-    mLocalGrid->setParent(src->getParent());    
-    mMaxVal = mLocalGrid->getMaxAbsValue();
-    
-    mPlane = clamp(mPlane, 0, mLocalGrid->getSize()[mDim]-1);
-    
-    updateText();    
+	Grid<T>* src = (Grid<T>*) mObject;
+	
+	if (!mLocalGrid) {
+		mLocalGrid = new Grid<T>(src->getParent());
+		// int grid is base for resolution
+		if (src->getType() & GridBase::TypeInt)
+			emit setViewport(src->getSize());
+	}
+	// reallocate if dimensions changed
+	if (mLocalGrid->getSize() != src->getSize()) {
+		delete mLocalGrid;
+		mLocalGrid = new Grid<T>(src->getParent());
+		// int grid is base for resolution
+		if (src->getType() & GridBase::TypeInt)
+			emit setViewport(src->getSize());
+	}
+	
+	*mLocalGrid = *src; // copy grid data and type marker
+	mLocalGrid->setName(src->getName());
+	mLocalGrid->setParent(src->getParent());    
+	mMaxVal = mLocalGrid->getMaxAbsValue();
+	
+	mPlane = clamp(mPlane, 0, mLocalGrid->getSize()[mDim]-1);
+	
+	updateText();    
 }
 
 template<> string GridPainter<int>::getID() { return "Grid<int>"; }
@@ -142,42 +142,42 @@ template<> string GridPainter<Real>::getID() { return "Grid<Real>"; }
 template<class T>
 void GridPainter<T>::processKeyEvent(PainterEvent e, int param)
 {
-    if (e == EventSetDim) {
-        mDim = param;
-        if (mLocalGrid->is2D()) mDim = 2;
-    } else if (e == EventSetMax) {
-        mMax = param;
-    } else if (e == EventSetPlane) {
-        mPlane = param;
-        if (mObject) {
-            if (mMax>0)
-                mPlane = mPlane * mLocalGrid->getSize()[mDim] / mMax;
-            mPlane = clamp(mPlane, 0, mLocalGrid->getSize()[mDim]-1);
-        }
-    } else if (e == EventToggleGridDisplay)
-        mHide = !mHide;
-    else
-        processSpecificKeyEvent(e, param);
-    
-    updateText();
+	if (e == EventSetDim) {
+		mDim = param;
+		if (mLocalGrid->is2D()) mDim = 2;
+	} else if (e == EventSetMax) {
+		mMax = param;
+	} else if (e == EventSetPlane) {
+		mPlane = param;
+		if (mObject) {
+			if (mMax>0)
+				mPlane = mPlane * mLocalGrid->getSize()[mDim] / mMax;
+			mPlane = clamp(mPlane, 0, mLocalGrid->getSize()[mDim]-1);
+		}
+	} else if (e == EventToggleGridDisplay)
+		mHide = !mHide;
+	else
+		processSpecificKeyEvent(e, param);
+	
+	updateText();
 }
 
 // get scale value for current grid from map, or create new
 template<class T>
 Real GridPainter<T>::getScale() {
-    if (!mObject) return 0;
-    
-    if (mValScale.find(mObject) == mValScale.end()) {
-        // init new scale value
-        Real s = 1.0;
-        if (mLocalGrid->getType() & GridBase::TypeVec3)
-            s = 0.4;
-        else if (mLocalGrid->getType() & GridBase::TypeLevelset)
-            s = 1.0; 
-        mValScale[mObject] = s;
-    }
-    return mValScale[mObject];
-    
+	if (!mObject) return 0;
+	
+	if (mValScale.find(mObject) == mValScale.end()) {
+		// init new scale value
+		Real s = 1.0;
+		if (mLocalGrid->getType() & GridBase::TypeVec3)
+			s = 0.4;
+		else if (mLocalGrid->getType() & GridBase::TypeLevelset)
+			s = 1.0; 
+		mValScale[mObject] = s;
+	}
+	return mValScale[mObject];
+	
 }
 
 //******************************************************************************
@@ -185,109 +185,109 @@ Real GridPainter<T>::getScale() {
 
 template<>
 void GridPainter<int>::processSpecificKeyEvent(PainterEvent e, int param) {
-    if (e == EventNextInt)
-        nextObject();
+	if (e == EventNextInt)
+		nextObject();
 }
 
 template<>
 void GridPainter<Real>::processSpecificKeyEvent(PainterEvent e, int param) {
-    if (e == EventNextReal)
-        nextObject();
-    else if (e == EventScaleRealDown && mObject)
-        mValScale[mObject] = getScale() * 0.5;
-    else if (e == EventScaleRealUp && mObject)
-        mValScale[mObject] = getScale() * 2.0;
+	if (e == EventNextReal)
+		nextObject();
+	else if (e == EventScaleRealDown && mObject)
+		mValScale[mObject] = getScale() * 0.5;
+	else if (e == EventScaleRealUp && mObject)
+		mValScale[mObject] = getScale() * 2.0;
 }
 
 template<>
 void GridPainter<Vec3>::processSpecificKeyEvent(PainterEvent e, int param) {
-    if (e == EventNextVec)
-        nextObject();
-    else if (e == EventScaleVecDown && mObject)
-        mValScale[mObject] = getScale() * 0.5;
-    else if (e == EventScaleVecUp && mObject)
-        mValScale[mObject] = getScale() * 2.0;
-    else if (e == EventNextVelDisplayMode) {
-        mVelMode = (mVelMode+1)%NumVelDispModes;
+	if (e == EventNextVec)
+		nextObject();
+	else if (e == EventScaleVecDown && mObject)
+		mValScale[mObject] = getScale() * 0.5;
+	else if (e == EventScaleVecUp && mObject)
+		mValScale[mObject] = getScale() * 2.0;
+	else if (e == EventNextVelDisplayMode) {
+		mVelMode = (mVelMode+1)%NumVelDispModes;
 		mHideLocal = (mVelMode==VelDispOff);
 
 	}
 }
 
 template<> void GridPainter<int>::updateText() {
-    stringstream s;
-    if (mObject && (!mHide)) {
+	stringstream s;
+	if (mObject && (!mHide)) {
 		s << "Int Grid '" << mLocalGrid->getName() << "'" << endl;
-    }    
-    mInfo->setText(s.str().c_str());    
+	}    
+	mInfo->setText(s.str().c_str());    
 }
 
 template<> void GridPainter<Real>::updateText() {
-    stringstream s;
+	stringstream s;
 	
-    s << "Display Plane " << mPlane << " [" << (char)('X' + mDim) << "]" << endl << endl;
-    if (mObject) {
-        s << "Solver '" << mLocalGrid->getParent()->getName() << "'" << endl;
-        s << "Grid resolution [" << mLocalGrid->getSizeX() << ", " << mLocalGrid->getSizeY() << ", " << mLocalGrid->getSizeZ() << "]" << endl;
-        s << endl;
-    }    
+	s << "Display Plane " << mPlane << " [" << (char)('X' + mDim) << "]" << endl << endl;
+	if (mObject) {
+		s << "Solver '" << mLocalGrid->getParent()->getName() << "'" << endl;
+		s << "Grid resolution [" << mLocalGrid->getSizeX() << ", " << mLocalGrid->getSizeY() << ", " << mLocalGrid->getSizeZ() << "]" << endl;
+		s << endl;
+	}    
 
-    if (mObject && !mHide) {
-        s << "Real Grid '" << mLocalGrid->getName() << "'" << endl;
-        s << "-> Max " << fixed << setprecision(2) << mMaxVal << "  Scale " << getScale() << endl;
-    }
-    mInfo->setText(s.str().c_str());    
+	if (mObject && !mHide) {
+		s << "Real Grid '" << mLocalGrid->getName() << "'" << endl;
+		s << "-> Max " << fixed << setprecision(2) << mMaxVal << "  Scale " << getScale() << endl;
+	}
+	mInfo->setText(s.str().c_str());    
 }
 
 template<> void GridPainter<Vec3>::updateText() {
-    stringstream s;
-    if (mObject && !mHide && !mHideLocal) {
-        s << "Vec Grid '" << mLocalGrid->getName() << "'" << endl;
-        s << "-> Max norm " << fixed << setprecision(2) << mMaxVal << "  Scale " << getScale() << endl;
-    }
-    mInfo->setText(s.str().c_str());
+	stringstream s;
+	if (mObject && !mHide && !mHideLocal) {
+		s << "Vec Grid '" << mLocalGrid->getName() << "'" << endl;
+		s << "-> Max norm " << fixed << setprecision(2) << mMaxVal << "  Scale " << getScale() << endl;
+	}
+	mInfo->setText(s.str().c_str());
 }
 
 // compute line intersection with the display plane
 Vec3i getQuad(const Vec3& l0, const Vec3& l1, int dim, int plane, Real dx) {
-    Vec3 n(0.); n[dim] = 1;
-    Vec3 p0 = n*(plane+0.5);
-    Vec3 e = (l1-l0)/dx;
-    Vec3 e0 = l0/dx;
-    Real dotP = dot(p0-e0,n);
-    Real dotE = dot(e,n);
-    if (dotE == 0) 
-        return Vec3i(-1,-1,-1);
-    Vec3 s = e0 + (dotP/dotE)*e;
-    return toVec3i(s);
+	Vec3 n(0.); n[dim] = 1;
+	Vec3 p0 = n*(plane+0.5);
+	Vec3 e = (l1-l0)/dx;
+	Vec3 e0 = l0/dx;
+	Real dotP = dot(p0-e0,n);
+	Real dotE = dot(e,n);
+	if (dotE == 0) 
+		return Vec3i(-1,-1,-1);
+	Vec3 s = e0 + (dotP/dotE)*e;
+	return toVec3i(s);
 }
 
 template<> string GridPainter<int>::clickLine(const Vec3& p0, const Vec3& p1) { 
-    if (!mObject) return "";
-    Vec3i s = getQuad(p0,p1,mDim,mPlane,mLocalGrid->getDx());
-    if (!mLocalGrid->isInBounds(s)) return "";
-    stringstream m;
-    m << "Grid [ " << s.x << ", " << s.y << ", " << s.z << " ]" << endl << mLocalGrid->getName() << ": " << mLocalGrid->get(s) << endl;
-    return m.str();
+	if (!mObject) return "";
+	Vec3i s = getQuad(p0,p1,mDim,mPlane,mLocalGrid->getDx());
+	if (!mLocalGrid->isInBounds(s)) return "";
+	stringstream m;
+	m << "Grid [ " << s.x << ", " << s.y << ", " << s.z << " ]" << endl << mLocalGrid->getName() << ": " << mLocalGrid->get(s) << endl;
+	return m.str();
 }
 
 template<> string GridPainter<Real>::clickLine(const Vec3& p0, const Vec3& p1) { 
-    if (!mObject) return "";
-    Vec3i s = getQuad(p0,p1,mDim,mPlane,mLocalGrid->getDx());
-    if (!mLocalGrid->isInBounds(s)) return "";
-    stringstream m;
-    m << mLocalGrid->getName() << ": " << setprecision(2) << mLocalGrid->get(s) << endl;
-    return m.str();
+	if (!mObject) return "";
+	Vec3i s = getQuad(p0,p1,mDim,mPlane,mLocalGrid->getDx());
+	if (!mLocalGrid->isInBounds(s)) return "";
+	stringstream m;
+	m << mLocalGrid->getName() << ": " << setprecision(2) << mLocalGrid->get(s) << endl;
+	return m.str();
 }
 
 template<> string GridPainter<Vec3>::clickLine(const Vec3& p0, const Vec3& p1) {
-    if (!mObject) return "";
-    Vec3i s = getQuad(p0,p1,mDim,mPlane,mLocalGrid->getDx());
-    if (!mLocalGrid->isInBounds(s)) return "";
-    stringstream m;
-    m << mLocalGrid->getName() << ": [ " << setprecision(2) << mLocalGrid->get(s).x << ", " <<
-                                         mLocalGrid->get(s).y << ", " << mLocalGrid->get(s).z << " ]" << endl;
-    return m.str();
+	if (!mObject) return "";
+	Vec3i s = getQuad(p0,p1,mDim,mPlane,mLocalGrid->getDx());
+	if (!mLocalGrid->isInBounds(s)) return "";
+	stringstream m;
+	m << mLocalGrid->getName() << ": [ " << setprecision(2) << mLocalGrid->get(s).x << ", " <<
+										 mLocalGrid->get(s).y << ", " << mLocalGrid->get(s).z << " ]" << endl;
+	return m.str();
 }
 
 
@@ -298,98 +298,98 @@ template<> string GridPainter<Vec3>::clickLine(const Vec3& p0, const Vec3& p1) {
 
 // Macro to iterate through one plane
 #define FOR_P_SLICE(__g,__dim,__plane) \
-    for(Vec3i __g0(__fRange(Vec3i(0,0,0),__dim,__plane)), __g1(__fRange((__g)->getSize(),__dim,__plane+1)), p(__g0); p.z<__g1.z; p.z++) \
-        for(p.y=__g0.y; p.y < __g1.y; p.y++) \
-            for(p.x=__g0.x; p.x < __g1.x; p.x++)
+	for(Vec3i __g0(__fRange(Vec3i(0,0,0),__dim,__plane)), __g1(__fRange((__g)->getSize(),__dim,__plane+1)), p(__g0); p.z<__g1.z; p.z++) \
+		for(p.y=__g0.y; p.y < __g1.y; p.y++) \
+			for(p.x=__g0.x; p.x < __g1.x; p.x++)
 inline Vec3i __fRange(Vec3i size, int dim, int plane) { Vec3i p(size); p[dim]=plane; return p; }
-              
+			  
 // coordinate system :
 // cell center(i,j,k) -> (i+0.5,j+0.5,k+0.5) / N
 // 
 
 void getCellCoordinates(const Vec3i& pos, Vec3 box[4], int dim) {
-    int dim2=(dim+1)%3;
-    Vec3 p0(pos.x, pos.y, pos.z);
-    Vec3 p1(pos.x+1, pos.y+1, pos.z+1);
-    p1[dim] = p0[dim] = pos[dim] + 0.5;
-    box[0] = p0;
-    box[3] = p0; box[3][dim2] = p1[dim2];
-    box[1] = p1; box[1][dim2] = p0[dim2];
-    box[2] = p1;
+	int dim2=(dim+1)%3;
+	Vec3 p0(pos.x, pos.y, pos.z);
+	Vec3 p1(pos.x+1, pos.y+1, pos.z+1);
+	p1[dim] = p0[dim] = pos[dim] + 0.5;
+	box[0] = p0;
+	box[3] = p0; box[3][dim2] = p1[dim2];
+	box[1] = p1; box[1][dim2] = p0[dim2];
+	box[2] = p1;
 }
 static inline void glVertex(const Vec3& v, const float dx) {
-    glVertex3f(v.x * dx, v.y * dx, v.z * dx);
+	glVertex3f(v.x * dx, v.y * dx, v.z * dx);
 }
 void glBox(const Vec3& p0, const Vec3& p1, const float dx) {
-    const int box[24] = {0,1,0,2,0,4,7,6,7,5,7,3,1,3,1,5,2,3,2,6,4,5,4,6};
-    for (int i=0;i<24;i++) {
-        const int b = box[i];
-        glVertex(Vec3( (b&1) ? p1.x : p0.x, (b&2) ? p1.y : p0.y, (b&4) ? p1.z : p0.z), dx);
-    }
+	const int box[24] = {0,1,0,2,0,4,7,6,7,5,7,3,1,3,1,5,2,3,2,6,4,5,4,6};
+	for (int i=0;i<24;i++) {
+		const int b = box[i];
+		glVertex(Vec3( (b&1) ? p1.x : p0.x, (b&2) ? p1.y : p0.y, (b&4) ? p1.z : p0.z), dx);
+	}
 }
 
 // Paint gridlines
 template<> void GridPainter<int>::paint() {
-     if (!mObject || mHide || mPlane <0 || mPlane >= mLocalGrid->getSize()[mDim])
-        return;
-    float dx = mLocalGrid->getDx();
-    Vec3 box[4];
-    glColor3f(0.5,0,0);
-    
-    bool rbox = true;
-    bool skipFluid = mLocalGrid->getSize().max() > 40; 
-    bool drawLines = mLocalGrid->getSize().max() <= 80; 
-    if (drawLines) {
-        //glDepthFunc(GL_LESS);
-        glBegin(GL_LINES);
-        FOR_P_SLICE(mLocalGrid, mDim, mPlane) {
+	 if (!mObject || mHide || mPlane <0 || mPlane >= mLocalGrid->getSize()[mDim])
+		return;
+	float dx = mLocalGrid->getDx();
+	Vec3 box[4];
+	glColor3f(0.5,0,0);
+	
+	bool rbox = true;
+	bool skipFluid = mLocalGrid->getSize().max() > 40; 
+	bool drawLines = mLocalGrid->getSize().max() <= 80; 
+	if (drawLines) {
+		//glDepthFunc(GL_LESS);
+		glBegin(GL_LINES);
+		FOR_P_SLICE(mLocalGrid, mDim, mPlane) {
 
 			int flag = 0;
 			flag = mLocalGrid->get(p);
 
 			if (flag & FlagGrid::TypeObstacle) {
-    			glColor3f(0.2,0.2,0.2);
+				glColor3f(0.2,0.2,0.2);
 			} else if (flag & FlagGrid::TypeOutflow) {
-    			glColor3f(0.9,0.2,0);
+				glColor3f(0.9,0.2,0);
 			} else if (flag & FlagGrid::TypeEmpty) {
-    			glColor3f(0.25,0,0);
+				glColor3f(0.25,0,0);
 			} else if (flag & FlagGrid::TypeFluid) {
 				if(skipFluid) continue;
-    			glColor3f(0,0,0.75);
+				glColor3f(0,0,0.75);
 			} else {
-    			glColor3f(0.5,0,0); // unknown
+				glColor3f(0.5,0,0); // unknown
 			}
 
-            getCellCoordinates(p, box, mDim); 
-            for (int n=1;n<=8;n++)
-                glVertex(box[(n/2)%4], dx);
-        }
-        glEnd();
-        //glDepthFunc(GL_ALWAYS);        
-    }
-    
-    if (rbox) {
-        Vec3 p0(0.0), p1(toVec3(mLocalGrid->getSize())),p(p0);
-        glDepthFunc(GL_LESS);
-        glBegin(GL_LINES);
-        glBox(p0,p1,dx);
-        glEnd();
-        glDepthFunc(GL_ALWAYS);        
-    }
+			getCellCoordinates(p, box, mDim); 
+			for (int n=1;n<=8;n++)
+				glVertex(box[(n/2)%4], dx);
+		}
+		glEnd();
+		//glDepthFunc(GL_ALWAYS);        
+	}
+	
+	if (rbox) {
+		Vec3 p0(0.0), p1(toVec3(mLocalGrid->getSize())),p(p0);
+		glDepthFunc(GL_LESS);
+		glBegin(GL_LINES);
+		glBox(p0,p1,dx);
+		glEnd();
+		glDepthFunc(GL_ALWAYS);        
+	}
 }
 
 // Paint box colors
 template<> void GridPainter<Real>::paint() {
-    if (!mObject || mHide || mHideLocal || mPlane <0 || mPlane >= mLocalGrid->getSize()[mDim] || !mFlags || !(*mFlags))
-        return;
-    
-    float dx = mLocalGrid->getDx();
-    Vec3 box[4];
-    glBegin(GL_QUADS);
-    Real scale = getScale();
-    bool isLevelset = mLocalGrid->getType() & GridBase::TypeLevelset;
-    //glPolygonOffset(1.0,1.0);
-    //glDepthFunc(GL_LESS);
+	if (!mObject || mHide || mHideLocal || mPlane <0 || mPlane >= mLocalGrid->getSize()[mDim] || !mFlags || !(*mFlags))
+		return;
+	
+	float dx = mLocalGrid->getDx();
+	Vec3 box[4];
+	glBegin(GL_QUADS);
+	Real scale = getScale();
+	bool isLevelset = mLocalGrid->getType() & GridBase::TypeLevelset;
+	//glPolygonOffset(1.0,1.0);
+	//glDepthFunc(GL_LESS);
 
 	const bool useOldDrawStyle = false;
 	if(useOldDrawStyle) {
@@ -457,18 +457,18 @@ template<> void GridPainter<Real>::paint() {
 	}
 
 	glEnd();    
-    //glDepthFunc(GL_ALWAYS);    
-    //glPolygonOffset(0,0);    
+	//glDepthFunc(GL_ALWAYS);    
+	//glPolygonOffset(0,0);    
 }
 
 // Paint velocity vectors
 template<> void GridPainter<Vec3>::paint() {
-    if (!mObject || mHide || mHideLocal || mPlane <0 || mPlane >= mLocalGrid->getSize()[mDim])
-        return;
-    
-    float dx = mLocalGrid->getDx();
-    bool mac = mLocalGrid->getType() & GridBase::TypeMAC;
-    const Real scale = getScale();
+	if (!mObject || mHide || mHideLocal || mPlane <0 || mPlane >= mLocalGrid->getSize()[mDim])
+		return;
+	
+	float dx = mLocalGrid->getDx();
+	bool mac = mLocalGrid->getType() & GridBase::TypeMAC;
+	const Real scale = getScale();
 
 	if( (mVelMode==VelDispCentered) || (mVelMode==VelDispStaggered) ) {
 
@@ -508,7 +508,7 @@ template<> void GridPainter<Vec3>::paint() {
 			}
 		}
 		glEnd();    
-    
+	
 	} else if (mVelMode==VelDispUv) {
 		// draw as uv coordinates , note - this will completely hide the real grid display!
 		Vec3 box[4];
@@ -535,5 +535,5 @@ template<> void GridPainter<Vec3>::paint() {
 template class GridPainter<int>;
 template class GridPainter<Real>;
 template class GridPainter<Vec3>;
-    
+	
 } // namespace

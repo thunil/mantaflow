@@ -19,57 +19,57 @@
 #include <QMutex>
 #include <QWaitCondition>
 #include "mainwindow.h"
-#include "pclass.h"
+#include "manta.h"
 
 namespace Manta {    
 
 //! encapsulates GUI thread
 class GuiThread : public QObject {
-    Q_OBJECT        
+	Q_OBJECT        
 public:
-    
-    GuiThread(QApplication& app);
-    
-    //! obtain window handle
-    inline MainWnd* getWindow() { return &mWnd; }
-    
+	
+	GuiThread(QApplication& app);
+	
+	//! obtain window handle
+	inline MainWnd* getWindow() { return &mWnd; }
+	
 public slots:
-    void sendEvent(int e);
-    void exitApp();
-    
+	void sendEvent(int e);
+	void exitApp();
+	
 protected:
-    QApplication& mApp;
-    MainWnd mWnd;
+	QApplication& mApp;
+	MainWnd mWnd;
 };
 
 //! encapsulates working/python thread
 class MainThread : public QThread {
-    Q_OBJECT        
+	Q_OBJECT        
 public:
-    MainThread(std::vector<std::string>& args);
-    
-    //! send event to GUI and wait for completion
-    void sendAndWait(int e);
-    void send(int e);
-    
-    //! sleep for given number of milliseconds
-    inline void threadSleep(int msec) { msleep(msec); }
-    inline bool isFinished() { return mFinished; }
-    inline void setFinished() { mFinished = true; }
-    
+	MainThread(std::vector<std::string>& args);
+	
+	//! send event to GUI and wait for completion
+	void sendAndWait(int e);
+	void send(int e);
+	
+	//! sleep for given number of milliseconds
+	inline void threadSleep(int msec) { msleep(msec); }
+	inline bool isFinished() { return mFinished; }
+	inline void setFinished() { mFinished = true; }
+	
 public slots:
-    void wakeUp();
-    void killMe();
-    
+	void wakeUp();
+	void killMe();
+	
 signals:
-    void sendToGui(int event);
-    
+	void sendToGui(int event);
+	
 protected:
-    QMutex mMutex;
-    QWaitCondition mWait;
-    bool mFinished;
-    std::vector<std::string> mArgs;
-    void run();    
+	QMutex mMutex;
+	QWaitCondition mWait;
+	bool mFinished;
+	std::vector<std::string> mArgs;
+	void run();    
 };
   
 } // namespace

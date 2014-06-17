@@ -69,13 +69,13 @@ void ParticleBase::deregister(ParticleDataBase* pdata) {
 		errMsg("Invalid pointer given, not registered!");
 }
 
-PbClass* ParticleBase::create(PbType t, const string& name) {        
-    _args.add("nocheck",true);
-    if (t.str == "")
-        errMsg("Specify particle data type to create");
+PbClass* ParticleBase::create(PbType t, PbTypeVec T, const string& name) {        
+	_args.add("nocheck",true);
+	if (t.str() == "")
+		errMsg("Specify particle data type to create");
 	//debMsg( "Pdata creating '"<< t.str , 5 );
-    
-    PbClass* pyObj = PbClass::createPyObject(t.str, name, _args, this->getParent() );
+	
+	PbClass* pyObj = PbClass::createPyObject(t.str() + T.str(), name, _args, this->getParent() );
 
 	ParticleDataBase* pdata = dynamic_cast<ParticleDataBase*>(pyObj);
 	if(!pdata) {
@@ -132,16 +132,16 @@ std::string ParticleBase::debugInfoPdata()
 
  
 BasicParticleSystem::BasicParticleSystem(FluidSolver* parent)
-       : ParticleSystem<BasicParticleData>(parent) {
-    this->mAllowCompress = false;
+	   : ParticleSystem<BasicParticleData>(parent) {
+	this->mAllowCompress = false;
 }
 
 // file io
 
 void BasicParticleSystem::writeParticlesText(string name) {
-    ofstream ofs(name.c_str());
-    if (!ofs.good())
-        errMsg("can't open file!");
+	ofstream ofs(name.c_str());
+	if (!ofs.good())
+		errMsg("can't open file!");
 	ofs << this->size()<<", pdata: "<< mPartData.size()<<" ("<<mPdataInt.size()<<","<<mPdataReal.size()<<","<<mPdataVec3.size()<<") \n";
 	for(int i=0; i<this->size(); ++i) {
 		ofs << i<<": "<< this->getPos(i) <<" , "<< this->getStatus(i) <<". "; 
@@ -150,65 +150,65 @@ void BasicParticleSystem::writeParticlesText(string name) {
 		for(int pd=0; pd<(int)mPdataVec3.size(); ++pd) ofs << mPdataVec3[pd]->get(i)<<" ";
 		ofs << "\n"; 
 	}
-    ofs.close();
+	ofs.close();
 }
 
 void BasicParticleSystem::writeParticlesRawPositionsGz(string name) {
 #	if NO_ZLIB!=1
-    gzFile gzf = gzopen(name.c_str(), "wb1");
-    if (!gzf) errMsg("can't open file "<<name);
+	gzFile gzf = gzopen(name.c_str(), "wb1");
+	if (!gzf) errMsg("can't open file "<<name);
 	for(int i=0; i<this->size(); ++i) {
 		Vector3D<float> p = toVec3f( this->getPos(i) );
-	    gzwrite(gzf, &p, sizeof(float)*3);
+		gzwrite(gzf, &p, sizeof(float)*3);
 	}
-    gzclose(gzf);
+	gzclose(gzf);
 #	else
-    cout << "file format not supported without zlib" << endl;
+	cout << "file format not supported without zlib" << endl;
 #	endif
 }
 
 void BasicParticleSystem::writeParticlesRawVelocityGz(string name) {
 #	if NO_ZLIB!=1
-    gzFile gzf = gzopen(name.c_str(), "wb1");
-    if (!gzf) errMsg("can't open file "<<name);
+	gzFile gzf = gzopen(name.c_str(), "wb1");
+	if (!gzf) errMsg("can't open file "<<name);
 	if( mPdataVec3.size() < 1 ) errMsg("no vec3 particle data channel found!");
 	// note , assuming particle data vec3 0 is velocity! make optional...
 	for(int i=0; i<this->size(); ++i) {		
 		Vector3D<float> p = toVec3f( mPdataVec3[0]->get(i) );
-	    gzwrite(gzf, &p, sizeof(float)*3);
+		gzwrite(gzf, &p, sizeof(float)*3);
 	}
-    gzclose(gzf);
+	gzclose(gzf);
 #	else
-    cout << "file format not supported without zlib" << endl;
+	cout << "file format not supported without zlib" << endl;
 #	endif
 }
 
 
 void BasicParticleSystem::load(string name ) {
-    if (name.find_last_of('.') == string::npos)
-        errMsg("file '" + name + "' does not have an extension");
-    string ext = name.substr(name.find_last_of('.'));
-    if ( ext == ".uni") 
-        readParticlesUni<BasicParticleData>(name, this );
+	if (name.find_last_of('.') == string::npos)
+		errMsg("file '" + name + "' does not have an extension");
+	string ext = name.substr(name.find_last_of('.'));
+	if ( ext == ".uni") 
+		readParticlesUni<BasicParticleData>(name, this );
 	else 
-        errMsg("particle '" + name +"' filetype not supported for loading");
+		errMsg("particle '" + name +"' filetype not supported for loading");
 }
 
 void BasicParticleSystem::save(string name) {
-    if (name.find_last_of('.') == string::npos)
-        errMsg("file '" + name + "' does not have an extension");
-    string ext = name.substr(name.find_last_of('.'));
-    if (ext == ".txt") 
-        this->writeParticlesText(name);
+	if (name.find_last_of('.') == string::npos)
+		errMsg("file '" + name + "' does not have an extension");
+	string ext = name.substr(name.find_last_of('.'));
+	if (ext == ".txt") 
+		this->writeParticlesText(name);
 	else if (ext == ".uni") 
-        writeParticlesUni<BasicParticleData>(name, this);
+		writeParticlesUni<BasicParticleData>(name, this);
 	// raw data formats, very basic for simple data transfer to other programs
-    else if (ext == ".posgz") 
-        this->writeParticlesRawPositionsGz(name);
-    else if (ext == ".velgz") 
-        this->writeParticlesRawVelocityGz(name);
-    else
-        errMsg("particle '" + name +"' filetype not supported for saving");
+	else if (ext == ".posgz") 
+		this->writeParticlesRawPositionsGz(name);
+	else if (ext == ".velgz") 
+		this->writeParticlesRawVelocityGz(name);
+	else
+		errMsg("particle '" + name +"' filetype not supported for saving");
 }
 
 // particle data
@@ -265,7 +265,7 @@ void ParticleDataImpl<T>::copyValueSlow(int from, int to) {
 }
 template<class T>
 ParticleDataBase* ParticleDataImpl<T>::clone() {
-    ParticleDataImpl<T>* npd = new ParticleDataImpl<T>( getParent(), this );
+	ParticleDataImpl<T>* npd = new ParticleDataImpl<T>( getParent(), this );
 	return npd;
 }
 
@@ -299,24 +299,24 @@ void ParticleDataImpl<Vec3>::initNewValue(int idx, Vec3 pos) {
 
 template<typename T>
 void ParticleDataImpl<T>::load(string name) {
-    if (name.find_last_of('.') == string::npos)
-        errMsg("file '" + name + "' does not have an extension");
-    string ext = name.substr(name.find_last_of('.'));
-    if ( ext == ".uni") 
-        readPdataUni<T>(name, this);
+	if (name.find_last_of('.') == string::npos)
+		errMsg("file '" + name + "' does not have an extension");
+	string ext = name.substr(name.find_last_of('.'));
+	if ( ext == ".uni") 
+		readPdataUni<T>(name, this);
 	else 
-        errMsg("particle data '" + name +"' filetype not supported for loading");
+		errMsg("particle data '" + name +"' filetype not supported for loading");
 }
 
 template<typename T>
 void ParticleDataImpl<T>::save(string name) {
-    if (name.find_last_of('.') == string::npos)
-        errMsg("file '" + name + "' does not have an extension");
-    string ext = name.substr(name.find_last_of('.'));
+	if (name.find_last_of('.') == string::npos)
+		errMsg("file '" + name + "' does not have an extension");
+	string ext = name.substr(name.find_last_of('.'));
 	if (ext == ".uni") 
-        writePdataUni<T>(name, this);
-    else
-        errMsg("particle data '" + name +"' filetype not supported for saving");
+		writePdataUni<T>(name, this);
+	else
+		errMsg("particle data '" + name +"' filetype not supported for saving");
 }
 
 // specializations
@@ -346,7 +346,7 @@ template class ParticleDataImpl<Vec3>;
 
 KERNEL(pts) template<class T>
 void knSetPdataConst(ParticleDataImpl<T>& pdata, T value) {
-	pdata[i] = value;
+	pdata[idx] = value;
 }
 PYTHON void setConstPdata    (ParticleDataImpl<Real>& pd, Real value=0.) { knSetPdataConst<Real>(pd,value); }
 PYTHON void setConstPdataVec3(ParticleDataImpl<Vec3>& pd, Vec3 value=0.) { knSetPdataConst<Vec3>(pd,value); }

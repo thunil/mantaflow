@@ -34,7 +34,7 @@ flags.fillGrid()
 uv = []
 for i in range(uvs):
 	uv.append(i)
-	uv[i] = sm.create(VecGrid) # empty name, bad... NT_DEBUG todo, fix...
+	uv[i] = sm.create(VecGrid) # empty name, bad... 
 	resetUvGrid( uv[i] )
 
 vel       = sm.create(MACGrid) 

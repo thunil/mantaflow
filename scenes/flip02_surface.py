@@ -92,7 +92,7 @@ for t in range(250):
 	# create approximate surface level set, resample particles
 	gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
 	unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
-    #phi.reinitMarching(flags=flags, velTransport=vel, correctOuterLayer=False ) # optionally, beautify levelset
+	#phi.reinitMarching(flags=flags, velTransport=vel, correctOuterLayer=False ) # optionally, beautify levelset
 
 	# set source grids for resampling, used in adjustNumber!
 	pVel.setSource( vel, isMAC=True )

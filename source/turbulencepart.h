@@ -19,32 +19,32 @@
 
 namespace Manta {
 class Shape;
-    
+	
 
-    
+	
 struct TurbulenceParticleData {
-    TurbulenceParticleData() : pos(_0),tex0(_0),tex1(_0),flag(0),color(1.) {}
-    TurbulenceParticleData(const Vec3& p, const Vec3& color = Vec3(1.)) : pos(p),tex0(p),tex1(p),flag(0),color(color) {}
-    Vec3 pos, color;
-    Vec3 tex0, tex1;
-    int flag;
-    static ParticleBase::SystemType getType() { return ParticleBase::TURBULENCE; }
+	TurbulenceParticleData() : pos(_0),color(1.),tex0(_0),tex1(_0),flag(0) {}
+	TurbulenceParticleData(const Vec3& p, const Vec3& color = Vec3(1.)) : pos(p),color(color),tex0(p),tex1(p),flag(0) {}
+	Vec3 pos, color;
+	Vec3 tex0, tex1;
+	int flag;
+	static ParticleBase::SystemType getType() { return ParticleBase::TURBULENCE; }
 };
 
 //! Turbulence particles
 PYTHON class TurbulenceParticleSystem : public ParticleSystem<TurbulenceParticleData> {
 public:
-    PYTHON TurbulenceParticleSystem(FluidSolver* parent, WaveletNoiseField& noise);
+	PYTHON TurbulenceParticleSystem(FluidSolver* parent, WaveletNoiseField& noise);
   
-    PYTHON void resetTexCoords(int num, const Vec3& inflow);    
-    PYTHON void seed(Shape* source, int num);
-    PYTHON void synthesize(FlagGrid& flags, Grid<Real>& k, int octaves=2, Real switchLength=10.0, Real L0=0.1, Real scale=1.0, Vec3 inflowBias=_0);
-    PYTHON void deleteInObstacle(FlagGrid& flags);
-        
-    virtual ParticleBase* clone();
-    
+	PYTHON void resetTexCoords(int num, const Vec3& inflow);    
+	PYTHON void seed(Shape* source, int num);
+	PYTHON void synthesize(FlagGrid& flags, Grid<Real>& k, int octaves=2, Real switchLength=10.0, Real L0=0.1, Real scale=1.0, Vec3 inflowBias=_0);
+	PYTHON void deleteInObstacle(FlagGrid& flags);
+		
+	virtual ParticleBase* clone();
+	
 private:
-    WaveletNoiseField& noise;
+	WaveletNoiseField& noise;
 };
 
 } // namespace

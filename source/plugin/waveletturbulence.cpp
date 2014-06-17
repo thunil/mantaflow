@@ -35,7 +35,7 @@ void knApplySimpleNoiseVec(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseFiel
 PYTHON void applySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
 							Real scale=1.0 , Grid<Real>* weight=NULL )
 {
-    // note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
+	// note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
 	knApplySimpleNoiseVec(flags, target, noise, scale , weight );
 }
 
@@ -106,12 +106,12 @@ PYTHON void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseFiel
 		uvInterpol = (target.getSize() != uv->getSize());
 		sourceFactor = calcGridSizeFactor( uv->getSize(), target.getSize() );
 	} else if(weight) {
-	   	uvInterpol = (target.getSize() != weight->getSize());
+		uvInterpol = (target.getSize() != weight->getSize());
 		sourceFactor = calcGridSizeFactor( weight->getSize(), target.getSize() );
 	}
 	if(uv && weight) assertMsg( uv->getSize() == weight->getSize(), "UV and weight grid have to match!");
 
-    // note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
+	// note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
 	knApplyNoiseVec(flags, target, noise, scale, scaleSpatial, weight , uv,uvInterpol,sourceFactor );
 }
 
@@ -121,17 +121,17 @@ PYTHON void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseFiel
 KERNEL 
 void KnApplyComputeEnergy( FlagGrid& flags, MACGrid& vel, Grid<Real>& energy ) 
 {
-    Real e = 0.f;
-    if ( flags.isFluid(i,j,k) ) {
-        Vec3 v = vel.getCentered(i,j,k);
-        e = 0.5 * v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
-    }
-    energy(i,j,k) = e;
+	Real e = 0.f;
+	if ( flags.isFluid(i,j,k) ) {
+		Vec3 v = vel.getCentered(i,j,k);
+		e = 0.5 * v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+	}
+	energy(i,j,k) = e;
 }
 
 PYTHON void computeEnergy( FlagGrid& flags, MACGrid& vel, Grid<Real>& energy )
 {
-    KnApplyComputeEnergy( flags, vel, energy );
+	KnApplyComputeEnergy( flags, vel, energy );
 }
 
 
@@ -141,7 +141,7 @@ KERNEL
 void KnInterpolateGrid(Grid<Real>& target, Grid<Real>& source, const Vec3& sourceFactor)
 {
 	Vec3 pos = Vec3(i,j,k) * sourceFactor;
-    if(!source.is3D()) pos[2] = 0; // allow 2d -> 3d
+	if(!source.is3D()) pos[2] = 0; // allow 2d -> 3d
 	target(i,j,k) = source.getInterpolated(pos);
 }
 
@@ -183,43 +183,43 @@ PYTHON void interpolateMACGrid(MACGrid& target, MACGrid& source)
 
 PYTHON void computeWaveletCoeffs(Grid<Real>& input)
 {
-    Grid<Real> temp1(input.getParent()), temp2(input.getParent());
-    WaveletNoiseField::computeCoefficients(input, temp1, temp2);
+	Grid<Real> temp1(input.getParent()), temp2(input.getParent());
+	WaveletNoiseField::computeCoefficients(input, temp1, temp2);
 }
 
 // note - alomst the same as for vorticity confinement
 PYTHON void computeVorticity(MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* norm) {
-    Grid<Vec3> velCenter(parent);
-    GetCentered(velCenter, vel);
-    CurlOp(velCenter, vorticity);
-    if(norm) GridNorm( *norm, vorticity);
+	Grid<Vec3> velCenter(vel.getParent());
+	GetCentered(velCenter, vel);
+	CurlOp(velCenter, vorticity);
+	if(norm) GridNorm( *norm, vorticity);
 }
 
 // note - very similar to KnComputeProductionStrain, but for use as wavelet turb weighting
 KERNEL(bnd=1) 
 void KnComputeStrainRateMag(const MACGrid& vel, const Grid<Vec3>& velCenter, Grid<Real>& prod ) 
 {
-    // compute Sij = 1/2 * (dU_i/dx_j + dU_j/dx_i)
-    Vec3 diag = Vec3(vel(i+1,j,k).x, vel(i,j+1,k).y, 0. ) - vel(i,j,k);
-    if(vel.is3D()) diag[2] += vel(i,j,k+1).z;
-    else           diag[2]  = 0.;
+	// compute Sij = 1/2 * (dU_i/dx_j + dU_j/dx_i)
+	Vec3 diag = Vec3(vel(i+1,j,k).x, vel(i,j+1,k).y, 0. ) - vel(i,j,k);
+	if(vel.is3D()) diag[2] += vel(i,j,k+1).z;
+	else           diag[2]  = 0.;
 
-    Vec3 ux =         0.5*(velCenter(i+1,j,k)-velCenter(i-1,j,k));
-    Vec3 uy =         0.5*(velCenter(i,j+1,k)-velCenter(i,j-1,k));
-    Vec3 uz;
-    if(vel.is3D()) uz=0.5*(velCenter(i,j,k+1)-velCenter(i,j,k-1));
+	Vec3 ux =         0.5*(velCenter(i+1,j,k)-velCenter(i-1,j,k));
+	Vec3 uy =         0.5*(velCenter(i,j+1,k)-velCenter(i,j-1,k));
+	Vec3 uz;
+	if(vel.is3D()) uz=0.5*(velCenter(i,j,k+1)-velCenter(i,j,k-1));
 
-    Real S12 = 0.5*(ux.y+uy.x);
-    Real S13 = 0.5*(ux.z+uz.x);
-    Real S23 = 0.5*(uy.z+uz.y);
-    Real S2 = square(diag.x) + square(diag.y) + square(diag.z) +
-        2.0*square(S12) + 2.0*square(S13) + 2.0*square(S23);
-    prod(i,j,k) = S2;
+	Real S12 = 0.5*(ux.y+uy.x);
+	Real S13 = 0.5*(ux.z+uz.x);
+	Real S23 = 0.5*(uy.z+uz.y);
+	Real S2 = square(diag.x) + square(diag.y) + square(diag.z) +
+		2.0*square(S12) + 2.0*square(S13) + 2.0*square(S23);
+	prod(i,j,k) = S2;
 }
 PYTHON void computeStrainRateMag(MACGrid& vel, Grid<Real>& mag) {
-    Grid<Vec3> velCenter(parent);
-    GetCentered(velCenter, vel);
-    KnComputeStrainRateMag(vel, velCenter, mag);
+	Grid<Vec3> velCenter(vel.getParent());
+	GetCentered(velCenter, vel);
+	KnComputeStrainRateMag(vel, velCenter, mag);
 }
 
 
@@ -229,7 +229,7 @@ template<class T>
 void extrapolSimpleFlagsHelper (FlagGrid& flags, Grid<T>& val, int distance = 4, 
 									int flagFrom=FlagGrid::TypeFluid, int flagTo=FlagGrid::TypeObstacle ) 
 {
-    Grid<int> tmp( flags.getParent() );
+	Grid<int> tmp( flags.getParent() );
 	int dim = (flags.is3D() ? 3:2);
 	const Vec3i nb[6] = { 
 		Vec3i(1 ,0,0), Vec3i(-1,0,0),
@@ -280,17 +280,17 @@ void extrapolSimpleFlagsHelper (FlagGrid& flags, Grid<T>& val, int distance = 4,
 PYTHON void extrapolateSimpleFlags (FlagGrid& flags, GridBase* val, int distance = 4, 
 									int flagFrom=FlagGrid::TypeFluid, int flagTo=FlagGrid::TypeObstacle ) 
 {
-    if (val->getType() & GridBase::TypeReal) {
-        extrapolSimpleFlagsHelper<Real>(flags,*((Grid<Real>*) val),distance,flagFrom,flagTo);
-    }
-    else if (val->getType() & GridBase::TypeInt) {    
-        extrapolSimpleFlagsHelper<int >(flags,*((Grid<int >*) val),distance,flagFrom,flagTo);
-    }
-    else if (val->getType() & GridBase::TypeVec3) {    
-        extrapolSimpleFlagsHelper<Vec3>(flags,*((Grid<Vec3>*) val),distance,flagFrom,flagTo);
-    }
-    else
-        errMsg("extrapolateSimpleFlags: Grid Type is not supported (only int, Real, Vec3)");    
+	if (val->getType() & GridBase::TypeReal) {
+		extrapolSimpleFlagsHelper<Real>(flags,*((Grid<Real>*) val),distance,flagFrom,flagTo);
+	}
+	else if (val->getType() & GridBase::TypeInt) {    
+		extrapolSimpleFlagsHelper<int >(flags,*((Grid<int >*) val),distance,flagFrom,flagTo);
+	}
+	else if (val->getType() & GridBase::TypeVec3) {    
+		extrapolSimpleFlagsHelper<Vec3>(flags,*((Grid<Vec3>*) val),distance,flagFrom,flagTo);
+	}
+	else
+		errMsg("extrapolateSimpleFlags: Grid Type is not supported (only int, Real, Vec3)");    
 }
 
 } // namespace

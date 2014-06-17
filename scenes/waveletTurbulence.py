@@ -91,70 +91,70 @@ wltStrength = 0.4
 
 
 if (GUI):
-    gui = Gui()
-    gui.show()
+	gui = Gui()
+	gui.show()
 
 # main loop
 for t in range(200):
-    
-    curt = t * sm.timestep
-    #sys.stdout.write( "Current time t: " + str(curt) +" \n" )
-        
-    advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-    advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
-    
-    applyInflow=False
-    if (curt>=0 and curt<75):
-        densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )
-        sourceVel.applyToGrid( grid=vel , value=velInflow )
-        applyInflow=True
-    
-    setWallBcs(flags=flags, vel=vel)    
-    addBuoyancy(density=density, vel=vel, gravity=vec3(0,-1e-3,0), flags=flags)
+	
+	curt = t * sm.timestep
+	#sys.stdout.write( "Current time t: " + str(curt) +" \n" )
+		
+	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+	
+	applyInflow=False
+	if (curt>=0 and curt<75):
+		densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )
+		sourceVel.applyToGrid( grid=vel , value=velInflow )
+		applyInflow=True
+	
+	setWallBcs(flags=flags, vel=vel)    
+	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-1e-3,0), flags=flags)
 
-    vorticityConfinement( vel=vel, flags=flags, strength=0.4 )
-    
-    #applyNoiseVec3( flags=flags, target=vel, noise=noise, scale=1 ) # just to test, add everywhere...
-    
-    solvePressure(flags=flags, vel=vel, pressure=pressure , openBound='Y', \
-        cgMaxIterFac=1.0, cgAccuracy=0.01 )
-    setWallBcs(flags=flags, vel=vel)
-    
-    computeEnergy(flags=flags, vel=vel, energy=energy)
+	vorticityConfinement( vel=vel, flags=flags, strength=0.4 )
+	
+	#applyNoiseVec3( flags=flags, target=vel, noise=noise, scale=1 ) # just to test, add everywhere...
+	
+	solvePressure(flags=flags, vel=vel, pressure=pressure , openBound='Y', \
+		cgMaxIterFac=1.0, cgAccuracy=0.01 )
+	setWallBcs(flags=flags, vel=vel)
+	
+	computeEnergy(flags=flags, vel=vel, energy=energy)
 	# standard weights for wavelet turbulence
-    computeWaveletCoeffs(energy)
+	computeWaveletCoeffs(energy)
 
 	# other possibilities of generating turbulence weights:
-    #computeVorticity( vel=vel, vorticity=vort, norm=energy);
-    #computeStrainRateMag( vel=vel, vorticity=vort, mag=energy);
-    
-    #density.save('densitySm_%04d.vol' % t)
-    
-    sm.printTimings()    
-    sm.step()
-    
-    # xl ...
-    # same inflow
-    
-    interpolateGrid( target=xl_weight, source=energy )
-    interpolateMACGrid( source=vel, target=xl_vel )
-    
-    applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=wltnoise, scale=wltStrength*1.0 , weight=xl_weight)
-    # manually apply further octaves
-    applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=wltnoise2, scale=wltStrength*0.6 , weight=xl_weight)
-    applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=wltnoise3, scale=wltStrength*0.6*0.6 , weight=xl_weight)
-    
-    for substep in range(upres): 
-        advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=2)    
-    
-    if (applyInflow):
-         densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 )
-         # source.applyToGrid( grid=xl_vel , value=velInflow )
-    
-    #xl_density.save('densityXl08_%04d.vol' % t)
-    
-    xl.printTimings()    
-    xl.step()    
+	#computeVorticity( vel=vel, vorticity=vort, norm=energy);
+	#computeStrainRateMag( vel=vel, vorticity=vort, mag=energy);
+	
+	#density.save('densitySm_%04d.vol' % t)
+	
+	sm.printTimings()    
+	sm.step()
+	
+	# xl ...
+	# same inflow
+	
+	interpolateGrid( target=xl_weight, source=energy )
+	interpolateMACGrid( source=vel, target=xl_vel )
+	
+	applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=wltnoise, scale=wltStrength*1.0 , weight=xl_weight)
+	# manually apply further octaves
+	applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=wltnoise2, scale=wltStrength*0.6 , weight=xl_weight)
+	applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=wltnoise3, scale=wltStrength*0.6*0.6 , weight=xl_weight)
+	
+	for substep in range(upres): 
+		advectSemiLagrange(flags=xl_flags, vel=xl_vel, grid=xl_density, order=2)    
+	
+	if (applyInflow):
+		 densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 )
+		 # source.applyToGrid( grid=xl_vel , value=velInflow )
+	
+	#xl_density.save('densityXl08_%04d.vol' % t)
+	
+	xl.printTimings()    
+	xl.step()    
 
-    #gui.screenshot( 'waveletTurb_%04d.png' % t );
+	#gui.screenshot( 'waveletTurb_%04d.png' % t );
 
