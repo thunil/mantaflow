@@ -370,7 +370,7 @@ void WrapperRegistry::addConstants(PyObject* module) {
 	for (int i=0; i<(int)args.size(); i++)
 		PyList_SET_ITEM(list,i,Manta::toPy(args[i]));
 	PyModule_AddObject(module, "args", list);
-	PyModule_AddObject(module,"CUDA",Manta::toPy(mScriptName));
+	PyModule_AddObject(module,"SCENEFILE",Manta::toPy(mScriptName));
 
 	// expose compile flags
 #ifdef CUDA
