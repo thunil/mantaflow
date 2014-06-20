@@ -406,22 +406,53 @@ void KnDeleteInObstacle(std::vector<S>& p, const FlagGrid& flags) {
 		p[idx].flag |= ParticleBase::PDELETE;
 	} 
 }
+
+// try to get closer to actual obstacle boundary
+static inline Vec3 bisectBacktracePos(const FlagGrid& flags, const Vec3& oldp, const Vec3& newp)
+{
+	Real s = 0.;
+	for(int i=1; i<5; ++i) {
+		Real ds = 1./(Real)(1<<i);
+		if (!flags.isObstacle( oldp*(1.-(s+ds)) + newp*(s+ds) )) {
+			s += ds;
+		}
+	}
+	return( oldp*(1.-(s)) + newp*(s) );
+}
+
 // at least make sure all particles are inside domain
 KERNEL(pts) template<class S>
-void KnClampPositions(std::vector<S>& p, const FlagGrid& flags) {
+void KnClampPositions(std::vector<S>& p, const FlagGrid& flags, ParticleDataImpl<Vec3> *posOld = NULL)
+{
 	if (p[idx].flag & ParticleBase::PDELETE) return;
 	if (!flags.isInBounds(p[idx].pos,0) ) {
 		p[idx].pos = clamp( p[idx].pos, Vec3(0.), toVec3(flags.getSize())-Vec3(1.) );
 	} 
+	if (flags.isObstacle(p[idx].pos)) {
+		p[idx].pos = bisectBacktracePos(flags, (*posOld)[idx], p[idx].pos);
+	}
 }
 
 // advection plugin
 template<class S>
 void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle ) {
+	// position clamp requires old positions, backup
+	ParticleDataImpl<Vec3> *posOld = NULL;
+	if(!deleteInObstacle) {
+		posOld = new ParticleDataImpl<Vec3>(this->getParent());
+		posOld->resize(mData.size());
+		for(int i=0; i<mData.size();++i) (*posOld)[i] = mData[i].pos;
+	}
+
+	// update positions
 	GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle );
 	integratePointSet(kernel, integrationMode);
-	if(deleteInObstacle) KnDeleteInObstacle<S>( mData, flags);
-	else                 KnClampPositions<S>  ( mData, flags);
+
+	if(deleteInObstacle) {
+		KnDeleteInObstacle<S>( mData, flags);
+	} else {
+		KnClampPositions<S>  ( mData, flags, posOld );
+	}
 }
 
 KERNEL(pts, single) // no thread-safe random gen yet
