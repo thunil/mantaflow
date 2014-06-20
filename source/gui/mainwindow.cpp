@@ -27,11 +27,12 @@ using namespace std;
 
 namespace Manta {
 
-MainWnd::MainWnd() : QMainWindow(0), mPaused(true), mRequestPause(false), mRequestClose(false), mStep(0)
+MainWnd::MainWnd() : QMainWindow(0), mPaused(true), mRequestPause(false), mRequestClose(false), mStep(0),
+						mKbwScene(0), mKbwView(0), mKbwPixmap(0), mMenuBar(0)
 {
 	// Frame info label
 	mInfo = new QLabel;
-	setFrame(0);
+	setStep(0);
 	
 	// register GL widget
 	mGlWidget = new GLWidget();
@@ -83,23 +84,24 @@ MainWnd::MainWnd() : QMainWindow(0), mPaused(true), mRequestPause(false), mReque
 	/*QAction* a = new QAction(this);
 	a->setText( "Quit" );
 	connect(a, SIGNAL(triggered()), SLOT(close()) );
-	menuBar()->addMenu( "File" )->addAction( a );        */
+	mMenuBar = menuBar()->addMenu( "File" );
+	mMenuBar->addAction( a ); */
+
+	// keyboard info window, show on demand
+    mKbwScene = new QGraphicsScene(); 
+    mKbwView = new QGraphicsView(mKbwScene);
+    mKbwPixmap = new QGraphicsPixmapItem(QPixmap(":/keyboard.png"));
+    mKbwScene->addItem(mKbwPixmap);
+	mKbwView->hide(); 
+
+	mAcHelp = toolbar->addAction(QIcon(":/help.png"),"Help");
+	mAcHelp->setStatusTip("Help");
+	connect(mAcHelp, SIGNAL(triggered()), SLOT(showHelp()));
 	
+	// start...
 	mGlWidget->setFocus();
 	this->raise();
 	this->activateWindow();
-
-    //QGraphicsScene scene; // NT_DEBUG
-    //QGraphicsView view(&scene);
-    //QGraphicsPixmapItem item(QPixmap("/tmp/t.png"));
-	if(0) {
-    scene = new QGraphicsScene(); // NT_DEBUG
-    view = new QGraphicsView(scene);
-    item = new QGraphicsPixmapItem(QPixmap("/tmp/t.png"));
-    scene->addItem(item);
-    view->show(); view->raise(); view->activateWindow(); // NT_DEBUG
-	view->hide(); }
-	// shows up, but not in front...  add view->show upon event 
 
 	// uncomment to start  paused
 	//emit pause();
@@ -120,9 +122,9 @@ void MainWnd::addControl(void* ctrl) {
 	control->init(mPainterLayout);
 }
 
-void MainWnd::setFrame(int f) {
+void MainWnd::setStep(int f) {
 	std::stringstream s;
-	s << "Simulation frame " << f;
+	s << "Simulation step " << f;
 	mInfo->setText(s.str().c_str());
 }
 
@@ -222,6 +224,8 @@ void MainWnd::keyPressEvent(QKeyEvent* e) {
 			mStep = (e->modifiers() & Qt::ShiftModifier) ? 1 : 2;                
 		} else
 			emit pause();
+	} else if (e->key() == Qt::Key_H) {
+		emit showHelp();
 	} else { 
 		mGlWidget->keyPressEvent(e); // let gl widget take care of keyboard shortcuts
 		//QMainWindow::keyPressEvent(e);
@@ -246,6 +250,10 @@ void MainWnd::play() {
 void MainWnd::step() {
 	mStep = 2;
 	mRequestPause = false;
+}
+
+void MainWnd::showHelp() {
+	mKbwView->show();
 }
 
 MainWnd::~MainWnd() {

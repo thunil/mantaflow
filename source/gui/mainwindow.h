@@ -15,6 +15,7 @@
 #define _MAINWINDOW_H_
 
 #include <QMainWindow>
+#include <QMenuBar>
 #include "glwidget.h"
 #include "customctrl.h"
 #include "painter.h"
@@ -40,13 +41,14 @@ public:
 	void setPauseStatus(bool v);
 	void stepReset(bool fullUpdate) { if (mStep == 1 || (mStep == 2 && fullUpdate)) {mRequestPause = true; mStep = 0;} }
 	void requestClose() { mRequestClose =true; }
-	void setFrame(int f);
+	void setStep(int f);
 	void setBackground(Mesh *m) { emit setBackgroundMesh(m); }
 	
 public slots:
 	void pause();
 	void play();
 	void step();
+	void showHelp();
 	void addControl(void* ctrl);
 	void screenshot(QString file);
 	void clickLine(QPoint pos, float p0, float p1,float p2, float q0, float q1, float q2);
@@ -61,16 +63,20 @@ signals:
 protected:
 	bool mPaused, mRequestPause, mRequestClose;
 	int mStep;
-	GLWidget* mGlWidget;
-	QAction* mAcPlay, *mAcPause;
+	GLWidget *mGlWidget;
+	QAction *mAcPlay, *mAcPause;
 	std::vector<Painter*> mPainter;
 	std::vector<CustomControl*> mCtrls;
 	QLabel* mInfo;
 	QVBoxLayout* mPainterLayout;
 
-    QGraphicsScene *scene; // NT_DEBUG
-    QGraphicsView *view;
-    QGraphicsPixmapItem *item; // NT_DEBUG
+	// keyboard info window
+	QAction *mAcHelp;
+    QGraphicsScene      *mKbwScene;
+    QGraphicsView       *mKbwView;
+    QGraphicsPixmapItem *mKbwPixmap;
+
+	QMenu *mMenuBar;
 };
 
 }

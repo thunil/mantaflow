@@ -240,10 +240,10 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
 		else if (key == Qt::Key_B && alt)           { emit painterEvent(Painter::EventNextSystem); }
 		else if (key == Qt::Key_B)                  { emit painterEvent(Painter::EventToggleParticles); }
 
-		else if((key == Qt::Key_ParenLeft) ||         // ugly, but for some reason parentheses dont work in some cases... fall back with dual assignment
-			   ((key == Qt::Key_9) && shift) )      { emit painterEvent(Painter::EventScalePdataDown); }
+		else if((key == Qt::Key_ParenLeft) ||       // a bit ugly, but for some reason parentheses dont work in some cases... fall back with dual assignment
+			    (key == Qt::Key_9) )                { emit painterEvent(Painter::EventScalePdataDown); }
 		else if((key == Qt::Key_ParenRight) ||
-			   ((key == Qt::Key_0) && shift ) )     { emit painterEvent(Painter::EventScalePdataUp);   }
+			    (key == Qt::Key_0) )                { emit painterEvent(Painter::EventScalePdataUp);   }
 
 		// mesh display
 		else if (key == Qt::Key_M && shift)           emit painterEvent(Painter::EventMeshMode);

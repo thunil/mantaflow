@@ -130,7 +130,7 @@ void updateQtGui(bool full, int frame, const string& curPlugin) {
 	if (!gGuiThread->getWindow()->isVisible()) return;
 	if (gGuiThread->getWindow()->closeRequest()) throw Error("User interrupt");    
 	
-	if (full && frame >= 0) gGuiThread->getWindow()->setFrame(frame);
+	if (full && frame >= 0) gGuiThread->getWindow()->setStep(frame);
 	gMainThread->sendAndWait(full ? (int)MainWnd::EventFullUpdate : (int)MainWnd::EventStepUpdate);
 	
 	if (gGuiThread->getWindow()->pauseRequest()) {
