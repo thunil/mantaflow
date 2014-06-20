@@ -248,7 +248,7 @@ void ParticlePainter::paintBasicSys() {
 			mHavePdata = true;
 
 			// particle vector data can be drawn in different ways...
-			mDisplayMode = mDisplayMode%2;
+			mDisplayMode = mDisplayMode%3;
 
 			switch(mDisplayMode) {
 			case 0: // lines
@@ -288,6 +288,27 @@ void ParticlePainter::paintBasicSys() {
 				glEnd();
 				drewPoints = true;
 				break;
+			case 2:
+				glClear(GL_DEPTH_BUFFER_BIT);
+				glEnable(GL_DEPTH_TEST); 
+
+				// colored by magnitude all
+				glPointSize(2.0);
+				glBegin(GL_POINTS); 
+				for(int i=0; i<(int)bp->size(); i++) {
+					if (!bp->isActive(i)) continue;
+					Vec3 pos = (*bp)[i].pos; 
+					mMaxVal = std::max( norm(pdi->get(i)), mMaxVal );
+					Vec3 val = Vec3( norm( pdi->get(i) * scale ) );
+					val[2] += 0.5; // base blue
+					for(int c=0; c<3; ++c) val[c] = std::min( (Real)val[c], (Real)1.);
+
+					glColor3f(val[0],val[1],val[2]);
+					glVertex(pos, dx); 
+				}   
+				glEnd();
+				drewPoints = true;
+				break;
 			}
 
 			infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", vec3\n";
@@ -318,9 +339,10 @@ void ParticlePainter::paintBasicSys() {
 			if(!bp->isActive(i) ) {
 				glColor3f(1.0, 0., 0.); // deleted, red
 			} else if(bp->getStatus(i) & ParticleBase::PNEW ) {
-				glColor3f(0.0, 1.0, 0.); // new, greem
+				glColor3f(0.0, 1.0, 0.); // new, green
 			} else {
-				glColor3f(0, 0.0, 1.0); // regular, blue
+				//glColor3f(0, 0.0, 1.0); // regular, blue
+				glColor3f(1.0, 1.0, 1.0); // regular, white - hi contrast
 			}
 			glVertex(pos, dx);
 			

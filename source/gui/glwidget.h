@@ -36,6 +36,8 @@ public:
 	 void wheelEvent(QWheelEvent *e);     
 	 void screenshot(QString file);
 
+	 void setCamPos(Vec3 pos) { mCamPos = pos; }
+
 public slots:
 	void setViewport(const Vec3i& gridsize);
 	void keyPressEvent(QKeyEvent* e);

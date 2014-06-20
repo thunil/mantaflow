@@ -27,7 +27,8 @@ class MainWnd : public QMainWindow
 {
 Q_OBJECT
 public:    
-	enum EventType { EventFullUpdate = QEvent::User, EventGuiShow, EventStepUpdate, EventFinalUpdate, EventInstantKill };
+	enum EventType { EventFullUpdate = QEvent::User, EventGuiShow, 
+		EventStepUpdate, EventFinalUpdate, EventInstantKill, EventSet2DCam };
 	
 	MainWnd();
 	virtual ~MainWnd();
@@ -66,6 +67,10 @@ protected:
 	std::vector<CustomControl*> mCtrls;
 	QLabel* mInfo;
 	QVBoxLayout* mPainterLayout;
+
+    QGraphicsScene *scene; // NT_DEBUG
+    QGraphicsView *view;
+    QGraphicsPixmapItem *item; // NT_DEBUG
 };
 
 }

@@ -139,8 +139,10 @@ Gui::Gui() :
 void Gui::setBackgroundMesh(Mesh* m) {
 	mGuiPtr->getWindow()->setBackground(m);
 }
-void Gui::show() {
-	mMainPtr->sendAndWait((int)MainWnd::EventGuiShow);         
+void Gui::show(bool twoD) {
+	if(twoD)
+		mMainPtr->send( (int)MainWnd::EventSet2DCam );
+	mMainPtr->sendAndWait( (int)MainWnd::EventGuiShow );
 }
 void Gui::update() { 
 	updateQtGui(true,-1,"");

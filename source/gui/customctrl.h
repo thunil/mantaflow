@@ -112,7 +112,7 @@ public:
 	PYTHON Gui();
 	
 	PYTHON void setBackgroundMesh(Mesh* m);
-	PYTHON void show();
+	PYTHON void show(bool twoD=false);
 	PYTHON void update();
 	PYTHON void pause();
 	PYTHON PbClass* addControl(PbType t);

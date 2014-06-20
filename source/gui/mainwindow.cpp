@@ -89,6 +89,18 @@ MainWnd::MainWnd() : QMainWindow(0), mPaused(true), mRequestPause(false), mReque
 	this->raise();
 	this->activateWindow();
 
+    //QGraphicsScene scene; // NT_DEBUG
+    //QGraphicsView view(&scene);
+    //QGraphicsPixmapItem item(QPixmap("/tmp/t.png"));
+	if(0) {
+    scene = new QGraphicsScene(); // NT_DEBUG
+    view = new QGraphicsView(scene);
+    item = new QGraphicsPixmapItem(QPixmap("/tmp/t.png"));
+    scene->addItem(item);
+    view->show(); view->raise(); view->activateWindow(); // NT_DEBUG
+	view->hide(); }
+	// shows up, but not in front...  add view->show upon event 
+
 	// uncomment to start  paused
 	//emit pause();
 }
@@ -155,6 +167,10 @@ bool MainWnd::event(QEvent* e) {
 		}
 		mRequestClose = true;
 		emit wakeMain();
+		return true;
+	}
+	else if (e->type() == (QEvent::Type)EventSet2DCam) {        
+		mGlWidget->setCamPos( Vec3(0, 0, -1.3) );
 		return true;
 	}
 	else if (e->type() == (QEvent::Type)EventInstantKill) {        
