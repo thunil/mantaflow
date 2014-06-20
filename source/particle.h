@@ -448,10 +448,11 @@ void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrat
 	GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle );
 	integratePointSet(kernel, integrationMode);
 
-	if(deleteInObstacle) {
-		KnDeleteInObstacle<S>( mData, flags);
-	} else {
+	if(!deleteInObstacle) {
 		KnClampPositions<S>  ( mData, flags, posOld );
+		delete posOld;
+	} else {
+		KnDeleteInObstacle<S>( mData, flags);
 	}
 }
 
