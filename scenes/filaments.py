@@ -77,6 +77,5 @@ for t in range(1000):
 	#filaments.advectParticles(sys=tracer, scale=1, regularization=1, integrationMode=IntRK2)
 	filaments.advectMesh(mesh=mesh, scale=1, regularization=6, integrationMode=IntRK2)
 	
-	s.printTimings()
 	s.step()
 	

@@ -9,6 +9,7 @@ res = 64
 gs = vec3(res,res,1)
 s = Solver(name='main', gridSize = gs, dim=2)
 s.timestep = 1.0
+timings = Timings()
 
 # prepare grids
 flags = s.create(FlagGrid)
@@ -40,6 +41,6 @@ for t in range(400):
 	solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='Y')
 	setWallBcs(flags=flags, vel=vel)
 	
-	s.printTimings()    
+	timings.display()    
 	s.step()
 

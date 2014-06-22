@@ -10,6 +10,8 @@ import os, shutil, math, sys
 # dimension two/three d
 dim = 2
 
+printBuildInfo()
+
 # how much to upres the XL sim?
 # set to zero to disable the second one completely
 upres = 4
@@ -33,6 +35,7 @@ if (dim==2): gs.z = 1  # 2D
 # setup low-res sim
 sm = Solver(name='main', gridSize = gs, dim=dim)
 sm.timestep = 1.5
+timings = Timings()
 
 velInflow = vec3(2, 0, 0)
 
@@ -162,7 +165,6 @@ for t in range(200):
 	computeWaveletCoeffs(energy)
 
 	#density.save('densitySm_%04d.vol' % t)
-	sm.printTimings()    
 	sm.step()
 	
 	# xl ...
@@ -194,9 +196,9 @@ for t in range(200):
 			 densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 )
 		
 		#xl_density.save('densityXl_%04d.vol' % t) 
-		xl.printTimings()    
 		xl.step()    
 
+	timings.display()
 	# small and xl grid update done
 	#gui.screenshot( 'wltObs_%04d.png' % t );
 

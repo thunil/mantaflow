@@ -114,7 +114,6 @@ for t in range(250):
 		phi.createMesh(mesh)
 	
 	#s.printMemInfo()
-	#s.printTimings()
 	s.step()
 
 	# generate data for flip03_gen.py surface generation

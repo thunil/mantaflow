@@ -10,6 +10,7 @@ res = 64
 gs = vec3(res,res/2,res/2)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 0.5
+timings = Timings()
 
 velInflow = vec3(0.52,0,0)
 
@@ -101,6 +102,6 @@ for t in range(10000):
 	setWallBcs(flags=flags, vel=vel)
 	setInflowBcs(vel=vel,dir='xXyYzZ',value=velInflow)
 	
-	s.printTimings()
+	timings.display()
 	s.step()
 	

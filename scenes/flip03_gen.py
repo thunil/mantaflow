@@ -53,6 +53,5 @@ for tOut in range(2500):
 		# output file name so that blender can directly read it...
 		mesh.save( 'fluidsurface_final_%04d.bobj.gz' % tOut );
 	
-	#s.printTimings()
 	s.step()
 

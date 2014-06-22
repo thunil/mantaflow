@@ -74,18 +74,6 @@ template<> void FluidSolver::freeGridPointer<Vec3>(Vec3* ptr) {
 	mGridsVec.release(ptr);
 }
 
-void FluidSolver::pluginStart(const string& name) {
-	mLastPlugin = name;
-	mPluginTimer.get();
-}
-
-void FluidSolver::pluginStop(const string& name) {
-	if (mLastPlugin == name && name != "FluidSolver::step") {
-		MuTime diff = mPluginTimer.update();
-		mTimings.push_back(pair<string,MuTime>(name, diff));
-	}    
-}
-
 //******************************************************************************
 // FluidSolver members
 
@@ -114,29 +102,6 @@ void FluidSolver::step() {
 	mTimeTotal += mDt;
 	mFrame++;
 	updateQtGui(true, mFrame, "FluidSolver::step");
-	
-	// update timings
-	for(size_t i=0;i<mTimings.size(); i++) {
-		const string name = mTimings[i].first;
-		if (mTimingsTotal.find(name) == mTimingsTotal.end())
-			mTimingsTotal[name].second.clear();
-		mTimingsTotal[name].first++;
-		mTimingsTotal[name].second+=mTimings[i].second;
-	}
-	mTimings.clear();
-}
- 
-void FluidSolver::printTimings() {
-	MuTime total;
-	total.clear();
-	for(size_t i=0; i<mTimings.size(); i++)
-		total += mTimings[i].second;
-	
-	printf("\n-- STEP %d -----------------------------\n", mFrame);
-	for(size_t i=0; i<mTimings.size(); i++)
-		printf("[%4.1f%%] %s (%s)\n", 100.0*((Real)mTimings[i].second.time / (Real)total.time), mTimings[i].first.c_str(), mTimings[i].second.toString().c_str());
-	printf("----------------------------------------\n");
-	printf("Total : %s\n\n", total.toString().c_str());
 }
 
 void FluidSolver::printMemInfo() {
@@ -147,24 +112,7 @@ void FluidSolver::printMemInfo() {
 	printf("%s\n", msg.str().c_str() );
 }
 
-void FluidSolver::saveMeanTimings(string filename) {
-	ofstream ofs(filename.c_str());
-	if (!ofs.good())
-		errMsg("can't open " + filename + " as timing log");
-	ofs << "Mean timings of " << mFrame << " steps :" <<endl <<endl;
-	MuTime total;
-	total.clear();
-	for(map<string, pair<int,MuTime> >::iterator it=mTimingsTotal.begin(); it!=mTimingsTotal.end(); it++) {
-		total += it->second.second;
-	}    
-	for(map<string, pair<int,MuTime> >::iterator it=mTimingsTotal.begin(); it!=mTimingsTotal.end(); it++) {
-		ofs << it->first << ": " << it->second.second / it->second.first << endl;        
-	} 
-	ofs << endl << "Total : " << total << " (mean " << total/mFrame << ")" << endl;
-	ofs.close();
-}
-
-PYTHON(noparent) void printBuildInfo() {
+PYTHON void printBuildInfo() {
 	debMsg( "Build info: "<<buildInfoString().c_str()<<" ",1);
 }
  

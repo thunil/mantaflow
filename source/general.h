@@ -94,7 +94,7 @@ struct MuTime {
 	MuTime& operator/=(unsigned long a) { time /= a; return *this; }
 	std::string toString();
 	
-	void clear() { time = 0; }
+    void clear() { time = 0; }
 	void get();
 	MuTime update();
 	

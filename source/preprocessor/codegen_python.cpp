@@ -27,7 +27,7 @@ const string TmpFunction = STR(
 $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObject* _kwds) {
 	try {
 		PbArgs _args(_linargs, _kwds);
-		FluidSolver *parent = _args.obtainParent($HASPARENT$);
+		FluidSolver *parent = _args.obtainParent();
 		pbPreparePlugin(parent, "$FUNCNAME$" );
 		PyObject *_retval = 0;
 		{ 
@@ -249,13 +249,9 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 	const Function& func = block.func;
 
 	// PYTHON(...) keyword options
-	bool hasParent = true;
 	for (size_t i=0; i<block.options.size(); i++) {
 		if (block.options[i].name == "only") {
 			((Function&)func).name = makeSafe(func.name);
-		}
-		else if (block.options[i].name == "noparent") {
-			hasParent = false;
 		}
 		else
 			errMsg(block.line0, "unknown keyword " + block.options[i].name);    
@@ -299,7 +295,6 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 							 "CTPL", (isPlugin || !block.parent->isTemplated()) ? "" : "$CT$",
 							 "CALLSTRING", func.callString(),
 							 "RET_VOID", (func.returnType.name=="void") ? "Y" : "",
-							 "HASPARENT", (hasParent) ? "true" : "false",
 							 "" };
 	string callerTempl = isPlugin ? TmpFunction : TmpMemberFunction;
 	if (isConstructor) callerTempl = TmpConstructor;
