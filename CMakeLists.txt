@@ -141,6 +141,7 @@ SET(PP_SOURCES
 	#source/vortexfilament.cpp
 	source/vortexpart.cpp
 	source/turbulencepart.cpp
+	source/timing.cpp
 	source/edgecollapse.cpp
 	source/plugin/pressure.cpp
 	source/plugin/initplugins.cpp
@@ -171,6 +172,7 @@ SET(PP_HEADERS
 	source/general.h
 	source/kernel.h
 	source/flip.h
+	source/timing.h
 	source/movingobs.h
 	source/fileio.h
 	source/edgecollapse.h

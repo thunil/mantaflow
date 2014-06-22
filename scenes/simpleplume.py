@@ -11,6 +11,7 @@ res = 64
 gs = vec3(res,1.5*res,res)
 s = FluidSolver(name='main', gridSize = gs)
 s.timestep = 1.0
+timings = Timings()
 
 # prepare grids
 flags = s.create(FlagGrid)
@@ -55,7 +56,7 @@ for t in range(250):
 	setWallBcs(flags=flags, vel=vel)
 	#density.save('den%04d.uni' % t)
 	
-	s.printTimings()    
+	timings.display()
 	s.step()
 
 

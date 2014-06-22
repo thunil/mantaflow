@@ -15,6 +15,7 @@
 #include "structmember.h"
 #include "manta.h"
 #include "general.h"
+#include "timing.h"
 
 using namespace std;
 namespace Manta {
@@ -29,14 +30,11 @@ namespace Manta {
 #endif
 
 void pbPreparePlugin(FluidSolver* parent, const string& name) {
-	if (parent)
-		parent->pluginStart(name);
+    TimingData::instance().start(parent, name);
 }
 
 void pbFinalizePlugin(FluidSolver *parent, const string& name) {
-	if (parent) {
-		parent->pluginStop(name);
-	}
+    TimingData::instance().stop(parent, name);
 	
 	// GUI update, also print name of parent if there's more than one
 	std::ostringstream msg;

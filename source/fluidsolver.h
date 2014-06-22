@@ -39,10 +39,6 @@ public:
 	//! Check dimensionality
 	inline bool is3D() const { return mDim==3; }
 	
-	// Python callable methods    
-	//! output performace statistics
-	PYTHON void printTimings();
-	PYTHON void saveMeanTimings(std::string filename);
 	PYTHON void printMemInfo();
 	
 	//! Advance the solver one timestep, update GUI if present
@@ -54,8 +50,6 @@ public:
 	// temp grid and plugin stuff: you shouldn't call this manually
 	template<class T> T* getGridPointer();
 	template<class T> void freeGridPointer(T* ptr);    
-	void pluginStart(const std::string& name);
-	void pluginStop(const std::string& name);      
 
 	PYTHON(name=timestep) Real mDt;  
 protected:
@@ -79,12 +73,6 @@ protected:
 	GridStorage<int> mGridsInt;
 	GridStorage<Real> mGridsReal;
 	GridStorage<Vec3> mGridsVec;
-
-	// for timing plugins
-	MuTime mPluginTimer;
-	std::string mLastPlugin;
-	std::vector<std::pair<std::string, MuTime> > mTimings;
-	std::map<std::string, std::pair<int,MuTime> > mTimingsTotal;
 };
 
 }

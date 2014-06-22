@@ -17,6 +17,7 @@ if (dim==2): gs.z = 1  # 2D
 
 sm = Solver(name='main', gridSize = gs, dim=dim)
 sm.timestep = 1.5
+timings = Timings()
 
 velInflow = vec3(2, 0, 0)
 
@@ -130,7 +131,6 @@ for t in range(200):
 	
 	#density.save('densitySm_%04d.vol' % t)
 	
-	sm.printTimings()    
 	sm.step()
 	
 	# xl ...
@@ -153,7 +153,7 @@ for t in range(200):
 	
 	#xl_density.save('densityXl08_%04d.vol' % t)
 	
-	xl.printTimings()    
+	timings.display()
 	xl.step()    
 
 	#gui.screenshot( 'waveletTurb_%04d.png' % t );
