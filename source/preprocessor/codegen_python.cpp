@@ -375,7 +375,7 @@ void processPythonClass(const Block& block, const string& code, Sink& sink, vect
 	}
 	
 	if (gDocMode) {
-		sink.inplace << "//! \\ingroup PyClasses\nPYTHON " << cls.minimal;
+		sink.inplace << "//! \\ingroup PyClasses\nPYTHON " << cls.minimal << code;
 		return;
 	}
 

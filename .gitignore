@@ -4,3 +4,4 @@ build
 tools/tests/*.uni
 tools/tests/*.pyc
 tools/tests/*.bin
+doc
