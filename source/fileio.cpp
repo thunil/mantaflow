@@ -35,10 +35,68 @@ namespace Manta {
 // mesh data
 //*****************************************************************************
 
-void writeBobjFile(const string& name, Mesh* mesh) {
-	cout << "writing mesh file " << name << endl;
+void readBobjFile(const string& name, Mesh* mesh, bool append) {
+	debMsg( "reading mesh file " << name ,1);
+	if (!append)
+		mesh->clear();
+	else
+		errMsg("readBobj: append not yet implemented!");
+
 #	if NO_ZLIB!=1
 	const Real dx = mesh->getParent()->getDx();
+	const Vec3 gs = toVec3( mesh->getParent()->getGridSize() );
+
+	gzFile gzf = gzopen(name.c_str(), "rb1"); // do some compression
+	if (!gzf)
+		errMsg("readBobj: unable to open file");
+	
+	// read vertices
+	int num = 0;
+	gzread(gzf, &num, sizeof(int));
+	mesh->resizeNodes(num);
+	debMsg( "read mesh , verts "<<num,1);
+	for (int i=0; i<num; i++) {
+		Vector3D<float> pos;
+		gzread(gzf, &pos.value[0], sizeof(float)*3);
+	   	mesh->nodes(i).pos = toVec3(pos);
+
+		// convert to grid space
+		mesh->nodes(i).pos /= dx;
+		mesh->nodes(i).pos += gs*0.5;
+	}
+	
+	// normals
+	num = 0;
+	gzread(gzf, &num, sizeof(int));
+	for (int i=0; i<num; i++) {
+		Vector3D<float> pos;
+		gzread(gzf, &pos.value[0], sizeof(float)*3);
+	   	mesh->nodes(i).normal = toVec3(pos);
+	}
+	
+	// read tris
+	num = 0;
+	gzread(gzf, &num, sizeof(int));
+	mesh->resizeTris( num );
+	for(int t=0; t<num; t++) {
+		for(int j=0; j<3; j++) { 
+			int trip = 0;
+			gzread(gzf, &trip, sizeof(int)); 
+			mesh->tris(t).c[j] = trip;
+		}
+	} 
+	// note - vortex sheet info ignored for now... (see writeBobj)
+	gzclose( gzf );    
+	debMsg( "read mesh , triangles "<<mesh->numTris()<<", vertices "<<mesh->numNodes()<<" ",1 );
+#	else
+	debMsg( "file format not supported without zlib" ,1);
+#	endif
+}
+
+void writeBobjFile(const string& name, Mesh* mesh) {
+	debMsg( "writing mesh file " << name ,1);
+#	if NO_ZLIB!=1
+	const Real  dx = mesh->getParent()->getDx();
 	const Vec3i gs = mesh->getParent()->getGridSize();
 	
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
@@ -50,7 +108,7 @@ void writeBobjFile(const string& name, Mesh* mesh) {
 	gzwrite(gzf, &numVerts, sizeof(int));
 	for (int i=0; i<numVerts; i++) {
 		Vector3D<float> pos = toVec3f(mesh->nodes(i).pos);
-		// normalize
+		// normalize to unit cube around 0
 		pos -= toVec3f(gs)*0.5;
 		pos *= dx;
 		gzwrite(gzf, &pos.value[0], sizeof(float)*3);
@@ -122,7 +180,7 @@ void writeBobjFile(const string& name, Mesh* mesh) {
 
 	gzclose( gzf );    
 #	else
-	cout << "file format not supported without zlib" << endl;
+	debMsg( "file format not supported without zlib" ,1);
 #	endif
 }
 
@@ -191,7 +249,7 @@ void writeObjFile(const string& name, Mesh* mesh) {
 
 template<class T>
 void writeGridTxt(const string& name, Grid<T>* grid) {
-	cout << "writing grid " << grid->getName() << " to text file " << name << endl;
+	debMsg( "writing grid " << grid->getName() << " to text file " << name ,1);
 
 	ofstream ofs(name.c_str());
 	if (!ofs.good())
@@ -204,7 +262,7 @@ void writeGridTxt(const string& name, Grid<T>* grid) {
 
 template<class T>
 void writeGridRaw(const string& name, Grid<T>* grid) {
-	cout << "writing grid " << grid->getName() << " to raw file " << name << endl;
+	debMsg( "writing grid " << grid->getName() << " to raw file " << name ,1);
 	
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
@@ -212,13 +270,13 @@ void writeGridRaw(const string& name, Grid<T>* grid) {
 	gzwrite(gzf, &((*grid)[0]), sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ());
 	gzclose(gzf);
 #	else
-	cout << "file format not supported without zlib" << endl;
+	debMsg( "file format not supported without zlib" ,1);
 #	endif
 }
 
 template<class T>
 void readGridRaw(const string& name, Grid<T>* grid) {
-	cout << "reading grid " << grid->getName() << " from raw file " << name << endl;
+	debMsg( "reading grid " << grid->getName() << " from raw file " << name ,1);
 	
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
@@ -229,7 +287,7 @@ void readGridRaw(const string& name, Grid<T>* grid) {
 	assertMsg(bytes==readBytes, "can't read raw file, stream length does not match"<<bytes<<" vs "<<readBytes);
 	gzclose(gzf);
 #	else
-	cout << "file format not supported without zlib" << endl;
+	debMsg( "file format not supported without zlib" ,1);
 #	endif
 }
 
@@ -328,7 +386,7 @@ void convertDoubleAndWrite(Grid<Vector3D<double> >& grid, void* ptr, gzFile& gzf
 
 template <class T>
 void writeGridUni(const string& name, Grid<T>* grid) {
-	cout << "writing grid " << grid->getName() << " to uni file " << name << endl;
+	debMsg( "writing grid " << grid->getName() << " to uni file " << name ,1);
 	
 #	if NO_ZLIB!=1
 	char ID[5] = "MNT2";
@@ -368,7 +426,7 @@ void writeGridUni(const string& name, Grid<T>* grid) {
 	gzwrite(gzf, ptr, sizeof(T)*head.dimX*head.dimY*head.dimZ);
 	gzclose(gzf);
 #	else
-	cout << "file format not supported without zlib" << endl;
+	debMsg( "file format not supported without zlib" ,1);
 #	endif
 };
 
@@ -418,7 +476,7 @@ static int unifyGridType(int type) {
 
 template <class T>
 void readGridUni(const string& name, Grid<T>* grid) {
-	cout << "reading grid " << grid->getName() << " from uni file " << name << endl;
+	debMsg( "reading grid " << grid->getName() << " from uni file " << name ,1);
 
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
@@ -467,13 +525,13 @@ void readGridUni(const string& name, Grid<T>* grid) {
 	}
 	gzclose(gzf);
 #	else
-	cout << "file format not supported without zlib" << endl;
+	debMsg( "file format not supported without zlib" ,1);
 #	endif
 };
 
 template <class T>
 void writeGridVol(const string& name, Grid<T>* grid) {
-	cout << "writing grid " << grid->getName() << " to vol file " << name << endl;
+	debMsg( "writing grid " << grid->getName() << " to vol file " << name ,1);
 	errMsg("Type not yet supported!");
 }
 
@@ -488,7 +546,7 @@ struct volHeader {
 
 template <>
 void writeGridVol<Real>(const string& name, Grid<Real>* grid) {
-	cout << "writing real grid " << grid->getName() << " to vol file " << name << endl;
+	debMsg( "writing real grid " << grid->getName() << " to vol file " << name ,1);
 	
 	volHeader header;
 	header.ID[0] = 'V';
@@ -541,7 +599,7 @@ typedef struct {
 
 template <class T>
 void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
-	cout << "writing particles " << parts->getName() << " to uni file " << name << endl;
+	debMsg( "writing particles " << parts->getName() << " to uni file " << name ,1);
 	
 #	if NO_ZLIB!=1
 	char ID[5] = "PB02";
@@ -565,13 +623,13 @@ void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 	gzwrite(gzf, &(parts->getData()[0]), sizeof(T)*head.dim);
 	gzclose(gzf);
 #	else
-	cout << "file format not supported without zlib" << endl;
+	debMsg( "file format not supported without zlib" ,1);
 #	endif
 };
 
 template <class T>
 void readParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
-	cout << "reading particles " << parts->getName() << " from uni file " << name << endl;
+	debMsg( "reading particles " << parts->getName() << " from uni file " << name ,1);
 	
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
@@ -600,13 +658,13 @@ void readParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 	}
 	gzclose(gzf);
 #	else
-	cout << "file format not supported without zlib" << endl;
+	debMsg( "file format not supported without zlib" ,1);
 #	endif
 };
 
 template <class T>
 void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
-	cout << "writing particle data " << pdata->getName() << " to uni file " << name << endl;
+	debMsg( "writing particle data " << pdata->getName() << " to uni file " << name ,1);
 	
 #	if NO_ZLIB!=1
 	char ID[5] = "PD01";
@@ -626,13 +684,13 @@ void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	gzwrite(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
 	gzclose(gzf);
 #	else
-	cout << "file format not supported without zlib" << endl;
+	debMsg( "file format not supported without zlib" ,1);
 #	endif
 };
 
 template <class T>
 void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
-	cout << "reading particle data " << pdata->getName() << " from uni file " << name << endl;
+	debMsg( "reading particle data " << pdata->getName() << " from uni file " << name ,1);
 	
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
@@ -652,7 +710,7 @@ void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	}
 	gzclose(gzf);
 #	else
-	cout << "file format not supported without zlib" << endl;
+	debMsg( "file format not supported without zlib" ,1);
 #	endif
 }
 

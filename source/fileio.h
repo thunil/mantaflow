@@ -28,6 +28,7 @@ template<class T> class ParticleDataImpl;
 void writeObjFile(const std::string& name, Mesh* mesh);
 void writeBobjFile(const std::string& name, Mesh* mesh);
 void readObjFile(const std::string& name, Mesh* mesh, bool append);
+void readBobjFile(const std::string& name, Mesh* mesh, bool append);
 
 template<class T> void writeGridRaw(const std::string& name, Grid<T>* grid);
 template<class T> void writeGridUni(const std::string& name, Grid<T>* grid);
