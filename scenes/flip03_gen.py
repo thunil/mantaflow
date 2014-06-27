@@ -2,10 +2,19 @@
 # Simple flip surface mesh creation scene
 # 
 from manta import *
+import os
+setDebugLevel(10) # full output
+
+# input file 
+partfile = 'flipParts_%04d.uni' 
+
+# output file name so that blender can directly read it...
+meshfile = 'fluidsurface_final_%04d.bobj.gz' 
 
 # solver params
 dim = 3
 res = 128 
+res = 40 
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
@@ -31,27 +40,34 @@ flags.initDomain(boundaryWidth=0)
 if 1 and (GUI):
 	gui = Gui()
 	gui.show()
-	#gui.pause()
+	gui.pause()
    
 
 #main loop
 for tOut in range(2500):
 	# for testing, optionally skip input frames...
 	tIn = tOut * 1
-	# read input sim particles
-	pp.load( 'flipParts_%04d.uni' % tIn );
-	
-	# create surface
-	phi.clear()
-	gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
-	#unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) # faster, but not as smooth
-	averagedParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor , 1, 1 ) 
 
-	if (dim==3):
-		setBoundaries(phi, 0., boundaryWidth=1)
-		phi.createMesh(mesh)
-		# output file name so that blender can directly read it...
-		mesh.save( 'fluidsurface_final_%04d.bobj.gz' % tOut );
-	
+	meshfileCurr = meshfile % tOut 
+
+	# already exists?
+	if (os.path.isfile( meshfileCurr )):
+		mesh.load( meshfileCurr )
+
+	else:
+		# generate mesh; first read input sim particles
+		pp.load( partfile % tIn );
+		
+		# create surface
+		phi.clear()
+		gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
+		#unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) # faster, but not as smooth
+		averagedParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor , 1, 1 ) 
+
+		if (dim==3):
+			setBoundaries(phi, 0., boundaryWidth=1)
+			phi.createMesh(mesh)
+			mesh.save( meshfileCurr )
+		
 	s.step()
 
