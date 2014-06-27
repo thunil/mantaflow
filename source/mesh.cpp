@@ -95,11 +95,13 @@ void Mesh::load(string name, bool append) {
 	if (name.find_last_of('.') == string::npos)
 		errMsg("file '" + name + "' does not have an extension");
 	string ext = name.substr(name.find_last_of('.'));
-	if (ext == ".obj")
+	if (ext == ".gz") // assume bobj gz
+		readBobjFile(name, this, append);
+	else if (ext == ".obj")
 		readObjFile(name, this, append);
 	else
 		errMsg("file '" + name +"' filetype not supported");
-	
+turn off?	 also for fromShape?
 	rebuildCorners();
 	rebuildLookup();
 }
@@ -122,6 +124,14 @@ void Mesh::fromShape(Shape& shape, bool append) {
 	shape.generateMesh(this);
 }
 
+void Mesh::resizeTris(int numTris) {
+	mTris .resize(numTris );
+	rebuildChannels();
+}
+void Mesh::resizeNodes(int numNodes) {
+	mNodes.resize(numNodes);
+	rebuildChannels();
+}
 
 //! do a quick check whether a rebuild is necessary, and if yes do rebuild
 void Mesh::rebuildQuickCheck() {
