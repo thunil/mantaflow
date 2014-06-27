@@ -102,6 +102,7 @@ void Mesh::load(string name, bool append) {
 	else
 		errMsg("file '" + name +"' filetype not supported");
 
+
 	// dont always rebuild...
 	//rebuildCorners();
 	//rebuildLookup();

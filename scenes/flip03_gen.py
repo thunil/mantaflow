@@ -70,6 +70,7 @@ for tOut in range(2500):
 			setBoundaries(phi, 0., boundaryWidth=1)
 			phi.createMesh(mesh)
 
+
 			# too slow right now!
 			#subdivideMesh(mesh=mesh, minAngle=0.01, minLength=scale, maxLength=3*scale, cutTubes=False) 
 			# beautify mesh
