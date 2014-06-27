@@ -101,9 +101,10 @@ void Mesh::load(string name, bool append) {
 		readObjFile(name, this, append);
 	else
 		errMsg("file '" + name +"' filetype not supported");
-turn off?	 also for fromShape?
-	rebuildCorners();
-	rebuildLookup();
+
+	// dont always rebuild...
+	//rebuildCorners();
+	//rebuildLookup();
 }
 
 void Mesh::save(string name) {

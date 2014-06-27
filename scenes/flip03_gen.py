@@ -23,6 +23,8 @@ s.timestep = 1.0
 
 # kernel radius for surface creation
 radiusFactor = 2.5
+# triangle scale relative to cell size
+scale = 0.5
 
 # prepare grids and particles
 flags    = s.create(FlagGrid)
@@ -67,7 +69,16 @@ for tOut in range(2500):
 		if (dim==3):
 			setBoundaries(phi, 0., boundaryWidth=1)
 			phi.createMesh(mesh)
-			mesh.save( meshfileCurr )
+
+			# too slow right now!
+			#subdivideMesh(mesh=mesh, minAngle=0.01, minLength=scale, maxLength=3*scale, cutTubes=False) 
+			# beautify mesh
+			#for iters in range(0):
+				#smoothMesh(mesh=mesh, strength=1e-3, steps=10) 
+				#subdivideMesh(mesh=mesh, minAngle=0.01, minLength=scale, maxLength=3*scale, cutTubes=True)
+
+			# write output file:
+			#mesh.save( meshfileCurr )
 		
 	s.step()
 
