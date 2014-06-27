@@ -280,7 +280,7 @@ void processText(const string& text, int baseline, Sink& sink, const Class* pare
 	// no real lexing yet, only track define and comment blocks
 	string word = "";
 	int line=baseline;
-	bool comment=false, slComment=false, define=false, extendLine=false;
+	bool comment=false, slComment=false, define=false, extendLine=false, isString=false;
 	for (size_t i=0; i<text.size()-1; i++) {
 		char c = text[i];
 		if (c == '\r') continue;
@@ -316,6 +316,16 @@ void processText(const string& text, int baseline, Sink& sink, const Class* pare
 			slComment = true;
 			newText << word;
 			word = "";
+			newText << c;
+		}
+		else if (!isString && c=='\"') {
+			isString = true;
+			newText << word;
+			word = "";
+			newText << c;
+		}
+		else if (isString) {
+			if (c=='\"') isString = false;
 			newText << c;
 		}
 		else if (c=='#') {
