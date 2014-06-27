@@ -132,23 +132,22 @@ SET(PP_SOURCES
 	source/mesh.cpp
 	source/general.cpp
 	source/particle.cpp
-	source/flip.cpp
 	source/movingobs.cpp
 	source/fileio.cpp
 	source/noisefield.cpp
 	source/kernel.cpp
 	source/vortexsheet.cpp
-	#source/vortexfilament.cpp
 	source/vortexpart.cpp
 	source/turbulencepart.cpp
 	source/timing.cpp
 	source/edgecollapse.cpp
-	source/plugin/pressure.cpp
-	source/plugin/initplugins.cpp
 	source/plugin/advection.cpp
 	source/plugin/extforces.cpp
+	source/plugin/flip.cpp
 	source/plugin/kepsilon.cpp
+	source/plugin/initplugins.cpp
 	source/plugin/meshplugins.cpp
+	source/plugin/pressure.cpp
 	source/plugin/vortexplugins.cpp
 	source/plugin/waveletturbulence.cpp
 	source/plugin/waves.cpp
@@ -168,17 +167,14 @@ SET(PP_HEADERS
 	source/shapes.h
 	source/noisefield.h
 	source/vortexsheet.h
-	#source/vortexfilament.h
 	source/general.h
 	source/kernel.h
-	source/flip.h
 	source/timing.h
 	source/movingobs.h
 	source/fileio.h
 	source/edgecollapse.h
 	source/vortexpart.h
 	source/turbulencepart.h
-	#source/test.h
 )
 
 # no pre-processing needed
@@ -241,10 +237,10 @@ endif()
 
 # include dirs
 SET(INCLUDE_PATHS
-   source/pwrapper
-   source/cuda
-   source/util
-   ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
+	source/pwrapper
+	source/cuda
+	source/util
+	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
 )
 
 # Multithreading
