@@ -115,6 +115,10 @@ void FluidSolver::printMemInfo() {
 PYTHON void printBuildInfo() {
 	debMsg( "Build info: "<<buildInfoString().c_str()<<" ",1);
 }
- 
+
+PYTHON void setDebugLevel(int level=1) {
+	gDebugLevel = level; 
 }
+
+} // manta
 
