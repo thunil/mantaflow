@@ -45,6 +45,7 @@ void pbFinalizePlugin(FluidSolver *parent, const string& name) {
 	}
 	updateQtGui(false, 0, msg.str() );
 	
+	debMsg(name<<" done", 2);
 	// name unnamed PbClass Objects from var name
 	PbClass::renameObjects();
 }
