@@ -158,6 +158,10 @@ public:
     inline Corner& corners(int c) { return mCorners[c]; }
     inline NodeChannel* nodeChannel(int i) { return mNodeChannels[i]; }
     inline TriChannel* triChannel(int i) { return mTriChannels[i]; }
+
+	// allocate memory (eg upon load)
+	void resizeTris(int numTris);
+	void resizeNodes(int numNodes);
     
     inline bool isNodeFixed(int n) { return mNodes[n].flags & NfFixed; }
     inline bool isTriangleFixed(int t) { return (mNodes[mTris[t].c[0]].flags & NfFixed) || (mNodes[mTris[t].c[1]].flags & NfFixed) || (mNodes[mTris[t].c[2]].flags & NfFixed); }
