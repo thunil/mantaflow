@@ -43,7 +43,7 @@ public:
 	void requestClose() { mRequestClose =true; }
 	void setStep(int f);
 	void setBackground(Mesh *m) { emit setBackgroundMesh(m); }
-	
+
 public slots:
 	void pause();
 	void play();
@@ -52,6 +52,15 @@ public slots:
 	void addControl(void* ctrl);
 	void screenshot(QString file);
 	void clickLine(QPoint pos, float p0, float p1,float p2, float q0, float q1, float q2);
+	
+	void nextRealGrid();
+	void nextVec3Grid();
+	void nextMesh();
+	void nextParts();
+	void nextPdata();
+	void nextVec3Display();
+	void nextPartDisplay();
+	void nextMeshDisplay();
 	
 signals:
 	void painterEvent(int e, int param=0);    

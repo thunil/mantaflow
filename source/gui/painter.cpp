@@ -87,7 +87,7 @@ void LockedObjPainter::nextObject() {
 template<class T>
 GridPainter<T>::GridPainter(FlagGrid** flags, QWidget* par) 
 	: LockedObjPainter(par), mMaxVal(0), mDim(0), mPlane(0), mMax(0), mLocalGrid(NULL), 
-	  mFlags(flags), mInfo(NULL), mHide(false), mHideLocal(false), mVelMode(VelDispCentered), mValScale()
+	  mFlags(flags), mInfo(NULL), mHide(false), mHideLocal(false), mVelMode(VecDispCentered), mValScale()
 {
 	mDim = 2; // Z plane
 	mPlane = 0;
@@ -207,9 +207,9 @@ void GridPainter<Vec3>::processSpecificKeyEvent(PainterEvent e, int param) {
 		mValScale[mObject] = getScale() * 0.5;
 	else if (e == EventScaleVecUp && mObject)
 		mValScale[mObject] = getScale() * 2.0;
-	else if (e == EventNextVelDisplayMode) {
-		mVelMode = (mVelMode+1)%NumVelDispModes;
-		mHideLocal = (mVelMode==VelDispOff);
+	else if (e == EventNextVecDisplayMode) {
+		mVelMode = (mVelMode+1)%NumVecDispModes;
+		mHideLocal = (mVelMode==VecDispOff);
 
 	}
 }
@@ -470,7 +470,7 @@ template<> void GridPainter<Vec3>::paint() {
 	bool mac = mLocalGrid->getType() & GridBase::TypeMAC;
 	const Real scale = getScale();
 
-	if( (mVelMode==VelDispCentered) || (mVelMode==VelDispStaggered) ) {
+	if( (mVelMode==VecDispCentered) || (mVelMode==VecDispStaggered) ) {
 
 		// regular velocity drawing mode
 		glBegin(GL_LINES);
@@ -478,7 +478,7 @@ template<> void GridPainter<Vec3>::paint() {
 		FOR_P_SLICE(mLocalGrid, mDim, mPlane) {        
 			Vec3 vel = mLocalGrid->get(p) * scale;
 			Vec3 pos (p.x+0.5, p.y+0.5, p.z+0.5);
-			if (mVelMode==VelDispCentered) {
+			if (mVelMode==VecDispCentered) {
 				if (mac) {
 					if (p.x < mLocalGrid->getSizeX()-1) 
 						vel.x = 0.5 * (vel.x + scale * mLocalGrid->get(p.x+1,p.y,p.z).x);
@@ -491,7 +491,7 @@ template<> void GridPainter<Vec3>::paint() {
 				glVertex(pos, dx);
 				glColor3f(1,1,0);
 				glVertex(pos+vel*1.2, dx);
-			} else if (mVelMode==VelDispStaggered) {
+			} else if (mVelMode==VecDispStaggered) {
 				for (int d=0; d<3; d++) {
 					if (fabs(vel[d]) < 1e-2) continue;
 					Vec3 p1(pos);
@@ -509,7 +509,7 @@ template<> void GridPainter<Vec3>::paint() {
 		}
 		glEnd();    
 	
-	} else if (mVelMode==VelDispUv) {
+	} else if (mVelMode==VecDispUv) {
 		// draw as uv coordinates , note - this will completely hide the real grid display!
 		Vec3 box[4];
 		glBegin(GL_QUADS); 

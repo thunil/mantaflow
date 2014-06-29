@@ -229,7 +229,7 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
 			    (key == Qt::Key_Period) )           { emit painterEvent(Painter::EventScaleRealUp); }
 
 		// vec3 grids, scaling can be used with two key combinations (the second one is for international keyboards)
-		else if (key == Qt::Key_V && shift)         { emit painterEvent(Painter::EventNextVelDisplayMode); }
+		else if (key == Qt::Key_V && shift)         { emit painterEvent(Painter::EventNextVecDisplayMode); }
 		else if (key == Qt::Key_V)                  { emit painterEvent(Painter::EventNextVec);  updatePlane(mPlane); }
 		// grid scaling
 		else if (key == Qt::Key_Semicolon)          { emit painterEvent(Painter::EventScaleVecDown); }

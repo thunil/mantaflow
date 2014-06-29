@@ -32,12 +32,12 @@ public:
 	enum PainterEvent { 
 		EventNone = 0, UpdateRequest, UpdateFull, UpdateStep,
 		EventScaleVecUp, EventScaleVecDown, EventScaleRealUp, EventScaleRealDown, EventChangePlane, 
-		EventSetPlane, EventSetDim, EventNextInt, EventNextReal, EventNextVec, EventNextVelDisplayMode,
+		EventSetPlane, EventSetDim, EventNextInt, EventNextReal, EventNextVec, EventNextVecDisplayMode,
 		EventNextMesh, EventMeshMode, EventToggleGridDisplay, EventScaleMeshUp, EventScaleMeshDown, EventMeshColorMode,
 		EventNextSystem, EventToggleParticles, EventNextParticleDisplayMode, EventToggleBackgroundMesh, EventSetMax,
 		EventScalePdataDown, EventScalePdataUp };
 
-	enum VelDisplayModes { VelDispOff=0, VelDispCentered, VelDispStaggered, VelDispUv, NumVelDispModes };
+	enum VecDisplayModes { VecDispOff=0, VecDispCentered, VecDispStaggered, VecDispUv, NumVecDispModes };
 	
 	Painter(QWidget* par = 0) : QObject(par) {}
 	virtual ~Painter() {}

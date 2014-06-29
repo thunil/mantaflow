@@ -78,7 +78,7 @@ elif setup==1:
 flags.updateFromLevelset(phi)
 
 # obstacle init needs to go after updateFromLs
-obsBox = s.create(Box, p0=gs*vec3(0.7,0.0,0.7), p1=gs*vec3(0.8,1.0,0.8)) 
+obsBox = s.create(Box, p0=gs*vec3(0.7,0.0,0.5), p1=gs*vec3(0.8,1.0,0.8)) 
 obsBox.applyToGrid(grid=flags, value=(FlagObstacle) )
 #obsBox.applyToGrid(grid=flags, value=(FlagObstacle|FlagStick) )
 
@@ -99,7 +99,12 @@ if 1 and (GUI):
 	gui = Gui()
 	gui.show( dim==2 )
 	gui.pause()
-  
+	  
+	# show all particles shaded by velocity
+	gui.nextPdata()
+	gui.nextPartDisplay()
+	gui.nextPartDisplay()
+
 
 # recompute time step
 def adaptDt( solver ):

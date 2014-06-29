@@ -256,6 +256,31 @@ void MainWnd::showHelp() {
 	mKbwView->show();
 }
 
+void MainWnd::nextRealGrid() {
+	emit painterEvent(Painter::EventNextReal); 
+}
+void MainWnd::nextVec3Grid() {
+	emit painterEvent(Painter::EventNextVec); 
+}
+void MainWnd::nextMesh() {
+	emit painterEvent(Painter::EventNextMesh); 
+}
+void MainWnd::nextParts() {
+	emit painterEvent(Painter::EventNextSystem); 
+}
+void MainWnd::nextPdata() {
+	emit painterEvent(Painter::EventToggleParticles); 
+}
+void MainWnd::nextVec3Display() {
+	emit painterEvent(Painter::EventNextVecDisplayMode); 
+}
+void MainWnd::nextPartDisplay() {
+	emit painterEvent(Painter::EventNextParticleDisplayMode); 
+}
+void MainWnd::nextMeshDisplay() {
+	emit painterEvent(Painter::EventMeshMode); 
+}
+
 MainWnd::~MainWnd() {
 }
 

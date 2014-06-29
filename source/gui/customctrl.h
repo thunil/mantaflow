@@ -117,6 +117,16 @@ public:
 	PYTHON void pause();
 	PYTHON PbClass* addControl(PbType t);
 	PYTHON void screenshot(std::string filename);
+
+	// control display upon startup
+	PYTHON void nextRealGrid();
+	PYTHON void nextVec3Grid();
+	PYTHON void nextParts();
+	PYTHON void nextPdata();
+	PYTHON void nextMesh();
+	PYTHON void nextVec3Display();
+	PYTHON void nextMeshDisplay();
+	PYTHON void nextPartDisplay();
 	
 protected:
 	GuiThread* mGuiPtr;
