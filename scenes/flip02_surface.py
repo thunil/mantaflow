@@ -38,7 +38,7 @@ pindex = s.create(ParticleIndexSystem)
 gpi    = s.create(IntGrid)
 
 # scene setup, 0=breaking dam, 1=drop into pool
-setup = 1
+setup = 0
 flags.initDomain(boundaryWidth=0)
 fluidVel = 0
 fluidSetVel = 0
@@ -116,7 +116,7 @@ for t in range(250):
 	#s.printMemInfo()
 	s.step()
 
-	# generate data for flip03_gen.py surface generation
+	# generate data for flip03_gen.py surface generation scene
 	#pp.save( 'flipParts_%04d.uni' % t );
 
 	if 0 and (GUI):

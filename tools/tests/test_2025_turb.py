@@ -92,7 +92,6 @@ for t in range(32):
     setWallBcs(flags=flags, vel=vel)
     setInflowBcs(vel=vel,dir='xXyYzZ',value=velInflow)
     
-    #s.printTimings()
     s.step()
     
 # check final state
