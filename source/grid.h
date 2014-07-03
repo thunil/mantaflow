@@ -142,6 +142,13 @@ public:
 		}
 	}
 	
+	// assignment / copy
+
+	//! warning - do not use "=" for grids in python, this copies the reference! not the grid content...
+	//Grid<T>& operator=(const Grid<T>& a);
+	//! copy content from other grid (use this one instead of operator= !)
+	PYTHON Grid<T>& copyFrom(const Grid<T>& a); // { *this = a; }
+
 	// operators
 	template<class S> Grid<T>& operator+=(const Grid<S>& a);
 	template<class S> Grid<T>& operator+=(const S& a);
@@ -151,29 +158,27 @@ public:
 	template<class S> Grid<T>& operator*=(const S& a);
 	template<class S> Grid<T>& operator/=(const Grid<S>& a);
 	template<class S> Grid<T>& operator/=(const S& a);
-	Grid<T>& operator=(const Grid<T>& a);
 	Grid<T>& safeDivide(const Grid<T>& a);    
 
-	// python helper functions to work with grids in scene files 
-	// note - unfortunately setConstant function has to be external! here only e.g. set to Real would work...
-	// see setConstant, setConstantVec3, setConstantInt in grid.cpp for details
+	// helper functions to work with grids in scene files 
 
 	//! add/subtract other grid
 	PYTHON void add(const Grid<T>& a);
 	PYTHON void sub(const Grid<T>& a);
 	//! set content to added/subtracted values of other two grids
-	PYTHON void setAdd(const Grid<T>& a, const Grid<T>& b);
-	PYTHON void setSub(const Grid<T>& a, const Grid<T>& b);
+	// REM PYTHON void setAdd(const Grid<T>& a, const Grid<T>& b); // NT_DEBUG
+	// REM PYTHON void setSub(const Grid<T>& a, const Grid<T>& b); // NT_DEBUG
 	//! add real constant to all grid cells
-	PYTHON void addConstReal(Real s);
-	//! multiply contents of grid
-	PYTHON void multiply( const Grid<T>& b);
-	//! multiply each cell by a constant scalar value
-	PYTHON void multiplyConstReal(Real s);
+	//PYTHON void addConstReal(Real s); // NT_DEBUG
+	PYTHON void addConst(T s);
 	//! add scaled other grid to current one (note, only "Real" factor, "T" type not supported here!)
 	PYTHON void addScaledReal(const Grid<T>& b, const Real& factor); 
-	//! copy content from other grid (use this one instead of operator= !)
-	PYTHON void copyFrom(const Grid<T>& a) { *this = a; }
+	PYTHON void addScaled(const Grid<T>& b, const T& factor); 
+	//! multiply contents of grid
+	PYTHON void mult( const Grid<T>& b);
+	//! multiply each cell by a constant scalar value
+	//PYTHON void multConstReal(Real s); // NT_DEBUG
+	PYTHON void multConst(T s);
 	//! clamp content to range (for vec3, clamps each component separately)
 	PYTHON void clamp(Real min, Real max);
 	
@@ -430,10 +435,9 @@ KERNEL(idx) template<class T, class S> void gridSub (Grid<T>& me, const Grid<S>&
 KERNEL(idx) template<class T, class S> void gridMult (Grid<T>& me, const Grid<S>& other) { me[idx] *= other[idx]; }
 KERNEL(idx) template<class T, class S> void gridDiv (Grid<T>& me, const Grid<S>& other)  { me[idx] /= other[idx]; }
 KERNEL(idx) template<class T, class S> void gridAddScalar (Grid<T>& me, const S& other)  { me[idx] += other; }
-KERNEL(idx) template<class T, class S> void gridMultScalar (Grid<T>& me, const S& other) { me[idx] *= other; }
+KERNEL(idx) template<class T, class S> void gridMultScalar(Grid<T>& me, const S& other)  { me[idx] *= other; }
 KERNEL(idx) template<class T, class S> void gridScaledAdd (Grid<T>& me, const Grid<T>& other, const S& factor) { me[idx] += factor * other[idx]; }
 
-KERNEL(idx) template<class T> void gridAdd2 (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { me[idx] = a[idx] + b[idx]; }
 KERNEL(idx) template<class T> void gridSafeDiv (Grid<T>& me, const Grid<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
 KERNEL(idx) template<class T> void gridSetConst(Grid<T>& grid, T value) { grid[idx] = value; }
 
