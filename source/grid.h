@@ -149,27 +149,12 @@ public:
 	//! copy content from other grid (use this one instead of operator= !)
 	PYTHON Grid<T>& copyFrom(const Grid<T>& a); // { *this = a; }
 
-	// operators
-	template<class S> Grid<T>& operator+=(const Grid<S>& a);
-	template<class S> Grid<T>& operator+=(const S& a);
-	template<class S> Grid<T>& operator-=(const Grid<S>& a);
-	template<class S> Grid<T>& operator-=(const S& a);
-	template<class S> Grid<T>& operator*=(const Grid<S>& a);
-	template<class S> Grid<T>& operator*=(const S& a);
-	template<class S> Grid<T>& operator/=(const Grid<S>& a);
-	template<class S> Grid<T>& operator/=(const S& a);
-	Grid<T>& safeDivide(const Grid<T>& a);    
-
 	// helper functions to work with grids in scene files 
 
 	//! add/subtract other grid
 	PYTHON void add(const Grid<T>& a);
 	PYTHON void sub(const Grid<T>& a);
-	//! set content to added/subtracted values of other two grids
-	// REM PYTHON void setAdd(const Grid<T>& a, const Grid<T>& b); // NT_DEBUG
-	// REM PYTHON void setSub(const Grid<T>& a, const Grid<T>& b); // NT_DEBUG
-	//! add real constant to all grid cells
-	//PYTHON void addConstReal(Real s); // NT_DEBUG
+	//! add constant to all grid cells
 	PYTHON void addConst(T s);
 	//! add scaled other grid to current one (note, only "Real" factor, "T" type not supported here!)
 	PYTHON void addScaledReal(const Grid<T>& b, const Real& factor); 
@@ -177,7 +162,6 @@ public:
 	//! multiply contents of grid
 	PYTHON void mult( const Grid<T>& b);
 	//! multiply each cell by a constant scalar value
-	//PYTHON void multConstReal(Real s); // NT_DEBUG
 	PYTHON void multConst(T s);
 	//! clamp content to range (for vec3, clamps each component separately)
 	PYTHON void clamp(Real min, Real max);
@@ -194,6 +178,17 @@ public:
 
 	//! debugging helper, print grid from python
 	PYTHON void printGrid(int zSlice=-1,  bool printIndex=false); 
+
+	// c++ only operators
+	template<class S> Grid<T>& operator+=(const Grid<S>& a);
+	template<class S> Grid<T>& operator+=(const S& a);
+	template<class S> Grid<T>& operator-=(const Grid<S>& a);
+	template<class S> Grid<T>& operator-=(const S& a);
+	template<class S> Grid<T>& operator*=(const Grid<S>& a);
+	template<class S> Grid<T>& operator*=(const S& a);
+	template<class S> Grid<T>& operator/=(const Grid<S>& a);
+	template<class S> Grid<T>& operator/=(const S& a);
+	Grid<T>& safeDivide(const Grid<T>& a);    
 	
 protected:
 	T* mData;
@@ -278,6 +273,11 @@ public:
 	PYTHON void fillGrid(int type=TypeFluid);
 };
 
+//! helper to compute grid conversion factor between local coordinates of two grids
+inline Vec3 calcGridSizeFactor(Vec3i s1, Vec3i s2) {
+	return Vec3( Real(s1[0])/s2[0], Real(s1[1])/s2[1], Real(s1[2])/s2[2] );
+}
+
 
 //******************************************************************************
 // enable compilation of a more complicated test data type
@@ -285,6 +285,7 @@ public:
 // the code below is meant only as an example for a grid with a more complex data type
 // and illustrates which functions need to be implemented; it's not needed
 // to run any simulations in mantaflow!
+
 #define ENABLE_GRID_TEST_DATATYPE 0
 
 #if ENABLE_GRID_TEST_DATATYPE==1
@@ -295,7 +296,13 @@ class nbVector : public nbVectorBaseType {
 		inline nbVector() : nbVectorBaseType() {};
 		inline ~nbVector() {};
 
+		// grid operators require certain functions
+		inline nbVector(Real v) : nbVectorBaseType() { this->push_back( (int)v ); };
+
 		inline const nbVector& operator+= ( const nbVector &v1 ) {
+			assertMsg(false,"Never call!"); return *this; 
+		}
+		inline const nbVector& operator-= ( const nbVector &v1 ) {
 			assertMsg(false,"Never call!"); return *this; 
 		}
 		inline const nbVector& operator*= ( const nbVector &v1 ) {
@@ -329,16 +336,17 @@ template<> inline nbVector safeDivide<nbVector>(const nbVector &a, const nbVecto
 	assertMsg(false,"Never call!"); return nbVector(); 
 }
 
-// make data type known to python
-// python keyword changed here, because the preprocessor does not yet parse #ifdefs correctly
-PYT HON alias Grid<nbVector> TestDataGrid;
-#endif // ENABLE_GRID_TEST_DATATYPE
-
-
-//! helper to compute grid conversion factor between local coordinates of two grids
-inline Vec3 calcGridSizeFactor(Vec3i s1, Vec3i s2) {
-	return Vec3( Real(s1[0])/s2[0], Real(s1[1])/s2[1], Real(s1[2])/s2[2] );
+std::ostream& operator<< ( std::ostream& os, const nbVectorBaseType& i ) {
+	os << " nbVectorBaseType NYI ";
+	return os;
 }
+
+// make data type known to python
+// (python keyword changed here, because the preprocessor does not yet parse #ifdefs correctly)
+PYTHON alias Grid<nbVector> TestDataGrid;
+// ? PYTHON alias nbVector TestDatatype;
+#endif // end ENABLE_GRID_TEST_DATATYPE
+
 
 
 //******************************************************************************

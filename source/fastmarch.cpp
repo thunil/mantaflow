@@ -220,7 +220,8 @@ void FastMarch<COMP,TDIR>::performMarching() {
 	}
 	
 	// set boundary for plain array
-	SetLevelsetBoundaries setls(mLevelset);
+	SetLevelsetBoundaries setls(mLevelset); 
+	setls.getArg0(); // get rid of compiler warning...
 }
 
 // explicit instantiation

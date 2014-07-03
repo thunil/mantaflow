@@ -175,10 +175,7 @@ template<class T> Grid<T>& Grid<T>::copyFrom (const Grid<T>& a) {
 	return *this;
 }
 /*template<class T> Grid<T>& Grid<T>::operator= (const Grid<T>& a) {
-	assertMsg (a.mSize.x == mSize.x && a.mSize.y == mSize.y && a.mSize.z == mSize.z, "different grid resolutions "<<a.mSize<<" vs "<<this->mSize );
-	memcpy(mData, a.mData, sizeof(T) * mSize.x * mSize.y * mSize.z);
-	mType = a.mType; // copy type marker
-	return *this;
+	note: do not use , use copyFrom instead
 }*/
 
 PYTHON void setConstant    (Grid<Real>& grid, Real value=0.) { gridSetConst<Real>(grid,value); }
@@ -202,21 +199,6 @@ KERNEL(idx) template<class T> void knGridAddConstReal (Grid<T>& me, T val) {
 template<class T> void Grid<T>::addConst(T a) {
 	knGridAddConstReal<T>( *this, T(a) );
 }
-/*KERNEL(idx) template<class T> void knGridSetAdded (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { 
-	me[idx] = a[idx] + b[idx]; }
-template<class T> void Grid<T>::setAdd(const Grid<T>& a, const Grid<T>& b) {
-	knGridSetAdded<T>(*this, a, b);
-}
-KERNEL(idx) template<class T> void knGridSetSubtracted (Grid<T>& me, const Grid<T>& a, const Grid<T>& b) { 
-	me[idx] = a[idx] - b[idx]; }
-template<class T> void Grid<T>::setSub(const Grid<T>& a, const Grid<T>& b) {
-	knGridSetSubtracted<T>(*this, a, b);
-}*/
-/*KERNEL(idx) template<class T> void knGridMultConstReal (Grid<T>& me, Real val) { 
-	me[idx] *= val; }
-template<class T> void Grid<T>::multConstReal(Real a) {
-	knGridMultConstReal<T>( *this, a );
-}*/
 KERNEL(idx) template<class T> void knGridMultConst (Grid<T>& me, T val) { 
 	me[idx] *= val; }
 template<class T> void Grid<T>::multConst(T a) {
@@ -438,7 +420,23 @@ template class Grid<Vec3>;
 
 //template void scaledAdd<Real,Real>(const Grid<Real>& a, const Grid<Real>& b, const Real& factor);
 
+//******************************************************************************
+// enable compilation of a more complicated test data type
+// enable in grid.h
+
 #if ENABLE_GRID_TEST_DATATYPE==1
+// NT_DEBUG ? template<> const char* Namify<nbVector>::S = "TestDatatype";
+
+template<> Real Grid<nbVector>::getMinValue()    { return 0.; }
+template<> Real Grid<nbVector>::getMaxAbsValue() { return 0.; }
+template<> Real Grid<nbVector>::getMaxValue()    { return 0.; }
+
+KERNEL void knNbvecTestKernel (Grid<nbVector>& target) { target(i,j,k).push_back(i+j+k); }
+
+PYTHON void nbvecTestOp (Grid<nbVector> &target) {
+	knNbvecTestKernel nbvecTest(target); 
+}
+
 // instantiate test datatype , not really required for simulations, mostly here for demonstration purposes
 template class Grid<nbVector>;
 #endif // ENABLE_GRID_TEST_DATATYPE
