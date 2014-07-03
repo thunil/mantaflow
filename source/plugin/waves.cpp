@@ -56,7 +56,7 @@ PYTHON Real totalSum(Grid<Real>& height) {
 PYTHON void normalizeSumTo(Grid<Real>& height, Real target) {
 	knTotalSum ts(height);
 	Real factor = target / ts.sum;
-	height.multiplyConstReal(factor);
+	height.multConst(factor);
 }
 
 
@@ -149,7 +149,7 @@ PYTHON void cgSolveWE(FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<Re
 	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
 
 	utm1.swap( ut );
-	ut = out;
+	ut.copyFrom( out );
 
 	delete gcg;
 }

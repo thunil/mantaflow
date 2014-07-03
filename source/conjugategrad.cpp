@@ -28,10 +28,10 @@ void InitPreconditionIncompCholesky(FlagGrid& flags,
 				Grid<Real>& orgA0, Grid<Real>& orgAi, Grid<Real>& orgAj, Grid<Real>& orgAk) 
 {
 	// compute IC according to Golub and Van Loan
-	A0 = orgA0;
-	Ai = orgAi;
-	Aj = orgAj;
-	Ak = orgAk;
+	A0.copyFrom( orgA0 );
+	Ai.copyFrom( orgAi );
+	Aj.copyFrom( orgAj );
+	Ak.copyFrom( orgAk );
 	
 	FOR_IJK(A0) {
 		if (flags.isFluid(i,j,k)) {
@@ -198,7 +198,7 @@ template<class APPLYMAT>
 void GridCg<APPLYMAT>::doInit() {
 	mInited = true;
 
-	mResidual = mRhs; // p=0, residual = b
+	mResidual.copyFrom( mRhs ); // p=0, residual = b
 	
 	if (mPcMethod == PC_ICP) {
 		assertMsg(mDst.is3D(), "ICP only supports 3D grids so far");
@@ -209,10 +209,10 @@ void GridCg<APPLYMAT>::doInit() {
 		InitPreconditionModifiedIncompCholesky2(mFlags, *mpPCA0, *mpA0, *mpAi, *mpAj, *mpAk);
 		ApplyPreconditionModifiedIncompCholesky2(mTmp, mResidual, mFlags, *mpPCA0, *mpA0, *mpAi, *mpAj, *mpAk);
 	} else {
-		mTmp = mResidual;
+		mTmp.copyFrom( mResidual );
 	}
 	
-	mSearch = mTmp;
+	mSearch.copyFrom( mTmp );
 	
 	mSigma = GridDotProduct(mTmp, mResidual);    
 }
@@ -242,7 +242,7 @@ bool GridCg<APPLYMAT>::iterate() {
 	else if (mPcMethod == PC_mICP)
 		ApplyPreconditionModifiedIncompCholesky2(mTmp, mResidual, mFlags, *mpPCA0, *mpA0, *mpAi, *mpAj, *mpAk);
 	else
-		mTmp = mResidual;
+		mTmp.copyFrom( mResidual );
 		
 	// compute norm of the residual?
 	if(this->mUseResNorm) { 

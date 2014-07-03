@@ -125,7 +125,7 @@ void GridPainter<T>::update() {
 			emit setViewport(src->getSize());
 	}
 	
-	*mLocalGrid = *src; // copy grid data and type marker
+	mLocalGrid->copyFrom( *src ); // copy grid data and type marker
 	mLocalGrid->setName(src->getName());
 	mLocalGrid->setParent(src->getParent());    
 	mMaxVal = mLocalGrid->getMaxAbsValue();

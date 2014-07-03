@@ -405,7 +405,7 @@ PYTHON void mapPartsToMAC( FlagGrid& flags, MACGrid& vel , MACGrid& velOld ,
 	vel.safeDivide(*weight);
 	
 	// store original state
-	velOld = vel;
+	velOld.copyFrom( vel );
 	if(freeTmp) delete weight;
 }
 
