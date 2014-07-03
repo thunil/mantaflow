@@ -188,9 +188,6 @@ template<class T> void Grid<T>::add(const Grid<T>& a) {
 template<class T> void Grid<T>::sub(const Grid<T>& a) {
 	gridSub<T,T>(*this, a);
 }
-template<class T> void Grid<T>::addScaledReal(const Grid<T>& b, const Real& factor) { 
-	gridScaledAdd<T,T> (*this, b, factor); 
-}
 template<class T> void Grid<T>::addScaled(const Grid<T>& b, const T& factor) { 
 	gridScaledAdd<T,T> (*this, b, factor); 
 }
@@ -200,7 +197,8 @@ template<class T> void Grid<T>::addConst(T a) {
 	knGridAddConstReal<T>( *this, T(a) );
 }
 KERNEL(idx) template<class T> void knGridMultConst (Grid<T>& me, T val) { 
-	me[idx] *= val; }
+	me[idx] *= val; 
+}
 template<class T> void Grid<T>::multConst(T a) {
 	knGridMultConst<T>( *this, a );
 }
@@ -418,7 +416,6 @@ template class Grid<int>;
 template class Grid<Real>;
 template class Grid<Vec3>;
 
-//template void scaledAdd<Real,Real>(const Grid<Real>& a, const Grid<Real>& b, const Real& factor);
 
 //******************************************************************************
 // enable compilation of a more complicated test data type

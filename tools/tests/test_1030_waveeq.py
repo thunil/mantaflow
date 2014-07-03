@@ -50,9 +50,9 @@ for t in range(40):
 		# explicit solve , easier-to-read version with explicit velocity integration
 		calcSecDeriv2d(h, curv)
 
-		vel.addScaledReal(curv, cSqr * s.timestep)
+		vel.addScaled(curv, cSqr * s.timestep)
 
-		h.addScaledReal(vel,s.timestep)
+		h.addScaled(vel,s.timestep)
 
 		# switch to implicit for second half
 		if(t>=20):

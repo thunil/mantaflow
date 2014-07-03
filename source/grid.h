@@ -157,7 +157,6 @@ public:
 	//! add constant to all grid cells
 	PYTHON void addConst(T s);
 	//! add scaled other grid to current one (note, only "Real" factor, "T" type not supported here!)
-	PYTHON void addScaledReal(const Grid<T>& b, const Real& factor); 
 	PYTHON void addScaled(const Grid<T>& b, const T& factor); 
 	//! multiply contents of grid
 	PYTHON void mult( const Grid<T>& b);
@@ -343,8 +342,9 @@ std::ostream& operator<< ( std::ostream& os, const nbVectorBaseType& i ) {
 
 // make data type known to python
 // (python keyword changed here, because the preprocessor does not yet parse #ifdefs correctly)
-PYTHON alias Grid<nbVector> TestDataGrid;
-// ? PYTHON alias nbVector TestDatatype;
+PY THON alias Grid<nbVector> TestDataGrid;
+// ? PY THON alias nbVector TestDatatype;
+
 #endif // end ENABLE_GRID_TEST_DATATYPE
 
 

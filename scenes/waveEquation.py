@@ -51,9 +51,9 @@ for t in range(1500):
 			hnew.copyFrom(h)
 			calcSecDeriv2d(h, curv)
 
-			hnew.addScaledReal(h    ,  1.)
-			hnew.addScaledReal(hprev, -1.) 
-			hnew.addScaledReal(curv, cSqr * s.timestep*s.timestep) 
+			hnew.addScaled(h    ,  1.)
+			hnew.addScaled(hprev, -1.) 
+			hnew.addScaled(curv, cSqr * s.timestep*s.timestep) 
 
 			hprev.copyFrom(h)
 			h.copyFrom(hnew)
@@ -62,9 +62,9 @@ for t in range(1500):
 			# explicit solve , easier-to-read version with explicit velocity integration
 			calcSecDeriv2d(h, curv)
 
-			vel.addScaledReal(curv, cSqr * s.timestep)
+			vel.addScaled(curv, cSqr * s.timestep)
 
-			h.addScaledReal(vel,s.timestep)
+			h.addScaled(vel,s.timestep)
 
 
 	if normalizeMass:
