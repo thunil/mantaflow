@@ -236,6 +236,10 @@ public:
 		TypeReserved = 256
 		// 2^10 - 2^14 reserved for moving obstacles
 	};
+
+	// MLE 2014-06-25
+	int bWidth;
+	inline int getBoundaryWidth(){return bWidth;};
 		
 	//! access for particles
 	inline int getAt(const Vec3& pos) const { return mData[index((int)pos.x, (int)pos.y, (int)pos.z)]; }

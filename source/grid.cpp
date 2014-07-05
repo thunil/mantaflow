@@ -401,6 +401,8 @@ void FlagGrid::initDomain(int boundaryWidth) {
 	FOR_IDX(*this)
 		mData[idx] = TypeEmpty;
 	initBoundaries(boundaryWidth);
+	// MLE 2014-06-25
+	bWidth = boundaryWidth;
 }
 
 void FlagGrid::initBoundaries(int boundaryWidth) {
