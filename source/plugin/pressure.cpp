@@ -45,58 +45,60 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 }
 
 
+// MLE 2014-07-02
 //! Kernel: Apply velocity update from poisson equation
 KERNEL(bnd=1) 
-void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
-{
-	int idx = flags.index(i,j,k);
-	if (flags.isFluid(idx))
-	{
-		if (flags.isFluid(i-1,j,k)) vel[idx].x -= (pressure[idx] - pressure(i-1,j,k));
-		if (flags.isFluid(i,j-1,k)) vel[idx].y -= (pressure[idx] - pressure(i,j-1,k));
-		if (flags.is3D() && flags.isFluid(i,j,k-1)) vel[idx].z -= (pressure[idx] - pressure(i,j,k-1));
+void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure, Vector3D<bool> lo, Vector3D<bool> up) {
+
+	// MLE 2014-07-02
+	int b = flags.getBoundaryWidth();
+    int idx = flags.index(i,j,k);
+	bool leFluid = flags.isFluid(i-1,j,k);
+	bool boFluid = flags.isFluid(i,j-1,k);
+	bool frFluid = false;
+	if(flags.is3D()) frFluid = flags.isFluid(i,j,k-1);
+
+    if (flags.isFluid(idx)){
+        if (leFluid)				vel[idx].x -= (pressure[idx] - pressure(i-1,j,k));
+        if (boFluid)				vel[idx].y -= (pressure[idx] - pressure(i,j-1,k));
+        if (flags.is3D() && frFluid)vel[idx].z -= (pressure[idx] - pressure(i,j,k-1));
  
-		if (flags.isEmpty(i-1,j,k)) vel[idx].x -= pressure[idx];
-		if (flags.isEmpty(i,j-1,k)) vel[idx].y -= pressure[idx];
-		if (flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx].z -= pressure[idx];
-	}
-	else if (flags.isEmpty(idx))
-	{
-		if (flags.isFluid(i-1,j,k)) vel[idx].x += pressure(i-1,j,k);
-		else                        vel[idx].x  = 0.f;
-		if (flags.isFluid(i,j-1,k)) vel[idx].y += pressure(i,j-1,k);
-		else                        vel[idx].y  = 0.f;
+        if (flags.isEmpty(i-1,j,k)||(lo.x && flags.isObstacle(i-1,j,k)))					vel[idx].x -= pressure[idx];
+        if (flags.isEmpty(i,j-1,k)||(lo.y && flags.isObstacle(i,j-1,k)))					vel[idx].y -= pressure[idx];
+        if (flags.is3D() && (flags.isEmpty(i,j,k-1)||(lo.z && flags.isObstacle(i,j,k-1))))	vel[idx].z -= pressure[idx];
+    }
+    else if (flags.isEmpty(idx)){
+        if (leFluid)		vel[idx].x += pressure(i-1,j,k);
+		else				vel[idx].x  = 0.f;
+        if (boFluid)		vel[idx].y += pressure(i,j-1,k);
+		else                vel[idx].y  = 0.f;
 		if (flags.is3D() ) {
-		if (flags.isFluid(i,j,k-1)) vel[idx].z += pressure(i,j,k-1);
-		else                        vel[idx].z  = 0.f;
+			if (frFluid)	vel[idx].z += pressure(i,j,k-1);
+			else            vel[idx].z  = 0.f;
 		}
-	}
+	}else if (flags.isObstacle(idx)){
+        if (up.x && leFluid)	vel[idx].x += pressure(i-1,j,k);
+		else if(up.x)			vel[idx].x  = 0.f;
+        if (up.y && boFluid)	vel[idx].y += pressure(i,j-1,k);
+		else if(up.y)			vel[idx].y  = 0.f;
+        if (flags.is3D() ) {
+			if (up.z && frFluid)vel[idx].z += pressure(i,j,k-1);
+			else if(up.z)       vel[idx].z  = 0.f;
+		}
+    }
 }
 
-//! Kernel: Set matrix stencils and velocities to enable open boundaries
-KERNEL void SetOpenBound(Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, MACGrid& vel,
-						 Vector3D<bool> lowerBound, Vector3D<bool> upperBound)
-{    
-	// set velocity boundary conditions
-	if (lowerBound.x && i == 0) vel(0,j,k) = vel(1,j,k);
-	if (lowerBound.y && j == 0) vel(i,0,k) = vel(i,1,k);
-	if (upperBound.x && i == maxX-1) vel(maxX-1,j,k) = vel(maxX-2,j,k);
-	if (upperBound.y && j == maxY-1) vel(i,maxY-1,k) = vel(i,maxY-2,k);
-	if(vel.is3D()) {
-		if (lowerBound.z && k == 0)      vel(i,j,0)      = vel(i,j,1);
-		if (upperBound.z && k == maxZ-1) vel(i,j,maxZ-1) = vel(i,j,maxZ-2); 
-	}
-	
-	// set matrix stencils at boundary
-	if ((lowerBound.x && i<=1) || (upperBound.x && i>=maxX-2) ||
-		(lowerBound.y && j<=1) || (upperBound.y && j>=maxY-2) ||
-		(lowerBound.z && k<=1) || (upperBound.z && k>=maxZ-2)) {
-		A0(i,j,k) = vel.is3D() ? 6.0 : 4.0;
-		Ai(i,j,k) = -1.0;
-		Aj(i,j,k) = -1.0;
-		if (vel.is3D()) Ak(i,j,k) = -1.0;
-	}
+// MLE changed argument list 2014-06-30
+KERNEL void SetOpenBound(Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real> &Ak,FlagGrid& flags,Vector3D<bool> lo, Vector3D<bool> up) {
+
+	// MLE 2014-07-04
+	// didn't consider case where only one cell is between the xX / yY / zZ boundaries
+	int b = flags.getBoundaryWidth();
+    if ((lo.x && i <= b+1)||(up.x && i >= maxX-b-3))					Ai(i,j,k) = .0;
+    if ((lo.y && j <= b+1)||(up.y && j >= maxY-b-2))					Aj(i,j,k) = .0;
+    if(flags.is3D() && ((lo.z && k <= b+1)||(up.z && k >= maxZ-b-2)))	Ak(i,j,k) = .0;
 }
+
 
 //! Kernel: Set matrix rhs for outflow
 KERNEL void SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<bool> upperBound, int height)
@@ -224,19 +226,19 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 	}
 }
 
+// MLE 2014-06-30 changed position of openBound for calling solvePressure from c++
 //! Perform pressure projection of the velocity grid
-PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
-					 Grid<Real>* phi = 0, 
-					 Grid<Real>* perCellCorr = 0, 
-					 Real gfClamp = 1e-04, 
-					 Real cgMaxIterFac = 1.5,
-					 Real cgAccuracy = 1e-3,
-					 string openBound = "",
-					 string outflow = "",
-					 int outflowHeight = 1,
-					 bool precondition = true,
-					 bool enforceCompatibility = false,
-					 bool useResNorm = true )
+PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string openBound="",
+                     Grid<Real>* phi = 0, 
+                     Grid<Real>* perCellCorr = 0, 
+                     Real gfClamp = 1e-04,
+                     Real cgMaxIterFac = 1.5,
+                     Real cgAccuracy = 1e-3,
+                     string outflow = "",
+                     int outflowHeight = 1,
+                     bool precondition = true,
+                     bool enforceCompatibility = false,
+                     bool useResNorm = true )
 {
 	// parse strings
 	Vector3D<bool> loOpenBound, upOpenBound, loOutflow, upOutflow;
@@ -262,7 +264,8 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 		
 	// setup matrix and boundaries
 	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak);
-	SetOpenBound (A0, Ai, Aj, Ak, vel, loOpenBound, upOpenBound);
+	// MLE 2014-06-30 changed vel parameter to flags parameter
+	SetOpenBound (A0, Ai, Aj, Ak, flags, loOpenBound, upOpenBound);
 	
 	if (phi) {
 		ApplyGhostFluidDiagonal(A0, flags, *phi, gfClamp);
@@ -298,7 +301,8 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
 	delete gcg;
 	
-	CorrectVelocity(flags, vel, pressure);
+	// MLE 2014-06-30 add parameters loOpenBound and upOpenBound
+	CorrectVelocity(flags, vel, pressure, loOpenBound, upOpenBound);
 	if (phi) {
 		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);
 		// improve behavior of clamping for large time steps:
