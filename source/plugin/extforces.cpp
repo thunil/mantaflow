@@ -97,8 +97,8 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vecto
 	// if admm, correct if vel is pointing outwards
 	
 	// if "inner" obstacle vel
-	if(curObstacle && !flags.isFluid(i-1,j,k)) vel(i,j,k).x = 0;
-	if(curObstacle && !flags.isFluid(i,j-1,k)) vel(i,j,k).y = 0;
+	if(i>0 && curObstacle && !flags.isFluid(i-1,j,k)) vel(i,j,k).x = 0;
+	if(j>0 && curObstacle && !flags.isFluid(i,j-1,k)) vel(i,j,k).y = 0;
 
 	// check lo.x
 	if(!lo.x && i>0 && curFluid && flags.isObstacle(i-1,j,k) && ((admm&&vel(i,j,k).x<0)||!admm)) vel(i,j,k).x = 0;
@@ -128,7 +128,7 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vecto
 
 // MLE 2014-07-04
 //! set no-stick boundary condition on walls
-PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, string openBound, bool admm) {
+PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, string openBound="", bool admm=false) {
 	Vector3D<bool> lo, up;
     convertDescToVec(openBound, lo, up);
     KnSetWallBcs(flags, vel, lo, up, admm);
