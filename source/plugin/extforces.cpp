@@ -19,6 +19,19 @@ using namespace std;
 
 namespace Manta { 
 
+// MLE 2014-07-05 copy from pressure.cpp
+inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bool>& up) {
+    for(size_t i=0; i<desc.size(); i++) {
+        if (desc[i] == 'x') lo.x = true;
+        else if (desc[i] == 'y') lo.y = true;
+        else if (desc[i] == 'z') lo.z = true;
+        else if (desc[i] == 'X') up.x = true;
+        else if (desc[i] == 'Y') up.y = true;
+        else if (desc[i] == 'Z') up.z = true;
+        else errMsg("invalid character in boundary description string. Only [xyzXYZ] allowed.");
+    }
+}
+
 //! add Forces between fl/fl and fl/em cells
 KERNEL(bnd=1) void KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
 	bool curFluid = flags.isFluid(i,j,k);
@@ -72,19 +85,36 @@ PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3
 
 		
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
-KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
+KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up, bool admm) {
+
 	bool curFluid = flags.isFluid(i,j,k);
-	bool curObstacle = flags.isObstacle(i,j,k);
+    bool curObstacle = flags.isObstacle(i,j,k);
 	if (!curFluid && !curObstacle) return;
+
+	// MLE 2014-07-04
+	// if not admm, leave it as in orig
+	// if openBound, don't correct anything (solid is as empty)
+	// if admm, correct if vel is pointing outwards
 	
-	// we use i>0 instead of bnd=1 to check outer wall
-	if (i>0 && (flags.isObstacle(i-1,j,k) || (curObstacle && flags.isFluid(i-1,j,k))))
-		vel(i,j,k).x = 0;
-	if (j>0 && (flags.isObstacle(i,j-1,k) || (curObstacle && flags.isFluid(i,j-1,k))))
-		vel(i,j,k).y = 0;
-	if (vel.is2D() || (k>0 && (flags.isObstacle(i,j,k-1) || (curObstacle && flags.isFluid(i,j,k-1)))))
-		vel(i,j,k).z = 0;
-		
+	// if "inner" obstacle vel
+	if(curObstacle && !flags.isFluid(i-1,j,k)) vel(i,j,k).x = 0;
+	if(curObstacle && !flags.isFluid(i,j-1,k)) vel(i,j,k).y = 0;
+
+	// check lo.x
+	if(!lo.x && i>0 && curFluid && flags.isObstacle(i-1,j,k) && ((admm&&vel(i,j,k).x<0)||!admm)) vel(i,j,k).x = 0;
+	// check up.x
+	if(!up.x && i>0 && curObstacle && flags.isFluid(i-1,j,k) && ((admm&&vel(i,j,k).x>0)||!admm)) vel(i,j,k).x = 0;
+	// check lo.y
+	if(!lo.y && j>0 && curFluid && flags.isObstacle(i,j-1,k) && ((admm&&vel(i,j,k).y<0)||!admm)) vel(i,j,k).y = 0;
+	// check up.y
+	if(!up.y && j>0 && curObstacle && flags.isFluid(i,j-1,k) && ((admm&&vel(i,j,k).y>0)||!admm)) vel(i,j,k).y = 0;
+	// check lo.z
+	if(!lo.z && k>0 && curFluid && flags.isObstacle(i,j,k-1) && ((admm&&vel(i,j,k).z<0)||!admm)) vel(i,j,k).z = 0;
+	// check up.z
+	if(!up.z && k>0 && curObstacle && flags.isFluid(i,j,k-1) && ((admm&&vel(i,j,k).z>0)||!admm)) vel(i,j,k).z = 0;
+	
+
+	/* MLE consider later	
 	if (curFluid) {
 		if ((i>0 && flags.isStick(i-1,j,k)) || (i<flags.getSizeX()-1 && flags.isStick(i+1,j,k)))
 			vel(i,j,k).y = vel(i,j,k).z = 0;
@@ -93,13 +123,16 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 		if (vel.is3D() && ((k>0 && flags.isStick(i,j,k-1)) || (k<flags.getSizeZ()-1 && flags.isStick(i,j,k+1))))
 			vel(i,j,k).x = vel(i,j,k).y = 0;
 	}
+	*/
 }
 
+// MLE 2014-07-04
 //! set no-stick boundary condition on walls
-PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel) {
-	KnSetWallBcs(flags, vel);
+PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, string openBound, bool admm) {
+	Vector3D<bool> lo, up;
+    convertDescToVec(openBound, lo, up);
+    KnSetWallBcs(flags, vel, lo, up, admm);
 } 
-
 //! Kernel: gradient norm operator
 KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
 	Vec3 grad = 0.5 * Vec3(        grid(i+1,j,k)-grid(i-1,j,k), 
