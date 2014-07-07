@@ -127,7 +127,7 @@ Real CompMinReal(Grid<Real>& val) {
 }
 
 //! Kernel: Compute max value of Real grid
-KERNEL(idx, reduce=max) returns(Real maxVal=-std::numeric_limits<Real>::max())
+KERNEL(idx, reduce=max) returns(Real maxVal=std::numeric_limits<Real>::min())
 Real CompMaxReal(Grid<Real>& val) {
 	if (val[idx] > maxVal)
 		maxVal = val[idx];
@@ -141,7 +141,7 @@ int CompMinInt(Grid<int>& val) {
 }
 
 //! Kernel: Compute max value of int grid
-KERNEL(idx, reduce=max) returns(int maxVal=-std::numeric_limits<int>::min())
+KERNEL(idx, reduce=max) returns(int maxVal=std::numeric_limits<int>::min())
 int CompMaxInt(Grid<int>& val) {
 	if (val[idx] > maxVal)
 		maxVal = val[idx];
@@ -156,7 +156,7 @@ Real CompMinVec(Grid<Vec3>& val) {
 }
 
 //! Kernel: Compute max norm of vec grid
-KERNEL(idx, reduce=max) returns(Real maxVal=0)
+KERNEL(idx, reduce=max) returns(Real maxVal=std::numeric_limits<int>::min())
 Real CompMaxVec(Grid<Vec3>& val) {
 	const Real s = normSquare(val[idx]);
 	if (s > maxVal)
@@ -178,6 +178,7 @@ template<class T> Grid<T>& Grid<T>::copyFrom (const Grid<T>& a) {
 	note: do not use , use copyFrom instead
 }*/
 
+// NT_DEBUG , remove!
 PYTHON void setConstant    (Grid<Real>& grid, Real value=0.) { gridSetConst<Real>(grid,value); }
 PYTHON void setConstantVec3(Grid<Vec3>& grid, Vec3 value=0.) { gridSetConst<Vec3>(grid,value); }
 PYTHON void setConstantInt (Grid<int >& grid, int  value=0.) { gridSetConst<int>(grid,value); }
@@ -188,8 +189,8 @@ template<class T> void Grid<T>::add(const Grid<T>& a) {
 template<class T> void Grid<T>::sub(const Grid<T>& a) {
 	gridSub<T,T>(*this, a);
 }
-template<class T> void Grid<T>::addScaled(const Grid<T>& b, const T& factor) { 
-	gridScaledAdd<T,T> (*this, b, factor); 
+template<class T> void Grid<T>::addScaled(const Grid<T>& a, const T& factor) { 
+	gridScaledAdd<T,T> (*this, a, factor); 
 }
 KERNEL(idx) template<class T> void knGridAddConstReal (Grid<T>& me, T val) { 
 	me[idx] += val; }
@@ -203,8 +204,8 @@ template<class T> void Grid<T>::multConst(T a) {
 	knGridMultConst<T>( *this, a );
 }
 
-template<class T> void Grid<T>::mult(const Grid<T>& b) {
-	gridMult<T,T> (*this, b);
+template<class T> void Grid<T>::mult(const Grid<T>& a) {
+	gridMult<T,T> (*this, a);
 }
 
 KERNEL(idx) template<class T> void knGridClamp (Grid<T>& me, T min, T max) { me[idx] = clamp( me[idx], min, max); }
@@ -245,7 +246,7 @@ template<> Real Grid<int>::getMaxAbsValue() {
 }
 
 // compute maximal diference of two cells in the grid
-// used for testing
+// used for testing system
 PYTHON Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2 )
 {
 	double maxVal = 0.;

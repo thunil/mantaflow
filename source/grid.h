@@ -128,17 +128,15 @@ public:
 	inline const T operator[](int idx) const       { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
 	
 	// interpolated access
-	inline T getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
+	inline T    getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
 	inline void setInterpolated(const Vec3& pos, const T& val, Grid<Real>& sumBuffer) const { setInterpol<T>(mData, mSize, mStrideZ, pos, val, &sumBuffer[0]); }
 	// higher order interpolation
 	inline T getInterpolated(const Vec3& pos, int order) const { 
 		switch(order) {
-		case 2: return interpolCubic<T>(mData, mSize, mStrideZ, pos); 
+		case 1: return interpol<T>(mData, mSize, mStrideZ, pos); 
+		// case 2: return interpolCubic<T>(mData, mSize, mStrideZ, pos); 
 		default: 
-			// default / fallback
 			assertMsg(false, "Unknown interpolation order "<<order);
-		case 1: 
-			return interpol<T>(mData, mSize, mStrideZ, pos); 
 		}
 	}
 	
@@ -157,9 +155,9 @@ public:
 	//! add constant to all grid cells
 	PYTHON void addConst(T s);
 	//! add scaled other grid to current one (note, only "Real" factor, "T" type not supported here!)
-	PYTHON void addScaled(const Grid<T>& b, const T& factor); 
+	PYTHON void addScaled(const Grid<T>& a, const T& factor); 
 	//! multiply contents of grid
-	PYTHON void mult( const Grid<T>& b);
+	PYTHON void mult( const Grid<T>& a);
 	//! multiply each cell by a constant scalar value
 	PYTHON void multConst(T s);
 	//! clamp content to range (for vec3, clamps each component separately)
@@ -172,8 +170,6 @@ public:
 	PYTHON Real getMaxValue();
 	//! get min value in grid 
 	PYTHON Real getMinValue();    
-	//! Swap data with another grid (no actual data is moved)
-	void swap(Grid<T>& other);
 
 	//! debugging helper, print grid from python
 	PYTHON void printGrid(int zSlice=-1,  bool printIndex=false); 
@@ -189,6 +185,9 @@ public:
 	template<class S> Grid<T>& operator/=(const S& a);
 	Grid<T>& safeDivide(const Grid<T>& a);    
 	
+	//! Swap data with another grid (no actual data is moved)
+	void swap(Grid<T>& other);
+
 protected:
 	T* mData;
 };
