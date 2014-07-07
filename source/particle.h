@@ -258,7 +258,7 @@ public:
 
 	// interface functions, using assert instead of pure virtual for python compatibility
 	virtual int  size() const { assertMsg( false , "Dont use, override..."); return 0; } 
-	virtual void add()        { assertMsg( false , "Dont use, override..."); return;   }
+	virtual void addEntry()   { assertMsg( false , "Dont use, override..."); return;   }
 	virtual ParticleDataBase* clone() { assertMsg( false , "Dont use, override..."); return NULL; }
 	virtual PdataType getType() const { assertMsg( false , "Dont use, override..."); return UNKNOWN; } 
 	virtual void resize(int size)     { assertMsg( false , "Dont use, override..."); return;  }
@@ -297,7 +297,7 @@ public:
 
 	// particle data base interface
 	virtual int  size() const;
-	virtual void add();
+	virtual void addEntry();
 	virtual ParticleDataBase* clone();
 	virtual PdataType getType() const;
 	virtual void resize(int s);
@@ -306,6 +306,19 @@ public:
 	// fast inlined functions for per particle operations
 	inline void copyValue(int from, int to) { get(to) = get(from); } 
 	void initNewValue(int idx, Vec3 pos);
+
+	// python interface (similar to grid data)
+	PYTHON ParticleDataImpl<T>& copyFrom(const ParticleDataImpl<T>& a);
+	PYTHON void add(const ParticleDataImpl<T>& a);
+	PYTHON void sub(const ParticleDataImpl<T>& a);
+	PYTHON void addConst(T s);
+	PYTHON void addScaled(const ParticleDataImpl<T>& b, const T& factor); 
+	PYTHON void mult( const ParticleDataImpl<T>& b);
+	PYTHON void multConst(T s);
+	PYTHON void clamp(Real min, Real max);
+	PYTHON Real getMaxAbsValue();
+	PYTHON Real getMaxValue();
+	PYTHON Real getMinValue();    
 	
 	//! file io
 	PYTHON void save(std::string name);

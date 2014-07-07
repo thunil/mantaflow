@@ -115,7 +115,7 @@ void ParticleBase::registerPdataInt (ParticleDataImpl<int >* pd) { mPdataInt .pu
 
 void ParticleBase::addAllPdata() {
 	for(int i=0; i<(int)mPartData.size(); ++i) {
-		mPartData[i]->add();
+		mPartData[i]->addEntry();
 	} 
 }
 
@@ -247,7 +247,7 @@ int ParticleDataImpl<T>::size() const {
 	return mData.size();
 }
 template<class T>
-void ParticleDataImpl<T>::add() {
+void ParticleDataImpl<T>::addEntry() {
 	// add zero'ed entry
 	T tmp = T(0.);
 	// for debugging, force init:
@@ -339,11 +339,6 @@ ParticleDataBase::PdataType ParticleDataImpl<Vec3>::getType() const {
 int ParticleIndexData::flag = 0; 
 Vec3 ParticleIndexData::pos = Vec3(0.,0.,0.); 
 
-// explicit instantiation
-template class ParticleDataImpl<int>;
-template class ParticleDataImpl<Real>;
-template class ParticleDataImpl<Vec3>;
-
 KERNEL(pts) template<class T>
 void knSetPdataConst(ParticleDataImpl<T>& pdata, T value) {
 	pdata[idx] = value;
@@ -352,6 +347,113 @@ PYTHON void setConstPdata    (ParticleDataImpl<Real>& pd, Real value=0.) { knSet
 PYTHON void setConstPdataVec3(ParticleDataImpl<Vec3>& pd, Vec3 value=0.) { knSetPdataConst<Vec3>(pd,value); }
 PYTHON void setConstPdataInt (ParticleDataImpl<int >& pd, int  value=0.) { knSetPdataConst<int> (pd,value); }
 
+// python operators
+
+template<typename T>
+ParticleDataImpl<T>& ParticleDataImpl<T>::copyFrom(const ParticleDataImpl<T>& a) {
+	return *this;
+}
+
+KERNEL(pts) template<class T> void knPdataAdd(ParticleDataImpl<T>& a, const ParticleDataImpl<T>& b) { a[idx] += b[idx]; }
+
+template<typename T>
+void ParticleDataImpl<T>::add(const ParticleDataImpl<T>& a) {
+	knPdataAdd<T> op( *this, a );
+}
+template<typename T>
+void ParticleDataImpl<T>::sub(const ParticleDataImpl<T>& a) {
+}
+
+template<typename T>
+void ParticleDataImpl<T>::addConst(T s) {
+}
+
+template<typename T>
+void ParticleDataImpl<T>::addScaled(const ParticleDataImpl<T>& b, const T& factor) {
+}
+
+template<typename T>
+void ParticleDataImpl<T>::mult( const ParticleDataImpl<T>& b) {
+}
+
+template<typename T>
+void ParticleDataImpl<T>::multConst(T s) {
+}
+
+template<typename T>
+void ParticleDataImpl<T>::clamp(Real min, Real max) {
+}
+
+template<typename T>
+KERNEL(pts, reduce=min) returns(Real minVal=std::numeric_limits<Real>::max())
+Real CompPdata_Min(const ParticleDataImpl<T>& val) {
+	if (val[idx] < minVal)
+		minVal = val[idx];
+}
+
+template<typename T>
+KERNEL(pts, reduce=max) returns(Real maxVal=-std::numeric_limits<Real>::max())
+Real CompPdata_Max(const ParticleDataImpl<T>& val) {
+	if (val[idx] > maxVal)
+		maxVal = val[idx];
+}
+
+template<typename T>
+Real ParticleDataImpl<T>::getMinValue() {
+	return sqrt(CompPdata_Min<T> (*this));
+}
+
+template<typename T>
+Real ParticleDataImpl<T>::getMaxAbsValue() {
+	Real amin = CompPdata_Min<T> (*this);
+	Real amax = CompPdata_Max<T> (*this);
+	return max( fabs(amin), fabs(amax));
+}
+
+template<typename T>
+Real ParticleDataImpl<T>::getMaxValue() {
+	return sqrt(CompPdata_Max<T> (*this));
+} 
+
+// specials for vec3
+
+
+KERNEL(pts, reduce=min) returns(Real minVal=-std::numeric_limits<Real>::max())
+Real CompPdata_MinVec3(const ParticleDataImpl<Vec3>& val) {
+	const Real s = normSquare(val[idx]);
+	if (s < minVal)
+		minVal = s;
+}
+
+KERNEL(pts, reduce=max) returns(Real maxVal=-std::numeric_limits<Real>::min())
+Real CompPdata_MaxVec3(const ParticleDataImpl<Vec3>& val) {
+	const Real s = normSquare(val[idx]);
+	if (s > maxVal)
+		maxVal = s;
+}
+
+template<>
+Real ParticleDataImpl<Vec3>::getMinValue() {
+	return sqrt(CompPdata_MinVec3 (*this));
+}
+
+template<>
+Real ParticleDataImpl<Vec3>::getMaxAbsValue() {
+	Real amin = CompPdata_MinVec3 (*this);
+	Real amax = CompPdata_MaxVec3 (*this);
+	return max( fabs(amin), fabs(amax));
+}
+
+template<>
+Real ParticleDataImpl<Vec3>::getMaxValue() {
+	return sqrt(CompPdata_MaxVec3 (*this));
+}
+
+
+// explicit instantiation
+template class ParticleDataImpl<int>;
+template class ParticleDataImpl<Real>;
+template class ParticleDataImpl<Vec3>;
 
 
 } // namespace

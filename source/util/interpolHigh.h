@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ * Copyright 2014 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL) 
@@ -42,8 +42,10 @@ inline T interpolCubic(const T* data, const Vec3i& size, const int Z, const Vec3
     BUILD_INDEX
     int idx = xi + Y * yi + Z * zi;    
     DEBUG_ONLY(checkIndexInterpol(size,idx)); DEBUG_ONLY(checkIndexInterpol(size,idx+X+Y+Z));
+	
+	// NYI!
     
-    return  ((data[idx]        *t0 + data[idx+Y]        *t1) * s0
+    return  ((data[idx]  *t0 + data[idx+Y]  *t1) * s0
            + (data[idx+X]*t0 + data[idx+X+Y]*t1) * s1) * f0
            +((data[idx+Z]*t0 + data[idx+Y+Z]*t1) * s0
            + (data[idx+X+Z]*t0 + data[idx+X+Y+Z]*t1) * s1) * f1;
