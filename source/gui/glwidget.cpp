@@ -221,7 +221,7 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
 		else if (key == Qt::Key_X && shift)         { /* int display mdoes, not yet used */ }
 		else if (key == Qt::Key_X)                  { emit painterEvent(Painter::EventNextInt);  updatePlane(mPlane); }
 		// real
-		else if (key == Qt::Key_C && shift)         { /* real display mdoes, not yet used */ }
+		else if (key == Qt::Key_C && shift)         { emit painterEvent(Painter::EventNextRealDisplayMode); /* real display modes */ }
 		else if (key == Qt::Key_C)                  { emit painterEvent(Painter::EventNextReal); updatePlane(mPlane); } 
 		else if ((key == Qt::Key_Less) ||      
 			    (key == Qt::Key_Comma) )            { emit painterEvent(Painter::EventScaleRealDown); }

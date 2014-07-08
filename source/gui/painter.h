@@ -31,11 +31,13 @@ class Painter : public QObject {
 public:
 	enum PainterEvent { 
 		EventNone = 0, UpdateRequest, UpdateFull, UpdateStep,
-		EventScaleVecUp, EventScaleVecDown, EventScaleRealUp, EventScaleRealDown, EventChangePlane, 
+		EventScaleVecUp, EventScaleVecDown, EventNextRealDisplayMode, EventScaleRealUp, EventScaleRealDown, EventChangePlane, 
 		EventSetPlane, EventSetDim, EventNextInt, EventNextReal, EventNextVec, EventNextVecDisplayMode,
 		EventNextMesh, EventMeshMode, EventToggleGridDisplay, EventScaleMeshUp, EventScaleMeshDown, EventMeshColorMode,
 		EventNextSystem, EventToggleParticles, EventNextParticleDisplayMode, EventToggleBackgroundMesh, EventSetMax,
 		EventScalePdataDown, EventScalePdataUp };
+
+	enum RealDisplayModes { RealDispOff=0, RealDispStd, NumRealDispModes };
 
 	enum VecDisplayModes { VecDispOff=0, VecDispCentered, VecDispStaggered, VecDispUv, NumVecDispModes };
 	
@@ -101,8 +103,9 @@ protected:
 	Grid<T>*    mLocalGrid;
 	FlagGrid**  mFlags;
 	QLabel*     mInfo;
-	bool        mHide, mHideLocal;
-	int         mVelMode;
+	bool        mHide;       // hide all grids?
+	bool        mHideLocal;  // hide only this type?
+	int         mDispMode;   // display modes 
 	std::map<PbClass*, Real> mValScale;
 };
 
