@@ -55,8 +55,8 @@ sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, r
 # testing the real channel while resampling - original particles
 # will have a value of 0.1, new particle will get a value from the tstGrid
 testInitGridWithPos(tstGrid)
-setConstPdata( pDens , 0.1 )
-setConstPdata( pDens2, 0.8 ) # should be overwritten
+pDens.setConst( 0.1 )
+pDens2.setConst( 0.8 ) # should be overwritten
     
 if 0 and (GUI):
     gui = Gui()

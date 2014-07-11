@@ -16,8 +16,8 @@ density = s.create(RealGrid)
 dummy   = s.create(RealGrid)
 
 # set some value != 0
-setConstant    ( density,  25.01 )
-setConstant    ( dummy  , -25.00 )
+density.setConst( 25.01 )
+dummy.setConst( -25.00 )
 
 # verify , note - this should fail!
 if (getGenRefFileSetting()==1):

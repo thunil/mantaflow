@@ -38,7 +38,7 @@ flags.updateFromLevelset(phiInit)
 
 # note, there's no resamplig here, so we need _LOTS_ of particles...
 sampleFlagsWithParticles( flags=flags, parts=pp, discretization=particleNumber, randomness=0.2 )
-setConstPdata( pDens , 0.5 )
+pDens.setConst( 0.5 )
 
 if 0 and (GUI):
     gui = Gui()

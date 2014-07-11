@@ -55,6 +55,7 @@ if (genRefFiles>0):
 num = 0
 numOks = 0
 numFail = 0
+failedTests = ""
 
 files = files.split('\n')
 for file in files:
@@ -73,6 +74,10 @@ for file in files:
 	if (len(fails)==0) :
 		# note - if there are errors, the overall count of tests won't be valid anymore... 
 		fails = re.findall(r"Error", result) 
+	
+	if (len(fails)!=0) :
+		# we had failed tests! add to list...
+		failedTests = failedTests+" "+file 
 	#print fails
 	numFail += len(fails)
 
@@ -87,6 +92,8 @@ if (genRefFiles==1):
 	exit(0)
 
 print
+print " ============================================= "
+print
 print "Test summary, " +str(num) + " runs, " + str(numOks) + " passed, " + str(numFail) + " failed."
 
 if (numFail==0) and (numOks==0):
@@ -96,7 +103,7 @@ elif (numFail==0) and (numOks>0):
 	print "All good :) \n"
 	exit(0)
 else:
-	print "Some tests failed :( \n"
+	print "Oh no :( some tests failed (%s) \n" % failedTests
 	exit(2)
 
 

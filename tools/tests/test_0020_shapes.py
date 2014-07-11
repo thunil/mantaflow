@@ -17,8 +17,8 @@ s   = Solver(name='main', gridSize = gs, dim=3)
 density = s.create(RealGrid)
 vel     = s.create(MACGrid)
 
-setConstant    ( density, 0. )
-setConstantVec3( vel    , vec3(0, 0, 0) )
+density.setConst( 0. )
+vel.setConst( vec3(0, 0, 0) )
 
 sph1 = s.create(Sphere, center=gs*vec3(0.3,0.4,0.5), radius=res*0.2)
 sph1.applyToGrid(grid=density, value=0.302)
@@ -33,8 +33,8 @@ doTestGrid( sys.argv[0], "velSph"  , s, vel      , threshold=1e-07 , thresholdSt
 
 # sphere
 
-setConstant    ( density, 0. )
-setConstantVec3( vel    , vec3(0, 0, 0) )
+density.setConst( 0. )
+vel.setConst( vec3(0, 0, 0) )
 
 box1 = s.create(Box, p0=gs*vec3(0.2,0.2,0.3), p1=gs*vec3(0.9,0.8,0.9) )
 box1.applyToGrid(grid=density, value=0.812)
@@ -49,8 +49,8 @@ doTestGrid( sys.argv[0], "velBox"  , s, vel      , threshold=1e-07 , thresholdSt
 
 # cylinder
 
-setConstant    ( density, 0. )
-setConstantVec3( vel    , vec3(0, 0, 0) )
+density.setConst( 0. )
+vel.setConst( vec3(0, 0, 0) )
 
 cyl1 = s.create(Cylinder, center=gs*vec3(0.5,0.5,0.5), radius=res*0.2, z=gs*vec3(0, 0.3, 0))
 cyl1.applyToGrid(grid=density, value=0.432)

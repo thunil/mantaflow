@@ -116,6 +116,12 @@ def doTestGrid( file , name, solver , grid, threshold=0, thresholdStrict=0, inve
 		print( "OK! Generated reference file '" + referenceFilename( file, name ) + "'")
 		return 0
 	else:
+		# give error if file doesnt exist
+		if( not os.path.isfile(referenceFilename( file, name )) ):
+			print( "Error - unable to load test file %s" % referenceFilename( file, name ) )
+			print("FAIL! Reference data missing..." );
+			return 1
+
 		compareTmpGrid.load( referenceFilename( file, name ) )
 
 		errVal = 1e10

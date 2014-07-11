@@ -57,7 +57,7 @@ if (genRefFiles==1):
 	del phiInit
 
 	sampleFlagsWithParticles( flags=flags, parts=pp, discretization=3, randomness=0.2 )
-	setConstPdata( pDens , 1.3 ) # for buoyancy
+	pDens.setConst( 1.3 ) # for buoyancy
 
 	flags.fillGrid()
 	mapPartsToGrid(target=density, flags=flags, parts=pp, source=pDens )

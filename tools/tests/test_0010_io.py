@@ -19,9 +19,9 @@ vel     = s.create(MACGrid)
 flags   = s.create(IntGrid)
 
 # set some value != 0
-setConstant    ( density, 0.123 )
-setConstantVec3( vel    , vec3(0.1, 0.2, 0.3) )
-setConstantInt ( flags  , 7193 )
+density.setConst( 0.123 )
+vel.setConst( vec3(0.1, 0.2, 0.3) )
+flags.setConst( 7193 )
 
 #density.printGrid( zSlice=15 ) # debug info
 
