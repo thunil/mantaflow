@@ -152,6 +152,8 @@ public:
 	//! add/subtract other grid
 	PYTHON void add(const Grid<T>& a);
 	PYTHON void sub(const Grid<T>& a);
+	//! set all cells to constant value
+	PYTHON void setConst(T s);
 	//! add constant to all grid cells
 	PYTHON void addConst(T s);
 	//! add scaled other grid to current one (note, only "Real" factor, "T" type not supported here!)
@@ -437,10 +439,10 @@ inline Vec3 MACGrid::getAtMACZ(int i, int j, int k) const {
 	return v;
 }
 
-KERNEL(idx) template<class T, class S> void gridAdd (Grid<T>& me, const Grid<S>& other)  { me[idx] += other[idx]; }
-KERNEL(idx) template<class T, class S> void gridSub (Grid<T>& me, const Grid<S>& other)  { me[idx] -= other[idx]; }
+KERNEL(idx) template<class T, class S> void gridAdd  (Grid<T>& me, const Grid<S>& other) { me[idx] += other[idx]; }
+KERNEL(idx) template<class T, class S> void gridSub  (Grid<T>& me, const Grid<S>& other) { me[idx] -= other[idx]; }
 KERNEL(idx) template<class T, class S> void gridMult (Grid<T>& me, const Grid<S>& other) { me[idx] *= other[idx]; }
-KERNEL(idx) template<class T, class S> void gridDiv (Grid<T>& me, const Grid<S>& other)  { me[idx] /= other[idx]; }
+KERNEL(idx) template<class T, class S> void gridDiv  (Grid<T>& me, const Grid<S>& other) { me[idx] /= other[idx]; }
 KERNEL(idx) template<class T, class S> void gridAddScalar (Grid<T>& me, const S& other)  { me[idx] += other; }
 KERNEL(idx) template<class T, class S> void gridMultScalar(Grid<T>& me, const S& other)  { me[idx] *= other; }
 KERNEL(idx) template<class T, class S> void gridScaledAdd (Grid<T>& me, const Grid<T>& other, const S& factor) { me[idx] += factor * other[idx]; }

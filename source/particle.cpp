@@ -339,49 +339,69 @@ ParticleDataBase::PdataType ParticleDataImpl<Vec3>::getType() const {
 int ParticleIndexData::flag = 0; 
 Vec3 ParticleIndexData::pos = Vec3(0.,0.,0.); 
 
-KERNEL(pts) template<class T>
-void knSetPdataConst(ParticleDataImpl<T>& pdata, T value) {
-	pdata[idx] = value;
-}
-PYTHON void setConstPdata    (ParticleDataImpl<Real>& pd, Real value=0.) { knSetPdataConst<Real>(pd,value); }
-PYTHON void setConstPdataVec3(ParticleDataImpl<Vec3>& pd, Vec3 value=0.) { knSetPdataConst<Vec3>(pd,value); }
-PYTHON void setConstPdataInt (ParticleDataImpl<int >& pd, int  value=0.) { knSetPdataConst<int> (pd,value); }
+KERNEL(pts) template<class T> void knSetPdataConst(ParticleDataImpl<T>& pdata, T value) { pdata[idx] = value; }
+
+KERNEL(pts) template<class T, class S> void knPdataSet  (ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other) { me[idx] += other[idx]; }
+KERNEL(pts) template<class T, class S> void knPdataAdd  (ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other) { me[idx] += other[idx]; }
+KERNEL(pts) template<class T, class S> void knPdataSub  (ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other) { me[idx] -= other[idx]; }
+KERNEL(pts) template<class T, class S> void knPdataMult (ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other) { me[idx] *= other[idx]; }
+KERNEL(pts) template<class T, class S> void knPdataDiv  (ParticleDataImpl<T>& me, const ParticleDataImpl<S>& other) { me[idx] /= other[idx]; }
+
+KERNEL(pts) template<class T, class S> void knPdataSetScalar (ParticleDataImpl<T>& me, const S& other)  { me[idx]  = other; }
+KERNEL(pts) template<class T, class S> void knPdataAddScalar (ParticleDataImpl<T>& me, const S& other)  { me[idx] += other; }
+KERNEL(pts) template<class T, class S> void knPdataMultScalar(ParticleDataImpl<T>& me, const S& other)  { me[idx] *= other; }
+KERNEL(pts) template<class T, class S> void knPdataScaledAdd (ParticleDataImpl<T>& me, const ParticleDataImpl<T>& other, const S& factor) { me[idx] += factor * other[idx]; }
+
+KERNEL(pts) template<class T> void knPdataSafeDiv (ParticleDataImpl<T>& me, const ParticleDataImpl<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
+KERNEL(pts) template<class T> void knPdataSetConst(ParticleDataImpl<T>& pdata, T value) { pdata[idx] = value; }
+
+KERNEL(pts) template<class T> void knPdataClamp (ParticleDataImpl<T>& me, T min, T max) { me[idx] = clamp( me[idx], min, max); }
 
 // python operators
+
 
 template<typename T>
 ParticleDataImpl<T>& ParticleDataImpl<T>::copyFrom(const ParticleDataImpl<T>& a) {
 	return *this;
 }
 
-KERNEL(pts) template<class T> void knPdataAdd(ParticleDataImpl<T>& a, const ParticleDataImpl<T>& b) { a[idx] += b[idx]; }
+template<typename T>
+void ParticleDataImpl<T>::setConst(T s) {
+	knPdataSetScalar<T,T> op( *this, s );
+}
 
 template<typename T>
 void ParticleDataImpl<T>::add(const ParticleDataImpl<T>& a) {
-	knPdataAdd<T> op( *this, a );
+	knPdataAdd<T,T> op( *this, a );
 }
 template<typename T>
 void ParticleDataImpl<T>::sub(const ParticleDataImpl<T>& a) {
+	knPdataSub<T,T> op( *this, a );
 }
 
 template<typename T>
 void ParticleDataImpl<T>::addConst(T s) {
+	knPdataAddScalar<T,T> op( *this, s );
 }
 
 template<typename T>
-void ParticleDataImpl<T>::addScaled(const ParticleDataImpl<T>& b, const T& factor) {
+void ParticleDataImpl<T>::addScaled(const ParticleDataImpl<T>& a, const T& factor) {
+	knPdataScaledAdd<T,T> op( *this, a, factor );
 }
 
 template<typename T>
-void ParticleDataImpl<T>::mult( const ParticleDataImpl<T>& b) {
+void ParticleDataImpl<T>::mult( const ParticleDataImpl<T>& a) {
+	knPdataMult<T,T> op( *this, a );
 }
 
 template<typename T>
 void ParticleDataImpl<T>::multConst(T s) {
+	knPdataMultScalar<T,T> op( *this, s );
 }
 
 template<typename T>
 void ParticleDataImpl<T>::clamp(Real min, Real max) {
+	knPdataClamp<T> op( *this, min,max );
 }
 
 template<typename T>

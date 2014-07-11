@@ -178,10 +178,10 @@ template<class T> Grid<T>& Grid<T>::copyFrom (const Grid<T>& a) {
 	note: do not use , use copyFrom instead
 }*/
 
-// NT_DEBUG , remove!
-PYTHON void setConstant    (Grid<Real>& grid, Real value=0.) { gridSetConst<Real>(grid,value); }
-PYTHON void setConstantVec3(Grid<Vec3>& grid, Vec3 value=0.) { gridSetConst<Vec3>(grid,value); }
-PYTHON void setConstantInt (Grid<int >& grid, int  value=0.) { gridSetConst<int>(grid,value); }
+KERNEL(idx) template<class T> void knGridSetConstReal (Grid<T>& me, T val) { me[idx]  = val; }
+KERNEL(idx) template<class T> void knGridAddConstReal (Grid<T>& me, T val) { me[idx] += val; }
+KERNEL(idx) template<class T> void knGridMultConst (Grid<T>& me, T val) { me[idx] *= val; }
+KERNEL(idx) template<class T> void knGridClamp (Grid<T>& me, T min, T max) { me[idx] = clamp( me[idx], min, max); }
 
 template<class T> void Grid<T>::add(const Grid<T>& a) {
 	gridAdd<T,T>(*this, a);
@@ -192,13 +192,11 @@ template<class T> void Grid<T>::sub(const Grid<T>& a) {
 template<class T> void Grid<T>::addScaled(const Grid<T>& a, const T& factor) { 
 	gridScaledAdd<T,T> (*this, a, factor); 
 }
-KERNEL(idx) template<class T> void knGridAddConstReal (Grid<T>& me, T val) { 
-	me[idx] += val; }
+template<class T> void Grid<T>::setConst(T a) {
+	knGridSetConstReal<T>( *this, T(a) );
+}
 template<class T> void Grid<T>::addConst(T a) {
 	knGridAddConstReal<T>( *this, T(a) );
-}
-KERNEL(idx) template<class T> void knGridMultConst (Grid<T>& me, T val) { 
-	me[idx] *= val; 
 }
 template<class T> void Grid<T>::multConst(T a) {
 	knGridMultConst<T>( *this, a );
@@ -208,7 +206,6 @@ template<class T> void Grid<T>::mult(const Grid<T>& a) {
 	gridMult<T,T> (*this, a);
 }
 
-KERNEL(idx) template<class T> void knGridClamp (Grid<T>& me, T min, T max) { me[idx] = clamp( me[idx], min, max); }
 template<class T> void Grid<T>::clamp(Real min, Real max) {
 	knGridClamp<T> (*this, T(min), T(max) );
 }

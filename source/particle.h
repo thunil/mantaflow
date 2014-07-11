@@ -308,12 +308,13 @@ public:
 	void initNewValue(int idx, Vec3 pos);
 
 	// python interface (similar to grid data)
+	PYTHON void setConst(T s);
 	PYTHON ParticleDataImpl<T>& copyFrom(const ParticleDataImpl<T>& a);
 	PYTHON void add(const ParticleDataImpl<T>& a);
 	PYTHON void sub(const ParticleDataImpl<T>& a);
 	PYTHON void addConst(T s);
-	PYTHON void addScaled(const ParticleDataImpl<T>& b, const T& factor); 
-	PYTHON void mult( const ParticleDataImpl<T>& b);
+	PYTHON void addScaled(const ParticleDataImpl<T>& a, const T& factor); 
+	PYTHON void mult( const ParticleDataImpl<T>& a);
 	PYTHON void multConst(T s);
 	PYTHON void clamp(Real min, Real max);
 	PYTHON Real getMaxAbsValue();
