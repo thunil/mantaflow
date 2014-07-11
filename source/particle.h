@@ -54,9 +54,6 @@ public:
 	//! add a position as potential candidate for new particle (todo, make usable from parallel threads)
 	inline void addBuffered(const Vec3& pos);
 
-	//! debug info about pdata
-	std::string debugInfoPdata();
-
 	// particle data functions
 
 	//! create a particle data object
@@ -193,6 +190,8 @@ public:
 
 	// dangerous, get low level access - avoid usage, only used in vortex filament advection for now
 	std::vector<BasicParticleData>& getData() { return mData; }
+
+	PYTHON void printParts(int start=-1, int stop=-1, bool printIndex=false); 
 };
 
 
@@ -320,6 +319,8 @@ public:
 	PYTHON Real getMaxAbsValue();
 	PYTHON Real getMaxValue();
 	PYTHON Real getMinValue();    
+
+	PYTHON void printPdata(int start=-1, int stop=-1, bool printIndex=false); 
 	
 	//! file io
 	PYTHON void save(std::string name);
@@ -620,6 +621,7 @@ std::string ParticleSystem<S>::infoString() const {
 	s << "ParticleSys '" << getName() << "' [" << size() << " parts";
 	if(this->getNumPdata()>0) s<< " "<< this->getNumPdata()<<" pd";
 	s << "]";
+	//for(int i=0; i<(int)mPartData.size(); ++i) { sstr << i<<":" << mPartData[i]->size() <<" "; } 
 	return s.str();
 }
 	

@@ -103,7 +103,7 @@ elif (numFail==0) and (numOks>0):
 	print "All good :) \n"
 	exit(0)
 else:
-	print "Oh no :( some tests failed (%s) \n" % failedTests
+	print "Oh no :( the following tests failed: %s \n" % failedTests
 	exit(2)
 
 

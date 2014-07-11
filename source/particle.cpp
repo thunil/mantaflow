@@ -119,17 +119,6 @@ void ParticleBase::addAllPdata() {
 	} 
 }
 
-std::string ParticleBase::debugInfoPdata()
-{
-	std::ostringstream sstr;
-	sstr << "Particle system "<<mName<<" , size: "<< this->getSizeSlow() <<", data ";
-	for(int i=0; i<(int)mPartData.size(); ++i) {
-		sstr << i<<":" << mPartData[i]->size() <<" ";
-	} 
-	sstr << ".";
-	return sstr.str();
-}
-
  
 BasicParticleSystem::BasicParticleSystem(FluidSolver* parent)
 	   : ParticleSystem<BasicParticleData>(parent) {
@@ -209,6 +198,21 @@ void BasicParticleSystem::save(string name) {
 		this->writeParticlesRawVelocityGz(name);
 	else
 		errMsg("particle '" + name +"' filetype not supported for saving");
+}
+
+void BasicParticleSystem::printParts(int start, int stop, bool printIndex)
+{
+	std::ostringstream sstr;
+	int s = (start>0 ? start : 0                 );
+	int e = (stop>0  ? stop  : (int)mData.size() );
+	s = Manta::clamp(s, 0, (int)mData.size());
+	e = Manta::clamp(e, 0, (int)mData.size());
+
+	for(int i=s; i<e; ++i) {
+		if(printIndex) sstr << i<<": ";
+		sstr<<mData[i].pos<<" "<<mData[i].flag<<"\n";
+	} 
+	debMsg( sstr.str() , 1 );
 }
 
 // particle data
@@ -434,6 +438,22 @@ template<typename T>
 Real ParticleDataImpl<T>::getMaxValue() {
 	return sqrt(CompPdata_Max<T> (*this));
 } 
+
+template<typename T>
+void ParticleDataImpl<T>::printPdata(int start, int stop, bool printIndex)
+{
+	std::ostringstream sstr;
+	int s = (start>0 ? start : 0                 );
+	int e = (stop>0  ? stop  : (int)mData.size() );
+	s = Manta::clamp(s, 0, (int)mData.size());
+	e = Manta::clamp(e, 0, (int)mData.size());
+
+	for(int i=s; i<e; ++i) {
+		if(printIndex) sstr << i<<": ";
+		sstr<<mData[i]<<" "<<"\n";
+	} 
+	debMsg( sstr.str() , 1 );
+}
 
 // specials for vec3
 

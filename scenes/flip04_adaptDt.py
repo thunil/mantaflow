@@ -93,7 +93,7 @@ if fluidVel!=0:
 # testing the real channel while resampling - original particles
 # will have a value of 0.1, new particle will get a value from the tstGrid
 testInitGridWithPos(tstGrid)
-setConstPdata( pTest , 0.1 )
+pTest.setConst( 0.1 )
 
 if 1 and (GUI):
 	gui = Gui()
