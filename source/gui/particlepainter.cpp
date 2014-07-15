@@ -201,7 +201,7 @@ void ParticlePainter::paintBasicSys() {
 
 		switch (pdb->getType() ) {
 
-		case ParticleDataBase::DATA_REAL: {
+		case ParticleDataBase::TypeReal: {
 			ParticleDataImpl<Real>* pdi = dynamic_cast<ParticleDataImpl<Real>*>(pdb);
 			if(!pdi) break;
 			mHavePdata = true;
@@ -221,7 +221,7 @@ void ParticlePainter::paintBasicSys() {
 			infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", real\n";
 			} break;
 
-		case ParticleDataBase::DATA_INT: {
+		case ParticleDataBase::TypeInt: {
 			ParticleDataImpl<int>* pdi = dynamic_cast<ParticleDataImpl<int>*>(pdb);
 			if(!pdi) break;
 			mHavePdata = true;
@@ -242,7 +242,7 @@ void ParticlePainter::paintBasicSys() {
 			infoStr << "Pdata '"<<pdi->getName()<<"' #"<<pdNum<<", int\n";
 			} break;
 
-		case ParticleDataBase::DATA_VEC3: { 
+		case ParticleDataBase::TypeVec3: { 
 			ParticleDataImpl<Vec3>* pdi = dynamic_cast<ParticleDataImpl<Vec3>*>(pdb);
 			if(!pdi) break;
 			mHavePdata = true;

@@ -124,7 +124,7 @@ PYTHON Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
 		ParticleDataImpl<int>& av = *dynamic_cast<ParticleDataImpl<int>*>(a); //  = *(ParticleDataImpl<int>*)a;
 		ParticleDataImpl<int>& bv = *dynamic_cast<ParticleDataImpl<int>*>(b); //  = *(ParticleDataImpl<int>*)b;
 		FOR_PARTS(av) {
-			maxVal = std::max(maxVal, (double)fabs( av[idx]-bv[idx] ));
+			maxVal = std::max(maxVal, (double)fabs( (double)av[idx]-bv[idx] ));
 		}
 	} else if (a->getType() & ParticleDataBase::TypeVec3) {
 		ParticleDataImpl<Vec3>& av = *dynamic_cast<ParticleDataImpl<Vec3>*>(a); //  = *(ParticleDataImpl<Vec3>*)a;

@@ -594,7 +594,7 @@ typedef struct {
 	int dimX, dimY, dimZ; // underlying solver resolution (all data in local coordinates!)
 	int elementType, bytesPerElement; // type id and byte size
 	char info[256]; // mantaflow build information
-	unsigned long timestamp; // creation time
+	unsigned long long timestamp; // creation time
 } UniPartHeader;
 
 template <class T>
