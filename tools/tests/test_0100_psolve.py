@@ -34,12 +34,12 @@ for t in range(1):
 	velSource.applyToGrid(grid=vel, value=vec3(1.5, 3, 2.1) )
 
 	setWallBcs(flags=flags, vel=vel) 
-	solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='Y')
+	solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='Y', cgMaxIterFac=99, cgAccuracy=1e-08, useResNorm=False)
 	setWallBcs(flags=flags, vel=vel)
 
 	s.step()
 
 
 # check final state
-doTestGrid( sys.argv[0], "pressure" , s, pressure , threshold=1e-04, thresholdStrict=1e-10, invertResult=False )
+doTestGrid( sys.argv[0], "pressure" , s, pressure , threshold=1e-05, thresholdStrict=1e-10, invertResult=False )
 

@@ -14,7 +14,7 @@ def referenceFilename( file, gridname ):
 	return file +"_"+ gridname + "_ref.uni" 
 
 
-def checkResult( name, result , thresh, threshStrict, invertResult=False ):
+def checkResult( name, result, resultRel , thresh, threshStrict, invertResult=False ):
 	curr_thresh = thresh
 	if(getStrictSetting()==1):
 		curr_thresh = threshStrict
@@ -43,7 +43,7 @@ def checkResult( name, result , thresh, threshStrict, invertResult=False ):
 		print("OK! Results for "+name+" match...")
 		return 0
 	else:
-		print("FAIL! Allowed "+name+" threshold "+str(curr_thresh)+", results differ by "+str(result))
+		print("FAIL! Allowed "+name+" threshold "+str(curr_thresh)+", results differ by "+str(result) +" (abs) , and by "+str(resultRel)+" (rel)" )
 		return 1
 
 
@@ -98,8 +98,8 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 	# now we should only have real & vec3 grids
 
 	# sanity check data type & parent
-	if ( grid._class == "Grid" and parent._class != "Fluidsolver" ):
-		print( "Error doTestGrid - pass fluid solver as parent for grids" );
+	if ( grid._class == "Grid" and parent._class != "FluidSolver" ):
+		print( "Error doTestGrid - pass fluid solver as parent for grids, is '"+ parent._class +"'" );
 		return 1
 	if ( grid._class == "ParticleDataImpl" and parent._class != "BasicParticleSystem" ):
 		print( "Error doTestGrid - pass particle system as parent for pdata" );
@@ -151,9 +151,11 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 		else:
 			print( "Error doTestGrid - error calculation missing" )
 			return 1
+		maxVal = grid.getMaxAbsValue()
+		errValRel = errVal/maxVal
 
 		# finally, compare max error to allowed threshold, and return result
-		return checkResult( name, errVal , threshold , thresholdStrict, invertResult )
+		return checkResult( name, errVal , errValRel, threshold , thresholdStrict, invertResult )
 
 
 # for xl test, load test data afterwards to keep sims in sync
