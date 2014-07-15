@@ -47,6 +47,8 @@ class ParticleBase;
 
 #define FOR_IJK(grid) FOR_IJK_BND(grid, 0)
 			   
+#define FOR_PARTS(parts) \
+	for(int idx=0, total=(parts).size(); idx<total; idx++)
 	
 struct KernelBase {
 	int maxX, maxY, maxZ, minZ;

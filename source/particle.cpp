@@ -69,11 +69,12 @@ void ParticleBase::deregister(ParticleDataBase* pdata) {
 		errMsg("Invalid pointer given, not registered!");
 }
 
+// create and attach a new pdata field to this particle system
 PbClass* ParticleBase::create(PbType t, PbTypeVec T, const string& name) {        
 	_args.add("nocheck",true);
 	if (t.str() == "")
 		errMsg("Specify particle data type to create");
-	//debMsg( "Pdata creating '"<< t.str , 5 );
+	//debMsg( "Pdata creating '"<< t.str <<" with size "<< this->getSizeSlow(), 5 );
 	
 	PbClass* pyObj = PbClass::createPyObject(t.str() + T.str(), name, _args, this->getParent() );
 
@@ -86,6 +87,8 @@ PbClass* ParticleBase::create(PbType t, PbTypeVec T, const string& name) {
 		this->registerPdata(pdata);
 	}
 
+	// directly init size of new pdata field:
+	pdata->resize( this->getSizeSlow() );
 	return pyObj;
 }
 
@@ -93,20 +96,20 @@ void ParticleBase::registerPdata(ParticleDataBase* pdata) {
 	pdata->setParticleSys(this);
 	mPartData.push_back(pdata);
 
-	if( pdata->getType() == ParticleDataBase::DATA_REAL ) {
+	if( pdata->getType() == ParticleDataBase::TypeReal ) {
 		ParticleDataImpl<Real>* pd = dynamic_cast< ParticleDataImpl<Real>* >(pdata);
 		if(!pd) errMsg("Invalid pdata object posing as real!");
 		this->registerPdataReal(pd);
 	}
-	else if( pdata->getType() == ParticleDataBase::DATA_VEC3 ) {
-		ParticleDataImpl<Vec3>* pd = dynamic_cast< ParticleDataImpl<Vec3>* >(pdata);
-		if(!pd) errMsg("Invalid pdata object posing as vec3!");
-		this->registerPdataVec3(pd);
-	}
-	else if( pdata->getType() == ParticleDataBase::DATA_INT ) {
+	else if( pdata->getType() == ParticleDataBase::TypeInt ) {
 		ParticleDataImpl<int>* pd = dynamic_cast< ParticleDataImpl<int>* >(pdata);
 		if(!pd) errMsg("Invalid pdata object posing as int!");
 		this->registerPdataInt(pd);
+	}
+	else if( pdata->getType() == ParticleDataBase::TypeVec3 ) {
+		ParticleDataImpl<Vec3>* pd = dynamic_cast< ParticleDataImpl<Vec3>* >(pdata);
+		if(!pd) errMsg("Invalid pdata object posing as vec3!");
+		this->registerPdataVec3(pd);
 	}
 }
 void ParticleBase::registerPdataReal(ParticleDataImpl<Real>* pd) { mPdataReal.push_back(pd); }
@@ -247,7 +250,7 @@ ParticleDataImpl<T>::~ParticleDataImpl() {
 }
 
 template<class T>
-int ParticleDataImpl<T>::size() const {
+int ParticleDataImpl<T>::getSizeSlow() const {
 	return mData.size();
 }
 template<class T>
@@ -326,16 +329,16 @@ void ParticleDataImpl<T>::save(string name) {
 // specializations
 
 template<>
-ParticleDataBase::PdataType ParticleDataImpl<int>::getType() const {
-	return ParticleDataBase::DATA_INT;
+ParticleDataBase::PdataType ParticleDataImpl<Real>::getType() const {
+	return ParticleDataBase::TypeReal;
 } 
 template<>
-ParticleDataBase::PdataType ParticleDataImpl<Real>::getType() const {
-	return ParticleDataBase::DATA_REAL;
+ParticleDataBase::PdataType ParticleDataImpl<int>::getType() const {
+	return ParticleDataBase::TypeInt;
 } 
 template<>
 ParticleDataBase::PdataType ParticleDataImpl<Vec3>::getType() const {
-	return ParticleDataBase::DATA_VEC3;
+	return ParticleDataBase::TypeVec3;
 }
 
 // note, we need a flag value for functions such as advection
@@ -366,7 +369,9 @@ KERNEL(pts) template<class T> void knPdataClamp (ParticleDataImpl<T>& me, T min,
 
 template<typename T>
 ParticleDataImpl<T>& ParticleDataImpl<T>::copyFrom(const ParticleDataImpl<T>& a) {
-	return *this;
+	assertMsg (a.mData.size() == mData.size() , "different pdata size "<<a.mData.size()<<" vs "<<this->mData.size() );
+	memcpy( &mData[0], &a.mData[0], sizeof(T) * mData.size() );
+	return *this; 
 }
 
 template<typename T>

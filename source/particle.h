@@ -253,13 +253,14 @@ public:
 	PYTHON ParticleDataBase(FluidSolver* parent);
 	virtual ~ParticleDataBase(); 
 
-	enum PdataType { UNKNOWN=0, DATA_INT, DATA_REAL, DATA_VEC3 };
+	// data type IDs, in line with those for grids
+	enum PdataType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4 };
 
 	// interface functions, using assert instead of pure virtual for python compatibility
-	virtual int  size() const { assertMsg( false , "Dont use, override..."); return 0; } 
+	virtual int  getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; } 
 	virtual void addEntry()   { assertMsg( false , "Dont use, override..."); return;   }
 	virtual ParticleDataBase* clone() { assertMsg( false , "Dont use, override..."); return NULL; }
-	virtual PdataType getType() const { assertMsg( false , "Dont use, override..."); return UNKNOWN; } 
+	virtual PdataType getType() const { assertMsg( false , "Dont use, override..."); return TypeNone; } 
 	virtual void resize(int size)     { assertMsg( false , "Dont use, override..."); return;  }
 	virtual void copyValueSlow(int from, int to) { assertMsg( false , "Dont use, override..."); return;  }
 
@@ -295,12 +296,14 @@ public:
 	PYTHON void setSource(Grid<T>* grid, bool isMAC=false );
 
 	// particle data base interface
-	virtual int  size() const;
+	virtual int  getSizeSlow() const;
 	virtual void addEntry();
 	virtual ParticleDataBase* clone();
 	virtual PdataType getType() const;
 	virtual void resize(int s);
 	virtual void copyValueSlow(int from, int to);
+
+	int  size() const { return mData.size(); }
 
 	// fast inlined functions for per particle operations
 	inline void copyValue(int from, int to) { get(to) = get(from); } 
@@ -634,7 +637,7 @@ inline void ParticleSystem<S>::checkPartIndex(int idx) const {
 }
 	
 inline void ParticleDataBase::checkPartIndex(int idx) const {
-	int mySize = this->size();
+	int mySize = this->getSizeSlow();
 	if (idx<0 || idx > mySize ) {
 		errMsg( "ParticleData " << " size " << mySize << " : index " << idx << " out of bound " );
 	}

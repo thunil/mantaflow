@@ -91,5 +91,71 @@ PYTHON LevelsetGrid obstacleLevelset(FlagGrid& flags) {
 	return levelset;
 }    
 
+PYTHON void addTestParts( BasicParticleSystem& parts, int num)
+{
+	for(int i=0; i<num; ++i)
+		parts.addBuffered( Vec3(0,0,0) );
+
+	parts.doCompress();
+	parts.insertBufferedParticles();
+}
+
+/*PYTHON Real gridMaxDiff(Grid<Real>& a, Grid<Real>& b )
+{
+	double maxVal = 0.;
+	return maxVal; 
+}*/
+PYTHON Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
+{    
+	double maxVal = 0.;
+	//debMsg(" PD "<< a->getType()<<"  as"<<a->getSizeSlow()<<"  bs"<<b->getSizeSlow() , 1);
+	assertMsg(a->getType()     == b->getType()    , "pdataMaxDiff problem - different pdata types!");
+	assertMsg(a->getSizeSlow() == b->getSizeSlow(), "pdataMaxDiff  problem -different pdata sizes!");
+	
+	if (a->getType() & ParticleDataBase::TypeReal) 
+	{
+		ParticleDataImpl<Real>& av = *dynamic_cast<ParticleDataImpl<Real>*>(a); //  = *(ParticleDataImpl<Real>*)a;
+		ParticleDataImpl<Real>& bv = *dynamic_cast<ParticleDataImpl<Real>*>(b); //  = *(ParticleDataImpl<Real>*)b;
+		FOR_PARTS(av) {
+			maxVal = std::max(maxVal, (double)fabs( av[idx]-bv[idx] ));
+		}
+	} else if (a->getType() & ParticleDataBase::TypeInt) 
+	{
+		ParticleDataImpl<int>& av = *dynamic_cast<ParticleDataImpl<int>*>(a); //  = *(ParticleDataImpl<int>*)a;
+		ParticleDataImpl<int>& bv = *dynamic_cast<ParticleDataImpl<int>*>(b); //  = *(ParticleDataImpl<int>*)b;
+		FOR_PARTS(av) {
+			maxVal = std::max(maxVal, (double)fabs( av[idx]-bv[idx] ));
+		}
+	} else if (a->getType() & ParticleDataBase::TypeVec3) {
+		ParticleDataImpl<Vec3>& av = *dynamic_cast<ParticleDataImpl<Vec3>*>(a); //  = *(ParticleDataImpl<Vec3>*)a;
+		ParticleDataImpl<Vec3>& bv = *dynamic_cast<ParticleDataImpl<Vec3>*>(b); //  = *(ParticleDataImpl<Vec3>*)b;
+		FOR_PARTS(av) {
+			double d = 0.;
+			for(int c=0; c<3; ++c) { 
+				d += fabs( (double)av[idx][c] - (double)bv[idx][c] );
+			}
+			maxVal = std::max(maxVal, d );
+		}
+	} else {
+		errMsg("pdataMaxDiff: Grid Type is not supported (only Real, Vec3, int)");    
+	}
+	//assertMsg(order==1 || order==2, "AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");
+	/*
+	// determine type of grid    
+	if (grid->getType() & GridBase::TypeReal) {
+		fnAdvectSemiLagrange< Grid<Real> >(flags->getParent(), *flags, *vel, *((Grid<Real>*) grid), order, strength);
+	}
+	else if (grid->getType() & GridBase::TypeMAC) {    
+		fnAdvectSemiLagrange< MACGrid >(flags->getParent(), *flags, *vel, *((MACGrid*) grid), order, strength);
+	}
+	else if (grid->getType() & GridBase::TypeVec3) {    
+		fnAdvectSemiLagrange< Grid<Vec3> >(flags->getParent(), *flags, *vel, *((Grid<Vec3>*) grid), order, strength);
+	}
+	else
+		errMsg("AdvectSemiLagrange: Grid Type is not supported (only Real, Vec3, MAC, Levelset)");    
+		*/
+
+	return maxVal;
+}
 
 } // namespace

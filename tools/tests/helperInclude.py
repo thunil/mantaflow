@@ -70,11 +70,12 @@ def getStrictSetting( ):
 # the allowed thresholds
 #
 # note, there are two thresholds:
+#   - the "grid" object can be either a Grid<T>, or a ParticleDataImpl<T> ; parent is either FluidSolver or ParticleSystem
 # 	- the "normal" one is intended for less strict comparisons of versions from different compilers
 #	- the "strict" one (enbable with "export MANTA_TEST_STRICT=1") is for comparing different version 
 #		generated with the same compiler
 #
-def doTestGrid( file , name, solver , grid, threshold=0, thresholdStrict=0, invertResult=False ):
+def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, invertResult=False ):
 	# both always have to given together (if not default)
 	if ( threshold!=0 and thresholdStrict==0 ):
 		print( "Error doTestGrid - give both thresholds at the same time...")
@@ -84,34 +85,48 @@ def doTestGrid( file , name, solver , grid, threshold=0, thresholdStrict=0, inve
 		return 1
 
 	# handle grid types that need conversion
-	#print( "doTestGrid, incoming grid type :" + type(grid).__name__)
+	#print( "doTestGrid, incoming grid type :" + type(grid).__name__ + " class:"+grid._class+ " T:"+grid._T )
 	if ( type(grid).__name__ == "MACGrid" ):
-		gridTmpMac = solver.create(VecGrid)
+		gridTmpMac = parent.create(VecGrid)
 		convertMacToVec3(grid , gridTmpMac )
-		return doTestGrid( file, name, solver, gridTmpMac , threshold, thresholdStrict)
+		return doTestGrid( file, name, parent, gridTmpMac , threshold, thresholdStrict)
 	if ( type(grid).__name__ == "LevelsetGrid" ):
-		gridTmpLs = solver.create(RealGrid)
+		gridTmpLs = parent.create(RealGrid)
 		convertLevelsetToReal(grid , gridTmpLs )
-		return doTestGrid( file, name, solver, gridTmpLs  , threshold, thresholdStrict)
+		return doTestGrid( file, name, parent, gridTmpLs  , threshold, thresholdStrict)
 
 	# now we should only have real & vec3 grids
 
-	# create temp grid
+	# sanity check data type & parent
+	if ( grid._class == "Grid" and parent._class != "Fluidsolver" ):
+		print( "Error doTestGrid - pass fluid solver as parent for grids" );
+		return 1
+	if ( grid._class == "ParticleDataImpl" and parent._class != "BasicParticleSystem" ):
+		print( "Error doTestGrid - pass particle system as parent for pdata" );
+		return 1
+
+	# create temp grid (parent can be either fluid solver or particle system)
 	if ( grid._class == "Grid" and grid._T == "Real" ):
-		compareTmpGrid = solver.create(RealGrid)
+		compareTmpGrid = parent.create(RealGrid)
 	elif ( grid._class == "Grid" and grid._T == "Vec3" ):
-		compareTmpGrid = solver.create(VecGrid)
+		compareTmpGrid = parent.create(VecGrid)
 	elif ( grid._class == "Grid" and grid._T == "int" ):
-		compareTmpGrid = solver.create(IntGrid)
+		compareTmpGrid = parent.create(IntGrid)
+	elif ( grid._class == "ParticleDataImpl" and grid._T == "Real" ):
+		compareTmpGrid = parent.create(PdataReal)
+	elif ( grid._class == "ParticleDataImpl" and grid._T == "Vec3" ):
+		compareTmpGrid = parent.create(PdataVec3)
+	elif ( grid._class == "ParticleDataImpl" and grid._T == "int" ):
+		compareTmpGrid = parent.create(PdataInt)
 	else:
-		print( "Error doTestGrid - unknown grid type " + type(grid).__name__ )
+		print( "Error doTestGrid - unknown grid type " + type(grid).__name__+ " class:"+grid._class+ " T:"+grid._T  )
 		return 1
 
 	genRefFiles = getGenRefFileSetting()
 
 	if (genRefFiles==1):
-		#grid.save( outputFilename( file, name ) )
-		#shutil.copyfile( outputFilename( file, name ) , referenceFilename( file, name ) )
+		# grid.save( outputFilename( file, name ) )
+		# shutil.copyfile( outputFilename( file, name ) , referenceFilename( file, name ) )
 		grid.save( referenceFilename( file, name ) )
 		print( "OK! Generated reference file '" + referenceFilename( file, name ) + "'")
 		return 0
@@ -131,6 +146,11 @@ def doTestGrid( file , name, solver , grid, threshold=0, thresholdStrict=0, inve
 			errVal = gridMaxDiffVec3( grid, compareTmpGrid )
 		elif ( grid._class == "Grid" and grid._T == "int" ):
 			errVal = gridMaxDiffInt ( grid, compareTmpGrid )
+		elif ( grid._class == "ParticleDataImpl" ):
+			errVal = pdataMaxDiff ( grid, compareTmpGrid )
+		else:
+			print( "Error doTestGrid - error calculation missing" )
+			return 1
 
 		# finally, compare max error to allowed threshold, and return result
 		return checkResult( name, errVal , threshold , thresholdStrict, invertResult )
