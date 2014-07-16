@@ -44,14 +44,41 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 	rhs(i,j,k) = set;
 }
 
+//! Kernel: Apply velocity update from poisson equation
+KERNEL(bnd=1) 
+void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
+{
+	int idx = flags.index(i,j,k);
+	if (flags.isFluid(idx))
+	{
+		if (flags.isFluid(i-1,j,k)) vel[idx].x -= (pressure[idx] - pressure(i-1,j,k));
+		if (flags.isFluid(i,j-1,k)) vel[idx].y -= (pressure[idx] - pressure(i,j-1,k));
+		if (flags.is3D() && flags.isFluid(i,j,k-1)) vel[idx].z -= (pressure[idx] - pressure(i,j,k-1));
+ 
+		if (flags.isEmpty(i-1,j,k)) vel[idx].x -= pressure[idx];
+		if (flags.isEmpty(i,j-1,k)) vel[idx].y -= pressure[idx];
+		if (flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx].z -= pressure[idx];
+	}
+	else if (flags.isEmpty(idx))
+	{
+		if (flags.isFluid(i-1,j,k)) vel[idx].x += pressure(i-1,j,k);
+		else                        vel[idx].x  = 0.f;
+		if (flags.isFluid(i,j-1,k)) vel[idx].y += pressure(i,j-1,k);
+		else                        vel[idx].y  = 0.f;
+		if (flags.is3D() ) {
+		if (flags.isFluid(i,j,k-1)) vel[idx].z += pressure(i,j,k-1);
+		else                        vel[idx].z  = 0.f;
+		}
+	}
+}
+
 
 // MLE 2014-07-02
 //! Kernel: Apply velocity update from poisson equation
 KERNEL(bnd=1) 
-void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure, Vector3D<bool> lo, Vector3D<bool> up) {
+void CorrectVelocityOB(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure, Vector3D<bool> lo, Vector3D<bool> up) {
 
 	// MLE 2014-07-02
-	int b = flags.getBoundaryWidth();
     int idx = flags.index(i,j,k);
 	bool leFluid = flags.isFluid(i-1,j,k);
 	bool boFluid = flags.isFluid(i,j-1,k);
@@ -76,7 +103,8 @@ void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure, Vector
 			if (frFluid)	vel[idx].z += pressure(i,j,k-1);
 			else            vel[idx].z  = 0.f;
 		}
-	}else if (flags.isObstacle(idx)){
+	}
+	else if (flags.isObstacle(idx)){
 		if (up.x && leFluid)		vel[idx].x += pressure(i-1,j,k);
 		else if(up.x)				vel[idx].x  = 0.f;
         if (up.y && boFluid)		vel[idx].y += pressure(i,j-1,k);
@@ -88,6 +116,8 @@ void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure, Vector
     }
 }
 
+
+
 // MLE changed argument list 2014-06-30
 KERNEL void SetOpenBound(Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real> &Ak,FlagGrid& flags,MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up) {
 
@@ -96,15 +126,13 @@ KERNEL void SetOpenBound(Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real>
 	
 	int b = flags.getBoundaryWidth();
 
-	// maxX is 64 (grid size 64)
-
 	// set matrix stencil in and at boundary to empty
 	if((lo.x && i <= b+1)||(up.x && i >= maxX-b-2)||(lo.y && j <= b+1)||(up.y && j >= maxY-b-2))
 		A0(i,j,k) = (flags.is3D()) ? 6. : 4.;
 	
-	if ((lo.x && i <= b)||(up.x && i >= maxX-b-2))					Ai(i,j,k) = .0;
-	if ((lo.y && j <= b)||(up.y && j >= maxY-b-2))					Aj(i,j,k) = .0;
-    if (flags.is3D() && ((lo.z && k <= b)||(up.z && k >= maxZ-b-2)))Ak(i,j,k) = .0;
+	if ((lo.x && i <= b)||(up.x && i >= maxX-b-2))					 Ai(i,j,k) = .0;
+	if ((lo.y && j <= b)||(up.y && j >= maxY-b-2))					 Aj(i,j,k) = .0;
+    if (flags.is3D() && ((lo.z && k <= b)||(up.z && k >= maxZ-b-2))) Ak(i,j,k) = .0;
 
 	// set velocity boundary conditions
 	if (lo.x && i == b)				vel(b,j,k) = vel(b+1,j,k);
@@ -317,11 +345,11 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 		if (!gcg->iterate()) iter=maxIter;
 	} 
 	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
-    // debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
 	delete gcg;
 	
 	// MLE 2014-06-30 add parameters loOpenBound and upOpenBound
-	CorrectVelocity(flags, vel, pressure, loOpenBound, upOpenBound); 
+	//CorrectVelocityOB(flags, vel, pressure, loOpenBound, upOpenBound); 
+	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {
 		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);
 		// improve behavior of clamping for large time steps:

@@ -91,6 +91,9 @@ PYTHON LevelsetGrid obstacleLevelset(FlagGrid& flags) {
 	return levelset;
 }    
 
+// helper functions for pdata operator tests
+
+//! init some test particles at the origin
 PYTHON void addTestParts( BasicParticleSystem& parts, int num)
 {
 	for(int i=0; i<num; ++i)
@@ -100,11 +103,7 @@ PYTHON void addTestParts( BasicParticleSystem& parts, int num)
 	parts.insertBufferedParticles();
 }
 
-/*PYTHON Real gridMaxDiff(Grid<Real>& a, Grid<Real>& b )
-{
-	double maxVal = 0.;
-	return maxVal; 
-}*/
+// calculate the difference between two pdata fields (note - slow!, not parallelized)
 PYTHON Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
 {    
 	double maxVal = 0.;
@@ -114,21 +113,21 @@ PYTHON Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
 	
 	if (a->getType() & ParticleDataBase::TypeReal) 
 	{
-		ParticleDataImpl<Real>& av = *dynamic_cast<ParticleDataImpl<Real>*>(a); //  = *(ParticleDataImpl<Real>*)a;
-		ParticleDataImpl<Real>& bv = *dynamic_cast<ParticleDataImpl<Real>*>(b); //  = *(ParticleDataImpl<Real>*)b;
+		ParticleDataImpl<Real>& av = *dynamic_cast<ParticleDataImpl<Real>*>(a);
+		ParticleDataImpl<Real>& bv = *dynamic_cast<ParticleDataImpl<Real>*>(b);
 		FOR_PARTS(av) {
 			maxVal = std::max(maxVal, (double)fabs( av[idx]-bv[idx] ));
 		}
 	} else if (a->getType() & ParticleDataBase::TypeInt) 
 	{
-		ParticleDataImpl<int>& av = *dynamic_cast<ParticleDataImpl<int>*>(a); //  = *(ParticleDataImpl<int>*)a;
-		ParticleDataImpl<int>& bv = *dynamic_cast<ParticleDataImpl<int>*>(b); //  = *(ParticleDataImpl<int>*)b;
+		ParticleDataImpl<int>& av = *dynamic_cast<ParticleDataImpl<int>*>(a);
+		ParticleDataImpl<int>& bv = *dynamic_cast<ParticleDataImpl<int>*>(b);
 		FOR_PARTS(av) {
 			maxVal = std::max(maxVal, (double)fabs( (double)av[idx]-bv[idx] ));
 		}
 	} else if (a->getType() & ParticleDataBase::TypeVec3) {
-		ParticleDataImpl<Vec3>& av = *dynamic_cast<ParticleDataImpl<Vec3>*>(a); //  = *(ParticleDataImpl<Vec3>*)a;
-		ParticleDataImpl<Vec3>& bv = *dynamic_cast<ParticleDataImpl<Vec3>*>(b); //  = *(ParticleDataImpl<Vec3>*)b;
+		ParticleDataImpl<Vec3>& av = *dynamic_cast<ParticleDataImpl<Vec3>*>(a);
+		ParticleDataImpl<Vec3>& bv = *dynamic_cast<ParticleDataImpl<Vec3>*>(b);
 		FOR_PARTS(av) {
 			double d = 0.;
 			for(int c=0; c<3; ++c) { 
@@ -139,23 +138,9 @@ PYTHON Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
 	} else {
 		errMsg("pdataMaxDiff: Grid Type is not supported (only Real, Vec3, int)");    
 	}
-	//assertMsg(order==1 || order==2, "AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");
-	/*
-	// determine type of grid    
-	if (grid->getType() & GridBase::TypeReal) {
-		fnAdvectSemiLagrange< Grid<Real> >(flags->getParent(), *flags, *vel, *((Grid<Real>*) grid), order, strength);
-	}
-	else if (grid->getType() & GridBase::TypeMAC) {    
-		fnAdvectSemiLagrange< MACGrid >(flags->getParent(), *flags, *vel, *((MACGrid*) grid), order, strength);
-	}
-	else if (grid->getType() & GridBase::TypeVec3) {    
-		fnAdvectSemiLagrange< Grid<Vec3> >(flags->getParent(), *flags, *vel, *((Grid<Vec3>*) grid), order, strength);
-	}
-	else
-		errMsg("AdvectSemiLagrange: Grid Type is not supported (only Real, Vec3, MAC, Levelset)");    
-		*/
 
 	return maxVal;
 }
 
 } // namespace
+
