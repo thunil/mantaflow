@@ -12,13 +12,14 @@
  ******************************************************************************/
 
 #include <fstream>
+#include  <cstring>
+#include  <limits>
 #if NO_ZLIB!=1
 #include <zlib.h>
 #endif
 #include "particle.h"
 #include "levelset.h"
 #include "fileio.h"
-#include  <cstring>
 
 using namespace std;
 namespace Manta {
