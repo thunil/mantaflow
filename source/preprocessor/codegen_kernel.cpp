@@ -360,6 +360,6 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 	sink.inplace << block.linebreaks() << replaceSet(templ, table);
 
 	// adjust lines after OMP block
-	if (mtType == MTOpenMP)
+	if ( (mtType == MTOpenMP) && (!gDebugMode) )
 		sink.inplace << "\n#line " << block.line1 << " \"" << sink.infile << "\"\n" << endl;
 }
