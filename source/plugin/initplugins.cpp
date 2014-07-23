@@ -91,6 +91,99 @@ PYTHON LevelsetGrid obstacleLevelset(FlagGrid& flags) {
 	return levelset;
 }    
 
+//! check for symmetry , optionally enfore by copying
+PYTHON void checkSymmetry( Grid<Real>& a, Grid<Real>* err=NULL, bool symmetrize=false )
+{
+	// only along x for now!
+	const int s = a.getSize()[0];
+	FOR_IJK(a) { 
+		if(err) (*err)(i,j,k) = fabs( (double)(a(i,j,k) - a(s-1-i,j,k) ) ); 
+		if(symmetrize && (i<s/2)) {
+			a(i,j,k) = a(s-1-i,j,k);
+		}
+	}
+}
+PYTHON void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symmetrize=false )
+{
+	if(err) err->setConst(0.);
+
+	//FOR_IJK(a) { a(i,j,k)[0] = 0.; }
+
+	// only along x for now!
+	if(1) {
+	const int s = a.getSize()[0];
+	FOR_IJK(a) { 
+		Vec3 v1=a(i    ,j,k);
+		Vec3 v2=a(s-1-i,j,k);
+		v1[0] *=  0.;
+		v2[0] *=  0.;
+		if(err) (*err)(i,j,k) += fabs( (double)( norm(v1 - v2) ) ); 
+		if(symmetrize && (i<s/2)) {
+			a(i,j,k)[1] = a(s-1-i,j,k)[1];
+			a(i,j,k)[2] = a(s-1-i,j,k)[2];
+		}
+	}
+	} 
+
+	if(1){
+	const int s = a.getSize()[0]+1; 
+	FOR_IJK(a) { 
+		if(s-1-i >= a.getSize()[0]) continue; 
+		if(s-1-i == i             ) continue; 
+		Vec3 v1 = a(i    ,j,k);
+		Vec3 v2 = a(s-1-i,j,k);
+		v1[1] = v2[1] = 0.;
+		v1[2] = v2[2] = 0.;
+		v1[0] *=  1.;
+		v2[0] *= -1.;
+		if(err) (*err)(i,j,k) += fabs( (double)( norm(v1 - v2) ) ); 
+		if(symmetrize && (i<s/2)) {
+			a(i,j,k)[0] = -a(s-1-i,j,k)[0] + 0.;
+		}
+	}
+	}
+}
+
+// only along x for now!
+/*
+PYTHON void symmetrizeReal( Grid<Real>& a )
+{
+	const int s = a.getSizeX();
+	FOR_IJK(a) { 
+		if(i>s/2) continue;
+		a(i,j,k) = a(s-1-i,j,k); 
+	}
+}
+PYTHON void symmetrizeVec3( Grid<Vec3>& a )
+{
+	// only along x for now!
+	if(1) {
+		const int s = a.getSizeX();
+		FOR_IJK(a) { 
+			if(i>s/2) continue;
+			Vec3& v1 = a(i    , j, k);
+			Vec3& v2 = a(s-1-i, j, k);
+			v2[1] = v1[1];
+			v2[2] = v1[2];
+		}
+	} 
+	if(1){
+		const int s = a.getSizeX()+1; 
+		FOR_IJK(a) { 
+			if(i>s/2) continue;
+			//if(i>s-1) { err(i,j,k) = 0.; }
+			//else      
+			{ 
+				Vec3& v1 = a(i    ,j,k);
+				Vec3& v2 = a(s-1-i,j,k);
+				v2[0] = -v1[0];
+			}
+		}
+	}
+}
+*/
+
+
 // helper functions for pdata operator tests
 
 //! init some test particles at the origin
