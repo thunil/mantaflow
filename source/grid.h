@@ -172,6 +172,10 @@ public:
 	PYTHON Real getMaxValue();
 	//! get min value in grid 
 	PYTHON Real getMinValue();    
+	//! set all boundary cells to constant value (Dirichlet)
+	PYTHON void setBound(T value, int boundaryWidth=1);
+	//! set all boundary cells to last inner value (Neumann)
+	PYTHON void setBoundNeumann(int boundaryWidth=1);
 
 	//! debugging helper, print grid from python
 	PYTHON void printGrid(int zSlice=-1,  bool printIndex=false); 

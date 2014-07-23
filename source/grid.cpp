@@ -361,13 +361,42 @@ PYTHON void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv
 	if(info) debMsg("Uv grid "<<index<<"/"<<numUvs<< " t="<<currt<<" w="<<uvWeight<<", reset:"<<(int)(currt<lastt) , 1);
 }
 
-PYTHON void setBoundaries(Grid<Real>& grid, Real value=0., int boundaryWidth=1) {
-	const int w = boundaryWidth;
-	FOR_IJK(grid) {
-		bool bnd = (i<=w || i>=grid.getSizeX()-1-w || j<=w || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w || k>=grid.getSizeZ()-1-w)));
-		if (bnd) 
-			grid(i,j,k) = value;
+KERNEL template<class T> void knSetBoundary (Grid<T>& grid, T value, int w) { 
+	bool bnd = (i<=w || i>=grid.getSizeX()-1-w || j<=w || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w || k>=grid.getSizeZ()-1-w)));
+	if (bnd) 
+		grid(i,j,k) = value;
+}
+
+template<class T> void Grid<T>::setBound(T value, int boundaryWidth) {
+	knSetBoundary<T>( *this, value, boundaryWidth );
+}
+
+
+KERNEL template<class T> void knSetBoundaryNeumann (Grid<T>& grid, int w) { 
+	if( i<=w) {
+		grid(i,j,k) = grid(w+1,j,k);
 	}
+	if( i>=grid.getSizeX()-1-w){
+		grid(i,j,k) = grid(grid.getSizeX()-1-w-1,j,k);
+	}
+	if( j<=w){
+		grid(i,j,k) = grid(i,w+1,k);
+	}
+	if( j>=grid.getSizeY()-1-w){
+		grid(i,j,k) = grid(i,grid.getSizeY()-1-w-1,k);
+	}
+	if( grid.is3D() ){
+		 if( k<=w ) {
+			grid(i,j,k) = grid(i,j,w+1);
+		 }
+		 if( k>=grid.getSizeZ()-1-w ) {
+			grid(i,j,k) = grid(i,j,grid.getSizeY()-1-w-1);
+		 }
+	}
+}
+
+template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
+	knSetBoundaryNeumann<T>( *this, boundaryWidth );
 }
 
 //******************************************************************************
