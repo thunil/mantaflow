@@ -73,7 +73,7 @@ while tOut < 999:
 			#unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) # faster, but not as smooth
 			averagedParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor , 1, 1 ) 
 
-			setBoundaries(phi, 0., boundaryWidth=1)
+			phi.setBound(value=0., boundaryWidth=1)
 			phi.createMesh(mesh)
 
 			# beautify mesh, too slow right now!
