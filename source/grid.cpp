@@ -373,26 +373,30 @@ template<class T> void Grid<T>::setBound(T value, int boundaryWidth) {
 
 
 KERNEL template<class T> void knSetBoundaryNeumann (Grid<T>& grid, int w) { 
+	bool set = false;
+	int  si=i, sj=j, sk=k;
 	if( i<=w) {
-		grid(i,j,k) = grid(w+1,j,k);
+		si = w+1; set=true;
 	}
 	if( i>=grid.getSizeX()-1-w){
-		grid(i,j,k) = grid(grid.getSizeX()-1-w-1,j,k);
+		si = grid.getSizeX()-1-w-1; set=true;
 	}
 	if( j<=w){
-		grid(i,j,k) = grid(i,w+1,k);
+		sj = w+1; set=true;
 	}
 	if( j>=grid.getSizeY()-1-w){
-		grid(i,j,k) = grid(i,grid.getSizeY()-1-w-1,k);
+		sj = grid.getSizeY()-1-w-1; set=true;
 	}
 	if( grid.is3D() ){
 		 if( k<=w ) {
-			grid(i,j,k) = grid(i,j,w+1);
+			sk = w+1; set=true;
 		 }
 		 if( k>=grid.getSizeZ()-1-w ) {
-			grid(i,j,k) = grid(i,j,grid.getSizeY()-1-w-1);
+			sk = grid.getSizeZ()-1-w-1; set=true;
 		 }
 	}
+	if(set)
+		grid(i,j,k) = grid(si, sj, sk);
 }
 
 template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
