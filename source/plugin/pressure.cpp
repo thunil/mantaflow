@@ -240,7 +240,8 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
                      int outflowHeight = 1,
                      bool precondition = true,
                      bool enforceCompatibility = false,
-                     bool useResNorm = true )
+                     bool useResNorm = true, 
+					 Grid<Real>* retRhs = NULL )
 {
 	// parse strings
 	Vector3D<bool> loOpenBound, upOpenBound, loOutflow, upOutflow;
@@ -307,6 +308,11 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);
 		// improve behavior of clamping for large time steps:
 		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
+	}
+
+	// optionally , return RHS
+	if(retRhs) {
+		retRhs->copyFrom( rhs );
 	}
 }
 
