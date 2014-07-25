@@ -22,7 +22,7 @@ flags.fillGrid()
 
 if (GUI):
 	gui = Gui()
-	gui.show()
+	gui.show( True ) 
 	#gui.pause()
 
 source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))
