@@ -80,28 +80,44 @@ void SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, 
 	dst(i,j,k) = Vec3(vx,vy,vz);
 }
 
+
 //! Kernel: Correct based on forward and backward SL steps (for both centered & mac grids)
 KERNEL(idx) template<class T> 
 void MacCormackCorrect(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd,  Grid<T>& bwd, 
 					   Real strength, bool isLevelSet, bool isMAC=false )
 {
-	// note, replacement for isNotFluidMAC and isNotFluid
-	bool skip = false;
-
-	if (!flags.isFluid(idx)) skip = true;
-	if(!isMAC) {
-	if( (idx>=flags.getStrideX()) && 	(!flags.isFluid(idx-flags.getStrideX()) )) skip = true; 
-	if( (idx>=flags.getStrideY()) && 	(!flags.isFluid(idx-flags.getStrideY()) )) skip = true; 
-	if ( flags.is3D() ) {
-		if( (idx>=flags.getStrideZ()) &&(!flags.isFluid(idx-flags.getStrideZ()) )) skip = true;
-	} }
-	if ( skip ) {
+	// centered values, only check center flag
+	if (!flags.isFluid(idx)) {
 		dst[idx] = isLevelSet ? fwd[idx] : (T)0.0;
-		return;
+	} else { 
+		// note, strenth of correction can be modified here
+		dst[idx] = fwd[idx] + strength * 0.5 * (old[idx] - bwd[idx]);
 	}
-	
-	// note, strenth of correction can be modified here
-	dst[idx] = fwd[idx] + strength * 0.5 * (old[idx] - bwd[idx]);
+}
+
+//! Kernel: Correct based on forward and backward SL steps (for both centered & mac grids)
+KERNEL template<class T> 
+void MacCormackCorrectMAC(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd,  Grid<T>& bwd, 
+					   Real strength, bool isLevelSet, bool isMAC=false )
+{
+	bool skip[3] = { false, false, false };
+/*
+	if (!flags.isFluid(i,j,k)) skip[0] = skip[1] = skip[2] = true;
+	if(isMAC) {
+		if( (i>0) && 	(!flags.isFluid(i-1,j,k) )) skip[0] = true; 
+		if( (j>0) && 	(!flags.isFluid(i,j-1,k) )) skip[1] = true; 
+		if( (k>0) && 	(!flags.isFluid(i,j,k-1) )) skip[2] = true; 
+	}
+	*/
+
+	for(int c=0; c<3; ++c ) {
+		if ( skip[c] ) {
+			dst(i,j,k)[c] = isLevelSet ? fwd(i,j,k)[c] : 0.0;
+		} else { 
+			// perform actual correction with given strength
+			dst(i,j,k)[c] = fwd(i,j,k)[c] + strength * 0.5 * (old(i,j,k)[c] - bwd(i,j,k)[c]);
+		}
+	}
 }
 
 // Helper to collect min/max in a template
@@ -126,21 +142,21 @@ inline T doClampComponent(const Vec3i& upperClamp, Grid<T>& orig, T dst, const V
 	const int i1 = i0+1, j1 = j0+1, k1= (orig.is3D() ? (k0+1) : k0);
 	
 	if (!orig.isInBounds(Vec3i(i0,j0,k0),1)) {
-	return dst;
+		return dst;
 	}
 
-		// find min/max around fwd pos
-		T minv = orig(i0,j0,k0), maxv = minv;
-		getMinMax(minv, maxv, orig(i1,j0,k0));
-		getMinMax(minv, maxv, orig(i0,j1,k0));
-		getMinMax(minv, maxv, orig(i1,j1,k0));
-		getMinMax(minv, maxv, orig(i0,j0,k1));
-		getMinMax(minv, maxv, orig(i1,j0,k1));
-		getMinMax(minv, maxv, orig(i0,j1,k1));
-		getMinMax(minv, maxv, orig(i1,j1,k1)); 
-		
-		// write clamped value
-		return clamp(dst, minv, maxv);
+	// find min/max around fwd pos
+	T minv = orig(i0,j0,k0), maxv = minv;
+	getMinMax(minv, maxv, orig(i1,j0,k0));
+	getMinMax(minv, maxv, orig(i0,j1,k0));
+	getMinMax(minv, maxv, orig(i1,j1,k0));
+	getMinMax(minv, maxv, orig(i0,j0,k1));
+	getMinMax(minv, maxv, orig(i1,j0,k1));
+	getMinMax(minv, maxv, orig(i0,j1,k1));
+	getMinMax(minv, maxv, orig(i1,j1,k1)); 
+	
+	// write clamped value
+	return clamp(dst, minv, maxv);
 }
 	
 //! Helper function for clamping MAC grids
@@ -175,18 +191,21 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
 	if (flags.isObstacle(i,j,k))
 		return;
 	if ( isNotFluid(flags,i,j,k) ) {
-		dst(i,j,k) = fwd(i,j,k);
+		dst(i,j,k) = fwd(i,j,k); // NT_DEBUG ? 
 		return;
 	}
 
 	T     dval       = dst(i,j,k);
 	Vec3i upperClamp = flags.getSize() - 1;
 	
-	// lookup forward/backward
-	Vec3i posFwd = toVec3i( Vec3(i,j,k) - vel.getCentered(i,j,k) * dt );
-	Vec3i posBwd = toVec3i( Vec3(i,j,k) + vel.getCentered(i,j,k) * dt );
+	// lookup forward/backward , round to closest NB
+	Vec3i posFwd = toVec3i( Vec3(i,j,k) + Vec3(0.5,0.5,0.5) - vel.getCentered(i,j,k) * dt );
+	Vec3i posBwd = toVec3i( Vec3(i,j,k) + Vec3(0.5,0.5,0.5) + vel.getCentered(i,j,k) * dt );
+// NT_DEBUG	
+	/*debMsg("AAAB "<<i<<","<<j<<","<<k<<"  f "<<posFwd <<" b "<< posBwd << "  ,   " << vel.getCentered(i,j,k) 
+			<<" "<< ( Vec3(i,j,k) - vel.getCentered(i,j,k) * dt ) <<" "<< ( Vec3(i,j,k) + vel.getCentered(i,j,k) * dt ) ,1);*/
 	
-	dval = doClampComponent<T>(upperClamp, orig, dval, posFwd );
+	// NT_DEBUG dval = doClampComponent<T>(upperClamp, orig, dval, posFwd );
 	
 	// test if lookups point out of grid or into obstacle
 	if (posFwd.x < 0 || posFwd.y < 0 || posFwd.z < 0 ||
@@ -216,13 +235,14 @@ void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& o
 	Vec3i upperClamp = flags.getSize() - 1;
 	
 	// get total fwd lookup
-	Vec3i posFwd = toVec3i( Vec3(i,j,k) - vel.getCentered(i,j,k) * dt );
-	Vec3i posBwd = toVec3i( Vec3(i,j,k) + vel.getCentered(i,j,k) * dt );
+	Vec3i posFwd = toVec3i( Vec3(i,j,k) + Vec3(0.5,0.5,0.5) - vel.getCentered(i,j,k) * dt );
+	Vec3i posBwd = toVec3i( Vec3(i,j,k) + Vec3(0.5,0.5,0.5) + vel.getCentered(i,j,k) * dt );
 	
 	// clamp individual components
-	dval.x = doClampComponentMAC<0>(upperClamp, orig, dval.x, toVec3i( pos - vel.getAtMACX(i,j,k) * dt) );
-	dval.y = doClampComponentMAC<1>(upperClamp, orig, dval.y, toVec3i( pos - vel.getAtMACY(i,j,k) * dt) );
-	dval.z = doClampComponentMAC<2>(upperClamp, orig, dval.z, toVec3i( pos - vel.getAtMACZ(i,j,k) * dt) );
+	dval.x = doClampComponentMAC<0>(upperClamp, orig, dval.x, toVec3i( pos + Vec3(0.0,0.5,0.5) - vel.getAtMACX(i,j,k) * dt) );
+	dval.y = doClampComponentMAC<1>(upperClamp, orig, dval.y, toVec3i( pos + Vec3(0.5,0.0,0.5) - vel.getAtMACY(i,j,k) * dt) );
+	dval.z = doClampComponentMAC<2>(upperClamp, orig, dval.z, toVec3i( pos + Vec3(0.5,0.5,0.0) - vel.getAtMACZ(i,j,k) * dt) );
+	// NT_DEBUG , to do check offsets
 	
 	// test if lookups point out of grid or into obstacle
 	if (posFwd.x < 0 || posFwd.y < 0 || posFwd.z < 0 ||
@@ -291,10 +311,10 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 		SemiLagrangeMAC (flags, vel, bwd, fwd, -dt);
 		
 		// newGrid <- compute correction
-		MacCormackCorrect<Vec3> (flags, newGrid, orig, fwd, bwd, strength, false, true);
+		MacCormackCorrectMAC<Vec3> (flags, newGrid, orig, fwd, bwd, strength, false, true);
 		
 		// clamp values
-		MacCormackClampMAC (flags, vel, newGrid, orig, fwd, dt);
+		// NT_DEBUG MacCormackClampMAC (flags, vel, newGrid, orig, fwd, dt);
 		
 		orig.swap(newGrid);
 	}
