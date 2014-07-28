@@ -73,53 +73,10 @@ void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure)
 }
 
 
-// MLE 2014-07-02
-//! Kernel: Apply velocity update from poisson equation
-KERNEL(bnd=1) 
-void CorrectVelocityOB(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure, Vector3D<bool> lo, Vector3D<bool> up) {
 
-	// MLE 2014-07-02
-    int idx = flags.index(i,j,k);
-	bool leFluid = flags.isFluid(i-1,j,k);
-	bool boFluid = flags.isFluid(i,j-1,k);
-	bool frFluid = false;
-	if(flags.is3D()) frFluid = flags.isFluid(i,j,k-1);
-
-    if (flags.isFluid(idx)){
-        if (leFluid)				 vel[idx].x -= (pressure[idx] - pressure(i-1,j,k));
-        if (boFluid)				 vel[idx].y -= (pressure[idx] - pressure(i,j-1,k));
-        if (flags.is3D() && frFluid) vel[idx].z -= (pressure[idx] - pressure(i,j,k-1));
-		
-        if (flags.isEmpty(i-1,j,k) || (lo.x && flags.isObstacle(i-1,j,k)))					vel[idx].x -= pressure[idx];
-        if (flags.isEmpty(i,j-1,k) || (lo.y && flags.isObstacle(i,j-1,k)))					vel[idx].y -= pressure[idx];
-        if (flags.is3D() && (flags.isEmpty(i,j,k-1) || (lo.z && flags.isObstacle(i,j,k-1))))	vel[idx].z -= pressure[idx];
-    }
-    else if (flags.isEmpty(idx)){
-        if (leFluid)		vel[idx].x += pressure(i-1,j,k);
-		else				vel[idx].x  = 0.f;
-        if (boFluid)		vel[idx].y += pressure(i,j-1,k);
-		else                vel[idx].y  = 0.f;
-		if (flags.is3D()) {
-			if (frFluid)	vel[idx].z += pressure(i,j,k-1);
-			else            vel[idx].z  = 0.f;
-		}
-	}
-	else if (flags.isObstacle(idx)){
-		if (up.x && leFluid)		vel[idx].x += pressure(i-1,j,k);
-		else if(up.x)				vel[idx].x  = 0.f;
-        if (up.y && boFluid)		vel[idx].y += pressure(i,j-1,k);
-		else if(up.y)				vel[idx].y  = 0.f;
-		if (flags.is3D() ) {
-			if (up.z && frFluid)	vel[idx].z += pressure(i,j,k-1);
-			else if(up.z)		    vel[idx].z  = 0.f;
-		}
-    }
-}
-
-
-
-// MLE changed argument list 2014-06-30
-KERNEL void SetOpenBound(Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real> &Ak,FlagGrid& flags,MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up) {
+KERNEL void SetOpenBound(Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real> &Ak,FlagGrid& flags,MACGrid& vel, 
+							Vector3D<bool> lo, Vector3D<bool> up) 
+{
 
 	if (!flags.isFluid(i,j,k))
 		return;
@@ -272,7 +229,6 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 	}
 }
 
-// MLE 2014-06-30 changed position of openBound for calling solvePressure from c++
 //! Perform pressure projection of the velocity grid
 PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string openBound="",
                      Grid<Real>* phi = 0, 
@@ -310,7 +266,6 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 		
 	// setup matrix and boundaries
 	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak);
-	// MLE 2014-06-30 changed vel parameter to flags parameter
 	SetOpenBound (A0, Ai, Aj, Ak, flags, vel, loOpenBound, upOpenBound);
 	
 	if (phi) {
@@ -331,7 +286,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 	const int maxIter = (int)(cgMaxIterFac * flags.getSize().max()) * (flags.is3D() ? 1 : 4);
 	GridCgInterface *gcg;
 	if (vel.is3D())
-		gcg = new GridCg<ApplyMatrix>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
+		gcg = new GridCg<ApplyMatrix>  (pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
 	else
 		gcg = new GridCg<ApplyMatrix2D>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
 	
@@ -347,8 +302,6 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
 	delete gcg;
 	
-	// MLE 2014-06-30 add parameters loOpenBound and upOpenBound
-	//CorrectVelocityOB(flags, vel, pressure, loOpenBound, upOpenBound); 
 	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {
 		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);
