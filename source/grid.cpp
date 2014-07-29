@@ -301,7 +301,8 @@ template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 		int idx = (*this).index(i,j,k);
 		if(zSlice>=0 && k==zSlice) { 
 			out << " ";
-			if(printIndex) out << "  "<<i<<","<<j<<","<<k <<":";
+			if(printIndex &&  this->is3D()) out << "  "<<i<<","<<j<<","<<k <<":";
+			if(printIndex && !this->is3D()) out << "  "<<i<<","<<j<<":";
 			out << (*this)[idx]; 
 			if(i==(*this).getSizeX()-1 -bnd) out << std::endl; 
 		}

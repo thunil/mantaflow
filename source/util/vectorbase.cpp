@@ -27,4 +27,11 @@ template<> const Vector3D<double> Vector3D<double>::Invalid( numeric_limits<doub
 template<> bool Vector3D<float>::isValid() const { return !c_isnan(x) && !c_isnan(y) && !c_isnan(z); }
 template<> bool Vector3D<double>::isValid() const { return !c_isnan(x) && !c_isnan(y) && !c_isnan(z); }
 
+//! Specialization for readable ints
+template<> std::string Vector3D<int>::toString() const {
+	char buf[256];
+	snprintf ( buf,256,"[%d,%d,%d]", ( *this ) [0], ( *this ) [1], ( *this ) [2] );
+	return std::string ( buf );
+}
+
 }
