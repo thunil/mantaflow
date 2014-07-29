@@ -33,7 +33,7 @@ for t in range(400):
 		source.applyToGrid(grid=density, value=1)
 		
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2 )
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2)
 	
 	setWallBcs(flags=flags, vel=vel)    
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-4e-3,0), flags=flags)
