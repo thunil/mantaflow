@@ -92,119 +92,81 @@ PYTHON LevelsetGrid obstacleLevelset(FlagGrid& flags) {
 }    
 
 //! check for symmetry , optionally enfore by copying
-PYTHON void checkSymmetry( Grid<Real>& a, Grid<Real>* err=NULL, bool symmetrize=false )
+PYTHON void checkSymmetry( Grid<Real>& a, Grid<Real>* err=NULL, bool symmetrize=false, int axis=0)
 {
-	// only along x for now!
-	const int s = a.getSize()[0];
+	const int c  = axis; 
+	const int s = a.getSize()[c];
 	FOR_IJK(a) { 
-		if(err) (*err)(i,j,k) = fabs( (double)(a(i,j,k) - a(s-1-i,j,k) ) ); 
-		if(symmetrize && (i<s/2)) {
-			a(i,j,k) = a(s-1-i,j,k);
+		Vec3i idx(i,j,k), mdx(i,j,k);
+		mdx[c] = s-1-idx[c];
+		if(err) (*err)(idx) = fabs( (double)(a(idx) - a(mdx) ) ); 
+		if(symmetrize && (idx[c]<s/2)) {
+			a(idx) = a(mdx);
 		}
 	}
 }
-PYTHON void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symmetrize=false, int disable=0 )
+//! check for symmetry , mac grid version
+PYTHON void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symmetrize=false , int axis=0, int disable=0)
 {
 	if(err) err->setConst(0.);
 
-	//FOR_IJK(a) { a(i,j,k)[0] = 0.; }
-
-	// only along x for now!
 	// each dimension is measured separately for flexibility (could be combined)
+	const int c  = axis;
+	const int o1 = (c+1)%3;
+	const int o2 = (c+2)%3;
 
 	// x
 	if(! (disable&1) ) {
-		const int s = a.getSize()[0]+1; 
+		const int s = a.getSize()[c]+1; 
 		FOR_IJK(a) { 
-			if(s-1-i >= a.getSize()[0]) continue; 
-			if(s-1-i == i             ) continue; 
-			Vec3 v1 = a(i    ,j,k);
-			Vec3 v2 = a(s-1-i,j,k);
-			v1[1] = v2[1] = 0.;
-			v1[2] = v2[2] = 0.;
-			v1[0] *=  1.;
-			v2[0] *= -1.;
-			if(err) (*err)(i,j,k) += fabs( (double)( norm(v1 - v2) ) ); 
-			if(symmetrize && (i<s/2)) {
-				a(i,j,k)[0] = -a(s-1-i,j,k)[0] + 0.;
+			Vec3i idx(i,j,k), mdx(i,j,k);
+			mdx[c] = s-1-idx[c]; 
+			if(mdx[c] >= a.getSize()[c]) continue; 
+			// special case: center "line" of values , should be zero!
+			if(mdx[c] == idx[c] ) {
+				if(err) (*err)(idx) += fabs( (double)( a(idx)[c] ) ); 
+				if(symmetrize) a(idx)[c] = 0.;
+				continue; 
+			}
+
+			// note - the a(mdx) component needs to be inverted here!
+			if(err) (*err)(idx) += fabs( (double)( a(idx)[c]- (a(mdx)[c]*-1.) ) ); 
+			if(symmetrize && (idx[c]<s/2)) {
+				a(idx)[c] = a(mdx)[c] * -1.;
 			}
 		}
 	}
 
 	// y
 	if(! (disable&2) ) {
-		const int s = a.getSize()[0];
+		const int s = a.getSize()[c];
 		FOR_IJK(a) { 
-			Vec3 v1=a(i    ,j,k);
-			Vec3 v2=a(s-1-i,j,k);
-			v1[0] = v2[0] = 0.;
-			v1[2] = v2[2] = 0.;
-			v1[1] *=  1.;
-			v2[1] *=  1.;
-			if(err) (*err)(i,j,k) += fabs( (double)( norm(v1 - v2) ) ); 
-			if(symmetrize && (i<s/2)) {
-				a(i,j,k)[1] = a(s-1-i,j,k)[1];
+			Vec3i idx(i,j,k), mdx(i,j,k);
+			mdx[c] = s-1-idx[c]; 
+
+			if(err) (*err)(idx) += fabs( (double)( a(idx)[o1]-a(mdx)[o1] ) ); 
+			if(symmetrize && (idx[c]<s/2)) {
+				a(idx)[o1] = a(mdx)[o1];
 			}
 		}
 	} 
 
 	// z
 	if(! (disable&4) ) {
-		const int s = a.getSize()[0];
+		const int s = a.getSize()[c];
 		FOR_IJK(a) { 
-			Vec3 v1=a(i    ,j,k);
-			Vec3 v2=a(s-1-i,j,k);
-			v1[0] = v2[0] = 0.;
-			v1[1] = v2[1] = 0.;
-			v1[2] *=  1.;
-			v2[2] *=  1.;
-			if(err) (*err)(i,j,k) += fabs( (double)( norm(v1 - v2) ) ); 
-			if(symmetrize && (i<s/2)) {
-				a(i,j,k)[2] = a(s-1-i,j,k)[2];
+			Vec3i idx(i,j,k), mdx(i,j,k);
+			mdx[c] = s-1-idx[c]; 
+
+			if(err) (*err)(idx) += fabs( (double)( a(idx)[o2]-a(mdx)[o2] ) ); 
+			if(symmetrize && (idx[c]<s/2)) {
+				a(idx)[o2] = a(mdx)[o2];
 			}
 		}
 	} 
 
 }
 
-// only along x for now!
-/*
-PYTHON void symmetrizeReal( Grid<Real>& a )
-{
-	const int s = a.getSizeX();
-	FOR_IJK(a) { 
-		if(i>s/2) continue;
-		a(i,j,k) = a(s-1-i,j,k); 
-	}
-}
-PYTHON void symmetrizeVec3( Grid<Vec3>& a )
-{
-	// only along x for now!
-	if(1) {
-		const int s = a.getSizeX();
-		FOR_IJK(a) { 
-			if(i>s/2) continue;
-			Vec3& v1 = a(i    , j, k);
-			Vec3& v2 = a(s-1-i, j, k);
-			v2[1] = v1[1];
-			v2[2] = v1[2];
-		}
-	} 
-	if(1){
-		const int s = a.getSizeX()+1; 
-		FOR_IJK(a) { 
-			if(i>s/2) continue;
-			//if(i>s-1) { err(i,j,k) = 0.; }
-			//else      
-			{ 
-				Vec3& v1 = a(i    ,j,k);
-				Vec3& v2 = a(s-1-i,j,k);
-				v2[0] = -v1[0];
-			}
-		}
-	}
-}
-*/
 
 
 // helper functions for pdata operator tests
