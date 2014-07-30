@@ -21,14 +21,14 @@ def writeHeader( filename, content ):
 # params
 
 if(len(sys.argv)<2):
-	print("Usage makeHgVersion.py <out-file> <optional: path-to-hg> ")
+	print("Usage makeHgVersion.py <out-file> <optional: path-to-git-exe> ")
 	print("Warning, the target file <out-file> will be overwritten! ")
 	exit(1)
 
 # target file
 outname = sys.argv[1]
 
-# path to git/hg executable, try a few options
+# path to git executable, try a few options
 # note /opt/local/bin/xxx is a double entry, can be overwritten by command line arg
 exenames = [ "--replace--", "--replace--", "/opt/local/bin/git", "/usr/local/bin/git" ]
 # check default
@@ -67,18 +67,18 @@ except IOError:
 		print("Old file not found...")
 
 
-# get hg version
-#hgVersion = os.popen(exename+" id").read() 
+# get git version
+#gitVersion = os.popen(exename+" id").read() 
 # get gid id
-hgVersion = os.popen(exename+" log -1 ").read() 
+gitVersion = os.popen(exename+" log -1 ").read() 
 # remove newlines...
-hgVersion = hgVersion.splitlines()[0]
-hgVersion = hgVersion.rstrip('\n')
+gitVersion = gitVersion.splitlines()[0]
+gitVersion = gitVersion.rstrip('\n')
 if(doDebug):
-	print( "Got hg info: '" + hgVersion +"' " )
+	print( "Got git info: '" + gitVersion +"' " )
 
 # matches old?
-newContent = "\n\n#define MANTA_HG_VERSION \"" + hgVersion + "\" \n\n" 
+newContent = "\n\n#define MANTA_HG_VERSION \"" + gitVersion + "\" \n\n" 
 
 if(newContent == oldContent):
 	if(doDebug):
@@ -91,6 +91,6 @@ else:
 # write temp file
 if(doWrite):
 	writeHeader( outname, newContent )
-	print( "Updated hg info header , "+hgVersion )
+	print( "Updated repository info header , "+gitVersion )
 
 

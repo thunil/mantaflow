@@ -127,7 +127,7 @@ Real CompMinReal(Grid<Real>& val) {
 }
 
 //! Kernel: Compute max value of Real grid
-KERNEL(idx, reduce=max) returns(Real maxVal=std::numeric_limits<Real>::min())
+KERNEL(idx, reduce=max) returns(Real maxVal=-std::numeric_limits<Real>::max())
 Real CompMaxReal(Grid<Real>& val) {
 	if (val[idx] > maxVal)
 		maxVal = val[idx];
@@ -156,7 +156,7 @@ Real CompMinVec(Grid<Vec3>& val) {
 }
 
 //! Kernel: Compute max norm of vec grid
-KERNEL(idx, reduce=max) returns(Real maxVal=std::numeric_limits<int>::min())
+KERNEL(idx, reduce=max) returns(Real maxVal=-std::numeric_limits<Real>::max())
 Real CompMaxVec(Grid<Vec3>& val) {
 	const Real s = normSquare(val[idx]);
 	if (s > maxVal)
