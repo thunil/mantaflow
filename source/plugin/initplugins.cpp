@@ -122,6 +122,7 @@ PYTHON void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symmetr
 			Vec3i idx(i,j,k), mdx(i,j,k);
 			mdx[c] = s-1-idx[c]; 
 			if(mdx[c] >= a.getSize()[c]) continue; 
+
 			// special case: center "line" of values , should be zero!
 			if(mdx[c] == idx[c] ) {
 				if(err) (*err)(idx) += fabs( (double)( a(idx)[c] ) ); 
