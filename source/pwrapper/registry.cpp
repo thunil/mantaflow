@@ -393,7 +393,7 @@ void WrapperRegistry::addConstants(PyObject* module) {
 #else
 	PyModule_AddObject(module,"GUI",Manta::toPy<bool>(false));
 #endif
-#ifdef DOUBLEPRECISION
+#if FLOATINGPOINT_PRECISION==2
 	PyModule_AddObject(module,"DOUBLEPRECISION",Manta::toPy<bool>(true));
 #else
 	PyModule_AddObject(module,"DOUBLEPRECISION",Manta::toPy<bool>(false));
