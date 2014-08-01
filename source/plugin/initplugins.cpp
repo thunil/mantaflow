@@ -92,13 +92,15 @@ PYTHON LevelsetGrid obstacleLevelset(FlagGrid& flags) {
 }    
 
 //! check for symmetry , optionally enfore by copying
-PYTHON void checkSymmetry( Grid<Real>& a, Grid<Real>* err=NULL, bool symmetrize=false, int axis=0)
+PYTHON void checkSymmetry( Grid<Real>& a, Grid<Real>* err=NULL, bool symmetrize=false, int axis=0, int bound=0)
 {
 	const int c  = axis; 
 	const int s = a.getSize()[c];
 	FOR_IJK(a) { 
 		Vec3i idx(i,j,k), mdx(i,j,k);
 		mdx[c] = s-1-idx[c];
+		if( bound>0 && ((!a.isInBounds(idx,bound)) || (!a.isInBounds(mdx,bound))) ) continue;
+
 		if(err) (*err)(idx) = fabs( (double)(a(idx) - a(mdx) ) ); 
 		if(symmetrize && (idx[c]<s/2)) {
 			a(idx) = a(mdx);
@@ -106,7 +108,8 @@ PYTHON void checkSymmetry( Grid<Real>& a, Grid<Real>* err=NULL, bool symmetrize=
 	}
 }
 //! check for symmetry , mac grid version
-PYTHON void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symmetrize=false , int axis=0, int disable=0)
+PYTHON void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symmetrize=false , int axis=0, 
+								int bound=0, int disable=0)
 {
 	if(err) err->setConst(0.);
 
@@ -122,6 +125,7 @@ PYTHON void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symmetr
 			Vec3i idx(i,j,k), mdx(i,j,k);
 			mdx[c] = s-1-idx[c]; 
 			if(mdx[c] >= a.getSize()[c]) continue; 
+			if( bound>0 && ((!a.isInBounds(idx,bound)) || (!a.isInBounds(mdx,bound))) ) continue;
 
 			// special case: center "line" of values , should be zero!
 			if(mdx[c] == idx[c] ) {
@@ -144,6 +148,7 @@ PYTHON void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symmetr
 		FOR_IJK(a) { 
 			Vec3i idx(i,j,k), mdx(i,j,k);
 			mdx[c] = s-1-idx[c]; 
+			if( bound>0 && ((!a.isInBounds(idx,bound)) || (!a.isInBounds(mdx,bound))) ) continue;
 
 			if(err) (*err)(idx) += fabs( (double)( a(idx)[o1]-a(mdx)[o1] ) ); 
 			if(symmetrize && (idx[c]<s/2)) {
@@ -158,6 +163,7 @@ PYTHON void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symmetr
 		FOR_IJK(a) { 
 			Vec3i idx(i,j,k), mdx(i,j,k);
 			mdx[c] = s-1-idx[c]; 
+			if( bound>0 && ((!a.isInBounds(idx,bound)) || (!a.isInBounds(mdx,bound))) ) continue;
 
 			if(err) (*err)(idx) += fabs( (double)( a(idx)[o2]-a(mdx)[o2] ) ); 
 			if(symmetrize && (idx[c]<s/2)) {
