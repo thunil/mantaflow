@@ -52,7 +52,7 @@ for t in range(250):
 	setWallBcs(flags=flags, vel=vel)    
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags)
 	
-	solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True)
+	solvePressure( flags=flags, vel=vel, pressure=pressure )
 	setWallBcs(flags=flags, vel=vel)
 	#density.save('den%04d.uni' % t)
 	
