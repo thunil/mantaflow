@@ -50,9 +50,9 @@ for t in range(2000):
 	# pressure solve
 	setWallBcs(flags=flags, vel=vel)
 	if ghostFluid:
-		solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False, phi=phi )
+		solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, phi=phi )
 	else:
-		solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False)
+		solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy)
 	setWallBcs(flags=flags, vel=vel)
 	
 	# note: these meshes are created by fast marching only, should smooth

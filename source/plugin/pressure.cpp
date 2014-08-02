@@ -245,7 +245,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
                      int outflowHeight = 1,
                      bool precondition = true,
                      bool enforceCompatibility = false,
-                     bool useResNorm = true, 
+                     bool useL2Norm = false, 
 					 Grid<Real>* retRhs = NULL )
 {
 	// parse strings
@@ -314,7 +314,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 		gcg = new GridCg<ApplyMatrix2D>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
 	
 	gcg->setAccuracy( cgAccuracy ); 
-	gcg->setUseResNorm( useResNorm );
+	gcg->setUseL2Norm( useL2Norm );
 
 	// optional preconditioning
 	gcg->setPreconditioner( precondition ? GridCgInterface::PC_mICP : GridCgInterface::PC_None, &pca0, &pca1, &pca2, &pca3);

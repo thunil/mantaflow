@@ -15,6 +15,7 @@
 #include "vectorbase.h"
 #include "grid.h"
 #include "kernel.h"
+#include <limits>
 
 using namespace std;
 

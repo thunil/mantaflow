@@ -28,7 +28,7 @@ class GridCgInterface {
 	public:
 		enum PreconditionType { PC_None=0, PC_ICP, PC_mICP };
 		
-		GridCgInterface() : mUseResNorm(true) {};
+		GridCgInterface() : mUseL2Norm(true) {};
 		virtual ~GridCgInterface() {};
 
 		// solving functions
@@ -45,12 +45,12 @@ class GridCgInterface {
 		virtual void setAccuracy(Real set) = 0;
 		virtual Real getAccuracy() const = 0;
 
-		void setUseResNorm(bool set) { mUseResNorm = set; }
+		void setUseL2Norm(bool set) { mUseL2Norm = set; }
 
 	protected:
 
-		// use norm of residual, or max value for threshold?
-		bool mUseResNorm; 
+		// use l2 norm of residualfor threshold? (otherwise uses max norm)
+		bool mUseL2Norm; 
 };
 
 

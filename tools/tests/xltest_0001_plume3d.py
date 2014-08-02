@@ -51,8 +51,8 @@ for t in range(100):
 	setWallBcs(flags=flags, vel=vel)	
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-5e-2,0), flags=flags)
 	
-	#solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, cgMaxIterFac=0.5, cgAccuracy=1e-04)
-	solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True, cgMaxIterFac=2.5, cgAccuracy=1e-08)
+	#solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=1e-04)
+	solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=2.5, cgAccuracy=1e-08)
 	setWallBcs(flags=flags, vel=vel)
 
 	# check state in intervals

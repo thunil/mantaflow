@@ -278,7 +278,7 @@ PYTHON void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, F
 		const int maxIter = (int)(cgMaxIterFac * vel.getSize().max());    
 		GridCgInterface *gcg = new GridCg<ApplyMatrix>(solution, rhs, residual, search, flags, temp1, &A0, &Ai, &Aj, &Ak );
 		gcg->setAccuracy(cgAccuracy); 
-		gcg->setUseResNorm(true);
+		gcg->setUseL2Norm(true);
 		gcg->setPreconditioner( (GridCgInterface::PreconditionType)precondition, &pca0, &pca1, &pca2, &pca3); 
 		
 		// iterations

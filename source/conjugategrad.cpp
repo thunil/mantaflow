@@ -244,8 +244,8 @@ bool GridCg<APPLYMAT>::iterate() {
 	else
 		mTmp.copyFrom( mResidual );
 		
-	// compute norm of the residual?
-	if(this->mUseResNorm) { 
+	// use the l2 norm of the residual for convergence check? (usually max norm is recommended instead)
+	if(this->mUseL2Norm) { 
 		mResNorm = GridSumSqr(mResidual).sum; 
 	} else {
 		mResNorm = mResidual.getMaxAbsValue();        
