@@ -237,8 +237,9 @@ public:
 		TypeInflow = 8,
 		TypeOutflow = 16,
 		TypeStick = 128,
-		TypeReserved = 256
+		TypeReserved = 256,
 		// 2^10 - 2^14 reserved for moving obstacles
+		TypeZeroPressure = (1<<15) 
 	};
 
 	// MLE 2014-06-25

@@ -18,6 +18,7 @@
 #include "grid.h"
 #include "kernel.h"
 
+
 namespace Manta { 
 
 static const bool CG_DEBUG = false;
@@ -111,10 +112,13 @@ KERNEL(idx)
 void ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
 				  Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
 {
+	if (flags[idx] & FlagGrid::TypeZeroPressure) { 
+		dst[idx]=0.; return; 
+	} 
 	if (!flags.isFluid(idx)) {
-		dst[idx] = src[idx];
-		return;
+		dst[idx] = src[idx]; return;
 	}    
+
 	dst[idx] =  src[idx] * A0[idx]
 				+ src[idx-X] * Ai[idx-X]
 				+ src[idx+X] * Ai[idx]
@@ -131,10 +135,14 @@ void ApplyMatrix2D (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src,
 {
 	unusedParameter(Ak); // only there for parameter compatibility with ApplyMatrix
 	
+	if (flags[idx] & FlagGrid::TypeZeroPressure) { 
+		dst[idx]=0.; return; 
+	}
+
 	if (!flags.isFluid(idx)) {
-		dst[idx] = src[idx];
-		return;
+		dst[idx] = src[idx]; return;
 	}    
+
 	dst[idx] =  src[idx] * A0[idx]
 				+ src[idx-X] * Ai[idx-X]
 				+ src[idx+X] * Ai[idx]
