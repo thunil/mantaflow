@@ -47,7 +47,7 @@ for t in range(18):
     
     # pressure solve
     setWallBcs(flags=flags, vel=vel)
-    solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False, phi=phi)
+    solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, phi=phi)
     setWallBcs(flags=flags, vel=vel)
     
     #if (dim==3):

@@ -94,7 +94,7 @@ for dim in range(2,4):
 
 		fluidVel = s.create(Box, p0=gs*vec3(0.30,0.30,0.30-fvOffsetZ), p1=gs*vec3(0.70,0.70,0.70+fvOffsetZ))
 		fluidVel.applyToGrid( grid=vel , value=velDir )
-		solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99., cgAccuracy=accuracy, useResNorm=False, retRhs = rhs)
+		solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99., cgAccuracy=accuracy, retRhs = rhs)
 				
 		# symmetrize (note pressure checks here are just for debugging...)
 		checkSymmetry    (a=pressure, err=errR1, axis=dir1)

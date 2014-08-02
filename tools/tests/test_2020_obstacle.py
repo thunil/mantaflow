@@ -41,7 +41,7 @@ for t in range(10):
     setWallBcs(flags=flags, vel=vel)    
     addBuoyancy(density=density, vel=vel, gravity=vec3(0,-5e-2,0), flags=flags)
     
-    solvePressure(flags=flags, vel=vel, pressure=pressure, useResNorm=True)
+    solvePressure(flags=flags, vel=vel, pressure=pressure)
     setWallBcs(flags=flags, vel=vel)
     s.step()
 

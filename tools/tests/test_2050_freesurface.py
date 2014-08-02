@@ -50,7 +50,7 @@ for t in range(50):
     
     # pressure solve
     setWallBcs(flags=flags, vel=vel)
-    solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, useResNorm=False, \
+    solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, \
         phi=phi ) # leave gfClamp at default
     setWallBcs(flags=flags, vel=vel)
     
