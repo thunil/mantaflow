@@ -34,7 +34,7 @@ for t in range(1):
 	velSource.applyToGrid(grid=vel, value=vec3(1.5, 3, 2.1) )
 
 	setWallBcs(flags=flags, vel=vel) 
-	solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='Y', cgMaxIterFac=99, cgAccuracy=1e-08, useResNorm=False)
+	solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-08, useResNorm=False)
 	setWallBcs(flags=flags, vel=vel)
 
 	s.step()
