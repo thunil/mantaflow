@@ -25,8 +25,9 @@ SET(MANTAVERSION "0.6")
 # - allow override from command line on OsX, eg use "cmake ..  -DCMAKE_PREFIX_PATH=/Users/someone/qt5.2.1/5.2.1/clang_64/
 
 IF(WIN32)
-	# give path to qt lib with opengl. examples:
-	set(WIN_QT_PATH "C:/Qt/Qt5.2.1/5.2.1/msvc2012_64_opengl") # qt5/win64
+	#set(WIN_QT_PATH "C:/Qt/5.3/msvc2013_64_opengl")
+	set(WIN_QT_PATH "C:/Qt/5.3/msvc2012_opengl") # qt5/win64
+	#set(WIN_QT_PATH "C:/Qt/Qt5.2.1/5.2.1/msvc2012_64_opengl") # qt5/win64
 	# set(WIN_QT_PATH "C:/Qt/4.8.6") # qt4/win32
 	set(WIN_PYTHON_PATH "C:/Python34")
 	set(WIN_PYTHON_VERSION "34")

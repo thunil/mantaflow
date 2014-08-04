@@ -310,6 +310,16 @@ template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 	out << endl; debMsg("Printing " << this->getName() << out.str().c_str() , 1);
 }
 
+//! helper to swap components of a grid (eg for data import)
+PYTHON void swapComponents(Grid<Vec3>& vel, int c1=0, int c2=1, int c3=2) {
+	FOR_IJK(vel) {
+		Vec3 v = vel(i,j,k);
+		vel(i,j,k)[0] = v[c1];
+		vel(i,j,k)[1] = v[c2];
+		vel(i,j,k)[2] = v[c3];
+	}
+}
+
 // helper functions for UV grid data (stored grid coordinates as Vec3 values, and uv weight in entry zero)
 
 // make uv weight accesible in python

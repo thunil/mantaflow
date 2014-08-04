@@ -161,6 +161,7 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 		else:
 			print( "Error doTestGrid - error calculation missing" )
 			return 1
+		maxVal = grid.getMaxAbsValue() + 1e-15
 
 		# debug info , print min/max
 		if 0:
