@@ -63,6 +63,13 @@ def getStrictSetting( ):
 		return 1
 	return 0
 
+# visual mode on? returns multiplier
+def getViusalSetting( ):
+	ret = int(os.getenv('MANTA_VISUAL', 0))
+	if(ret>0):
+		return ret
+	return 0
+
 
 # compare a grid, in generation mode (MANTA_GEN_TEST_DATA=1) it
 # creates the data on disk, otherwise it loads the disk data,
@@ -83,6 +90,9 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 	if ( threshold==0 and thresholdStrict!=0 ):
 		print( "Error doTestGrid - give both thresholds at the same time...")
 		return 1
+	if getViusalSetting():
+		print( "Visual mode, skipping data file checks" )
+		return 0
 
 	# handle grid types that need conversion
 	#print( "doTestGrid, incoming grid type :" + type(grid).__name__ + " class:"+grid._class+ " T:"+grid._T )
