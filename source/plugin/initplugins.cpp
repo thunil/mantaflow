@@ -199,44 +199,55 @@ PYTHON void projectPpmOut( Grid<Real>& val, string name, int axis=2, Real scale=
 KERNEL 
 void KnPrecompLight(Grid<Real>& density, Grid<Real>& L, Vec3 light = Vec3(1,1,1) , Grid<Vec3>* deb=NULL)
 {
-	/*if (!flags.isFluid(i,j,k) || sdf(i,j,k) > sigma) return;
-	Real factor = clamp(1.0-0.5/sigma * (sdf(i,j,k)+sigma), 0.0, 1.0);
-	
-	Real target = noise.evaluate(Vec3(i,j,k)) * scale * factor;
-	if (density(i,j,k) < target)
-		density(i,j,k) = target;*/
+	Vec3 n = getGradient( density, i,j,k ) * -1.; 
+	normalize(n);
 
-	Vec3 n = getGradient( density, i,j,k ) * -1.; normalize(n);
 	Real d = dot( light, n );
 	L(i,j,k) = d;
 	if(deb) (*deb)(i,j,k) = Vec3(d,d,d);
 }
 
 // simple shading with pre-computed gradient
-static inline void shadeCell(Vec3& dst, Real src, Real light, Real depthFac) 
+static inline void shadeCell(Vec3& dst, int shadeMode, Real src, Real light, int depthPos, Real depthInv) 
 {	
-	Vec3 ambient = Vec3(0.1,0.1,0.1);
-	Vec3 diffuse = Vec3(0.9,0.9,0.9); 
-	Real alpha = src; // val(idx);
+	switch(shadeMode) {
 
-	// different color for depth?
-	diffuse[0] *= (depthFac) * 0.7 + 0.3;
-	diffuse[1] *= (depthFac) * 0.7 + 0.3;
+	case 1: {
+		// surfaces
+		Vec3 ambient = Vec3(0.1,0.1,0.1);
+		Vec3 diffuse = Vec3(0.9,0.9,0.9); 
+		Real alpha = src; 
 
-	Vec3 col = ambient + diffuse * light; // L(idx);
+		// different color for depth?
+		diffuse[0] *= ((Real)depthPos * depthInv) * 0.7 + 0.3;
+		diffuse[1] *= ((Real)depthPos * depthInv) * 0.7 + 0.3;
 
-	//img( 0+i, j ) = (1.-alpha) * img( 0+i, j ) + alpha * col;
-	dst = (1.-alpha) * dst + alpha * col;
+		Vec3 col = ambient + diffuse * light; 
+
+		//img( 0+i, j ) = (1.-alpha) * img( 0+i, j ) + alpha * col;
+		dst = (1.-alpha) * dst + alpha * col;
+		} break;
+
+	default: {
+		// volumetrics / smoke
+		dst += depthInv * Vec3(src,src,src);
+		} break;
+
+	}
 }
 
-//! output all 3 axes at once
-PYTHON void projectPpmFull( Grid<Real>& val, string name, Real scale=1.,
+//! output shaded (all 3 axes at once for 3D)
+//! shading modes: 0 smoke, 1 surfaces
+PYTHON void projectPpmFull( Grid<Real>& val, string name, int shadeMode=0, Real scale=1.,
 		Grid<Vec3>* deb=NULL) // NT_DEBUG
 {
+	Vec3i s  = val.getSize();
+	Vec3  si = Vec3( 1. / (Real)s[0], 1. / (Real)s[1], 1. / (Real)s[2] );
+
 	SimpleImage img;
-	Vec3i s = val.getSize();
-	img.init( s[0]+s[2]+s[0], std::max(s[0], std::max( s[1],s[2])) );
-	Vec3 si = Vec3( 1. / (Real)s[0], 1. / (Real)s[1], 1. / (Real)s[2] );
+	int imgSx = s[0];
+	if(val.is3D()) imgSx += s[2]+s[0]; // mult views in 3D
+	img.init( imgSx, std::max(s[0], std::max( s[1],s[2])) );
 
 	// precompute lighting
 	Grid<Real> L(val);
@@ -244,21 +255,25 @@ PYTHON void projectPpmFull( Grid<Real>& val, string name, Real scale=1.,
 
 	FOR_IJK(val) { 
 		Vec3i idx(i,j,k);
-		// NT_DEBUG img( 0+i, j ) += si[2] * val(idx); // averaging
-		shadeCell( img( 0+i, j ) , val(idx), L(idx), (Real)k * si[2]);
+		// img( 0+i, j ) += si[2] * val(idx); // averaging
+		shadeCell( img( 0+i, j ) , shadeMode, val(idx), L(idx), k, si[2]);
 	}
+
+	if( val.is3D() ) {
 
 	FOR_IJK(val) { 
 		Vec3i idx(i,j,k);
 		//img( s[0]+k, j ) += si[0] * val(idx);
-		shadeCell( img( s[0]+k, j ) , val(idx), L(idx), (Real)i * si[0]);
+		shadeCell( img( s[0]+k, j ) , shadeMode, val(idx), L(idx), i, si[0]);
 	}
 
 	FOR_IJK(val) { 
 		Vec3i idx(i,j,k);
 		//img( s[0]+s[2]+i, k ) += si[1] * val(idx);
-		shadeCell( img( s[0]+s[2]+i, k ) , val(idx), L(idx), (Real)j * si[1]);
+		shadeCell( img( s[0]+s[2]+i, k ) , shadeMode, val(idx), L(idx), j, si[1]);
 	}
+
+	} // 3d
 
 	img.mapRange( 1./scale );
 	img.writePpm( name );
