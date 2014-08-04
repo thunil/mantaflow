@@ -490,6 +490,28 @@ template<class T> template<class S> Grid<T>& Grid<T>::operator/= (const S& a) {
 }
 
 
+//******************************************************************************
+// Other helper functions
+
+// compute gradient of a scalar grid
+inline Vec3 getGradient(const Grid<Real>& data, int i, int j, int k) {
+	Vec3 v;
+
+	if (i > data.getSizeX()-2) i= data.getSizeX()-2;
+	if (j > data.getSizeY()-2) j= data.getSizeY()-2;
+	if (i < 1) i = 1;
+	if (j < 1) j = 1;
+	v = Vec3( data(i+1,j  ,k  ) - data(i-1,j  ,k  ) ,
+			  data(i  ,j+1,k  ) - data(i  ,j-1,k  ) , 0. );
+
+	if(data.is3D()) {
+		if (k > data.getSizeZ()-2) k= data.getSizeZ()-2;
+		if (k < 1) k = 1;
+		v[2]= data(i  ,j  ,k+1) - data(i  ,j  ,k-1);
+	} 
+
+	return v;
+}
 
 } //namespace
 #endif

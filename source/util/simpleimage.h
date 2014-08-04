@@ -111,9 +111,8 @@ class SimpleImage {
 			for (int j=0; j<mSize[1]; j++) 
 				for (int i=0; i<mSize[0]; i++) { 
 					get(i,j) /= f;
-					clamp( get(i,j)[0], (Real)0.,(Real)1.);
-					clamp( get(i,j)[1], (Real)0.,(Real)1.);
-					clamp( get(i,j)[2], (Real)0.,(Real)1.);
+					for(int c=0; c<3; ++c)
+						get(i,j)[c] = clamp( get(i,j)[c], (Real)0.,(Real)1.);
 				}
 		}
 

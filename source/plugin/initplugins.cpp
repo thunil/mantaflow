@@ -16,6 +16,7 @@
 #include "commonkernels.h"
 #include "particle.h"
 #include "noisefield.h"
+#include "simpleimage.h"
 
 using namespace std;
 
@@ -175,6 +176,93 @@ PYTHON void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symmetr
 }
 
 
+//! project data onto a plane, and write ppm
+PYTHON void projectPpmOut( Grid<Real>& val, string name, int axis=2, Real scale=1.)
+{
+	const int c  = axis; 
+	const int o1 = (c+1)%3;
+	const int o2 = (c+2)%3;
+
+	SimpleImage img;
+	img.init( val.getSize()[o1],  val.getSize()[o2] );
+	Real s = 1. / (Real)val.getSize()[c];
+
+	FOR_IJK(val) { 
+		Vec3i idx(i,j,k); 
+		//if(idx[c]==val.getSize()[c]/2) img( idx[o1], idx[o2] ) = val(idx); 
+		img( idx[o1], idx[o2] ) += s * val(idx);
+	}
+	img.mapRange( 1./scale );
+	img.writePpm( name );
+}
+
+KERNEL 
+void KnPrecompLight(Grid<Real>& density, Grid<Real>& L, Vec3 light = Vec3(1,1,1) , Grid<Vec3>* deb=NULL)
+{
+	/*if (!flags.isFluid(i,j,k) || sdf(i,j,k) > sigma) return;
+	Real factor = clamp(1.0-0.5/sigma * (sdf(i,j,k)+sigma), 0.0, 1.0);
+	
+	Real target = noise.evaluate(Vec3(i,j,k)) * scale * factor;
+	if (density(i,j,k) < target)
+		density(i,j,k) = target;*/
+
+	Vec3 n = getGradient( density, i,j,k ) * -1.; normalize(n);
+	Real d = dot( light, n );
+	L(i,j,k) = d;
+	if(deb) (*deb)(i,j,k) = Vec3(d,d,d);
+}
+
+// simple shading with pre-computed gradient
+static inline void shadeCell(Vec3& dst, Real src, Real light, Real depthFac) 
+{	
+	Vec3 ambient = Vec3(0.1,0.1,0.1);
+	Vec3 diffuse = Vec3(0.9,0.9,0.9); 
+	Real alpha = src; // val(idx);
+
+	// different color for depth?
+	diffuse[0] *= (depthFac) * 0.7 + 0.3;
+	diffuse[1] *= (depthFac) * 0.7 + 0.3;
+
+	Vec3 col = ambient + diffuse * light; // L(idx);
+
+	//img( 0+i, j ) = (1.-alpha) * img( 0+i, j ) + alpha * col;
+	dst = (1.-alpha) * dst + alpha * col;
+}
+
+//! output all 3 axes at once
+PYTHON void projectPpmFull( Grid<Real>& val, string name, Real scale=1.,
+		Grid<Vec3>* deb=NULL) // NT_DEBUG
+{
+	SimpleImage img;
+	Vec3i s = val.getSize();
+	img.init( s[0]+s[2]+s[0], std::max(s[0], std::max( s[1],s[2])) );
+	Vec3 si = Vec3( 1. / (Real)s[0], 1. / (Real)s[1], 1. / (Real)s[2] );
+
+	// precompute lighting
+	Grid<Real> L(val);
+	KnPrecompLight( val, L , Vec3(1,1,1), deb);
+
+	FOR_IJK(val) { 
+		Vec3i idx(i,j,k);
+		// NT_DEBUG img( 0+i, j ) += si[2] * val(idx); // averaging
+		shadeCell( img( 0+i, j ) , val(idx), L(idx), (Real)k * si[2]);
+	}
+
+	FOR_IJK(val) { 
+		Vec3i idx(i,j,k);
+		//img( s[0]+k, j ) += si[0] * val(idx);
+		shadeCell( img( s[0]+k, j ) , val(idx), L(idx), (Real)i * si[0]);
+	}
+
+	FOR_IJK(val) { 
+		Vec3i idx(i,j,k);
+		//img( s[0]+s[2]+i, k ) += si[1] * val(idx);
+		shadeCell( img( s[0]+s[2]+i, k ) , val(idx), L(idx), (Real)j * si[1]);
+	}
+
+	img.mapRange( 1./scale );
+	img.writePpm( name );
+}
 
 // helper functions for pdata operator tests
 
