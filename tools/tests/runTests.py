@@ -94,7 +94,7 @@ if (genRefFiles==1):
 print
 print " ============================================= "
 print
-print "Test summary, " +str(num) + " runs, " + str(numOks) + " passed, " + str(numFail) + " failed."
+print "Test summary: "  + str(numOks) + " passed, " + str(numFail) + " failed.   (from "+str(num) + " files) "
 
 if (numFail==0) and (numOks==0):
 	print "Failure! Perhaps manta executable didnt work, or runTests not called in test directory \n"

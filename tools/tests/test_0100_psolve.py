@@ -7,7 +7,7 @@ from manta import *
 from helperInclude import *
 
 # solver params
-res = 64
+res = 52
 gs = vec3(res,res,res)
 s = Solver(name='main', gridSize = gs, dim=3)
 s.timestep = 1.0
@@ -27,18 +27,28 @@ if 0 and (GUI):
 	gui.pause()
 
 velSource = s.create(Box, p0=gs*vec3(0.3,0.4,0.3), p1=gs*vec3(0.7,0.8,0.7) )
+
+# ============================
+
+# a simple solve
+vel.setConst( vec3(0,0,0) )
+velSource.applyToGrid(grid=vel, value=vec3(0.15, 0.3, 0.21) )    
+solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-08, useResNorm=False)
+s.step()
+
+# check 
+doTestGrid( sys.argv[0], "pressure0" , s, pressure , threshold=1e-05, thresholdStrict=1e-10, invertResult=False )
+
+# ============================
     
-#main loop
-for t in range(1):
+# second solve , with BCs
+vel.setConst( vec3(0,0,0) )
+velSource.applyToGrid(grid=vel, value=vec3(1.5, 3, 2.1) )
 
-	velSource.applyToGrid(grid=vel, value=vec3(1.5, 3, 2.1) )
-
-	setWallBcs(flags=flags, vel=vel) 
-	solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-08)
-	setWallBcs(flags=flags, vel=vel)
-
-	s.step()
-
+setWallBcs(flags=flags, vel=vel) 
+solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='Y', cgMaxIterFac=99, cgAccuracy=1e-08, useResNorm=False)
+setWallBcs(flags=flags, vel=vel)
+s.step()
 
 # check final state
 doTestGrid( sys.argv[0], "pressure" , s, pressure , threshold=1e-05, thresholdStrict=1e-10, invertResult=False )
