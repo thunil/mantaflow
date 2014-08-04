@@ -73,8 +73,8 @@ inline bool isAtInterface(Grid<int>& fmFlags, LevelsetGrid& phi, const Vec3i& p)
 	return false;
 }
 
-// helper function to compute normal
-inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
+// helper function to compute gradient of a scalar grid
+/*inline Vec3 getGradient(const Grid<Real>& data, int i, int j, int k) {
 	if (i > data.getSizeX()-2) i= data.getSizeX()-2;
 	if (j > data.getSizeY()-2) j= data.getSizeY()-2;
 	if (k > data.getSizeZ()-2) k= data.getSizeZ()-2;
@@ -84,7 +84,7 @@ inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
 	return Vec3( data(i+1,j  ,k  ) - data(i-1,j  ,k  ) ,
 				 data(i  ,j+1,k  ) - data(i  ,j-1,k  ) ,
 				 data(i  ,j  ,k+1) - data(i  ,j  ,k-1) );
-}
+}*/
 
 //************************************************************************
 // Levelset class def
@@ -162,7 +162,7 @@ void LevelsetGrid::reinitMarching(
 	if(normSpeed && velTransport) {
 		FOR_IJK_BND(flags, 1) {
 			Vec3 vel  = velTransport->getCentered(i,j,k);
-			Vec3 norm = getNormal(phi, i,j,k);  normalize(norm);
+			Vec3 norm = getGradient(phi, i,j,k);  normalize(norm);
 			(*normSpeed)(i,j,k) = dot( norm , vel );
 		}
 	}
@@ -303,8 +303,8 @@ void LevelsetGrid::createMesh(Mesh& mesh) {
 					Node vertex;
 					vertex.pos = p1 + (p2-p1)*mu;
 					vertex.normal = getNormalized( 
-										getNormal( *this, i+cubieOffsetX[e1], j+cubieOffsetY[e1], k+cubieOffsetZ[e1]) * (1.0-mu) +
-										getNormal( *this, i+cubieOffsetX[e2], j+cubieOffsetY[e2], k+cubieOffsetZ[e2]) * (    mu)) ;
+										getGradient( *this, i+cubieOffsetX[e1], j+cubieOffsetY[e1], k+cubieOffsetZ[e1]) * (1.0-mu) +
+										getGradient( *this, i+cubieOffsetX[e2], j+cubieOffsetY[e2], k+cubieOffsetZ[e2]) * (    mu)) ;
 					
 					triIndices[e] = mesh.addNode(vertex) + 1;
 					

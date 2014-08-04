@@ -46,7 +46,7 @@ bool SimpleImage::writePpm(std::string filename, int minx, int miny, int maxx, i
 				if(invertXY) val = (float)get(j,i)[l];
 				else val =(float)get(i,j)[l];
 
-				clamp(val, (float)0.,(float)1.);
+				val = clamp(val, (float)0.,(float)1.);
 				col[l] = (unsigned char)(255. * val );
 			}
 			//col[1] = col[2] = col[0];

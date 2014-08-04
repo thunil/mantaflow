@@ -189,6 +189,7 @@ set(NOPP_SOURCES
 	source/pwrapper/pconvert.cpp
 	source/pwrapper/registry.cpp
 	source/util/vectorbase.cpp
+	source/util/simpleimage.cpp
 )
 
 SET(NOPP_HEADERS
