@@ -210,33 +210,33 @@ template<class T> void Grid<T>::clamp(Real min, Real max) {
 	knGridClamp<T> (*this, T(min), T(max) );
 }
 
-template<> Real Grid<Real>::getMaxValue() {
+template<> Real Grid<Real>::getMax() {
 	return CompMaxReal (*this);
 }
-template<> Real Grid<Real>::getMinValue() {
+template<> Real Grid<Real>::getMin() {
 	return CompMinReal (*this);
 }
-template<> Real Grid<Real>::getMaxAbsValue() {
+template<> Real Grid<Real>::getMaxAbs() {
 	Real amin = CompMinReal (*this);
 	Real amax = CompMaxReal (*this);
 	return max( fabs(amin), fabs(amax));
 }
-template<> Real Grid<Vec3>::getMaxValue() {
+template<> Real Grid<Vec3>::getMax() {
 	return sqrt(CompMaxVec (*this));
 }
-template<> Real Grid<Vec3>::getMinValue() { 
+template<> Real Grid<Vec3>::getMin() { 
 	return sqrt(CompMinVec (*this));
 }
-template<> Real Grid<Vec3>::getMaxAbsValue() {
+template<> Real Grid<Vec3>::getMaxAbs() {
 	return sqrt(CompMaxVec (*this));
 }
-template<> Real Grid<int>::getMaxValue() {
+template<> Real Grid<int>::getMax() {
 	return (Real) CompMaxInt (*this);
 }
-template<> Real Grid<int>::getMinValue() {
+template<> Real Grid<int>::getMin() {
 	return (Real) CompMinInt (*this);
 }
-template<> Real Grid<int>::getMaxAbsValue() {
+template<> Real Grid<int>::getMaxAbs() {
 	int amin = CompMinInt (*this);
 	int amax = CompMaxInt (*this);
 	return max( fabs((Real)amin), fabs((Real)amax));
@@ -414,6 +414,31 @@ template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
 	knSetBoundaryNeumann<T>( *this, boundaryWidth );
 }
 
+//! helper kernels for getGridAvg
+KERNEL(idx, reduce=+) returns(double result=0.0)
+double knGridTotalSum(const Grid<Real>& a, FlagGrid* flags) {
+	if(flags) {	if(flags->isFluid(idx)) result += a[idx]; } 
+	else      {	result += a[idx]; } 
+}
+
+KERNEL(idx, reduce=+) returns(int numEmpty=0)
+int knCountFluidCells(FlagGrid& flags) { if (flags.isFluid(idx) ) numEmpty++; }
+
+//! averaged value for all cells (if flags are given, only for fluid cells)
+PYTHON Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL) 
+{
+	double sum = knGridTotalSum(source, flags);
+
+	double cells;
+	if(flags) { cells = knCountFluidCells(*flags); }
+	else      { cells = source.getSizeX()*source.getSizeY()*source.getSizeZ(); }
+
+	if(cells>0.) sum *= 1./cells;
+	else         sum = -1.;
+	return sum;
+}
+
+
 //******************************************************************************
 // Specialization classes
 
@@ -421,8 +446,7 @@ void FlagGrid::initDomain(int boundaryWidth) {
 	FOR_IDX(*this)
 		mData[idx] = TypeEmpty;
 	initBoundaries(boundaryWidth);
-	// MLE 2014-06-25
-	bWidth = boundaryWidth;
+	mBoundaryWidth = boundaryWidth;
 }
 
 void FlagGrid::initBoundaries(int boundaryWidth) {

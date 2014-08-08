@@ -167,15 +167,20 @@ public:
 	
 	// common compound operators
 	//! get absolute max value in grid 
-	PYTHON Real getMaxAbsValue();
+	PYTHON Real getMaxAbs();
 	//! get max value in grid 
-	PYTHON Real getMaxValue();
+	PYTHON Real getMax();
 	//! get min value in grid 
-	PYTHON Real getMinValue();    
+	PYTHON Real getMin();    
 	//! set all boundary cells to constant value (Dirichlet)
 	PYTHON void setBound(T value, int boundaryWidth=1);
 	//! set all boundary cells to last inner value (Neumann)
 	PYTHON void setBoundNeumann(int boundaryWidth=1);
+
+	//! for compatibility, old names:
+	PYTHON Real getMaxAbsValue() { return getMaxAbs(); }
+	PYTHON Real getMaxValue()    { return getMax(); }
+	PYTHON Real getMinValue()    { return getMin(); }
 
 	//! debugging helper, print grid from python
 	PYTHON void printGrid(int zSlice=-1,  bool printIndex=false); 
@@ -225,7 +230,7 @@ protected:
 //! Special functions for FlagGrid
 PYTHON class FlagGrid : public Grid<int> {
 public:
-	PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show) { 
+	PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show), mBoundaryWidth(0) { 
 		mType = (GridType)(TypeFlags | TypeInt); }
 	
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
@@ -241,10 +246,6 @@ public:
 		// 2^10 - 2^14 reserved for moving obstacles
 		TypeZeroPressure = (1<<15) 
 	};
-
-	// MLE 2014-06-25
-	int bWidth;
-	inline int getBoundaryWidth(){return bWidth;};
 		
 	//! access for particles
 	inline int getAt(const Vec3& pos) const { return mData[index((int)pos.x, (int)pos.y, (int)pos.z)]; }
@@ -271,11 +272,17 @@ public:
 	inline bool isStick(const Vec3i& pos) const { return get(pos) & TypeStick; }
 	inline bool isStick(const Vec3& pos) const { return getAt(pos) & TypeStick; }
 	
+	inline int getBoundaryWidth() const {return mBoundaryWidth;}
+
 	// Python callables
 	PYTHON void initDomain(int boundaryWidth=0);
 	PYTHON void initBoundaries(int boundaryWidth=0);
 	PYTHON void updateFromLevelset(LevelsetGrid& levelset);    
 	PYTHON void fillGrid(int type=TypeFluid);
+
+protected:
+	int mBoundaryWidth;
+
 };
 
 //! helper to compute grid conversion factor between local coordinates of two grids
