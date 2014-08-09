@@ -1,31 +1,26 @@
 #
-# Simple example scene (hello world)
-# Simulation of a buoyant smoke density plume
+# Simulation of a buoyant smoke with adaptive time-stepping
+#
 
 from manta import *
 
-
 # how many frames to calculate 
-frames    = 200
-
-# maximal velocity per cell, adaptDt variables
-cflFac = 3.0
+frames    = 100
 
 # solver params
 dim = 2
 res = 64
-#res = 34
 gs = vec3(res,1.5*res,res)
 gs = vec3(res,res,res) # NT_DEBUG
 if (dim==2):
 	gs.z=1
 s = FluidSolver(name='main', gridSize = gs, dim=dim)
-s.cfl         = cflFac
-s.frameLength = 1.2          # length of one frame (in "world time")
-s.timestepMin = 0.1
+
+s.frameLength = 1.2   # length of one frame (in "world time")
+s.timestepMin = 0.1   # time step range
 s.timestepMax = 2.0
+s.cfl         = 3.0   # maximal velocity per cell
 s.timestep    = (s.timestepMax+s.timestepMin)*0.5
-timings = Timings()
 
 # prepare grids
 flags = s.create(FlagGrid)
@@ -45,6 +40,7 @@ noise.timeAnim = 0.2
 
 flags.initDomain()
 flags.fillGrid()
+timings = Timings()
 
 if (GUI):
 	gui = Gui()
@@ -63,14 +59,13 @@ while s.frame < frames:
 		densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
 
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2, strength=1.0)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2)
 	
 	setWallBcs(flags=flags, vel=vel)    
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-3,0), flags=flags)
 	
 	solvePressure( flags=flags, vel=vel, pressure=pressure )
 	setWallBcs(flags=flags, vel=vel)
-	#density.save('den%04d.uni' % t)
 	
 	#timings.display()
 	s.step()
