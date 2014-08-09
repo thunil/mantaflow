@@ -5,25 +5,22 @@ from manta import *
 
 # how many frames to calculate 
 frames    = 200
-# length of one frame (in "world time")
-frameTime = 0.60
-
-# maximal velocity per cell, adaptDt variables
-cflFac = 1.0
-dtMax  = 2.00
-dtMin  = 0.10
-lockDt = False
-maxvel = 0
-#cflFac = 999.0 # use this to turn adaptive time steps off, use dtMax
 
 # solver params
-dim = 3
+dim = 2
 res = 50
-#res = 100
+res = 100
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
 s = Solver(name='main', gridSize = gs, dim=dim)
+
+s.frameLength = 0.6   # length of one frame (in "world time")
+s.timestepMin = 0.1   # time step range
+s.timestepMax = 2.0
+s.cfl         = 1.5   # maximal velocity per cell
+s.timestep    = (s.timestepMax+s.timestepMin)*0.5
+
 minParticles = pow(2,dim)
 timings = Timings()
 
@@ -106,79 +103,53 @@ if 1 and (GUI):
 	gui.nextPartDisplay()
 
 
-# recompute time step
-def adaptDt( solver ):
-	global lockDt, dtMin, dtMax, maxvel
-
-	if not lockDt:
-		maxvel = (vel.getMaxValue()+1e-05)
-		# calculate current timestep from maxvel, clamp range
-		s.timestep = max( min( cflFac/maxvel, dtMax) , dtMin ) 
-		if (t+s.timestep) > frameTime:
-			# add epsilon to prevent roundoff errors...
-			s.timestep = ( frameTime - t ) + 1e-04
-		elif (t+s.timestep + dtMin) > frameTime or (t+(s.timestep*1.25)) > frameTime:
-			# avoid tiny timesteps and strongly varying ones, do 2 medium size ones if necessary...
-			s.timestep = (frameTime-t)*0.5
-			lockDt = True
-	
-	# progress info
-	print "Frame %f current max velocity: %f , dt: %f, %f/%f lock:%s" % (frame, maxvel, s.timestep, t, frameTime, lockDt)
-	
-	# NT_DEBUG , sanity check
-	if (s.timestep < (dtMin/2) ):
-		print "Error - Invalid dt encountered! Shouldnt happen..."; exit(1);
-
 
 #main loop
-for frame in range(frames):
+while s.frame < frames:
 	
-	t = 0.
-	lockDt = False
-	while t<frameTime: 
-		adaptDt(s)
-		t += s.timestep
-		
-		# FLIP 
-		pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False )
+	maxVel = vel.getMaxValue()
+	s.adaptTimestep( maxVel )
+	
+	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False )
 
-		# make sure we have velocities throught liquid region
-		mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=tmpVec3 ) 
-		extrapolateMACFromWeight( vel=vel , distance=2, weight=tmpVec3 )  # note, tmpVec3 could be free'd now...
-		markFluidCells( parts=pp, flags=flags )
+	# make sure we have velocities throught liquid region
+	mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=tmpVec3 ) 
+	extrapolateMACFromWeight( vel=vel , distance=2, weight=tmpVec3 )  # note, tmpVec3 could be free'd now...
+	markFluidCells( parts=pp, flags=flags )
 
-		# create approximate surface level set, resample particles
-		gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
-		unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
-		phi.reinitMarching(flags=flags, velTransport=vel, correctOuterLayer=False ) # optionally, beautify levelset, needed for adjustNumber
+	# create approximate surface level set, resample particles
+	gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
+	unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
+	phi.reinitMarching(flags=flags, velTransport=vel, correctOuterLayer=False ) # optionally, beautify levelset, needed for adjustNumber
 
-		# set source grids for resampling, used in adjustNumber!
-		pVel.setSource( vel, isMAC=True )
-		pTest.setSource( tstGrid );
-		adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor ) 
+	# set source grids for resampling, used in adjustNumber!
+	pVel.setSource( vel, isMAC=True )
+	pTest.setSource( tstGrid );
+	adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor ) 
 
-		# forces & pressure solve
-		addGravity(flags=flags, vel=vel, gravity=(0,-0.003,0))
-		setWallBcs(flags=flags, vel=vel)	
-		solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi)
-		setWallBcs(flags=flags, vel=vel)
+	# forces & pressure solve
+	addGravity(flags=flags, vel=vel, gravity=(0,-0.003,0))
+	setWallBcs(flags=flags, vel=vel)	
+	solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi)
+	setWallBcs(flags=flags, vel=vel)
 
-		# make sure we have proper velocities
-		extrapolateMACSimple( flags=flags, vel=vel , distance=(int(maxvel)+2+10), phiObs=phiObs ) # with knUnprojectNormalComp 
-		
-		flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97 )
+	# make sure we have proper velocities
+	extrapolateMACSimple( flags=flags, vel=vel, distance=(int(maxVel)+2+10), phiObs=phiObs ) # with knUnprojectNormalComp 
+	# NT_DEBUG , remove +10 ??
+	
+	flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97 )
 
-		if 0 and (dim==3):
-			phi.createMesh(mesh)
-		
-		#s.printMemInfo()
-		#timings.display()
-		s.step()
+	if 0 and (dim==3):
+		phi.createMesh(mesh)
+	
+	#timings.display()
+	#s.printMemInfo()
+	s.step()
 
-	# save particle data
+	# optionally particle data , or screenshot
 	#pp.save( 'flipParts_%04d.uni' % frame );
 
 	if 0 and (GUI):
-		gui.screenshot( 'addt04_%04d.png' % frame );
+		gui.screenshot( 'flip04_%04d.png' % frame );
 
 

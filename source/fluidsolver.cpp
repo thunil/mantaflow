@@ -78,7 +78,9 @@ template<> void FluidSolver::freeGridPointer<Vec3>(Vec3* ptr) {
 // FluidSolver members
 
 FluidSolver::FluidSolver(Vec3i gridsize, int dim)
-	: PbClass(this), mDt(1.0), mGridSize(gridsize), mDim(dim),  mTimeTotal(0.), mScale(1.0), mFrame(0)
+	: PbClass(this), mDt(1.0), mTimeTotal(0.), mFrame(0), 
+	  mCflCond(1000), mDtMin(1.), mDtMax(1.), mFrameLength(1.),
+	  mGridSize(gridsize), mDim(dim) , mTimePerFrame(0.), mLockDt(false), mAdaptDt(true)
 {    
 	assertMsg(dim==2 || dim==3, "Can only create 2D and 3D solvers");
 	assertMsg(dim!=2 || gridsize.z == 1, "Trying to create 2D solver with size.z != 1");
@@ -99,8 +101,22 @@ PbClass* FluidSolver::create(PbType t, PbTypeVec T, const string& name) {
 }
 
 void FluidSolver::step() {
-	mTimeTotal += mDt;
-	mFrame++;
+	// update simulation time
+	if(!mAdaptDt) {
+		mTimeTotal += mDt;
+		mFrame++;
+	} else {
+		// adaptive time stepping on
+		mTimePerFrame += mDt;
+		if(mTimePerFrame>mFrameLength) {
+			mFrame++;
+			// re-calc total time, prevent drift...
+			mTimeTotal = (double)mFrame * mFrameLength;
+			mTimePerFrame = 0.;
+			mLockDt = false;
+		}
+	}
+
 	updateQtGui(true, mFrame, "FluidSolver::step");
 }
 
@@ -118,6 +134,28 @@ PYTHON void printBuildInfo() {
 
 PYTHON void setDebugLevel(int level=1) {
 	gDebugLevel = level; 
+}
+
+void FluidSolver::adaptTimestep(Real maxVel)
+{
+	if (!mLockDt) {
+		// calculate current timestep from maxvel, clamp range
+		mDt = std::max( std::min( (Real)(mCflCond/(maxVel+1e-05)), mDtMax) , mDtMin );
+		if( (mTimePerFrame+mDt*1.05) > mFrameLength ) {
+			// within 5% of full step? add epsilon to prevent roundoff errors...
+			mDt = ( mFrameLength - mTimePerFrame ) + 1e-04;
+		}
+		else if ( (mTimePerFrame+mDt + mDtMin) > mFrameLength or (mTimePerFrame+(mDt*1.25)) > mFrameLength ) {
+			// avoid tiny timesteps and strongly varying ones, do 2 medium size ones if necessary...
+			mDt = (mFrameLength-mTimePerFrame+ 1e-04)*0.5;
+			mLockDt = true;
+		}
+	}
+	debMsg( "Frame "<<mFrame<<" current max vel: "<<maxVel<<" , dt: "<<mDt<<", "<<mTimePerFrame<<"/"<<mFrameLength<<" lock:"<<mLockDt , 1);
+	mAdaptDt = true;
+
+	// sanity check
+	assertMsg( (mDt > (mDtMin/2.) ) , "Invalid dt encountered! Shouldnt happen..." );
 }
 
 } // manta

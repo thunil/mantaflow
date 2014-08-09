@@ -30,10 +30,10 @@ public:
 	
 	// accessors
 	PYTHON Vec3i getGridSize() { return mGridSize; }
-	inline Real getDt() { return mDt; }
-	inline Real getTime() { return mTimeTotal; }
-	inline Real getDx() { return 1.0 / mGridSize.max(); }
-	inline Real getScale() { return mScale; }
+	inline Real  getDt()       { return mDt; }
+	inline Real  getDx()       { return 1.0 / mGridSize.max(); }
+	inline Real  getTime()     { return mTimeTotal; }
+
 	//! Check dimensionality
 	inline bool is2D() const { return mDim==2; }
 	//! Check dimensionality
@@ -44,6 +44,9 @@ public:
 	//! Advance the solver one timestep, update GUI if present
 	PYTHON void step();
 	
+	//! Update the timestep size based on given maximal velocity magnitude 
+	PYTHON void adaptTimestep(Real maxVel);
+	
 	//! create a object with the solver as its parent
 	PYTHON PbClass* create(PbType type, PbTypeVec T=PbTypeVec(),const std::string& name = "");
 	
@@ -51,8 +54,23 @@ public:
 	template<class T> T* getGridPointer();
 	template<class T> void freeGridPointer(T* ptr);    
 
-	PYTHON(name=timestep) Real mDt;  
+	//! expose animation time to python
+	PYTHON(name=timestep)  Real mDt;  
+	PYTHON(name=timeTotal) Real mTimeTotal;
+	PYTHON(name=frame)     int  mFrame;
+	//! parameters for adaptive time stepping
+	PYTHON(name=cfl)          Real mCflCond;  
+	PYTHON(name=timestepMin)  Real mDtMin;  
+	PYTHON(name=timestepMax)  Real mDtMax;  
+	PYTHON(name=frameLength)  Real mFrameLength;
+
 protected:
+	Vec3i     mGridSize;
+	const int mDim;
+	Real      mTimePerFrame;
+	bool      mLockDt;
+	bool      mAdaptDt;
+		
 	//! subclass for managing grid memory
 	//! stored as a stack to allow fast allocation
 	template<class T> struct GridStorage {
@@ -65,11 +83,6 @@ protected:
 		int used;
 	};
 	
-	Vec3i mGridSize;
-	const int mDim;
-	Real mTimeTotal, mScale;
-	int mFrame;
-		
 	GridStorage<int> mGridsInt;
 	GridStorage<Real> mGridsReal;
 	GridStorage<Vec3> mGridsVec;
