@@ -297,7 +297,7 @@ PYTHON Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
 	double maxVal = 0.;
 	//debMsg(" PD "<< a->getType()<<"  as"<<a->getSizeSlow()<<"  bs"<<b->getSizeSlow() , 1);
 	assertMsg(a->getType()     == b->getType()    , "pdataMaxDiff problem - different pdata types!");
-	assertMsg(a->getSizeSlow() == b->getSizeSlow(), "pdataMaxDiff  problem -different pdata sizes!");
+	assertMsg(a->getSizeSlow() == b->getSizeSlow(), "pdataMaxDiff problem - different pdata sizes!");
 	
 	if (a->getType() & ParticleDataBase::TypeReal) 
 	{

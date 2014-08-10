@@ -182,7 +182,7 @@ void BasicParticleSystem::load(string name ) {
 		errMsg("file '" + name + "' does not have an extension");
 	string ext = name.substr(name.find_last_of('.'));
 	if ( ext == ".uni") 
-		readParticlesUni<BasicParticleData>(name, this );
+		readParticlesUni(name, this );
 	else 
 		errMsg("particle '" + name +"' filetype not supported for loading");
 }
@@ -194,7 +194,7 @@ void BasicParticleSystem::save(string name) {
 	if (ext == ".txt") 
 		this->writeParticlesText(name);
 	else if (ext == ".uni") 
-		writeParticlesUni<BasicParticleData>(name, this);
+		writeParticlesUni(name, this);
 	// raw data formats, very basic for simple data transfer to other programs
 	else if (ext == ".posgz") 
 		this->writeParticlesRawPositionsGz(name);

@@ -25,7 +25,7 @@ dirsVel  = [ vec3(0,2,0), vec3(0,-2,0),
 steps = 5
 outputScale = 1e05
 errThresh   = 1e-05
-if (DOUBLEPRECISION):
+if (DOUBLEPRECISION) and (getStrictSetting()==1):
 	outputScale = 1e14
 	errThresh   = 1e-12
 
