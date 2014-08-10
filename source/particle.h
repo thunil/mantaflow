@@ -166,7 +166,7 @@ public:
 	BasicParticleData(const Vec3& p) : pos(p), flag(0) {}
 	static ParticleBase::SystemType getType() { return ParticleBase::PARTICLE; }
 
-	//! data
+	//! data (note, this size is currently hard coded for uni i/o)
 	Vec3 pos;
 	int  flag;
 };

@@ -25,11 +25,13 @@ int1  = pp.create(PdataInt)
 int2  = pp.create(PdataInt)
 int3  = pp.create(PdataInt)
 
-addTestParts( pp , 10 )
-#pp.printParts(start=1, stop=10, printIndex=True)
-
 genRefFiles = getGenRefFileSetting() 
 if (genRefFiles==1):
+	# generate and save particles
+	addTestParts( pp , 10 )
+	#pp.printParts(start=1, stop=10, printIndex=True)
+	pp.save( referenceFilename( sys.argv[0], "parts" ) )
+
 	# manually init result
 	rlg1.setConst( 1.1 )
 	rlg2.setConst( 1.2 )
@@ -43,7 +45,8 @@ if (genRefFiles==1):
 	int2.setConst( 6 )
 	int3.setConst( 143 )
 else:	
-# real test run, perform basic calculations
+	# real test run, perform basic calculations 
+	pp.load( referenceFilename( sys.argv[0], "parts" ) )
 
 	rlg1.setConst( 1.0 )
 	rlg2.setConst( 2.4 )
@@ -80,13 +83,13 @@ else:
 
 # verify
 
-doTestGrid( sys.argv[0], "rlg1", pp, rlg1 , threshold=1e-08 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "rlg2", pp, rlg2 , threshold=1e-08 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "rlg3", pp, rlg3 , threshold=1e-08 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "rlg1", pp, rlg1 , threshold=1e-07 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "rlg2", pp, rlg2 , threshold=1e-07 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "rlg3", pp, rlg3 , threshold=1e-07 , thresholdStrict=1e-14  )
 
-doTestGrid( sys.argv[0], "vcg1", pp, vcg1 , threshold=1e-08 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "vcg2", pp, vcg2 , threshold=1e-08 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "vcg3", pp, vcg3 , threshold=1e-08 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "vcg1", pp, vcg1 , threshold=5e-07 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "vcg2", pp, vcg2 , threshold=5e-07 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "vcg3", pp, vcg3 , threshold=5e-07 , thresholdStrict=1e-14  )
 
 doTestGrid( sys.argv[0], "int1", pp, int1 , threshold=1e-14 , thresholdStrict=1e-14  )
 doTestGrid( sys.argv[0], "int2", pp, int2 , threshold=1e-14 , thresholdStrict=1e-14  )
