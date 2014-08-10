@@ -31,6 +31,23 @@ using namespace std;
 
 namespace Manta {
 
+//! uni file header 
+typedef struct {
+	int dimX, dimY, dimZ; // grid size
+	int gridType, elementType, bytesPerElement; // data type info
+	char info[256]; // mantaflow build information
+	unsigned long long timestamp; // creation time
+} UniHeader;
+
+//! in line with grid uni header
+typedef struct {
+	int dim; // number of partilces
+	int dimX, dimY, dimZ; // underlying solver resolution (all data in local coordinates!)
+	int elementType, bytesPerElement; // type id and byte size
+	char info[256]; // mantaflow build information
+	unsigned long long timestamp; // creation time
+} UniPartHeader;
+
 //*****************************************************************************
 // mesh data
 //*****************************************************************************
@@ -244,6 +261,156 @@ void writeObjFile(const string& name, Mesh* mesh) {
 }
 
 //*****************************************************************************
+// conversion functions for double precision
+//*****************************************************************************
+
+#if NO_ZLIB!=1
+template <class T>
+void gridConvertWrite(gzFile& gzf, Grid<T>& grid, void* ptr, UniHeader& head) {
+	errMsg("unknown type, not yet supported");
+}
+
+template <>
+void gridConvertWrite(gzFile& gzf, Grid<int>& grid, void* ptr, UniHeader& head) {
+	gzwrite(gzf, &head,    sizeof(UniHeader));
+	gzwrite(gzf, &grid[0], sizeof(int)*head.dimX*head.dimY*head.dimZ);
+} 
+template <>
+void gridConvertWrite(gzFile& gzf, Grid<double>& grid, void* ptr, UniHeader& head) {
+	head.bytesPerElement = sizeof(float);
+	gzwrite(gzf, &head, sizeof(UniHeader));
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i,++ptrf) {
+		*ptrf = (float)grid[i];
+	} 
+	gzwrite(gzf, ptr, sizeof(float)* head.dimX*head.dimY*head.dimZ);
+} 
+template <>
+void gridConvertWrite(gzFile& gzf, Grid<Vector3D<double> >& grid, void* ptr, UniHeader& head) {
+	head.bytesPerElement = sizeof(Vector3D<float>);
+	gzwrite(gzf, &head, sizeof(UniHeader));
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i) {
+		for(int c=0; c<3; ++c) { *ptrf = (float)grid[i][c]; ptrf++; }
+	} 
+	gzwrite(gzf, ptr, sizeof(Vector3D<float>) *head.dimX*head.dimY*head.dimZ);
+}
+
+template <class T>
+void pdataConvertWrite( gzFile& gzf, ParticleDataImpl<T>& pdata, void* ptr, UniPartHeader& head) {
+	errMsg("unknown type, not yet supported");
+}
+
+template <>
+void pdataConvertWrite( gzFile& gzf, ParticleDataImpl<int>& pdata, void* ptr, UniPartHeader& head) {
+	gzwrite(gzf, &head,     sizeof(UniPartHeader));
+	gzwrite(gzf, &pdata[0], sizeof(int)*head.dim);
+} 
+template <>
+void pdataConvertWrite( gzFile& gzf, ParticleDataImpl<double>& pdata, void* ptr, UniPartHeader& head) {
+	head.bytesPerElement = sizeof(float);
+	gzwrite(gzf, &head, sizeof(UniPartHeader));
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<pdata.size(); ++i,++ptrf) {
+		*ptrf = (float)pdata[i];
+	} 
+	gzwrite(gzf, ptr, sizeof(float)* head.dim);
+} 
+template <>
+void pdataConvertWrite( gzFile& gzf, ParticleDataImpl<Vec3>& pdata, void* ptr, UniPartHeader& head) {
+	head.bytesPerElement = sizeof(Vector3D<float>);
+	gzwrite(gzf, &head, sizeof(UniPartHeader));
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<pdata.size(); ++i) {
+		for(int c=0; c<3; ++c) { *ptrf = (float)pdata[i][c]; ptrf++; }
+	} 
+	gzwrite(gzf, ptr, sizeof(Vector3D<float>) *head.dim);
+}
+
+#endif // NO_ZLIB!=1
+
+template <class T>
+void gridReadConvert(gzFile& gzf, Grid<T>& grid, void* ptr, int bytesPerElement) {
+	errMsg("unknown type, not yet supported");
+}
+
+template <>
+void gridReadConvert<int>(gzFile& gzf, Grid<int>& grid, void* ptr, int bytesPerElement) {
+	gzread(gzf, ptr, sizeof(int)*grid.getSizeX()*grid.getSizeY()*grid.getSizeZ());
+	assertMsg (bytesPerElement == sizeof(int), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(int) );
+	// easy, nothing to do for ints
+	memcpy(&(grid[0]), ptr, sizeof(int) * grid.getSizeX()*grid.getSizeY()*grid.getSizeZ() );
+}
+
+template <>
+void gridReadConvert<double>(gzFile& gzf, Grid<double>& grid, void* ptr, int bytesPerElement) {
+	gzread(gzf, ptr, sizeof(float)*grid.getSizeX()*grid.getSizeY()*grid.getSizeZ());
+	assertMsg (bytesPerElement == sizeof(float), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(float) );
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i,++ptrf) {
+		grid[i] = (double)(*ptrf);
+	} 
+}
+
+template <>
+void gridReadConvert<Vec3>(gzFile& gzf, Grid<Vec3>& grid, void* ptr, int bytesPerElement) {
+	gzread(gzf, ptr, sizeof(Vector3D<float>)*grid.getSizeX()*grid.getSizeY()*grid.getSizeZ());
+	assertMsg (bytesPerElement == sizeof(Vector3D<float>), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(Vector3D<float>) );
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i) {
+		Vec3 v;
+		for(int c=0; c<3; ++c) { v[c] = double(*ptrf); ptrf++; }
+		grid[i] = v;
+	} 
+}
+
+template <class T>
+void pdataReadConvert(gzFile& gzf, ParticleDataImpl<T>& grid, void* ptr, int bytesPerElement) {
+	errMsg("unknown pdata type, not yet supported");
+}
+
+template <>
+void pdataReadConvert<int>(gzFile& gzf, ParticleDataImpl<int>& pdata, void* ptr, int bytesPerElement) {
+	gzread(gzf, ptr, sizeof(int)*pdata.size());
+	assertMsg (bytesPerElement == sizeof(int), "pdata element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(int) );
+	// int dont change in double precision mode - copy over
+	memcpy(&(pdata[0]), ptr, sizeof(int) * pdata.size() );
+}
+
+template <>
+void pdataReadConvert<double>(gzFile& gzf, ParticleDataImpl<double>& pdata, void* ptr, int bytesPerElement) {
+	gzread(gzf, ptr, sizeof(float)*pdata.size());
+	assertMsg (bytesPerElement == sizeof(float), "pdata element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(float) );
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<pdata.size(); ++i,++ptrf) {
+		pdata[i] = double(*ptrf); 
+	} 
+}
+
+template <>
+void pdataReadConvert<Vec3>(gzFile& gzf, ParticleDataImpl<Vec3>& pdata, void* ptr, int bytesPerElement) {
+	gzread(gzf, ptr, sizeof(Vector3D<float>)*pdata.size());
+	assertMsg (bytesPerElement == sizeof(Vector3D<float>), "pdata element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(Vector3D<float>) );
+	float* ptrf = (float*)ptr;
+	for(int i=0; i<pdata.size(); ++i) {
+		Vec3 v;
+		for(int c=0; c<3; ++c) { v[c] = double(*ptrf); ptrf++; }
+		pdata[i] = v;
+	} 
+}
+
+// make sure compatible grid types dont lead to errors...
+static int unifyGridType(int type) {
+	// real <> levelset
+	if(type & GridBase::TypeReal)     type |= GridBase::TypeLevelset;
+	if(type & GridBase::TypeLevelset) type |= GridBase::TypeReal;
+	// vec3 <> mac
+	if(type & GridBase::TypeVec3)     type |= GridBase::TypeMAC;
+	if(type & GridBase::TypeMAC)      type |= GridBase::TypeVec3;
+	return type;
+}
+
+//*****************************************************************************
 // grid data
 //*****************************************************************************
 
@@ -302,14 +469,6 @@ typedef struct {
 	int gridType, elementType, bytesPerElement;
 } UniLegacyHeader2;
 
-//! uni file header 
-typedef struct {
-	int dimX, dimY, dimZ; // grid size
-	int gridType, elementType, bytesPerElement; // data type info
-	char info[256]; // mantaflow build information
-	unsigned long long timestamp; // creation time
-} UniHeader;
-
 //! for test run debugging
 PYTHON void printUniFileInfoString(const string& name) {
 #	if NO_ZLIB!=1
@@ -349,40 +508,8 @@ PYTHON Vec3 getUniFileSize(const string& name) {
 	return s;
 }
 
-#if NO_ZLIB!=1
-template <class T>
-void convertDoubleAndWrite(Grid<T>& grid, void* ptr, gzFile& gzf, UniHeader& head) {
-	errMsg("unknown type, not yet supported");
-}
 
-template <>
-void convertDoubleAndWrite(Grid<int>& grid, void* ptr, gzFile& gzf, UniHeader& head) {
-	gzwrite(gzf, &head, sizeof(UniHeader));
-	gzwrite(gzf, ptr, sizeof(int)*head.dimX*head.dimY*head.dimZ);
-}
-
-template <>
-void convertDoubleAndWrite(Grid<double>& grid, void* ptr, gzFile& gzf, UniHeader& head) {
-	head.bytesPerElement = sizeof(float);
-	gzwrite(gzf, &head, sizeof(UniHeader));
-	float* ptrf = (float*)ptr;
-	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i,++ptrf) {
-		*ptrf = (float)grid[i];
-	} 
-	gzwrite(gzf, ptr, sizeof(float)* head.dimX*head.dimY*head.dimZ);
-}
-
-template <>
-void convertDoubleAndWrite(Grid<Vector3D<double> >& grid, void* ptr, gzFile& gzf, UniHeader& head) {
-	head.bytesPerElement = sizeof(Vector3D<float>);
-	gzwrite(gzf, &head, sizeof(UniHeader));
-	float* ptrf = (float*)ptr;
-	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i) {
-		for(int c=0; c<3; ++c) { *ptrf = (float)grid[i][c]; ptrf++; }
-	} 
-	gzwrite(gzf, ptr, sizeof(float)*3 *head.dimX*head.dimY*head.dimZ);
-}
-#endif // NO_ZLIB!=1
+// actual read/write functions
 
 template <class T>
 void writeGridUni(const string& name, Grid<T>* grid) {
@@ -418,9 +545,7 @@ void writeGridUni(const string& name, Grid<T>* grid) {
 	// always write float values, even if compiled with double precision...
 	Grid<T> temp(grid->getParent());
 	// "misuse" temp grid as storage for floating point values (we have double, so it will always fit)
-	//ptr = &(temp[0]);
-	//float* ptrf = (float*)ptr;
-	convertDoubleAndWrite( *grid, &(temp[0]), gzf, head);
+	gridConvertWrite( gzf, *grid, &(temp[0]), head);
 #	endif
 	gzwrite(gzf, &head, sizeof(UniHeader));
 	gzwrite(gzf, ptr, sizeof(T)*head.dimX*head.dimY*head.dimZ);
@@ -430,49 +555,6 @@ void writeGridUni(const string& name, Grid<T>* grid) {
 #	endif
 };
 
-// grid conversion functions for double precision
-template <class T>
-void convertFloatGridToDouble(Grid<T>& grid, void* ptr, int bytesPerElement) {
-	errMsg("unknown type, not yet supported");
-}
-
-template <>
-void convertFloatGridToDouble<int>(Grid<int>& grid, void* ptr, int bytesPerElement) {
-	assertMsg (bytesPerElement == sizeof(int), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(int) );
-	// easy, nothing to do for ints
-	memcpy(&(grid[0]), ptr, sizeof(int) * grid.getSizeX()*grid.getSizeY()*grid.getSizeZ() );
-}
-
-template <>
-void convertFloatGridToDouble<double>(Grid<double>& grid, void* ptr, int bytesPerElement) {
-	assertMsg (bytesPerElement == sizeof(float), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(float) );
-	float* ptrf = (float*)ptr;
-	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i,++ptrf) {
-		grid[i] = (double)(*ptrf);
-	} 
-}
-
-template <>
-void convertFloatGridToDouble<Vec3>(Grid<Vec3>& grid, void* ptr, int bytesPerElement) {
-	assertMsg (bytesPerElement == sizeof(Vector3D<float>), "grid element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(Vector3D<float>) );
-	float* ptrf = (float*)ptr;
-	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i) {
-		Vec3 v;
-		for(int c=0; c<3; ++c) { v[c] = double(*ptrf); ptrf++; }
-		grid[i] = v;
-	} 
-}
-
-// make sure compatible grid types dont lead to errors...
-static int unifyGridType(int type) {
-	// real <> levelset
-	if(type & GridBase::TypeReal)     type |= GridBase::TypeLevelset;
-	if(type & GridBase::TypeLevelset) type |= GridBase::TypeReal;
-	// vec3 <> mac
-	if(type & GridBase::TypeVec3)     type |= GridBase::TypeMAC;
-	if(type & GridBase::TypeMAC)      type |= GridBase::TypeVec3;
-	return type;
-}
 
 template <class T>
 void readGridUni(const string& name, Grid<T>* grid) {
@@ -516,8 +598,7 @@ void readGridUni(const string& name, Grid<T>* grid) {
 		// convert float to double
 		Grid<T> temp(grid->getParent());
 		void*  ptr  = &(temp[0]);
-		gzread(gzf, ptr, sizeof(T)*head.dimX*head.dimY*head.dimZ);
-		convertFloatGridToDouble<T>(*grid, ptr, head.bytesPerElement);
+		gridReadConvert<T>(gzf, *grid, ptr, head.bytesPerElement);
 #		else
 		assertMsg (head.bytesPerElement == sizeof(T), "grid element size doesn't match "<< head.bytesPerElement <<" vs "<< sizeof(T) );
 		gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
@@ -588,16 +669,8 @@ void writeGridVol<Real>(const string& name, Grid<Real>* grid) {
 // particle data
 //*****************************************************************************
 
-//! in line with grid uni header
-typedef struct {
-	int dim; // number of partilces
-	int dimX, dimY, dimZ; // underlying solver resolution (all data in local coordinates!)
-	int elementType, bytesPerElement; // type id and byte size
-	char info[256]; // mantaflow build information
-	unsigned long long timestamp; // creation time
-} UniPartHeader;
+static const int PartSysSize = sizeof(Vector3D<float>)+sizeof(int);
 
-template <class T>
 void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 	debMsg( "writing particles " << parts->getName() << " to uni file " << name ,1);
 	
@@ -609,7 +682,7 @@ void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 	head.dimX     = gridSize.x;
 	head.dimY     = gridSize.y;
 	head.dimZ     = gridSize.z;
-	head.bytesPerElement = sizeof(T);
+	head.bytesPerElement = PartSysSize;
 	head.elementType = 0; // 0 for base data
 	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
 	MuTime stamp; stamp.get();
@@ -619,15 +692,26 @@ void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 	if (!gzf) errMsg("can't open file");
 	
 	gzwrite(gzf, ID, 4);
+#	if FLOATINGPOINT_PRECISION!=1
+	// warning - hard coded conversion of byte size here...
 	gzwrite(gzf, &head, sizeof(UniPartHeader));
-	gzwrite(gzf, &(parts->getData()[0]), sizeof(T)*head.dim);
+	for(int i=0; i<parts->size(); ++i) {
+		Vector3D<float> pos  = toVec3f( (*parts)[i].pos );
+		int             flag = (*parts)[i].flag;
+		gzwrite(gzf, &pos , sizeof(Vector3D<float>) );
+		gzwrite(gzf, &flag, sizeof(int)             );
+	}
+#	else
+	assertMsg( sizeof(BasicParticleData) == PartSysSize, "particle data size doesn't match" );
+	gzwrite(gzf, &head, sizeof(UniPartHeader));
+	gzwrite(gzf, &(parts->getData()[0]), PartSysSize*head.dim);
+#	endif
 	gzclose(gzf);
 #	else
 	debMsg( "file format not supported without zlib" ,1);
 #	endif
 };
 
-template <class T>
 void readParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 	debMsg( "reading particles " << parts->getName() << " from uni file " << name ,1);
 	
@@ -644,15 +728,26 @@ void readParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 		// current file format
 		UniPartHeader head;
 		assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
-		assertMsg ( ((head.bytesPerElement == sizeof(T)) && (head.elementType==0) ), "particle type doesn't match");
+		assertMsg ( ((head.bytesPerElement == PartSysSize) && (head.elementType==0) ), "particle type doesn't match");
 
 		// re-allocate all data
 		parts->resizeAll( head.dim );
 
 		assertMsg (head.dim == parts->size() , "particle size doesn't match");
-		int bytes = sizeof(T)*head.dim;
-		int readBytes = gzread(gzf, &(parts->getData()[0]), sizeof(T)*head.dim);
-		assertMsg(bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
+#		if FLOATINGPOINT_PRECISION!=1
+		for(int i=0; i<parts->size(); ++i) {
+			Vector3D<float> pos; int flag;
+			gzread(gzf, &pos , sizeof(Vector3D<float>) );
+			gzread(gzf, &flag, sizeof(int)             );
+			(*parts)[i].pos  = toVec3d(pos);
+			(*parts)[i].flag = flag;
+		}
+#		else
+		assertMsg( sizeof(BasicParticleData) == PartSysSize, "particle data size doesn't match" );
+		int bytes     = PartSysSize*head.dim;
+		int readBytes = gzread(gzf, &(parts->getData()[0]), bytes);
+		assertMsg( bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
+#		endif
 
 		parts->transformPositions( Vec3i(head.dimX,head.dimY,head.dimZ), parts->getParent()->getGridSize() );
 	}
@@ -678,10 +773,17 @@ void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
 	if (!gzf) errMsg("can't open file");
-	
 	gzwrite(gzf, ID, 4);
+
+#	if FLOATINGPOINT_PRECISION!=1
+	// always write float values, even if compiled with double precision (as for grids)
+	ParticleDataImpl<T> temp(pdata->getParent());
+	temp.resize( pdata->size() );
+	pdataConvertWrite( gzf, *pdata, &(temp[0]), head);
+#	else
 	gzwrite(gzf, &head, sizeof(UniPartHeader));
 	gzwrite(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
+#	endif
 	gzclose(gzf);
 #	else
 	debMsg( "file format not supported without zlib" ,1);
@@ -702,11 +804,17 @@ void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	if (!strcmp(ID, "PD01")) {
 		UniPartHeader head;
 		assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
-		assertMsg ( ((head.bytesPerElement == sizeof(T)) && (head.elementType==1) ), "pdata type doesn't match");
 		assertMsg (head.dim == pdata->size() , "pdata size doesn't match");
+#		if FLOATINGPOINT_PRECISION!=1
+		ParticleDataImpl<T> temp(pdata->getParent());
+		temp.resize( pdata->size() );
+		pdataReadConvert<T>(gzf, *pdata, &(temp[0]), head.bytesPerElement);
+#		else
+		assertMsg ( ((head.bytesPerElement == sizeof(T)) && (head.elementType==1) ), "pdata type doesn't match");
 		int bytes = sizeof(T)*head.dim;
 		int readBytes = gzread(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
 		assertMsg(bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
+#		endif
 	}
 	gzclose(gzf);
 #	else
@@ -732,9 +840,6 @@ template void readGridRaw<Vec3> (const string& name, Grid<Vec3>* grid);
 template void readGridUni<int>  (const string& name, Grid<int>*  grid);
 template void readGridUni<Real> (const string& name, Grid<Real>* grid);
 template void readGridUni<Vec3> (const string& name, Grid<Vec3>* grid);
-
-template void writeParticlesUni<BasicParticleData>(const std::string& name, BasicParticleSystem* parts );
-template void readParticlesUni<BasicParticleData> (const std::string& name, BasicParticleSystem* parts );
 
 template void writePdataUni<int> (const std::string& name, ParticleDataImpl<int>* pdata );
 template void writePdataUni<Real>(const std::string& name, ParticleDataImpl<Real>* pdata );
