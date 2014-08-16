@@ -1,13 +1,20 @@
 #
 # k-epsilon test case
 # 
-
+#
 import sys
 from manta import *
 from helperInclude import *
 
 # solver params
-res = 70
+res    = 70
+frames = 32
+
+if getVisualSetting():
+	# in visual mode
+	res    = 103 * getVisualSetting()
+	frames = 100
+
 gs = vec3(res,res/2,res/2)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 1.2
@@ -39,9 +46,9 @@ flags.fillGrid()
 
 # obstacle grid
 for i in range(4):
-    for j in range(4):
-        obs = s.create(Sphere, center=gs*vec3(0.2,(i+1)/5.0,(j+1)/5.0), radius=res*0.025)
-        obs.applyToGrid(grid=flags,value=FlagObstacle)
+	for j in range(4):
+		obs = s.create(Sphere, center=gs*vec3(0.2,(i+1)/5.0,(j+1)/5.0), radius=res*0.025)
+		obs.applyToGrid(grid=flags,value=FlagObstacle)
 
 sdfgrad = obstacleGradient(flags)
 sdf = obstacleLevelset(flags)
@@ -60,40 +67,44 @@ prodMult = 2.5
 enableDiffuse = True
 
 if 0 and (GUI):
-    gui = Gui()
-    gui.setBackgroundMesh(bgr)
-    gui.show()
+	gui = Gui()
+	gui.setBackgroundMesh(bgr)
+	gui.show()
 
 KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=True)
 
 #main loop
-for t in range(32):
-    turb.seed(box,500)
-    turb.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4)
-    turb.synthesize(flags=flags, octaves=1, k=k, switchLength=5, L0=L0, scale=mult, inflowBias=velInflow)
-    #turb.projectOutside(sdfgrad)
-    turb.deleteInObstacle(flags)
+for t in range(frames):
+	turb.seed(box,500)
+	turb.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4)
+	turb.synthesize(flags=flags, octaves=1, k=k, switchLength=5, L0=L0, scale=mult, inflowBias=velInflow)
+	#turb.projectOutside(sdfgrad)
+	turb.deleteInObstacle(flags)
 
-    KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=False)
-    advectSemiLagrange(flags=flags, vel=vel, grid=k, order=1)
-    advectSemiLagrange(flags=flags, vel=vel, grid=eps, order=1)
-    KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=False)
-    KEpsilonComputeProduction(vel=vel, k=k, eps=eps, prod=prod, nuT=nuT, strain=strain, pscale=prodMult) 
-    KEpsilonSources(k=k, eps=eps, prod=prod)
-    
-    if enableDiffuse:
-        KEpsilonGradientDiffusion(k=k, eps=eps, vel=vel, nuT=nuT, sigmaU=10.0);
+	KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=False)
+	advectSemiLagrange(flags=flags, vel=vel, grid=k, order=1)
+	advectSemiLagrange(flags=flags, vel=vel, grid=eps, order=1)
+	KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=False)
+	KEpsilonComputeProduction(vel=vel, k=k, eps=eps, prod=prod, nuT=nuT, strain=strain, pscale=prodMult) 
+	KEpsilonSources(k=k, eps=eps, prod=prod)
+	
+	if enableDiffuse:
+		KEpsilonGradientDiffusion(k=k, eps=eps, vel=vel, nuT=nuT, sigmaU=10.0);
 
-    # base solver
-    advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
-    setWallBcs(flags=flags, vel=vel)
-    setInflowBcs(vel=vel,dir='xXyYzZ',value=velInflow)
-    solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5)
-    setWallBcs(flags=flags, vel=vel)
-    setInflowBcs(vel=vel,dir='xXyYzZ',value=velInflow)
-    
-    s.step()
-    
+	# base solver
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+	setWallBcs(flags=flags, vel=vel)
+	setInflowBcs(vel=vel,dir='xXyYzZ',value=velInflow)
+	solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5)
+	setWallBcs(flags=flags, vel=vel)
+	setInflowBcs(vel=vel,dir='xXyYzZ',value=velInflow)
+	
+	s.step()
+
+	if 1 and getVisualSetting() and (t%getVisualSetting()==0):
+		#maxv = (k.getMaxValue()); print "Max k %f \n"%(maxv)
+		projectPpmFull( k, '%s_%04d.ppm' % (sys.argv[0],t/getVisualSetting()) , 0, 20.0 );
+   
 # check final state
 doTestGrid( sys.argv[0],"k"    , s, k    , threshold=0.00001 , thresholdStrict=1e-08 )
 doTestGrid( sys.argv[0],"eps"  , s, eps  , threshold=0.00001 , thresholdStrict=1e-08 )

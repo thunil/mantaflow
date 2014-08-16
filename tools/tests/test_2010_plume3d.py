@@ -7,7 +7,14 @@ from manta import *
 from helperInclude import *
 
 # solver params
-res = 60
+res    = 60
+frames = 25
+
+if getVisualSetting():
+	# in visual mode
+	res    = 80 * getVisualSetting()
+	frames = 75
+
 gs = vec3(res,1.25*res,res)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 0.5
@@ -32,28 +39,30 @@ flags.initDomain()
 flags.fillGrid()
 
 if 0 and (GUI):
-    gui = Gui()
-    gui.show()
+	gui = Gui()
+	gui.show()
 
 source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))
     
 #main loop
-for t in range(25):
-    densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
-        
-    #source.applyToGrid(grid=vel, value=velInflow)
-    advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-    advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
-    
-    setWallBcs(flags=flags, vel=vel)    
-    addBuoyancy(density=density, vel=vel, gravity=vec3(0,-5e-2,0), flags=flags)
-    
-    solvePressure(flags=flags, vel=vel, pressure=pressure)
-    setWallBcs(flags=flags, vel=vel)
-    #density.save('den%04d.uni' % t)
-    
-    s.step()
+for t in range(frames): 
+	densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
+	
+	#source.applyToGrid(grid=vel, value=velInflow)
+	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)	
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+	
+	setWallBcs(flags=flags, vel=vel)	
+	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-5e-2,0), flags=flags)
+	
+	solvePressure(flags=flags, vel=vel, pressure=pressure)
+	setWallBcs(flags=flags, vel=vel)
+	#density.save('den%04d.uni' % t)
+	
+	s.step()
 
+	if 1 and getVisualSetting() and (t%getVisualSetting()==0):
+		projectPpmFull( density, '%s_%04d.ppm' % (sys.argv[0],t/getVisualSetting()) , 0, 4.0 );
 
 # check final state
 doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.01 , thresholdStrict=1e-08 )
