@@ -5,14 +5,7 @@
 from manta import *
 import os
 import shutil
-
-
-def outputFilename( file, gridname ):
-	return file +"_"+ gridname + "_out.uni" 
-
-def referenceFilename( file, gridname ):
-	return file +"_"+ gridname + "_ref.uni" 
-
+from helperGeneric import *
 
 def checkResult( name, result, resultRel , thresh, threshStrict, invertResult=False ):
 	curr_thresh = thresh
@@ -47,29 +40,6 @@ def checkResult( name, result, resultRel , thresh, threshStrict, invertResult=Fa
 		return 1
 
 
-def getGenRefFileSetting( ):
-	# check env var for generate data setting
-	ret = int(os.getenv('MANTA_GEN_TEST_DATA', 0))
-	# print("Gen-data-setting: " + str(ret))
-	if(ret>0):
-		return 1
-	return 0
-
-def getStrictSetting( ):
-	# check env var whether strict mode enabled
-	ret = int(os.getenv('MANTA_TEST_STRICT', 0))
-	#print("Strict-test-setting: " + str(ret))
-	if(ret>0):
-		return 1
-	return 0
-
-# visual mode on? returns multiplier
-def getViusalSetting( ):
-	ret = int(os.getenv('MANTA_VISUAL', 0))
-	if(ret>0):
-		return ret
-	return 0
-
 
 # compare a grid, in generation mode (MANTA_GEN_TEST_DATA=1) it
 # creates the data on disk, otherwise it loads the disk data,
@@ -90,7 +60,7 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 	if ( threshold==0 and thresholdStrict!=0 ):
 		print( "Error doTestGrid - give both thresholds at the same time...")
 		return 1
-	if getViusalSetting():
+	if getVisualSetting():
 		print( "Visual mode, skipping data file checks" )
 		return 0
 

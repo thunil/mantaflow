@@ -16,13 +16,14 @@ import shutil
 import sys
 import re
 from subprocess import check_output
+from helperGeneric import *
 
 # note - todo, right now this script assumes the test_X.py files are
 # in the current working directory... this should be changed at some 
 # point.
 
 # debugging, print outputs from all manta calls
-printAllOutpus = 1
+printAllOutpus = 0
 filePrefix = "test_"
 
 if(len(sys.argv)<2):
@@ -44,13 +45,24 @@ if(len(sys.argv)>2):
 			exit(1);
 
 files = os.popen("ls "+str(filePrefix)+"????_*.py").read() 
-#print "Debug, found test files: "+files
+#print "Debug - using test scene files: "+files
 
+# NT_DEBUG , todo use , extract file name!
+datadir = "./data"
+if not os.path.exists( datadir ):
+	os.makedirs( datadir )	
 
-genRefFiles = int(os.getenv('MANTA_GEN_TEST_DATA', 0))
-if (genRefFiles>0):
+if getGenRefFileSetting():
 	print "\nNote - generating test data for all tests!"
 	print "Tests results will not be evaluated...\n"
+
+currdate = os.popen("date \"+%y%m%d%H%M\"").read() 
+currdate = "201408162205" # NT_DEBUG
+# in visual mode, also track runtimes
+if getVisualSetting():
+	dirname = "./runtimes"
+	if not os.path.exists( dirname ):
+		os.makedirs( dirname )	
 
 num = 0
 numOks = 0
@@ -61,9 +73,14 @@ files = files.split('\n')
 for file in files:
 	if ( len(file) < 1):
 		continue
+
+	(utime1, stime1, cutime1, cstime1, elapsed_time1) = os.times() 
+
 	num += 1
 	print "Running '" + file + "' "
 	result = os.popen(manta + " " + file + " 2>&1 ").read() 
+
+	(utime2, stime2, cutime2, cstime2, elapsed_time2) = os.times() 
 
 	oks = re.findall(r"\nOK!", result)
 	#print oks
@@ -86,9 +103,35 @@ for file in files:
 		print "Full output: " + result
 		print
 
+	# store benchmarking results (if theres any output)
+	if getVisualSetting() and os.path.isfile( "%s_0001.ppm"%(file) ):
+	#if getVisualSetting():
+		runtime = elapsed_time2-elapsed_time1 
+		timefile = "%s_v%d.time" % (file, getVisualSetting()) 
+		
+		#print("echo %s %f >> %s " % (currdate, runtime, timefile) ) # debug
+		os.popen("echo %s %f >> %s " % (currdate, runtime, timefile) ).read() 
 
-if (genRefFiles==1):
+		os.popen("./helperGnuplot.sh %s"%(timefile)) 
+		#exit(1);
+
+
+if getGenRefFileSetting():
 	print "Test data generated"
+	exit(0)
+
+if getVisualSetting():
+	print "Viusal data generated"
+	# now convert & remove all ppms"
+	os.popen("for i in ./test_*.ppm ; do convert $i $(basename $i .ppm).png; done")
+	outpngdir = "./result_%s"%(currdate)
+	if not os.path.exists( outpngdir ):
+		os.makedirs( outpngdir )	
+	os.popen("mv ./test_*.png ./result_%s/"
+	trashdir = "./trash"
+	if not os.path.exists( trashdir ):
+		os.makedirs( trashdir )	
+	os.popen("mv ./test_*.ppm %s"%(trashdir)
 	exit(0)
 
 print
