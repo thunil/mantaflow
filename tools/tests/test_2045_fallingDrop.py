@@ -7,8 +7,9 @@ from manta import *
 from helperInclude import *
 
 # solver params
-dim = 3
-res = 45
+dim    = 3
+res    = 45
+frames = 18
 
 if getVisualSetting():
 	# in visual mode
