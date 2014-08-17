@@ -8,7 +8,7 @@
 # 0xxx tests are very basic (mostly single operator calls)
 # 1xxx is for 2d sims
 # 2xxx for "real" 3d sims
-# xl... larger 3d sims (similar to 2xxx cases)
+# 204x ff. are liquids
 # 
 
 import os
@@ -57,12 +57,21 @@ if getGenRefFileSetting():
 	print "Tests results will not be evaluated...\n"
 
 currdate = os.popen("date \"+%y%m%d%H%M\"").read() 
-currdate = "201408162205" # NT_DEBUG
+#currdate.rstrip(" \n")
+currdate = str(currdate)[:-1]
+
 # in visual mode, also track runtimes
+visModeTrashDir = "./trash"
 if getVisualSetting():
 	dirname = "./runtimes"
 	if not os.path.exists( dirname ):
 		os.makedirs( dirname )	
+	# make sure no previous files are left
+	if not os.path.exists( visModeTrashDir ):
+		os.makedirs( visModeTrashDir )	
+	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
+# limit the runs for debugging
+visModeDebugCount = 0
 
 num = 0
 numOks = 0
@@ -71,7 +80,7 @@ failedTests = ""
 
 files = files.split('\n')
 for file in files:
-	if ( len(file) < 1):
+	if ( len(file) < 1) or (visModeDebugCount>1):
 		continue
 
 	(utime1, stime1, cutime1, cstime1, elapsed_time1) = os.times() 
@@ -105,15 +114,15 @@ for file in files:
 
 	# store benchmarking results (if theres any output)
 	if getVisualSetting() and os.path.isfile( "%s_0001.ppm"%(file) ):
-	#if getVisualSetting():
 		runtime = elapsed_time2-elapsed_time1 
 		timefile = "%s_v%d.time" % (file, getVisualSetting()) 
 		
-		#print("echo %s %f >> %s " % (currdate, runtime, timefile) ) # debug
+		#  print("echo %s %f >> %s " % (currdate, runtime, timefile) ) # debug
 		os.popen("echo %s %f >> %s " % (currdate, runtime, timefile) ).read() 
-
 		os.popen("./helperGnuplot.sh %s"%(timefile)) 
-		#exit(1);
+
+		# for debugging, only execute a few files
+		visModeDebugCount += 1
 
 
 if getGenRefFileSetting():
@@ -127,11 +136,8 @@ if getVisualSetting():
 	outpngdir = "./result_%s"%(currdate)
 	if not os.path.exists( outpngdir ):
 		os.makedirs( outpngdir )	
-	os.popen("mv ./test_*.png ./result_%s/"
-	trashdir = "./trash"
-	if not os.path.exists( trashdir ):
-		os.makedirs( trashdir )	
-	os.popen("mv ./test_*.ppm %s"%(trashdir)
+	os.popen( "mv ./test_*.png %s"%(outpngdir)  )
+	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
 	exit(0)
 
 print

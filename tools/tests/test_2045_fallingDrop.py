@@ -38,7 +38,7 @@ liqDrop = s.create(Box, p0=gs*vec3(0.4,0.75,0.4), p1=gs*vec3(0.6,0.95,0.6))
 phi = liqDrop.computeLevelset()
 flags.updateFromLevelset(phi)
 
-if 1 and (GUI):
+if 0 and (GUI):
 	gui = Gui()
 	gui.show()
 	#gui.pause()
