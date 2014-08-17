@@ -7,8 +7,15 @@ from manta import *
 from helperInclude import *
 
 # solver params
-dim = 3
-res = 52
+dim    = 3
+res    = 52
+frames = 50
+
+if getVisualSetting():
+	# in visual mode
+	res    = 76 * getVisualSetting()
+	frames = 100
+
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
@@ -17,10 +24,10 @@ s.timestep = 0.25
 accuracy = 5e-5
 
 # prepare grids and particles
-flags = s.create(FlagGrid)
-vel = s.create(MACGrid)
-pressure = s.create(RealGrid)
-mesh = s.create(Mesh)
+flags     = s.create(FlagGrid)
+vel       = s.create(MACGrid)
+pressure  = s.create(RealGrid)
+tmp       = s.create(RealGrid)
 
 # scene setup
 flags.initDomain(boundaryWidth=0)
@@ -29,34 +36,39 @@ drop  = s.create(Sphere, center=gs*vec3(0.5,0.5,0.5), radius=res*0.15)
 phi = basin.computeLevelset()
 phi.join(drop.computeLevelset())
 flags.updateFromLevelset(phi)
-        
+
 if 0 and (GUI):
-    gui = Gui()
-    gui.show()
-    #gui.pause()
-    
+	gui = Gui()
+	gui.show()
+	#gui.pause()
+	
 
 #main loop
-for t in range(50):
-    
-    # update and advect levelset
-    phi.reinitMarching(flags=flags, velTransport=vel) #, ignoreWalls=False)
-    advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
-    flags.updateFromLevelset(phi)
-    
-    # velocity self-advection
-    advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
-    addGravity(flags=flags, vel=vel, gravity=vec3(0,-0.025,0))
-    
-    # pressure solve
-    setWallBcs(flags=flags, vel=vel)
-    solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, \
-        phi=phi ) # leave gfClamp at default
-    setWallBcs(flags=flags, vel=vel)
-    
-    s.step()
-    #gui.pause()
+for t in range(frames):
+	
+	# update and advect levelset
+	phi.reinitMarching(flags=flags, velTransport=vel) #, ignoreWalls=False)
+	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
+	flags.updateFromLevelset(phi)
+	
+	# velocity self-advection
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+	addGravity(flags=flags, vel=vel, gravity=vec3(0,-0.025,0))
+	
+	# pressure solve
+	setWallBcs(flags=flags, vel=vel)
+	solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, \
+				  phi=phi ) # leave gfClamp at default
+	setWallBcs(flags=flags, vel=vel)
+	
+	s.step()
+	#gui.pause()
 	#gui.screenshot( 'screenOn_%04d.png' % t );
+
+	if 1 and getVisualSetting() and (t%getVisualSetting()==0):
+		tmp.copyFrom( phi )
+		tmp.multConst( -1 ); tmp.clamp(0,1.0)
+		projectPpmFull( tmp, '%s_%04d.ppm' % (sys.argv[0],t/getVisualSetting()) , 1, 1.0 );
 
 
 # check final state
