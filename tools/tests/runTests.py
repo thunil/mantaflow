@@ -34,6 +34,10 @@ manta = sys.argv[1]
 print "Using mantaflow executable '" + manta + "' " 
 
 
+# extract path from script call
+basedir  = os.path.dirname (sys.argv[0])
+#os.path.splitext(base)
+
 # store test data in separate directory
 datadir = dataDirectory(sys.argv[0])
 if not os.path.exists( datadir ):
@@ -47,9 +51,9 @@ currdate = os.popen("date \"+%y%m%d%H%M\"").read()
 currdate = str(currdate)[:-1]
 
 # in visual mode, also track runtimes
-visModeTrashDir = "./trash"
+visModeTrashDir = basedir+"/trash"
 if getVisualSetting():
-	dirname = "./runtimes"
+	dirname = basedir+"/runtimes"
 	if not os.path.exists( dirname ):
 		os.makedirs( dirname )	
 	# make sure no previous files are left
@@ -58,10 +62,6 @@ if getVisualSetting():
 	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
 # limit the runs for debugging
 visModeDebugCount = 0
-
-# extract path from script call
-basedir  = os.path.dirname (sys.argv[0])
-#os.path.splitext(base)
 
 files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
 #print "Debug - using test scene files: "+files
@@ -111,7 +111,8 @@ for file in files:
 	# store benchmarking results (if theres any output)
 	if getVisualSetting() and os.path.isfile( "%s_0001.ppm"%(file) ):
 		runtime = elapsed_time2-elapsed_time1 
-		timefile = "%s_v%d.time" % (file, getVisualSetting()) 
+		timefile = "%s/runtimes/%s_v%d.time" % (basedir, os.path.basename(file), getVisualSetting()) 
+		#print "ASHASH %s "%(timefile); exit(1);
 		
 		#  print("echo %s %f >> %s " % (currdate, runtime, timefile) ) # debug
 		os.popen("echo %s %f >> %s " % (currdate, runtime, timefile) ).read() 
@@ -129,7 +130,7 @@ if getVisualSetting():
 	print "Viusal data generated"
 	# now convert & remove all ppms"
 	os.popen("for i in ./test_*.ppm ; do convert $i $(basename $i .ppm).png; done")
-	outpngdir = "./result_%s"%(currdate)
+	outpngdir = basedir+"/result_%s"%(currdate)
 	if not os.path.exists( outpngdir ):
 		os.makedirs( outpngdir )	
 	os.popen( "mv ./test_*.png %s"%(outpngdir)  )

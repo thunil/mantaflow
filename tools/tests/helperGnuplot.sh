@@ -1,16 +1,16 @@
 #!/bin/bash
 
+# input file
 fileIn="$1"
-#echo AA $fileIn $2 
+
+# update path if necessary:
 gnuplot=/Applications/Maxima/Gnuplot.app/Contents/Resources/bin/gnuplot
 
-#gnuplot -persist <<PLOT
-# set output 'runtimes/${fileIn%%.*}.png'
-
+# generate plot
 $gnuplot -persist <<PLOT
 unset key
 set terminal png
-set output 'runtimes/$fileIn.png'
+set output '${fileIn%.*}.png'
 set terminal png size 1000, 700
 set ylabel "Time [s]"
 set xlabel "$fileIn, Date"
