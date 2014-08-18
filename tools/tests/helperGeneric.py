@@ -9,8 +9,20 @@ import shutil
 def outputFilename( file, gridname ):
 	return file +"_"+ gridname + "_out.uni" 
 
-def referenceFilename( file, gridname ):
+# original, simpler...
+def referenceFilename_old( file, gridname ):
 	return file +"_"+ gridname + "_ref.uni" 
+
+# new version, extract directory & basename...
+def referenceFilename( file, gridname ):
+	(name,ext) = os.path.splitext( os.path.basename(file) )
+	return dataDirectory(file)+"/"+ name +"_"+ gridname + ".uni" 
+
+def dataDirectory( file ):
+	# extract path from script call
+	basename = os.path.basename(file)
+	basedir  = os.path.dirname (file)
+	return basedir +"/"+ "../testdata"
 
 
 def getGenRefFileSetting( ):

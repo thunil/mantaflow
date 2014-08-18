@@ -2,7 +2,7 @@
 #
 # Simple script to run all base tests
 # The test scripts are named test_XXXX_description.py
-# They are assumed to be in ascending order or complexity.
+# They are assumed to be in ascending order of complexity.
 #
 # Rough ordering:
 # 0xxx tests are very basic (mostly single operator calls)
@@ -33,22 +33,9 @@ if(len(sys.argv)<2):
 manta = sys.argv[1]
 print "Using mantaflow executable '" + manta + "' " 
 
-# check parameters:
-# xl - whether complex/large tests should be run
-if(len(sys.argv)>2):
-	for i in range(2, len(sys.argv)):
-		if(sys.argv[i].lower() == "xl"):
-			print "Running XL tests! This can take a while..."
-			filePrefix = "xltest_"
-		else:
-			print "Error: unknown parameter '" + sys.argv[i] +"' "
-			exit(1);
 
-files = os.popen("ls "+str(filePrefix)+"????_*.py").read() 
-#print "Debug - using test scene files: "+files
-
-# NT_DEBUG , todo use , extract file name!
-datadir = "./data"
+# store test data in separate directory
+datadir = dataDirectory(sys.argv[0])
 if not os.path.exists( datadir ):
 	os.makedirs( datadir )	
 
@@ -57,7 +44,6 @@ if getGenRefFileSetting():
 	print "Tests results will not be evaluated...\n"
 
 currdate = os.popen("date \"+%y%m%d%H%M\"").read() 
-#currdate.rstrip(" \n")
 currdate = str(currdate)[:-1]
 
 # in visual mode, also track runtimes
@@ -72,6 +58,16 @@ if getVisualSetting():
 	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
 # limit the runs for debugging
 visModeDebugCount = 0
+
+# extract path from script call
+basedir  = os.path.dirname (sys.argv[0])
+#os.path.splitext(base)
+
+files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
+#print "Debug - using test scene files: "+files
+
+
+# ready to go...
 
 num = 0
 numOks = 0
@@ -122,7 +118,7 @@ for file in files:
 		os.popen("./helperGnuplot.sh %s"%(timefile)) 
 
 		# for debugging, only execute a few files
-		visModeDebugCount += 1
+		#visModeDebugCount += 1
 
 
 if getGenRefFileSetting():
@@ -140,9 +136,7 @@ if getVisualSetting():
 	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
 	exit(0)
 
-print
-print " ============================================= "
-print
+print "\n ============================================= \n"
 print "Test summary: "  + str(numOks) + " passed, " + str(numFail) + " failed.   (from "+str(num) + " files) "
 
 if (numFail==0) and (numOks==0):
