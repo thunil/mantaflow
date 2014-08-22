@@ -1,6 +1,5 @@
 #
-# Simple example scene for a 2D simulation
-# Simulation of a buoyant smoke density plume
+# Simple 2D buoyant plume
 #
 import sys
 from manta import *
@@ -15,7 +14,7 @@ if getVisualSetting():
 	# in visual mode
 	res = 128 * getVisualSetting()
 	frames = 200
-	frames = 5 # debug!
+	#frames = 5 # debug!
 
 gs = vec3(res,res,1)
 s = Solver(name='main', gridSize = gs, dim=2)

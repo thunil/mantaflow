@@ -14,7 +14,7 @@ if getVisualSetting():
 	# in visual mode
 	res    = 80 * getVisualSetting()
 	frames = 75
-	frames = 3 # debug!
+	#frames = 3 # debug!
 
 gs = vec3(res,1.25*res,res)
 s = Solver(name='main', gridSize = gs)

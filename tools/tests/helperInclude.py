@@ -156,6 +156,14 @@ def doTestDataLoad( file , name, solver , grid ):
 		print( "Loading %s" % referenceFilename( file, name ) )
 		grid.load( referenceFilename( file, name ) )
 
+# generate info file with version string when in data gen mode
+def doGenerateInfo( file ):
+	if(getGenRefFileSetting()==1):
+		infofilename = dataDirectory(file)+"/test_data_info.txt"
+		print "Generating test data info file "+infofilename
+		text_file = open(dataDirectory(file)+"/test_data_info.txt", "w");
+		text_file.write( "\n%s\n\n" % (str(printBuildInfo())) );
+		text_file.close();
 
 # read test data
 
