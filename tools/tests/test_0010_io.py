@@ -30,4 +30,5 @@ doTestGrid( sys.argv[0], "dens" , s, density  , threshold=1e-08 , thresholdStric
 doTestGrid( sys.argv[0], "vel"  , s, vel      , threshold=1e-08 , thresholdStrict=1e-14  )
 doTestGrid( sys.argv[0], "flag" , s, flags    , threshold=1e-14 , thresholdStrict=1e-14  )
 
+doGenerateInfo( sys.argv[0] )
 

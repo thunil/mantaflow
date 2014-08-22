@@ -16,12 +16,15 @@ def referenceFilename_old( file, gridname ):
 # new version, extract directory & basename...
 def referenceFilename( file, gridname ):
 	(name,ext) = os.path.splitext( os.path.basename(file) )
-	return dataDirectory(file)+"/"+ name +"_"+ gridname + ".uni" 
+	ddir = dataDirectory(file)
+	return ddir+"/"+ name +"_"+ gridname + ".uni" 
 
 def dataDirectory( file ):
 	# extract path from script call
 	basename = os.path.basename(file)
 	basedir  = os.path.dirname (file)
+	if len(basedir)==0:
+		basedir = "."
 	return basedir +"/"+ "../testdata"
 
 
