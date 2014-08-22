@@ -128,8 +128,10 @@ void FluidSolver::printMemInfo() {
 	printf("%s\n", msg.str().c_str() );
 }
 
-PYTHON void printBuildInfo() {
-	debMsg( "Build info: "<<buildInfoString().c_str()<<" ",1);
+PYTHON std::string printBuildInfo() {
+	string infoString = buildInfoString();
+	debMsg( "Build info: "<<infoString.c_str()<<" ",1);
+	return infoString;
 }
 
 PYTHON void setDebugLevel(int level=1) {
