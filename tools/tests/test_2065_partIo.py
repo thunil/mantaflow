@@ -78,14 +78,14 @@ if (genRefFiles==1):
 		mapPartsToGrid(target=density, flags=flags, parts=pp, source=pDens ) 
 		s.step()
 
-	pp.save(    sys.argv[0]+"_parts_ref.uni" )
-	pDens.save( sys.argv[0]+"_pDens_ref.uni" )
+	pp.save(    referenceFilename(sys.argv[0],"parts" ) );
+	pDens.save( referenceFilename(sys.argv[0],"pDens" ) );
 else:
 	flags.fillGrid()
 
 	# only test restoring a particle system here - no sim!
-	pp.load(    sys.argv[0]+"_parts_ref.uni" )
-	pDens.load( sys.argv[0]+"_pDens_ref.uni" )
+	pp.load(    referenceFilename(sys.argv[0],"parts" ) );
+	pDens.load( referenceFilename(sys.argv[0],"pDens" ) );
 
 	mapPartsToGrid(target=density, flags=flags, parts=pp, source=pDens ) 
 
