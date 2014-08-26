@@ -12,8 +12,8 @@ accuracy = 1e-05
 
 if getVisualSetting():
 	# in visual mode
-	res = 128 * getVisualSetting()
-	frames = 200
+	res    = 128 * getVisualSetting()
+	frames = 200 * getVisualSetting()
 	#frames = 5 # debug!
 
 gs = vec3(res,res,1)
@@ -21,7 +21,7 @@ s = Solver(name='main', gridSize = gs, dim=2)
 s.timestep = 1.0
 
 if getVisualSetting():
-	s.timestep = 0.5
+	s.timestep = 0.5 / getVisualSetting()
 
 # prepare grids
 flags = s.create(FlagGrid)

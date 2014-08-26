@@ -13,8 +13,8 @@ frames = 18
 
 if getVisualSetting():
 	# in visual mode
-	res = 90 * getVisualSetting()
-	frames = 100
+	res    = 90  * getVisualSetting()
+	frames = 100 * getVisualSetting()
 
 gs = vec3(res,res,res)
 if (dim==2):
@@ -24,7 +24,7 @@ s.timestep = 0.6
 accuracy = 5e-5
 
 if getVisualSetting():
-	s.timestep = 0.3
+	s.timestep = 0.3 / getVisualSetting()
 
 # prepare grids and particles
 flags    = s.create(FlagGrid)

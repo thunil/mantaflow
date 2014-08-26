@@ -102,7 +102,7 @@ for dim in range(2,4):
 
 		maxErrR = outputScale * errR1.getMaxValue()
 		maxErrV = outputScale * errV1.getMaxValue()
-		#print "Initial symmetry err %f , %f" % (maxErrR, maxErrV)
+		#print( "Initial symmetry err %f , %f" % (maxErrR, maxErrV) )
 		#errV1.printGrid(zSlice=0)
 		#s.step()
 
@@ -117,7 +117,7 @@ for dim in range(2,4):
 		maxErrR = outputScale * errR1.getMaxValue()
 		maxErrV = outputScale * errV1.getMaxValue()
 		if(showErrs):
-			print "Initial symmetry check %f , %f " % (maxErrR, maxErrV)
+			print( "Initial symmetry check %f , %f " % (maxErrR, maxErrV) )
 
 		if(dim==3): 
 			checkSymmetry    (a=pressure, symmetrize=True, axis=dir2)
@@ -129,7 +129,7 @@ for dim in range(2,4):
 			maxErrR = outputScale * errR2.getMaxValue()
 			maxErrV = outputScale * errV2.getMaxValue()
 			if(showErrs):
-				print "Initial symmetry check %f , %f " % (maxErrR, maxErrV)
+				print( "Initial symmetry check %f , %f " % (maxErrR, maxErrV) )
 
 		#errV1.printGrid(zSlice=0)
 		#errR1.printGrid(zSlice=0) 
@@ -146,10 +146,10 @@ for dim in range(2,4):
 			obsBox.applyToGrid(grid=flags, value=(FlagObstacle) )
 
 
-		print "Checking symmetry, dirs " +str(dir1)+","+str(dir2)+ "  velocity " + str(velDir)
+		print( "Checking symmetry, dirs " +str(dir1)+","+str(dir2)+ "  velocity " + str(velDir) )
 
 		# part1
-		print "Checking scalar advection "
+		print( "Checking scalar advection " )
 		for t in range(steps):
 
 			# re-symmetrize		
@@ -163,13 +163,13 @@ for dim in range(2,4):
 			checkSymmetry(a=phi, err=errR1, axis=dir1)
 			maxErrR = outputScale * errR1.getMaxValue()
 			if(showErrs):
-				print "Max symmetry err1 real: %f " % (maxErrR) 
+				print( "Max symmetry err1 real: %f " % (maxErrR) )
 
 			if(dim==3):
 				checkSymmetry(a=phi, err=errR2, axis=dir2)
 				maxErrR = outputScale * errR2.getMaxValue()
 				if(showErrs):
-					print "Max symmetry err2 real: %f " % (maxErrR) 
+					print( "Max symmetry err2 real: %f " % (maxErrR) )
 
 			#errR1.printGrid(zSlice=0, printIndex=True) 
 			s.step()
@@ -181,7 +181,7 @@ for dim in range(2,4):
 
 
 		# part2 
-		print "Checking vec3 advection "
+		print( "Checking vec3 advection " )
 		for t in range(steps):
 			phi.setBoundNeumann(0)
 
@@ -196,17 +196,17 @@ for dim in range(2,4):
 			checkSymmetryVec3(a=vel, err=errV1, axis=dir1) 
 			maxErrV = outputScale * errV1.getMaxValue()
 			if(showErrs):
-				print "Max symmetry err1 vec3: %f " % (maxErrV)
+				print( "Max symmetry err1 vec3: %f " % (maxErrV) )
 			if(dim==3):
 				checkSymmetryVec3(a=vel, err=errV2, axis=dir2) 
 				maxErrV = outputScale * errV2.getMaxValue()
 				if(showErrs):
-					print "Max symmetry err2 vec3: %f " % (maxErrV)
+					print( "Max symmetry err2 vec3: %f " % (maxErrV) )
 
 			# debug version, check symmetry only for a single component of the MAC grid
-			#checkSymmetryVec3(a=vel, err=errV1, axis=dir1, disable=6); maxErrV = outputScale * errV1.getMaxValue(); print "Max err run X  %f " % (maxErrV)
-			#checkSymmetryVec3(a=vel, err=errV1, axis=dir1, disable=5); maxErrV = outputScale * errV1.getMaxValue(); print "Max err run Y  %f " % (maxErrV)
-			#checkSymmetryVec3(a=vel, err=errV1, axis=dir1, disable=3); maxErrV = outputScale * errV1.getMaxValue(); print "Max err run Z  %f " % (maxErrV) 
+			#checkSymmetryVec3(a=vel, err=errV1, axis=dir1, disable=6); maxErrV = outputScale * errV1.getMaxValue(); print( "Max err run X  %f " % (maxErrV))
+			#checkSymmetryVec3(a=vel, err=errV1, axis=dir1, disable=5); maxErrV = outputScale * errV1.getMaxValue(); print( "Max err run Y  %f " % (maxErrV))
+			#checkSymmetryVec3(a=vel, err=errV1, axis=dir1, disable=3); maxErrV = outputScale * errV1.getMaxValue(); print( "Max err run Z  %f " % (maxErrV))
 			#errV1.printGrid(zSlice=0, printIndex=True)
 
 			s.step()
@@ -218,7 +218,7 @@ for dim in range(2,4):
 
 	# prevent UI crash
 	if showGui:
-		print "\nGUI right now does not support switching solvers & dimensions... exiting (choose 2d/3d beforehand)\n"
+		print( "\nGUI right now does not support switching solvers & dimensions... exiting (choose 2d/3d beforehand)\n" )
 		exit(1)
 
 

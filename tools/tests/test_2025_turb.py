@@ -12,12 +12,15 @@ frames = 32
 
 if getVisualSetting():
 	# in visual mode
-	res    = 103 * getVisualSetting()
-	frames = 100
+	res    = 102 * getVisualSetting()
+	frames = 100 * getVisualSetting()
 
 gs = vec3(res,res/2,res/2)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 1.2
+
+if getVisualSetting():
+	s.timestep = 1.7 / getVisualSetting()
 
 velInflow = vec3(0.52,0,0)
 
