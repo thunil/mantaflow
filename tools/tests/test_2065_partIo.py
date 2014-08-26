@@ -6,6 +6,10 @@ import sys
 from manta import *
 from helperInclude import *
 
+if getVisualSetting():
+	# skip when in visual mode...
+	exit(0);
+	
 # solver params
 res = 50
 gs = vec3(res,res,res)

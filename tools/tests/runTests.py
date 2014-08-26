@@ -4,6 +4,8 @@
 # The test scripts are named test_XXXX_description.py
 # They are assumed to be in ascending order of complexity.
 #
+# Note - the visual mode (MANTA_VISUAL=1) requires ImageMagick and gnuplot!
+#
 # Rough ordering:
 # 0xxx tests are very basic (mostly single operator calls)
 # 1xxx is for 2d sims
@@ -15,7 +17,7 @@ import os
 import shutil
 import sys
 import re
-from subprocess import check_output
+from subprocess import *
 from helperGeneric import *
 
 # note - todo, right now this script assumes the test_X.py files are
@@ -108,15 +110,31 @@ for file in files:
 		print "Full output: " + result
 		print
 
-	# store benchmarking results (if theres any output)
-	if getVisualSetting() and os.path.isfile( "%s_0001.ppm"%(file) ):
+	# store benchmarking results (if theres any output) , and generate plot
+	timefile = "%s/runtimes/%s_v%d" % (basedir, os.path.basename(file), getVisualSetting()) 
+	if getVisualSetting() and ( os.path.isfile( "%s_0001.ppm"%(file) ) or os.path.isfile(timefile+".time") ):
 		runtime = elapsed_time2-elapsed_time1 
-		timefile = "%s/runtimes/%s_v%d.time" % (basedir, os.path.basename(file), getVisualSetting()) 
-		#print "ASHASH %s "%(timefile); exit(1);
+		if runtime>0.0:
+			text_file = open(timefile+".time", "a");
+			text_file.write( "%s %f \n" % (currdate,runtime) );
+			text_file.close();
+		else:
+			print "Zero runtime! Something went wrong..."
 		
-		#  print("echo %s %f >> %s " % (currdate, runtime, timefile) ) # debug
-		os.popen("echo %s %f >> %s " % (currdate, runtime, timefile) ).read() 
-		os.popen("./helperGnuplot.sh %s"%(timefile)) 
+		gnuplotExe = "/usr/bin/gnuplot"
+		if len( os.getenv('MANTA_GNUPLOT', "") )>0:
+			gnuplotExe = os.getenv('MANTA_GNUPLOT', "")
+		print "Using %s" % gnuplotExe
+		if os.path.isfile(gnuplotExe):
+			plot = Popen(gnuplotExe, stdin=PIPE)
+			plot.stdin.write("unset key\n")
+			plot.stdin.write("set terminal png\n")
+			plot.stdin.write("set output '%s.png'\n" % (timefile) )
+			plot.stdin.write("set terminal png size 1000, 700\n")
+			plot.stdin.write("set ylabel \"Time [s]\"\n")
+			plot.stdin.write("set xlabel \"%s, Date\"\n" % (timefile) )
+			plot.stdin.write("plot '%s.time' using 1:2 with lines\n" % (timefile) )
+			plot.stdin.write("quit\n")
 
 		# for debugging, only execute a few files
 		#visModeDebugCount += 1

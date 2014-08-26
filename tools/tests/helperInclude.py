@@ -139,7 +139,7 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 			maxVal1 = grid.getMaxValue()
 			minVal2 = compareTmpGrid.getMinValue()
 			maxVal2 = compareTmpGrid.getMaxValue()
-			print "Test "+name+" min/max curr "+str(minVal1)+" to "+str(maxVal1)+" min/max ref "+str(minVal2)+" to "+str(maxVal2) ;
+			print( "Test "+name+" min/max curr "+str(minVal1)+" to "+str(maxVal1)+" min/max ref "+str(minVal2)+" to "+str(maxVal2) );
 
 		maxVal = grid.getMaxAbsValue()
 		errValRel = errVal/maxVal
@@ -160,7 +160,7 @@ def doTestDataLoad( file , name, solver , grid ):
 def doGenerateInfo( file ):
 	if(getGenRefFileSetting()==1):
 		infofilename = dataDirectory(file)+"/test_data_info.txt"
-		print "Generating test data info file "+infofilename
+		print( "Generating test data info file "+infofilename )
 		text_file = open(dataDirectory(file)+"/test_data_info.txt", "w");
 		text_file.write( "\n%s\n\n" % (str(printBuildInfo())) );
 		text_file.close();

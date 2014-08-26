@@ -13,7 +13,7 @@ frames = 25
 
 if getVisualSetting():
 	# in visual mode
-	res    = 76 * getVisualSetting()
+	res    = 81  * getVisualSetting()
 	frames = 100
 
 gs = vec3(res,res,res)
@@ -22,6 +22,9 @@ if (dim==2):
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.75
 minParticles = pow(2,dim)
+
+if getVisualSetting():
+	s.timestep = 0.77 / getVisualSetting()
 
 # use slightly larger radius to make the sim a bit harder
 radiusFactor = 1.5

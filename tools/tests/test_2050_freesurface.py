@@ -13,8 +13,8 @@ frames = 50
 
 if getVisualSetting():
 	# in visual mode
-	res    = 76 * getVisualSetting()
-	frames = 100
+	res    = 76  * getVisualSetting()
+	frames = 100 * getVisualSetting()
 
 gs = vec3(res,res,res)
 if (dim==2):
@@ -23,6 +23,9 @@ s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.25
 accuracy = 5e-5
 
+if getVisualSetting():
+	s.timestep = 0.28 / getVisualSetting()
+	
 # prepare grids and particles
 flags     = s.create(FlagGrid)
 vel       = s.create(MACGrid)

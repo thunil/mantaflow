@@ -8,17 +8,20 @@ from helperInclude import *
 
 # solver params
 res    = 60
-frames = 25
+frames = 15
 
 if getVisualSetting():
 	# in visual mode
 	res    = 80 * getVisualSetting()
-	frames = 75
+	frames = 75 * getVisualSetting()
 	#frames = 3 # debug!
 
 gs = vec3(res,1.25*res,res)
 s = Solver(name='main', gridSize = gs)
 s.timestep = 0.5
+
+if getVisualSetting():
+	s.timestep = 0.5 / getVisualSetting()
 
 # prepare grids
 flags = s.create(FlagGrid)
@@ -65,7 +68,7 @@ for t in range(frames):
 	if 1 and getVisualSetting() and (t%getVisualSetting()==0):
 		projectPpmFull( density, '%s_%04d.ppm' % (sys.argv[0],t/getVisualSetting()) , 0, 4.0 );
 
-# check final state
-doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.01 , thresholdStrict=1e-08 )
-doTestGrid( sys.argv[0],"vel"  , s, vel     , threshold=0.08 , thresholdStrict=1e-08 )
+# check final state (note - threshold are pretty large)
+doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.001 , thresholdStrict=1e-08 )
+doTestGrid( sys.argv[0],"vel"  , s, vel     , threshold=0.005 , thresholdStrict=1e-08 )
 
