@@ -147,7 +147,7 @@ void FluidSolver::adaptTimestep(Real maxVel)
 			// within 5% of full step? add epsilon to prevent roundoff errors...
 			mDt = ( mFrameLength - mTimePerFrame ) + 1e-04;
 		}
-		else if ( (mTimePerFrame+mDt + mDtMin) > mFrameLength or (mTimePerFrame+(mDt*1.25)) > mFrameLength ) {
+		else if ( (mTimePerFrame+mDt + mDtMin) > mFrameLength || (mTimePerFrame+(mDt*1.25)) > mFrameLength ) {
 			// avoid tiny timesteps and strongly varying ones, do 2 medium size ones if necessary...
 			mDt = (mFrameLength-mTimePerFrame+ 1e-04)*0.5;
 			mLockDt = true;
