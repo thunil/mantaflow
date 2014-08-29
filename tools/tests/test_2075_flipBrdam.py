@@ -14,7 +14,7 @@ frames = 25
 if getVisualSetting():
 	# in visual mode
 	res    = 81  * getVisualSetting()
-	frames = 100
+	frames = 100 * getVisualSetting()
 
 gs = vec3(res,res,res)
 if (dim==2):
