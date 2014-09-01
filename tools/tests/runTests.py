@@ -54,6 +54,7 @@ currdate = str(currdate)[:-1]
 
 # in visual mode, also track runtimes
 visModeTrashDir = basedir+"/trash"
+outpngdir       = basedir+"/result_%s"%(currdate)
 if getVisualSetting():
 	dirname = basedir+"/runtimes"
 	if not os.path.exists( dirname ):
@@ -62,6 +63,10 @@ if getVisualSetting():
 	if not os.path.exists( visModeTrashDir ):
 		os.makedirs( visModeTrashDir )	
 	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
+
+	if not os.path.exists( outpngdir ):
+		os.makedirs( outpngdir )	
+
 # limit the runs for debugging
 visModeDebugCount = 0
 
@@ -139,6 +144,10 @@ for file in files:
 		# for debugging, only execute a few files
 		#visModeDebugCount += 1
 
+		# generate log file for visual run, same dir as output pngs
+		logfilename = "%s/%s.log" % (outpngdir, os.path.basename(file) )
+		log_file = open(logfilename, "w");
+		log_file.write(result); log_file.close();
 
 if getGenRefFileSetting():
 	print "Test data generated"
@@ -148,9 +157,6 @@ if getVisualSetting():
 	print "Viusal data generated"
 	# now convert & remove all ppms"
 	os.popen("for i in ./test_*.ppm ; do convert $i $(basename $i .ppm).png; done")
-	outpngdir = basedir+"/result_%s"%(currdate)
-	if not os.path.exists( outpngdir ):
-		os.makedirs( outpngdir )	
 	os.popen( "mv ./test_*.png %s"%(outpngdir)  )
 	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
 	exit(0)
