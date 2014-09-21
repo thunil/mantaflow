@@ -138,14 +138,14 @@ PYTHON void computeEnergy( FlagGrid& flags, MACGrid& vel, Grid<Real>& energy )
 
 //!interpolate grid from one size to another size
 KERNEL 
-void KnInterpolateGrid(Grid<Real>& target, Grid<Real>& source, const Vec3& sourceFactor)
+void KnInterpolateGrid(Grid<Real>& target, Grid<Real>& source, const Vec3& sourceFactor, int order)
 {
 	Vec3 pos = Vec3(i,j,k) * sourceFactor;
 	if(!source.is3D()) pos[2] = 0; // allow 2d -> 3d
-	target(i,j,k) = source.getInterpolated(pos);
+	target(i,j,k) = source.getInterpolatedHi(pos, order);
 }
 
-PYTHON void interpolateGrid( Grid<Real>& target, Grid<Real>& source )
+PYTHON void interpolateGrid( Grid<Real>& target, Grid<Real>& source , int order=1 )
 {
 	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
 
@@ -154,31 +154,31 @@ PYTHON void interpolateGrid( Grid<Real>& target, Grid<Real>& source )
 	// loop for the kernel call. as we're writing into target, it's important to loop exactly over
 	// all cells of the target grid... (note, when calling the plugin in python, it doesnt matter anymore).
 
-	KnInterpolateGrid(target, source, sourceFactor);
+	KnInterpolateGrid(target, source, sourceFactor, order);
 }
 
 
 //!interpolate a mac velocity grid from one size to another size
 KERNEL 
-void KnInterpolateMACGrid(MACGrid& target, MACGrid& source, const Vec3& sourceFactor)
+void KnInterpolateMACGrid(MACGrid& target, MACGrid& source, const Vec3& sourceFactor, int order)
 {
 	Vec3 pos = Vec3(i,j,k) * sourceFactor;
 
-	Real vx = source.getInterpolated(pos - Vec3(0.5,0,0))[0];
-	Real vy = source.getInterpolated(pos - Vec3(0,0.5,0))[1];
+	Real vx = source.getInterpolatedHi(pos - Vec3(0.5,0,0), order)[0];
+	Real vy = source.getInterpolatedHi(pos - Vec3(0,0.5,0), order)[1];
 	Real vz = 0.f;
-	if(source.is3D()) vz = source.getInterpolated(pos - Vec3(0,0,0.5))[2];
+	if(source.is3D()) vz = source.getInterpolatedHi(pos - Vec3(0,0,0.5), order)[2];
 
 	target(i,j,k) = Vec3(vx,vy,vz);
 }
 
-PYTHON void interpolateMACGrid(MACGrid& target, MACGrid& source)
+PYTHON void interpolateMACGrid(MACGrid& target, MACGrid& source, int order=1)
 {
 	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
 
 	// see interpolateGrid for why the target grid needs to come first in the parameters!
 
-	KnInterpolateMACGrid(target, source, sourceFactor);
+	KnInterpolateMACGrid(target, source, sourceFactor, order);
 }
 
 PYTHON void computeWaveletCoeffs(Grid<Real>& input)
