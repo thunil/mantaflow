@@ -91,8 +91,7 @@ GridPainter<T>::GridPainter(FlagGrid** flags, QWidget* par)
 {
 	mDim = 2; // Z plane
 	mPlane = 0;
-	mInfo = new QLabel();
-	
+	mInfo = new QLabel(); 
 }
 
 template<class T>
@@ -171,7 +170,7 @@ Real GridPainter<T>::getScale() {
 		// init new scale value
 		Real s = 1.0;
 		if (mLocalGrid->getType() & GridBase::TypeVec3)
-			s = 0.4;
+			s = 0.5;
 		else if (mLocalGrid->getType() & GridBase::TypeLevelset)
 			s = 1.0; 
 		mValScale[mObject] = s;
@@ -191,9 +190,11 @@ void GridPainter<int>::processSpecificKeyEvent(PainterEvent e, int param) {
 
 template<>
 void GridPainter<Real>::processSpecificKeyEvent(PainterEvent e, int param) {
-	if (e == EventNextReal)
+	if (e == EventNextReal) {
 		nextObject();
-	else if (e == EventScaleRealDown && mObject)
+		// by default, switch levelsets to alt color scale
+		if (mLocalGrid->getType() & GridBase::TypeLevelset) mDispMode = RealDispLevelset;
+	} else if (e == EventScaleRealDown && mObject)
 		mValScale[mObject] = getScale() * 0.5;
 	else if (e == EventScaleRealUp && mObject)
 		mValScale[mObject] = getScale() * 2.0;
@@ -390,7 +391,6 @@ template<> void GridPainter<Real>::paint() {
 	Vec3 box[4];
 	glBegin(GL_QUADS);
 	Real scale = getScale();
-	bool isLevelset = mLocalGrid->getType() & GridBase::TypeLevelset;
 	//glPolygonOffset(1.0,1.0);
 	//glDepthFunc(GL_LESS);
 
@@ -399,6 +399,7 @@ template<> void GridPainter<Real>::paint() {
 		// original mantaflow drawing style
 		FlagGrid *flags = *mFlags;
 		if (flags->getSize() != mLocalGrid->getSize()) flags = 0;
+		bool isLevelset = mLocalGrid->getType() & GridBase::TypeLevelset;
 
 		FOR_P_SLICE(mLocalGrid, mDim, mPlane) { 
 			int flag = FlagGrid::TypeFluid;
@@ -436,17 +437,18 @@ template<> void GridPainter<Real>::paint() {
 	} else {
 		// "new" drawing style 
 		// ignore flags, its a bit dangerous to skip outside info
+		if( (mDispMode==RealDispStd) || (mDispMode==RealDispLevelset) ) {
 
 		FOR_P_SLICE(mLocalGrid, mDim, mPlane) 
 		{ 
 			Real v = mLocalGrid->get(p) * scale; 
-			if (isLevelset) {
+			if (mDispMode==RealDispLevelset) {
 				v = max(min(v*0.2, 1.0),-1.0);
 				if (v>=0)
 					glColor3f(v,0,0.5);
 				else
 					glColor3f(0.5, 1.0+v, 0.);
-			} else {
+			} else { // RealDispStd
 				if (v>0)
 					glColor3f(v,v,v);
 				else
@@ -456,6 +458,8 @@ template<> void GridPainter<Real>::paint() {
 			getCellCoordinates(p, box, mDim);
 			for (int n=0;n<4;n++) 
 				glVertex(box[n], dx);
+		}
+
 		}
 	}
 
