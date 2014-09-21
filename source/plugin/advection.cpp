@@ -256,7 +256,6 @@ void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, Gr
 	else if (order == 2) { // MacCormack
 		GridType bwd(parent);
 		GridType newGrid(parent);
-		debMsg("NT_DEBUG not",1);
 	
 		// bwd <- backwards step
 		SemiLagrange<T> (flags, vel, bwd, fwd, -dt, levelset, orderSpace);
