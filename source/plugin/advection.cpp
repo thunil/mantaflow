@@ -22,42 +22,19 @@ using namespace std;
 namespace Manta { 
 
 
-/*static inline bool isNotFluid(FlagGrid& flags, int i, int j, int k)
-{
-	if ( flags.isFluid(i,j,k)   ) return false;
-	if ( flags.isFluid(i-1,j,k) ) return false; 
-	if ( flags.isFluid(i,j-1,k) ) return false; 
-	if ( flags.is3D() ) {
-		if ( flags.isFluid(i,j,k-1) ) return false;
-	}
-	return true;
-}
-
-static inline bool isNotFluidMAC(FlagGrid& flags, int i, int j, int k)
-{
-	if ( flags.isFluid(i,j,k)   ) return false;
-	return true;
-}*/
-
 //! Semi-Lagrange interpolation kernel
 KERNEL(bnd=1) template<class T> 
-void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset) 
+void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset, int order) 
 {
-	/*if (flags.isObstacle(i,j,k)) { dst(i,j,k) = 0; return; } // NT_DEBUG , remove these checks?
-	if (!isLevelset && isNotFluid(flags,i,j,k) ) { dst(i,j,k) = src(i,j,k); return; }*/
-	
 	// traceback position
 	Vec3 pos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getCentered(i,j,k) * dt;
-	dst(i,j,k) = src.getInterpolated(pos);
+	dst(i,j,k) = src.getInterpolatedHi(pos, order);
 }
 
 //! Semi-Lagrange interpolation kernel for MAC grids
 KERNEL(bnd=1)
 void SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, Real dt) 
 {
-	/*if (flags.isObstacle(i,j,k)) { dst(i,j,k) = 0; return; }
-	if ( isNotFluidMAC(flags,i,j,k) ) { dst(i,j,k) = src(i,j,k); return; }*/
-	
 	// get currect velocity at MAC position
 	// no need to shift xpos etc. as lookup field is also shifted
 	Vec3 xpos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getAtMACX(i,j,k) * dt;
@@ -122,28 +99,41 @@ template<> inline void getMinMax<Vec3>(Vec3& minv, Vec3& maxv, const Vec3& val) 
 	
 //! Helper function for clamping non-mac grids
 template<class T>
-inline T doClampComponent(const Vec3i& gridSize, T fwd, Grid<T>& orig, T dst, const Vec3i& posFwd) {
-	// clamp forward lookup to grid
-	const int i0 = clamp(posFwd.x, 0, gridSize.x-1);
-	const int j0 = clamp(posFwd.y, 0, gridSize.y-1);
-	const int k0 = clamp(posFwd.z, 0, (orig.is3D() ? (gridSize.z-1) : 1) );
-	const int i1 = i0+1, j1 = j0+1, k1= (orig.is3D() ? (k0+1) : k0);
-	
-	if( (!orig.isInBounds(Vec3i(i0,j0,k0),0)) || (!orig.isInBounds(Vec3i(i1,j1,k1),0)) )
-		return fwd; 
+inline T doClampComponent(const Vec3i& gridSize, T dst, Grid<T>& orig, T fwd, const Vec3& pos, const Vec3& vel ) 
+{
+	T minv( std::numeric_limits<Real>::max()), maxv( -std::numeric_limits<Real>::max());
 
-	// find min/max around fwd pos
-	T          minv=       orig(i0,j0,k0) , maxv = minv;
-	getMinMax( minv, maxv, orig(i1,j0,k0) );
-	getMinMax( minv, maxv, orig(i0,j1,k0) );
-	getMinMax( minv, maxv, orig(i1,j1,k0) );
-	getMinMax( minv, maxv, orig(i0,j0,k1) );
-	getMinMax( minv, maxv, orig(i1,j0,k1) );
-	getMinMax( minv, maxv, orig(i0,j1,k1) );
-	getMinMax( minv, maxv, orig(i1,j1,k1) ); 
-	
-	// write clamped value
-	return clamp(dst, minv, maxv);
+	// forward (and optionally) backward
+	Vec3i positions[2];
+	positions[0] = toVec3i(pos - vel);
+	positions[1] = toVec3i(pos + vel);
+
+	for(int l=0; l<2; ++l) {
+		Vec3i& currPos = positions[l];
+
+		// clamp forward lookup to grid
+		const int i0 = clamp(currPos.x, 0, gridSize.x-1);
+		const int j0 = clamp(currPos.y, 0, gridSize.y-1);
+		const int k0 = clamp(currPos.z, 0, (orig.is3D() ? (gridSize.z-1) : 1) );
+		const int i1 = i0+1, j1 = j0+1, k1= (orig.is3D() ? (k0+1) : k0);
+		if( (!orig.isInBounds(Vec3i(i0,j0,k0),0)) || (!orig.isInBounds(Vec3i(i1,j1,k1),0)) )
+			return fwd; 
+
+		// find min/max around source pos
+		getMinMax(minv, maxv, orig(i0,j0,k0));
+		getMinMax(minv, maxv, orig(i1,j0,k0));
+		getMinMax(minv, maxv, orig(i0,j1,k0));
+		getMinMax(minv, maxv, orig(i1,j1,k0));
+
+		if(orig.is3D()) {
+		getMinMax(minv, maxv, orig(i0,j0,k1));
+		getMinMax(minv, maxv, orig(i1,j0,k1));
+		getMinMax(minv, maxv, orig(i0,j1,k1));
+		getMinMax(minv, maxv, orig(i1,j1,k1)); } 
+	}
+
+	dst = clamp(dst, minv, maxv);
+	return dst;
 }
 	
 //! Helper function for clamping MAC grids
@@ -193,7 +183,7 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
 	T     dval       = dst(i,j,k);
 	Vec3i gridUpper  = flags.getSize() - 1;
 	
-	dval = doClampComponent<T>(gridUpper, dval, orig, fwd(i,j,k), toVec3i( Vec3(i,j,k) - vel.getCentered(i,j,k) * dt ) );
+	dval = doClampComponent<T>(gridUpper, dval, orig, fwd(i,j,k), Vec3(i,j,k), vel.getCentered(i,j,k) * dt );
 
 	// lookup forward/backward , round to closest NB
 	Vec3i posFwd = toVec3i( Vec3(i,j,k) + Vec3(0.5,0.5,0.5) - vel.getCentered(i,j,k) * dt );
@@ -230,9 +220,27 @@ void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& o
 	dst(i,j,k) = dval;
 }
 
+/*static inline bool isNotFluid(FlagGrid& flags, int i, int j, int k)
+{
+	if ( flags.isFluid(i,j,k)   ) return false;
+	if ( flags.isFluid(i-1,j,k) ) return false; 
+	if ( flags.isFluid(i,j-1,k) ) return false; 
+	if ( flags.is3D() ) {
+		if ( flags.isFluid(i,j,k-1) ) return false;
+	}
+	return true;
+}
+
+static inline bool isNotFluidMAC(FlagGrid& flags, int i, int j, int k)
+{
+	if ( flags.isFluid(i,j,k)   ) return false;
+	return true;
+}*/
+
+
 //! template function for performing SL advection
 template<class GridType> 
-void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, GridType& orig, int order, Real strength) {
+void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, GridType& orig, int order, Real strength, int orderSpace) {
 	typedef typename GridType::BASETYPE T;
 	
 	Real dt = parent->getDt();
@@ -240,7 +248,7 @@ void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, Gr
 	
 	// forward step
 	GridType fwd(parent);
-	SemiLagrange<T> (flags, vel, fwd, orig, dt, levelset);
+	SemiLagrange<T> (flags, vel, fwd, orig, dt, levelset, orderSpace);
 	
 	if (order == 1) {
 		orig.swap(fwd);
@@ -248,9 +256,10 @@ void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, Gr
 	else if (order == 2) { // MacCormack
 		GridType bwd(parent);
 		GridType newGrid(parent);
+		debMsg("NT_DEBUG not",1);
 	
 		// bwd <- backwards step
-		SemiLagrange<T> (flags, vel, bwd, fwd, -dt, levelset);
+		SemiLagrange<T> (flags, vel, bwd, fwd, -dt, levelset, orderSpace);
 		
 		// newGrid <- compute correction
 		MacCormackCorrect<T> (flags, newGrid, orig, fwd, bwd, strength, levelset);
@@ -264,13 +273,15 @@ void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, Gr
 
 //! template function for performing SL advection: specialized version for MAC grids
 template<> 
-void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, MACGrid& orig, int order, Real strength) {
+void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, MACGrid& orig, int order, Real strength, int orderSpace) {
 	Real dt = parent->getDt();
 	
 	// forward step
 	MACGrid fwd(parent);    
 	SemiLagrangeMAC (flags, vel, fwd, orig, dt);
 	
+	if (orderSpace != 1) { debMsg("Warning higher order for MAC grids not yet implemented...",1); }
+
 	if (order == 1) {
 		orig.swap(fwd);
 	}
@@ -293,19 +304,19 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 
 //! Perform semi-lagrangian advection of target Real- or Vec3 grid
 PYTHON void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid, 
-						   int order = 1, Real strength = 1.0)
+						   int order = 1, Real strength = 1.0, int orderSpace = 1 )
 {    
 	assertMsg(order==1 || order==2, "AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");
 	
 	// determine type of grid    
 	if (grid->getType() & GridBase::TypeReal) {
-		fnAdvectSemiLagrange< Grid<Real> >(flags->getParent(), *flags, *vel, *((Grid<Real>*) grid), order, strength);
+		fnAdvectSemiLagrange< Grid<Real> >(flags->getParent(), *flags, *vel, *((Grid<Real>*) grid), order, strength, orderSpace);
 	}
 	else if (grid->getType() & GridBase::TypeMAC) {    
-		fnAdvectSemiLagrange< MACGrid >(flags->getParent(), *flags, *vel, *((MACGrid*) grid), order, strength);
+		fnAdvectSemiLagrange< MACGrid >(flags->getParent(), *flags, *vel, *((MACGrid*) grid), order, strength, orderSpace);
 	}
 	else if (grid->getType() & GridBase::TypeVec3) {    
-		fnAdvectSemiLagrange< Grid<Vec3> >(flags->getParent(), *flags, *vel, *((Grid<Vec3>*) grid), order, strength);
+		fnAdvectSemiLagrange< Grid<Vec3> >(flags->getParent(), *flags, *vel, *((Grid<Vec3>*) grid), order, strength, orderSpace);
 	}
 	else
 		errMsg("AdvectSemiLagrange: Grid Type is not supported (only Real, Vec3, MAC, Levelset)");    
