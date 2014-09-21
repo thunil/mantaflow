@@ -24,25 +24,25 @@ namespace Manta {
 
 //! Semi-Lagrange interpolation kernel
 KERNEL(bnd=1) template<class T> 
-void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset, int order) 
+void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset, int orderSpace) 
 {
 	// traceback position
 	Vec3 pos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getCentered(i,j,k) * dt;
-	dst(i,j,k) = src.getInterpolatedHi(pos, order);
+	dst(i,j,k) = src.getInterpolatedHi(pos, orderSpace);
 }
 
 //! Semi-Lagrange interpolation kernel for MAC grids
 KERNEL(bnd=1)
-void SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, Real dt) 
+void SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, Real dt, int orderSpace) 
 {
 	// get currect velocity at MAC position
 	// no need to shift xpos etc. as lookup field is also shifted
 	Vec3 xpos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getAtMACX(i,j,k) * dt;
-	Real vx = src.getInterpolatedComponent<0>(xpos);
+	Real vx = src.getInterpolatedComponentHi<0>(xpos, orderSpace);
 	Vec3 ypos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getAtMACY(i,j,k) * dt;
-	Real vy = src.getInterpolatedComponent<1>(ypos);
+	Real vy = src.getInterpolatedComponentHi<1>(ypos, orderSpace);
 	Vec3 zpos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getAtMACZ(i,j,k) * dt;
-	Real vz = src.getInterpolatedComponent<2>(zpos);
+	Real vz = src.getInterpolatedComponentHi<2>(zpos, orderSpace);
 	
 	dst(i,j,k) = Vec3(vx,vy,vz);
 }
@@ -278,7 +278,7 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 	
 	// forward step
 	MACGrid fwd(parent);    
-	SemiLagrangeMAC (flags, vel, fwd, orig, dt);
+	SemiLagrangeMAC (flags, vel, fwd, orig, dt, orderSpace);
 	
 	if (orderSpace != 1) { debMsg("Warning higher order for MAC grids not yet implemented...",1); }
 
@@ -290,7 +290,7 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 		MACGrid newGrid(parent);
 		
 		// bwd <- backwards step
-		SemiLagrangeMAC (flags, vel, bwd, fwd, -dt);
+		SemiLagrangeMAC (flags, vel, bwd, fwd, -dt, orderSpace);
 		
 		// newGrid <- compute correction
 		MacCormackCorrectMAC<Vec3> (flags, newGrid, orig, fwd, bwd, strength, false, true);
