@@ -130,14 +130,12 @@ public:
 	// interpolated access
 	inline T    getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
 	inline void setInterpolated(const Vec3& pos, const T& val, Grid<Real>& sumBuffer) const { setInterpol<T>(mData, mSize, mStrideZ, pos, val, &sumBuffer[0]); }
-	// higher order interpolation
-	inline T getInterpolated(const Vec3& pos, int order) const { 
+	// higher order interpolation (1=linear, 2=cubic)
+	inline T getInterpolatedHi(const Vec3& pos, int order) const { 
 		switch(order) {
-		case 1: return interpol<T>(mData, mSize, mStrideZ, pos); 
-		// case 2: return interpolCubic<T>(mData, mSize, mStrideZ, pos); 
-		default: 
-			assertMsg(false, "Unknown interpolation order "<<order);
-		}
+		case 1:  return interpol     <T>(mData, mSize, mStrideZ, pos); 
+		case 2:  return interpolCubic<T>(mData, mSize, mStrideZ, pos); 
+		default: assertMsg(false, "Unknown interpolation order "<<order); }
 	}
 	
 	// assignment / copy
@@ -223,6 +221,12 @@ public:
 	template<int comp> inline Real getInterpolatedComponent(Vec3 pos) const { return interpolComponent<comp>(mData, mSize, mStrideZ, pos); }
 	inline Vec3 getInterpolated(const Vec3& pos) const { return interpolMAC(mData, mSize, mStrideZ, pos); }
 	inline void setInterpolated(const Vec3& pos, const Vec3& val, Vec3* tmp) { return setInterpolMAC(mData, mSize, mStrideZ, pos, val, tmp); }
+	inline Vec3 getInterpolatedHi(const Vec3& pos, int order) const { 
+		switch(order) {
+		case 1:  return interpolMAC     (mData, mSize, mStrideZ, pos); 
+		case 2:  return interpolCubicMAC(mData, mSize, mStrideZ, pos); 
+		default: assertMsg(false, "Unknown interpolation order "<<order); }
+	}
 	
 protected:
 };
