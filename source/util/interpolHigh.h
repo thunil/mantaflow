@@ -26,8 +26,8 @@ inline T cubicInterp(const Real interp, const T* points)
   T d1 = (points[3] - points[1]) * 0.5; 
   T deltak = (points[2] - points[1]);
 
-  // NT_DEBUG if (deltak * d0 < 0.0) d0 = 0;
-  // NT_DEBUG if (deltak * d1 < 0.0) d1 = 0;
+  // disabled: if (deltak * d0 < 0.0) d0 = 0;
+  // disabled: if (deltak * d1 < 0.0) d1 = 0;
 
   T a0 = points[1];
   T a1 = d0;

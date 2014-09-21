@@ -197,14 +197,13 @@ PYTHON void projectPpmOut( Grid<Real>& val, string name, int axis=2, Real scale=
 }
 
 KERNEL 
-void KnPrecompLight(Grid<Real>& density, Grid<Real>& L, Vec3 light = Vec3(1,1,1) , Grid<Vec3>* deb=NULL)
+void KnPrecompLight(Grid<Real>& density, Grid<Real>& L, Vec3 light = Vec3(1,1,1) )
 {
 	Vec3 n = getGradient( density, i,j,k ) * -1.; 
 	normalize(n);
 
 	Real d = dot( light, n );
 	L(i,j,k) = d;
-	if(deb) (*deb)(i,j,k) = Vec3(d,d,d);
 }
 
 // simple shading with pre-computed gradient
@@ -238,8 +237,7 @@ static inline void shadeCell(Vec3& dst, int shadeMode, Real src, Real light, int
 
 //! output shaded (all 3 axes at once for 3D)
 //! shading modes: 0 smoke, 1 surfaces
-PYTHON void projectPpmFull( Grid<Real>& val, string name, int shadeMode=0, Real scale=1.,
-		Grid<Vec3>* deb=NULL) // NT_DEBUG
+PYTHON void projectPpmFull( Grid<Real>& val, string name, int shadeMode=0, Real scale=1.)
 {
 	Vec3i s  = val.getSize();
 	Vec3  si = Vec3( 1. / (Real)s[0], 1. / (Real)s[1], 1. / (Real)s[2] );
@@ -251,7 +249,7 @@ PYTHON void projectPpmFull( Grid<Real>& val, string name, int shadeMode=0, Real 
 
 	// precompute lighting
 	Grid<Real> L(val);
-	KnPrecompLight( val, L , Vec3(1,1,1), deb);
+	KnPrecompLight( val, L , Vec3(1,1,1) );
 
 	FOR_IJK(val) { 
 		Vec3i idx(i,j,k);
