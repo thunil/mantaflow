@@ -37,7 +37,7 @@ public:
 		EventNextSystem, EventToggleParticles, EventNextParticleDisplayMode, EventToggleBackgroundMesh, EventSetMax,
 		EventScalePdataDown, EventScalePdataUp };
 
-	enum RealDisplayModes { RealDispOff=0, RealDispStd, NumRealDispModes };
+	enum RealDisplayModes { RealDispOff=0, RealDispStd, RealDispLevelset, NumRealDispModes };
 
 	enum VecDisplayModes { VecDispOff=0, VecDispCentered, VecDispStaggered, VecDispUv, NumVecDispModes };
 	
