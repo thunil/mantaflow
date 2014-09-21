@@ -218,13 +218,21 @@ public:
 	inline Vec3 getAtMACX(int i, int j, int k) const;
 	inline Vec3 getAtMACY(int i, int j, int k) const;
 	inline Vec3 getAtMACZ(int i, int j, int k) const;
-	template<int comp> inline Real getInterpolatedComponent(Vec3 pos) const { return interpolComponent<comp>(mData, mSize, mStrideZ, pos); }
+	// interpolation
 	inline Vec3 getInterpolated(const Vec3& pos) const { return interpolMAC(mData, mSize, mStrideZ, pos); }
 	inline void setInterpolated(const Vec3& pos, const Vec3& val, Vec3* tmp) { return setInterpolMAC(mData, mSize, mStrideZ, pos, val, tmp); }
 	inline Vec3 getInterpolatedHi(const Vec3& pos, int order) const { 
 		switch(order) {
 		case 1:  return interpolMAC     (mData, mSize, mStrideZ, pos); 
 		case 2:  return interpolCubicMAC(mData, mSize, mStrideZ, pos); 
+		default: assertMsg(false, "Unknown interpolation order "<<order); }
+	}
+	// specials for mac grid:
+	template<int comp> inline Real getInterpolatedComponent(Vec3 pos) const { return interpolComponent<comp>(mData, mSize, mStrideZ, pos); }
+	template<int comp> inline Real getInterpolatedComponentHi(const Vec3& pos, int order) const { 
+		switch(order) {
+		case 1:  return interpolComponent<comp>(mData, mSize, mStrideZ, pos); 
+		case 2:  return interpolCubicMAC(mData, mSize, mStrideZ, pos)[comp];  // warning - not yet optimized
 		default: assertMsg(false, "Unknown interpolation order "<<order); }
 	}
 	

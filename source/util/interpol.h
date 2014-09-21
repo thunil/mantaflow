@@ -71,9 +71,9 @@ inline T interpol(const T* data, const Vec3i& size, const int Z, const Vec3& pos
     int idx = xi + Y * yi + Z * zi;    
     DEBUG_ONLY(checkIndexInterpol(size,idx)); DEBUG_ONLY(checkIndexInterpol(size,idx+X+Y+Z));
     
-    return  ((data[idx]        *t0 + data[idx+Y]        *t1) * s0
-           + (data[idx+X]*t0 + data[idx+X+Y]*t1) * s1) * f0
-           +((data[idx+Z]*t0 + data[idx+Y+Z]*t1) * s0
+    return  ((data[idx]    *t0 + data[idx+Y]    *t1) * s0
+           + (data[idx+X]  *t0 + data[idx+X+Y]  *t1) * s1) * f0
+           +((data[idx+Z]  *t0 + data[idx+Y+Z]  *t1) * s0
            + (data[idx+X+Z]*t0 + data[idx+X+Y+Z]*t1) * s1) * f1;
 }
 
@@ -83,9 +83,9 @@ inline Real interpolComponent(const Vec3* data, const Vec3i& size, const int Z, 
     int idx = xi + Y * yi + Z * zi;    
     DEBUG_ONLY(checkIndexInterpol(size,idx)); DEBUG_ONLY(checkIndexInterpol(size,idx+X+Y+Z));
     
-    return  ((data[idx][c]        *t0 + data[idx+Y][c]        *t1) * s0
-           + (data[idx+X][c]*t0 + data[idx+X+Y][c]*t1) * s1) * f0
-           +((data[idx+Z][c]*t0 + data[idx+Y+Z][c]*t1) * s0
+    return  ((data[idx][c]    *t0 + data[idx+Y][c]    *t1) * s0
+           + (data[idx+X][c]  *t0 + data[idx+X+Y][c]  *t1) * s1) * f0
+           +((data[idx+Z][c]  *t0 + data[idx+Y+Z][c]  *t1) * s0
            + (data[idx+X+Z][c]*t0 + data[idx+X+Y+Z][c]*t1) * s1) * f1;
 }
 
@@ -134,23 +134,23 @@ inline Vec3 interpolMAC(const Vec3* data, const Vec3i& size, const int Z, const 
     Vec3 ret(0.);
     {   // X
         const Vec3* ref = &data[((zi*size.y+yi)*size.x+s_xi)];
-        ret.x = f0 * ((ref[0].x*t0 + ref[Y].x*t1 )*s_s0 +
-                      (ref[X].x*t0 + ref[X+Y].x*t1 )*s_s1) +
-                f1 * ((ref[Z].x*t0 + ref[Z+Y].x*t1 )*s_s0 + 
+        ret.x = f0 * ((ref[0].x  *t0 + ref[Y].x    *t1 )*s_s0 +
+                      (ref[X].x  *t0 + ref[X+Y].x  *t1 )*s_s1) +
+                f1 * ((ref[Z].x  *t0 + ref[Z+Y].x  *t1 )*s_s0 + 
                       (ref[X+Z].x*t0 + ref[X+Y+Z].x*t1 )*s_s1 );
     }
     {   // Y
         const Vec3* ref = &data[((zi*size.y+s_yi)*size.x+xi)];
-        ret.y = f0 * ((ref[0].y*s_t0 + ref[Y].y*s_t1 )*s0 + 
-                      (ref[X].y*s_t0 + ref[X+Y].y*s_t1 )*s1) +
-                f1 * ((ref[Z].y*s_t0 + ref[Z+Y].y*s_t1 )*s0 + 
+        ret.y = f0 * ((ref[0].y  *s_t0 + ref[Y].y    *s_t1 )*s0 + 
+                      (ref[X].y  *s_t0 + ref[X+Y].y  *s_t1 )*s1) +
+                f1 * ((ref[Z].y  *s_t0 + ref[Z+Y].y  *s_t1 )*s0 + 
                       (ref[X+Z].y*s_t0 + ref[X+Y+Z].y*s_t1 )*s1 );
     }
     {   // Z
         const Vec3* ref = &data[((s_zi*size.y+yi)*size.x+xi)];
-        ret.z = s_f0 * ((ref[0].z*t0 + ref[Y].z*t1 )*s0 + 
-                        (ref[X].z*t0 + ref[X+Y].z*t1 )*s1) +
-                s_f1 * ((ref[Z].z*t0 + ref[Z+Y].z*t1 )*s0 + 
+        ret.z = s_f0 * ((ref[0].z  *t0 + ref[Y].z    *t1 )*s0 + 
+                        (ref[X].z  *t0 + ref[X+Y].z  *t1 )*s1) +
+                s_f1 * ((ref[Z].z  *t0 + ref[Z+Y].z  *t1 )*s0 + 
                         (ref[X+Z].z*t0 + ref[X+Y+Z].z*t1 )*s1 );
     }
     return ret;

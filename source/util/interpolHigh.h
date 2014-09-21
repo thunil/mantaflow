@@ -76,17 +76,11 @@ inline T interpolCubic2D(const T* data, const Vec3i& size, const Vec3& pos) {
 }
 
 template <class T>
-inline T interpolCubic(const T* data, const Vec3i& size, const int Z, const Vec3& pos) {
-
+inline T interpolCubic(const T* data, const Vec3i& size, const int Z, const Vec3& pos) 
+{ 
 	if(Z==0) return interpolCubic2D(data, size, pos);
 
 	const Real px=pos.x-0.5f, py=pos.y-0.5f, pz=pos.z-0.5f; 
-	//Vec3 positionCopy = pos; 
-	// get the lower corner position
-	//const Vec3 corner = _center - (Real)0.5 * _lengths + (Real)0.5 * dxs(); 
-	// recenter position
-	//positionCopy -= corner; 
-	//positionCopy[0] *= _invDx; positionCopy[1] *= _invDy; positionCopy[2] *= _invDz;
 
 	const int x1 = (int)px;
 	const int x2    = x1 + 1;
@@ -142,30 +136,31 @@ inline T interpolCubic(const T* data, const Vec3i& size, const int Z, const Vec3
 	const int y2z3 = y2x + z3Slab;
 	const int y3z3 = y3x + z3Slab;
 
-	// do the z0 slice
+	// get the z0 slice
 	const T p0[]  = {data[x0 + y0z0], data[x1 + y0z0], data[x2 + y0z0], data[x3 + y0z0]};
 	const T p1[]  = {data[x0 + y1z0], data[x1 + y1z0], data[x2 + y1z0], data[x3 + y1z0]};
 	const T p2[]  = {data[x0 + y2z0], data[x1 + y2z0], data[x2 + y2z0], data[x3 + y2z0]};
 	const T p3[]  = {data[x0 + y3z0], data[x1 + y3z0], data[x2 + y3z0], data[x3 + y3z0]};
 
-	// do the z1 slice
+	// get the z1 slice
 	const T p4[]  = {data[x0 + y0z1], data[x1 + y0z1], data[x2 + y0z1], data[x3 + y0z1]};
 	const T p5[]  = {data[x0 + y1z1], data[x1 + y1z1], data[x2 + y1z1], data[x3 + y1z1]};
 	const T p6[]  = {data[x0 + y2z1], data[x1 + y2z1], data[x2 + y2z1], data[x3 + y2z1]};
 	const T p7[]  = {data[x0 + y3z1], data[x1 + y3z1], data[x2 + y3z1], data[x3 + y3z1]};
 
-	// do the z2 slice
+	// get the z2 slice
 	const T p8[]  = {data[x0 + y0z2], data[x1 + y0z2], data[x2 + y0z2], data[x3 + y0z2]};
 	const T p9[]  = {data[x0 + y1z2], data[x1 + y1z2], data[x2 + y1z2], data[x3 + y1z2]};
 	const T p10[] = {data[x0 + y2z2], data[x1 + y2z2], data[x2 + y2z2], data[x3 + y2z2]};
 	const T p11[] = {data[x0 + y3z2], data[x1 + y3z2], data[x2 + y3z2], data[x3 + y3z2]};
 
-	// do the z3 slice
+	// get the z3 slice
 	const T p12[] = {data[x0 + y0z3], data[x1 + y0z3], data[x2 + y0z3], data[x3 + y0z3]};
 	const T p13[] = {data[x0 + y1z3], data[x1 + y1z3], data[x2 + y1z3], data[x3 + y1z3]};
 	const T p14[] = {data[x0 + y2z3], data[x1 + y2z3], data[x2 + y2z3], data[x3 + y2z3]};
 	const T p15[] = {data[x0 + y3z3], data[x1 + y3z3], data[x2 + y3z3], data[x3 + y3z3]};
 
+	// interpolate
 	const T z0Points[] = {cubicInterp(xInterp, p0),  cubicInterp(xInterp, p1),  cubicInterp(xInterp, p2),  cubicInterp(xInterp, p3)};
 	const T z1Points[] = {cubicInterp(xInterp, p4),  cubicInterp(xInterp, p5),  cubicInterp(xInterp, p6),  cubicInterp(xInterp, p7)};
 	const T z2Points[] = {cubicInterp(xInterp, p8),  cubicInterp(xInterp, p9),  cubicInterp(xInterp, p10), cubicInterp(xInterp, p11)};
@@ -178,10 +173,10 @@ inline T interpolCubic(const T* data, const Vec3i& size, const int Z, const Vec3
 
 inline Vec3 interpolCubicMAC(const Vec3* data, const Vec3i& size, const int Z, const Vec3& pos) {
 	// warning - not yet optimized...  
-	Real vx =              interpolCubic<Vec3>(data, size, Z, pos - Vec3(0.5,0,0) )[0];
-	Real vy =              interpolCubic<Vec3>(data, size, Z, pos - Vec3(0,0.5,0) )[1];
+	Real vx =     interpolCubic<Vec3>(data, size, Z, pos + Vec3(0.5,0,0) )[0];
+	Real vy =     interpolCubic<Vec3>(data, size, Z, pos + Vec3(0,0.5,0) )[1];
 	Real vz = 0.f;
-	if(Z==0) vz = interpolCubic<Vec3>(data, size, Z, pos - Vec3(0,0,0.5) )[2]; 
+	if(Z!=0) vz = interpolCubic<Vec3>(data, size, Z, pos + Vec3(0,0,0.5) )[2]; 
 	return Vec3(vx,vy,vz);
 }
 
