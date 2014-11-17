@@ -106,10 +106,11 @@ void FluidSolver::step() {
 		mTimeTotal += mDt;
 		mFrame++;
 	} else {
-		// adaptive time stepping on
+		// adaptive time stepping on (use eps to prevent roundoff errors)
 		mTimePerFrame += mDt;
-		if(mTimePerFrame>mFrameLength) {
+		if( (mTimePerFrame+VECTOR_EPSILON) >mFrameLength) {
 			mFrame++;
+
 			// re-calc total time, prevent drift...
 			mTimeTotal = (double)mFrame * mFrameLength;
 			mTimePerFrame = 0.;
