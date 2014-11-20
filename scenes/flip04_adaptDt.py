@@ -147,9 +147,9 @@ while s.frame < frames:
 	s.step()
 
 	# optionally particle data , or screenshot
-	#pp.save( 'flipParts_%04d.uni' % frame );
+	#pp.save( 'flipParts_%04d.uni' % s.frame );
 
 	if 0 and (GUI):
-		gui.screenshot( 'flip04_%04d.png' % frame );
+		gui.screenshot( 'flip04_%04d.png' % s.frame );
 
 
