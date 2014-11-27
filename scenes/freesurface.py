@@ -40,7 +40,7 @@ for t in range(2000):
 	
 	# update and advect levelset
 	phi.reinitMarching(flags=flags, velTransport=vel) #, ignoreWalls=False)
-	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
+	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1)
 	flags.updateFromLevelset(phi)
 	
 	# velocity self-advection
