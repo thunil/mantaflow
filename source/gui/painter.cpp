@@ -143,7 +143,7 @@ void GridPainter<T>::processKeyEvent(PainterEvent e, int param)
 {
 	if (e == EventSetDim) {
 		mDim = param;
-		if (mLocalGrid->is2D()) mDim = 2;
+		if (!mLocalGrid->is3D()) mDim = 2;
 	} else if (e == EventSetMax) {
 		mMax = param;
 	} else if (e == EventSetPlane) {
@@ -170,7 +170,7 @@ Real GridPainter<T>::getScale() {
 		// init new scale value
 		Real s = 1.0;
 		if (mLocalGrid->getType() & GridBase::TypeVec3)
-			s = 0.5;
+			s = 0.5 - VECTOR_EPSILON;
 		else if (mLocalGrid->getType() & GridBase::TypeLevelset)
 			s = 1.0; 
 		mValScale[mObject] = s;
@@ -517,16 +517,21 @@ template<> void GridPainter<Vec3>::paint() {
 		glEnd();    
 	
 	} else if (mDispMode==VecDispUv) {
-		// draw as uv coordinates , note - this will completely hide the real grid display!
+		// draw as "uv" coordinates (ie rgb), note - this will completely hide the real grid display!
 		Vec3 box[4];
 		glBegin(GL_QUADS); 
 		FOR_P_SLICE(mLocalGrid, mDim, mPlane) 
 		{ 
 			Vec3 v = mLocalGrid->get(p) * scale; 
+			if (mac) {
+				if (p.x < mLocalGrid->getSizeX()-1) v.x = 0.5 * (v.x + scale * mLocalGrid->get(p.x+1,p.y,p.z).x);
+				if (p.y < mLocalGrid->getSizeY()-1) v.y = 0.5 * (v.y + scale * mLocalGrid->get(p.x,p.y+1,p.z).y);
+				if (p.z < mLocalGrid->getSizeZ()-1) v.z = 0.5 * (v.z + scale * mLocalGrid->get(p.x,p.y,p.z+1).z);
+			}
 			for(int c=0; c<3; ++c) {
 				if(v[c]<0.) v[c] *= -1.;
 				v[c] = fmod( (Real)v[c], (Real)1.);
-			}
+			} 
 			//v *= mLocalGrid->get(0)[0]; // debug, show uv grid weight as brightness of values
 			glColor3f(v[0],v[1],v[2]); 
 			getCellCoordinates(p, box, mDim);
