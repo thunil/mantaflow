@@ -293,6 +293,18 @@ void MainWnd::nextPartDisplay() {
 void MainWnd::nextMeshDisplay() {
 	emit painterEvent(Painter::EventMeshMode); 
 }
+void MainWnd::toggleHideGrids() {
+	emit painterEvent(Painter::EventToggleGridDisplay); 
+}
+void MainWnd::setCamPos(float x, float y, float z) {
+	mGlWidget->setCamPos( Vec3(x, y, z) );
+}
+void MainWnd::setCamRot(float x, float y, float z) {
+	mGlWidget->setCamRot( Vec3(x, y, z) );
+}
+void MainWnd::windowSize(int w, int h) {
+	mGlWidget->windowSize( w,h );
+}
 
 MainWnd::~MainWnd() {
 }

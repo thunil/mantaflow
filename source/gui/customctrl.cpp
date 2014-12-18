@@ -167,6 +167,18 @@ void Gui::nextVec3Display() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "n
 void Gui::nextPartDisplay() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextPartDisplay" ); }
 void Gui::nextMeshDisplay() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "nextMeshDisplay" ); }
 
+void Gui::toggleHideGrids() { QMetaObject::invokeMethod(mGuiPtr->getWindow(), "toggleHideGrids" ); }
+
+void Gui::setCamPos(float x, float y, float z) {
+	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "setCamPos", Q_ARG(float, x), Q_ARG(float, y), Q_ARG(float, z));    
+}
+void Gui::setCamRot(float x, float y, float z) {
+	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "setCamRot", Q_ARG(float, x), Q_ARG(float, y), Q_ARG(float, z));    
+}
+void Gui::windowSize(int w, int h) {
+	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "windowSize", Q_ARG(int, w), Q_ARG(int, h));    
+}
+
 PbClass* Gui::addControl(PbType t) {
 	_args.add("nocheck",true);
 	if (t.str() == "")

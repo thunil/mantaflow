@@ -126,7 +126,11 @@ public:
 	PYTHON void nextMesh();
 	PYTHON void nextVec3Display();
 	PYTHON void nextMeshDisplay();
-	PYTHON void nextPartDisplay();
+	PYTHON void nextPartDisplay(); 
+	PYTHON void toggleHideGrids();
+	PYTHON void setCamPos(float x, float y, float z);
+	PYTHON void setCamRot(float x, float y, float z);  
+	PYTHON void windowSize(int w, int h);
 	
 protected:
 	GuiThread* mGuiPtr;
