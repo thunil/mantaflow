@@ -52,14 +52,17 @@ PYTHON void sampleFlagsWithParticles( FlagGrid& flags, BasicParticleSystem& part
 }
 
 PYTHON void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, BasicParticleSystem& parts, 
-		int discretization, Real randomness ) 
+		int discretization, Real randomness, bool reset=false ) 
 {
 	bool is3D = phi.is3D();
 	Real jlen = randomness / discretization;
 	Vec3 disp (1.0 / discretization, 1.0 / discretization, 1.0/discretization);
 	RandomStream mRand(9832);
  
-	//clear(); 
+	if(reset) {
+		parts.clear(); 
+		parts.doCompress();
+	}
 
 	FOR_IJK_BND(phi, 0) {
 		if ( flags.isObstacle(i,j,k) ) continue;
@@ -222,7 +225,7 @@ void ComputeUnionLevelsetPindex(Grid<int>& index, BasicParticleSystem& parts, Pa
 		LevelsetGrid& phi, Real radius=1.) 
 {
 	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5); // shifted by half cell
-	Real phiv = radius * 1.732;  // outside
+	Real phiv = radius * 1.0;  // outside
 
 	int r  = int(radius) + 1;
 	int rZ = phi.is3D() ? r : 0;
@@ -232,7 +235,7 @@ void ComputeUnionLevelsetPindex(Grid<int>& index, BasicParticleSystem& parts, Pa
 		if (!phi.isInBounds(Vec3i(xj,yj,zj))) continue;
 
 		// note, for the particle indices in indexSys the access is periodic (ie, dont skip for eg inBounds(sx,10,10)
-		int isysIdxS = phi.index(xj,yj,zj);
+		int isysIdxS = index.index(xj,yj,zj);
 		int pStart = index(isysIdxS), pEnd=0;
 		if(phi.isInBounds(isysIdxS+1)) pEnd = index(isysIdxS+1);
 		else                           pEnd = indexSys.size();
@@ -254,6 +257,8 @@ PYTHON void unionParticleLevelset( BasicParticleSystem& parts, ParticleIndexSyst
 	const Real radius = 0.5 * calculateRadiusFactor(phi, radiusFactor);
 	// no reset of phi necessary here 
 	ComputeUnionLevelsetPindex(index, parts, indexSys, phi, radius);
+
+	phi.setBound(0.5, 0);
 }
 
 
@@ -263,12 +268,12 @@ void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts,
 		LevelsetGrid& phi, Real radius=1.) 
 {
 	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5); // shifted by half cell
-	Real phiv = radius * 1.732; // outside 
+	Real phiv = radius * 1.0; // outside 
 
 	// loop over neighborhood, similar to ComputeUnionLevelsetPindex
 	const Real sradiusInv = 1. / (4. * radius * radius) ;
-	int   r    = int(1. * radius) + 1;
-	int   rZ   = phi.is3D() ? r : 0;
+	int   r = int(1. * radius) + 1;
+	int   rZ = phi.is3D() ? r : 0;
 	// accumulators
 	Real  wacc = 0.;
 	Vec3  pacc = Vec3(0.);
@@ -279,7 +284,7 @@ void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts,
 	for(int xj=i-r ; xj<=i+r ; xj++) {
 		if (! phi.isInBounds(Vec3i(xj,yj,zj)) ) continue;
 
-		int isysIdxS = phi.index(xj,yj,zj);
+		int isysIdxS = index.index(xj,yj,zj);
 		int pStart = index(isysIdxS), pEnd=0;
 		if(phi.isInBounds(isysIdxS+1)) pEnd = index(isysIdxS+1);
 		else                           pEnd = indexSys.size();
@@ -287,10 +292,11 @@ void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts,
 			int   psrc = indexSys[p].sourceIndex;
 			Vec3  pos  = parts[psrc].pos; 
 			Real  s    = normSquare(gridPos-pos) * sradiusInv;
-			Real  w    = std::max(0., cubed(1.-s) );
+			//Real  w = std::max(0., cubed(1.-s) );
+			Real  w = std::max(0., (1.-s) ); // a bit smoother
 			wacc += w;
 			racc += radius * w;
-			pacc += pos * w;
+			pacc += pos    * w;
 		} 
 	}
 
@@ -300,6 +306,10 @@ void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts,
 		phiv = fabs( norm(gridPos-pacc) )-racc;
 	}
 	phi(i,j,k) = phiv;
+}
+
+template<class T> T smoothingValue(Grid<T> val, int i, int j, int k, T center) {
+	return val(i,j,k);
 }
 
 // smoothing, and  
@@ -337,17 +347,18 @@ PYTHON void averagedParticleLevelset( BasicParticleSystem& parts, ParticleIndexS
 	ComputeAveragedLevelsetWeight(parts,  index, indexSys, phi, radius);
 
 	// post-process level-set
-	for(int i=0; i<smoothen; ++i) {
+	for(int i=0; i<std::max(smoothen,smoothenNeg); ++i) {
 		LevelsetGrid tmp(flags.getParent());
-		knSmoothGrid<Real>(phi,tmp, 1./(phi.is3D() ? 7. : 5.) );
-		phi.swap(tmp);
+		if(i<smoothen) { 
+			knSmoothGrid    <Real> (phi,tmp, 1./(phi.is3D() ? 7. : 5.) );
+			phi.swap(tmp);
+		}
+		if(i<smoothenNeg) { 
+			knSmoothGridNeg <Real> (phi,tmp, 1./(phi.is3D() ? 7. : 5.) );
+			phi.swap(tmp);
+		}
 	} 
-	for(int i=0; i<smoothenNeg; ++i) {
-		LevelsetGrid tmp(flags.getParent());
-		knSmoothGridNeg<Real>(phi,tmp, 1./(phi.is3D() ? 7. : 5.) );
-		phi.swap(tmp);
-	}
-	// NT_DEBUG , todo copy border
+	phi.setBound(0.5, 0);
 }
 
 
