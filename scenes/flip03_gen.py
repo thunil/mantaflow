@@ -68,7 +68,6 @@ while tOut < 999:
 			pp.load( partfile % tIn );
 			
 			# create surface
-			phi.clear()
 			gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
 			#unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) # faster, but not as smooth
 			averagedParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor , 1, 1 ) 
