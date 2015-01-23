@@ -8,7 +8,7 @@ import os, shutil, math, sys
 # dimension two/three d
 dim = 2
 # how much to upres the XL sim?
-upres = 4
+upres = 0
 
 # solver params
 res = 80
@@ -19,7 +19,8 @@ sm = Solver(name='main', gridSize = gs, dim=dim)
 sm.timestep = 1.5
 timings = Timings()
 
-velInflow = vec3(2, 0, 0)
+# note - world space velocity, convert to grid space later
+velInflow = vec3(0.025, 0, 0)
 
 # prepare grids
 flags    = sm.create(FlagGrid)
@@ -107,7 +108,7 @@ for t in range(200):
 	applyInflow=False
 	if (curt>=0 and curt<75):
 		densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )
-		sourceVel.applyToGrid( grid=vel , value=velInflow )
+		sourceVel.applyToGrid( grid=vel , value=(velInflow*float(res)) )
 		applyInflow=True
 	
 	setWallBcs(flags=flags, vel=vel)    
