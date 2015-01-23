@@ -284,7 +284,7 @@ PYTHON void copyMacToVec3 (MACGrid &source, Grid<Vec3>& target)
 		target(i,j,k) = source(i,j,k);
 	}
 }
-PYTHON void convertMacToVec3 (LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertMacToVec3... use copyMacToVec3 instead",1); copyMacToVec3(source,target); }
+PYTHON void convertMacToVec3 (MACGrid &source , Grid<Vec3> &target) { debMsg("Deprecated - do not use convertMacToVec3... use copyMacToVec3 instead",1); copyMacToVec3(source,target); }
 
 PYTHON void copyLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
 {

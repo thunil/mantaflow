@@ -44,7 +44,7 @@ for t in range(250):
 		densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
 		
 	# optionally, enforce inflow velocity
-	#source.applyToGrid(grid=vel, value=velInflow)
+	#source.applyToGrid(grid=vel, value=vec3(0.1,0,0))
 
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2, strength=1.0)
