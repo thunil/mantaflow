@@ -37,7 +37,7 @@ solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccura
 s.step()
 
 # check - note, unfortunately low threshold here necessary for float<>double comparisons...
-doTestGrid( sys.argv[0], "pressure0" , s, pressure , threshold=1e-04, thresholdStrict=1e-10, invertResult=False )
+doTestGrid( sys.argv[0], "pressure0" , s, pressure , threshold=1e-04, thresholdStrict=1e-10)
 
 # ============================
     
@@ -51,5 +51,5 @@ setWallBcs(flags=flags, vel=vel)
 s.step()
 
 # check final state
-doTestGrid( sys.argv[0], "pressure" , s, pressure , threshold=1e-04, thresholdStrict=1e-10, invertResult=False )
+doTestGrid( sys.argv[0], "pressure" , s, pressure , threshold=1e-04, thresholdStrict=1e-10)
 
