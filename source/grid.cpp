@@ -276,22 +276,23 @@ PYTHON Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
 	return maxVal; 
 }
 
-// simple helper functions to convert mac to vec3 , and levelset to real grids
+// simple helper functions to copy (convert) mac to vec3 , and levelset to real grids
 // (are assumed to be the same for running the test cases - in general they're not!)
-PYTHON void convertMacToVec3 (MACGrid &source, Grid<Vec3>& target)
+PYTHON void copyMacToVec3 (MACGrid &source, Grid<Vec3>& target)
 {
 	FOR_IJK(target) {
 		target(i,j,k) = source(i,j,k);
 	}
 }
+PYTHON void convertMacToVec3 (LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertMacToVec3... use copyMacToVec3 instead",1); copyMacToVec3(source,target); }
 
-PYTHON void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
+PYTHON void copyLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
 {
 	FOR_IJK(target) {
 		target(i,j,k) = source(i,j,k);
 	}
 }
-
+PYTHON void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertLevelsetToReal... use copyLevelsetToReal instead",1); copyLevelsetToReal(source,target); }
 
 template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 	std::ostringstream out;

@@ -464,7 +464,7 @@ if(GUI)
 		list(APPEND F_LIBS ${Qt5Widgets_LIBRARIES} ${Qt5OpenGL_LIBRARIES})
 		list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})
 	else()
-		message("Using Qt4")
+		message("No Qt5 found (recommended!), trying to use Qt4")
 		find_package(Qt4 REQUIRED)
 		set(QT_USE_QTOPENGL TRUE)
 
