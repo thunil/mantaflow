@@ -420,7 +420,7 @@ void writeGridTxt(const string& name, Grid<T>* grid) {
 
 	ofstream ofs(name.c_str());
 	if (!ofs.good())
-		errMsg("can't open file!");
+		errMsg("can't open file " << name);
 	FOR_IJK(*grid) {
 		ofs << Vec3i(i,j,k) <<" = "<< (*grid)(i,j,k) <<"\n";
 	}
@@ -433,7 +433,7 @@ void writeGridRaw(const string& name, Grid<T>* grid) {
 	
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-	if (!gzf) errMsg("can't open file");
+	if (!gzf) errMsg("can't open file " << name);
 	gzwrite(gzf, &((*grid)[0]), sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ());
 	gzclose(gzf);
 #	else
@@ -447,7 +447,7 @@ void readGridRaw(const string& name, Grid<T>* grid) {
 	
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
-	if (!gzf) errMsg("can't open file");
+	if (!gzf) errMsg("can't open file " << name);
 	
 	int bytes = sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ();
 	int readBytes = gzread(gzf, &((*grid)[0]), bytes);
@@ -490,22 +490,34 @@ PYTHON void printUniFileInfoString(const string& name) {
 }
 
 //! for auto-init & check of results of test runs
-PYTHON Vec3 getUniFileSize(const string& name) {
-	Vec3 s(0.);
+void getUniFileSize(const string& name, int& x, int& y, int& z, int* t=NULL) {
+	x = y = z = 0;
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
 	if (gzf) { 
 		char ID[5]={0,0,0,0,0};
 		gzread(gzf, ID, 4); 
-		if (!strcmp(ID, "MNT2")) {
+		if ( (!strcmp(ID, "MNT2")) || (!strcmp(ID, "M4T2")) ) {
 			UniHeader head;
 			assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no header present"); 
-			s = Vec3(head.dimX,head.dimY,head.dimZ);
+			x = head.dimX;
+			y = head.dimY;
+			z = head.dimZ;
+		}
+		// optionally , read fourth dim
+		if ((!strcmp(ID, "M4T2")) && t) {
+			int dimT = 0;
+			gzread(gzf, &dimT, sizeof(int) );
+			(*t) = dimT;
 		}
 		gzclose(gzf);
 	}
 #	endif
-	return s;
+}
+PYTHON Vec3 getUniFileSize(const string& name) {
+	int x,y,z;
+	getUniFileSize(name, x,y,z);
+	return Vec3( Real(x), Real(y), Real(z) );
 }
 
 
@@ -537,7 +549,7 @@ void writeGridUni(const string& name, Grid<T>* grid) {
 		errMsg("unknown element type");
 	
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-	if (!gzf) errMsg("can't open file");
+	if (!gzf) errMsg("can't open file " << name);
 	
 	gzwrite(gzf, ID, 4);
 	void* ptr = &((*grid)[0]);
@@ -562,7 +574,7 @@ void readGridUni(const string& name, Grid<T>* grid) {
 
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
-	if (!gzf) errMsg("can't open file");
+	if (!gzf) errMsg("can't open file " << name);
 
 	char ID[5]={0,0,0,0,0};
 	gzread(gzf, ID, 4);
@@ -603,6 +615,8 @@ void readGridUni(const string& name, Grid<T>* grid) {
 		assertMsg (head.bytesPerElement == sizeof(T), "grid element size doesn't match "<< head.bytesPerElement <<" vs "<< sizeof(T) );
 		gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
 #		endif
+	} else {
+		debMsg( "Unknown header!" ,1);
 	}
 	gzclose(gzf);
 #	else
@@ -665,6 +679,7 @@ void writeGridVol<Real>(const string& name, Grid<Real>* grid) {
 };
 
 
+
 //*****************************************************************************
 // particle data
 //*****************************************************************************
@@ -689,7 +704,7 @@ void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 	head.timestamp = stamp.time;
 	
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-	if (!gzf) errMsg("can't open file");
+	if (!gzf) errMsg("can't open file " << name);
 	
 	gzwrite(gzf, ID, 4);
 #	if FLOATINGPOINT_PRECISION!=1
@@ -717,7 +732,7 @@ void readParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 	
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
-	if (!gzf) errMsg("can't open file");
+	if (!gzf) errMsg("can't open file " << name);
 
 	char ID[5]={0,0,0,0,0};
 	gzread(gzf, ID, 4);
@@ -772,7 +787,7 @@ void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	head.timestamp = stamp.time;
 	
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-	if (!gzf) errMsg("can't open file");
+	if (!gzf) errMsg("can't open file " << name);
 	gzwrite(gzf, ID, 4);
 
 #	if FLOATINGPOINT_PRECISION!=1
@@ -796,7 +811,7 @@ void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
-	if (!gzf) errMsg("can't open file");
+	if (!gzf) errMsg("can't open file " << name);
 
 	char ID[5]={0,0,0,0,0};
 	gzread(gzf, ID, 4);
