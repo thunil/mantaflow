@@ -68,11 +68,11 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 	#print( "doTestGrid, incoming grid type :" + type(grid).__name__ + " class:"+grid._class+ " T:"+grid._T )
 	if ( type(grid).__name__ == "MACGrid" ):
 		gridTmpMac = parent.create(VecGrid)
-		convertMacToVec3(grid , gridTmpMac )
+		copyMacToVec3(grid , gridTmpMac )
 		return doTestGrid( file, name, parent, gridTmpMac , threshold, thresholdStrict)
 	if ( type(grid).__name__ == "LevelsetGrid" ):
 		gridTmpLs = parent.create(RealGrid)
-		convertLevelsetToReal(grid , gridTmpLs )
+		copyLevelsetToReal(grid , gridTmpLs )
 		return doTestGrid( file, name, parent, gridTmpLs  , threshold, thresholdStrict)
 
 	# now we should only have real & vec3 grids
