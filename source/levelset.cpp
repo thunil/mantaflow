@@ -62,7 +62,8 @@ void SetUninitialized (Grid<int>& fmFlags, LevelsetGrid& phi, const Real val) {
 template<bool inward>
 inline bool isAtInterface(Grid<int>& fmFlags, LevelsetGrid& phi, const Vec3i& p) {
 	// check for interface
-	for (int nb=0; nb<6; nb++) {
+	int max = phi.is3D() ? 6 : 4;
+	for (int nb=0; nb<max; nb++) {
 		const Vec3i pn(p + neighbors[nb]);
 		if (!fmFlags.isInBounds(pn)) continue;
 		

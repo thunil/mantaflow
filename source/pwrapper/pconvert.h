@@ -75,7 +75,7 @@ template<class T> bool isPy(PyObject* obj) {
 }
 
 template<class T> T fromPy(PyObject* obj) {
-	throw Error("Unknown type conversion. Did you pass a PbClass by value? (you shouldn't)");
+	throw Error("Unknown type conversion. Did you pass a PbClass by value? (Don't: always pass grids/particlesystems etc. by reference or using a pointer.)");
 }
 
 // builtin types
