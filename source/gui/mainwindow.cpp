@@ -303,7 +303,9 @@ void MainWnd::setCamRot(float x, float y, float z) {
 	mGlWidget->setCamRot( Vec3(x, y, z) );
 }
 void MainWnd::windowSize(int w, int h) {
-	mGlWidget->windowSize( w,h );
+	mGlWidget->setMinimumSize( w,h );
+	mGlWidget->setMaximumSize( w,h );
+	mGlWidget->resize( w,h );
 }
 
 MainWnd::~MainWnd() {
