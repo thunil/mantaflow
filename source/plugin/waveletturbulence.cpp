@@ -21,6 +21,55 @@ using namespace std;
 
 namespace Manta {
 
+//*****************************************************************************
+
+// first some fairly generic interpolation functions for grids with multiple sizes
+
+PYTHON void interpolateGrid( Grid<Real>& target, Grid<Real>& source , Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), int orderSpace=1 )
+{
+	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
+
+	// a brief note on a mantaflow specialty: the target grid has to be the first argument here!
+	// the parent fluidsolver object is taken from the first grid, and it determines the size of the
+	// loop for the kernel call. as we're writing into target, it's important to loop exactly over
+	// all cells of the target grid... (note, when calling the plugin in python, it doesnt matter anymore).
+
+	// sourceFactor offset necessary to shift eval points by half a small cell width
+	knInterpolateGridTempl<Real>(target, source, sourceFactor*scale, sourceFactor*0.5 + offset, orderSpace);
+}
+
+PYTHON void interpolateGridVec3( Grid<Vec3>& target, Grid<Vec3>& source , Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), int orderSpace=1 )
+{
+	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
+	knInterpolateGridTempl<Vec3>(target, source, sourceFactor*scale, sourceFactor*0.5 + offset, orderSpace); 
+}
+
+
+//!interpolate a mac velocity grid from one size to another size
+KERNEL 
+void KnInterpolateMACGrid(MACGrid& target, MACGrid& source, const Vec3& sourceFactor, const Vec3& off, int orderSpace)
+{
+	Vec3 pos = Vec3(i,j,k) * sourceFactor + off;
+
+	Real vx = source.getInterpolatedHi(pos - Vec3(0.5,0,0), orderSpace)[0];
+	Real vy = source.getInterpolatedHi(pos - Vec3(0,0.5,0), orderSpace)[1];
+	Real vz = 0.f;
+	if(source.is3D()) vz = source.getInterpolatedHi(pos - Vec3(0,0,0.5), orderSpace)[2];
+
+	target(i,j,k) = Vec3(vx,vy,vz);
+}
+
+PYTHON void interpolateMACGrid(MACGrid& target, MACGrid& source, Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), int orderSpace=1)
+{
+	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
+
+	// see interpolateGrid for why the target grid needs to come first in the parameters!  
+	KnInterpolateMACGrid(target, source, sourceFactor*scale, sourceFactor*0.5 + offset, orderSpace);
+}
+
+
+
+//*****************************************************************************
 
 //! Apply vector noise to grid, this is a simplified version - no position scaling or UVs
 KERNEL 
@@ -134,52 +183,6 @@ PYTHON void computeEnergy( FlagGrid& flags, MACGrid& vel, Grid<Real>& energy )
 	KnApplyComputeEnergy( flags, vel, energy );
 }
 
-
-
-//!interpolate grid from one size to another size
-KERNEL 
-void KnInterpolateGrid(Grid<Real>& target, Grid<Real>& source, const Vec3& sourceFactor, int orderSpace)
-{
-	Vec3 pos = Vec3(i,j,k) * sourceFactor;
-	if(!source.is3D()) pos[2] = 0; // allow 2d -> 3d
-	target(i,j,k) = source.getInterpolatedHi(pos, orderSpace);
-}
-
-PYTHON void interpolateGrid( Grid<Real>& target, Grid<Real>& source , int orderSpace=1 )
-{
-	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
-
-	// a brief note on a mantaflow specialty: the target grid has to be the first argument here!
-	// the parent fluidsolver object is taken from the first grid, and it determines the size of the
-	// loop for the kernel call. as we're writing into target, it's important to loop exactly over
-	// all cells of the target grid... (note, when calling the plugin in python, it doesnt matter anymore).
-
-	KnInterpolateGrid(target, source, sourceFactor, orderSpace);
-}
-
-
-//!interpolate a mac velocity grid from one size to another size
-KERNEL 
-void KnInterpolateMACGrid(MACGrid& target, MACGrid& source, const Vec3& sourceFactor, int orderSpace)
-{
-	Vec3 pos = Vec3(i,j,k) * sourceFactor;
-
-	Real vx = source.getInterpolatedHi(pos - Vec3(0.5,0,0), orderSpace)[0];
-	Real vy = source.getInterpolatedHi(pos - Vec3(0,0.5,0), orderSpace)[1];
-	Real vz = 0.f;
-	if(source.is3D()) vz = source.getInterpolatedHi(pos - Vec3(0,0,0.5), orderSpace)[2];
-
-	target(i,j,k) = Vec3(vx,vy,vz);
-}
-
-PYTHON void interpolateMACGrid(MACGrid& target, MACGrid& source, int orderSpace=1)
-{
-	Vec3 sourceFactor = calcGridSizeFactor( source.getSize(), target.getSize() );
-
-	// see interpolateGrid for why the target grid needs to come first in the parameters!
-
-	KnInterpolateMACGrid(target, source, sourceFactor, orderSpace);
-}
 
 PYTHON void computeWaveletCoeffs(Grid<Real>& input)
 {

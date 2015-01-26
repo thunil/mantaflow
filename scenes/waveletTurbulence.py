@@ -8,7 +8,7 @@ import os, shutil, math, sys
 # dimension two/three d
 dim = 2
 # how much to upres the XL sim?
-upres = 0
+upres = 2
 
 # solver params
 res = 80
