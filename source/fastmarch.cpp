@@ -395,6 +395,7 @@ void knExtrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance
 		vel(p)[c] = avgVel / nbs;
 	}
 }
+
 // same as extrapolateMACSimple, but uses weight vec3 grid instead of flags to check
 // for valid values (to be used in combination with mapPartsToMAC)
 // note - the weight grid values are destroyed! the function is necessary due to discrepancies
@@ -421,5 +422,119 @@ PYTHON void extrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int dis
 
 	}
 }
+
+// simple extrapolation functions for levelsets
+
+static const Vec3i nb[6] = { 
+	Vec3i(1 ,0,0), Vec3i(-1,0,0),
+	Vec3i(0,1 ,0), Vec3i(0,-1,0),
+	Vec3i(0,0,1 ), Vec3i(0,0,-1) };
+
+// larger neighborhood (>1 dx away)
+static const Vec3i nbExt2d[4] = { 
+	Vec3i(1, 1,0), Vec3i(-1, 1,0),
+	Vec3i(1,-1,0), Vec3i(-1,-1,0) };
+
+KERNEL(bnd=1) template<class S>
+void knExtrapolateLsSimple (Grid<S>& val, int distance , Grid<int>& tmp , const int d , S direction )
+{
+	const int dim = (val.is3D() ? 3:2); 
+	if (tmp(i,j,k) != 0) return;
+
+	// copy from initialized neighbors
+	Vec3i p(i,j,k);
+	int   nbs = 0;
+	S     avg(0.);
+	for (int n=0; n<2*dim; ++n) {
+		if (tmp(p+nb[n]) == d) {
+			avg += val(p+nb[n]);
+			nbs++;
+		}
+	}
+
+	if(nbs>0) {
+		tmp(p) = d+1;
+		val(p) = avg / nbs + direction;
+	} 
+}
+
+
+KERNEL(bnd=1) template<class S>
+void knSetRemaining (Grid<S>& phi, Grid<int>& tmp, S distance )
+{
+	if (tmp(i,j,k) != 0) return;
+	phi(i,j,k) = distance;
+}
+
+PYTHON void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=false )
+{
+	Grid<int> tmp( phi.getParent() );
+	tmp.clear();
+	const int dim = (phi.is3D() ? 3:2);
+
+	// by default, march outside
+	Real direction = 1.;
+	if(!inside) { 
+		// mark all inside
+		FOR_IJK_BND(phi,1) {
+			if ( phi(i,j,k) < 0. ) { tmp(i,j,k) = 1; }
+		} 
+	} else {
+		direction = -1.;
+		FOR_IJK_BND(phi,1) {
+			if ( phi(i,j,k) > 0. ) { tmp(i,j,k) = 1; }
+		} 
+	}
+	// + first layer around
+	FOR_IJK_BND(phi,1) {
+		Vec3i p(i,j,k);
+		if ( tmp(p) ) continue;
+		for (int n=0; n<2*dim; ++n) {
+			if (tmp(p+nb[n])==1) {
+				tmp(i,j,k) = 2; n=2*dim;
+			}
+		}
+	} 
+
+	// extrapolate for distance
+	for(int d=2; d<1+distance; ++d) {
+		knExtrapolateLsSimple<Real>(phi, distance, tmp, d, direction );
+	} 
+
+	// set all remaining cells to max
+	knSetRemaining<Real>(phi, tmp, Real(direction * (distance+2)) );
+}
+
+// extrapolate centered vec3 values from marked fluid cells
+PYTHON void extrapolateVec3Simple (Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4)
+{
+	Grid<int> tmp( vel.getParent() );
+	tmp.clear();
+	const int dim = (vel.is3D() ? 3:2);
+
+	// mark all inside
+	FOR_IJK_BND(vel,1) {
+		if ( phi(i,j,k) < 0. ) { tmp(i,j,k) = 1; }
+	} 
+	// + first layer outside
+	FOR_IJK_BND(vel,1) {
+		Vec3i p(i,j,k);
+		if ( tmp(p) ) continue;
+		for (int n=0; n<2*dim; ++n) {
+			if (tmp(p+nb[n])==1) {
+				tmp(i,j,k) = 2; n=2*dim;
+			}
+		}
+	} 
+
+	for(int d=2; d<1+distance; ++d) {
+		knExtrapolateLsSimple<Vec3>(vel, distance, tmp, d, Vec3(0.) );
+	} 
+	knSetRemaining<Vec3>(vel, tmp, Vec3(0.) );
+}
+
+
+
+
 
 } // namespace
