@@ -536,7 +536,7 @@ void writeGridUni(const string& name, Grid<T>* grid) {
 	head.gridType = grid->getType();
 	head.bytesPerElement = sizeof(T);
 	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
-	MuTime stamp; stamp.get();
+	MuTime stamp;
 	head.timestamp = stamp.time;
 	
 	if (grid->getType() & GridBase::TypeInt)
@@ -700,7 +700,7 @@ void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 	head.bytesPerElement = PartSysSize;
 	head.elementType = 0; // 0 for base data
 	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
-	MuTime stamp; stamp.get();
+	MuTime stamp;
 	head.timestamp = stamp.time;
 	
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
@@ -783,7 +783,7 @@ void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	head.bytesPerElement = sizeof(T);
 	head.elementType = 1; // 1 for particle data, todo - add sub types?
 	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
-	MuTime stamp; stamp.get();
+	MuTime stamp;
 	head.timestamp = stamp.time;
 	
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression

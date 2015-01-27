@@ -111,7 +111,7 @@ inline Real calculateRadiusFactor(Grid<Real>& grid, Real factor) {
 
 //! re-sample particles based on an input levelset 
 PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& flags, 
-		int minParticles, int maxParticles, LevelsetGrid& phi, Real radiusFactor=1.  ) 
+		int minParticles, int maxParticles, LevelsetGrid& phi, Real radiusFactor=1. , Real narrowBand=-1. ) 
 {
 	// which levelset to use as threshold
 	const Real SURFACE_LS = -1.0 * calculateRadiusFactor(phi, radiusFactor);
@@ -126,11 +126,13 @@ PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& fl
 				parts.kill(idx); // out of domain, remove
 				continue;
 			}
-			int num = tmp(p);
+
+			Real phiv = phi.getInterpolated( parts.getPos(idx) );
+			if( narrowBand>0. && phiv < -narrowBand ) { parts.kill(idx); continue; }
 
 			bool atSurface = false;
-			Real phiv = phi.getInterpolated( parts.getPos(idx) );
 			if (phiv > SURFACE_LS) atSurface = true;
+			int num = tmp(p);
 			
 			// dont delete particles in non fluid cells here, the particles are "always right"
 			if ( num > maxParticles && (!atSurface) ) {
@@ -148,6 +150,7 @@ PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& fl
 		
 		// skip cells near surface
 		if (phi(i,j,k) > SURFACE_LS) continue;
+		if( narrowBand>0. && phi(i,j,k) < -narrowBand ) { continue; }
 
 		if (flags.isFluid(i,j,k) && cnt < minParticles) {
 			for (int m=cnt; m < minParticles; m++) { 
@@ -420,6 +423,15 @@ PYTHON void mapPartsToMAC( FlagGrid& flags, MACGrid& vel , MACGrid& velOld ,
 	if(freeTmp) delete weight;
 }
 
+KERNEL(idx)
+void knCombineVels(MACGrid& vel, Grid<Vec3>& w, MACGrid& combineVel ) {
+	for(int c=0; c<3; ++c)
+		if(w[idx][c]>0.1) combineVel[idx][c] = vel[idx][c];
+}
+
+PYTHON void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel ) {
+	knCombineVels(vel, weight, combineVel);
+}
 
 KERNEL(pts, single) template<class T>
 void knMapLinear( BasicParticleSystem& p, FlagGrid& flags, Grid<T>& target, Grid<Real>& gtmp, 
