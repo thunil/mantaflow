@@ -4,20 +4,20 @@
 
 from manta import *
 
-# how many frames to calculate 
-frames    = 100
-
 # solver params
-dim = 2
+dim = 3
 res = 64
 gs = vec3(res,1.5*res,res)
-gs = vec3(res,res,res) # NT_DEBUG
 if (dim==2):
 	gs.z=1
 s = FluidSolver(name='main', gridSize = gs, dim=dim)
 
+# how many frames to calculate 
+frames    = 100
+
+# set time step range
 s.frameLength = 1.2   # length of one frame (in "world time")
-s.timestepMin = 0.1   # time step range
+s.timestepMin = 0.2   # time step range
 s.timestepMax = 2.0
 s.cfl         = 3.0   # maximal velocity per cell
 s.timestep    = (s.timestepMax+s.timestepMin)*0.5

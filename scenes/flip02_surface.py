@@ -11,7 +11,7 @@ gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
 s = Solver(name='main', gridSize = gs, dim=dim)
-s.timestep = 0.5
+s.timestep = 0.8
 minParticles = pow(2,dim)
 
 # size of particles 
@@ -92,18 +92,19 @@ for t in range(250):
 	# create approximate surface level set, resample particles
 	gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
 	unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
-	#phi.reinitMarching(flags=flags, velTransport=vel, correctOuterLayer=False ) # optionally, beautify levelset
-
-	# set source grids for resampling, used in adjustNumber!
-	pVel.setSource( vel, isMAC=True )
-	pTest.setSource( tstGrid );
-	adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor ) 
+	# extend levelset somewhat, needed by particle resampling in adjustNumber
+	extrapolateLsSimple(phi=phi, distance=4, inside=True); 
 
 	# forces & pressure solve
 	addGravity(flags=flags, vel=vel, gravity=(0,-0.001,0))
 	setWallBcs(flags=flags, vel=vel)	
 	solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi)
 	setWallBcs(flags=flags, vel=vel)
+
+	# set source grids for resampling, used in adjustNumber!
+	pVel.setSource( vel, isMAC=True )
+	pTest.setSource( tstGrid );
+	adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor ) 
 
 	# make sure we have proper velocities
 	extrapolateMACSimple( flags=flags, vel=vel )

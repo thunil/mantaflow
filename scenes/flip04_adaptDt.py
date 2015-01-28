@@ -3,17 +3,18 @@
 # 
 from manta import *
 
-# how many frames to calculate 
-frames    = 200
-
 # solver params
-dim = 2
-res = 100
+dim = 3
+res = 80
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
 s = Solver(name='main', gridSize = gs, dim=dim)
 
+# how many frames to calculate 
+frames    = 200
+
+# adaptive time stepping
 s.frameLength = 0.6   # length of one frame (in "world time")
 s.timestepMin = 0.1   # time step range
 s.timestepMax = 2.0
@@ -70,13 +71,15 @@ elif setup==1:
 	fluidVel   = s.create(Sphere, center=gs*dropCenter, radius=res*(dropRadius+0.05) )
 	phi = fluidBasin.computeLevelset()
 	phi.join( fluidDrop.computeLevelset() )
+	flags.updateFromLevelset(phi)
 
 flags.updateFromLevelset(phi)
 
-# obstacle init needs to go after updateFromLs
-obsBox = s.create(Box, p0=gs*vec3(0.7,0.0,0.5), p1=gs*vec3(0.8,1.0,0.8)) 
-obsBox.applyToGrid(grid=flags, value=(FlagObstacle) )
-#obsBox.applyToGrid(grid=flags, value=(FlagObstacle|FlagStick) )
+if dim==3:
+	# obstacle init needs to go after updateFromLs
+	obsBox = s.create(Box, p0=gs*vec3(0.7,0.0,0.5), p1=gs*vec3(0.8,1.0,0.8)) 
+	obsBox.applyToGrid(grid=flags, value=(FlagObstacle) )
+	#obsBox.applyToGrid(grid=flags, value=(FlagObstacle|FlagStick) )
 
 sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.05 )
 mapGridToPartsVec3(source=vel, parts=pp, target=pVel )
@@ -119,12 +122,7 @@ while s.frame < frames:
 	# create approximate surface level set, resample particles
 	gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
 	unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
-	phi.reinitMarching(flags=flags, velTransport=vel, correctOuterLayer=False ) # optionally, beautify levelset, needed for adjustNumber
-
-	# set source grids for resampling, used in adjustNumber!
-	pVel.setSource( vel, isMAC=True )
-	pTest.setSource( tstGrid );
-	adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor ) 
+	extrapolateLsSimple(phi=phi, distance=4, inside=True); 
 
 	# forces & pressure solve
 	addGravity(flags=flags, vel=vel, gravity=(0,-0.003,0))
@@ -132,9 +130,13 @@ while s.frame < frames:
 	solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi)
 	setWallBcs(flags=flags, vel=vel)
 
+	# set source grids for resampling, used in adjustNumber!
+	pVel.setSource( vel, isMAC=True )
+	pTest.setSource( tstGrid );
+	adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor ) 
+
 	# make sure we have proper velocities
-	extrapolateMACSimple( flags=flags, vel=vel, distance=(int(maxVel)+2+10), phiObs=phiObs ) # with knUnprojectNormalComp 
-	# NT_DEBUG , remove +10 ??
+	extrapolateMACSimple( flags=flags, vel=vel, distance=(int(maxVel*1.5)+2) ) 
 	
 	flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97 )
 
@@ -145,9 +147,8 @@ while s.frame < frames:
 	#s.printMemInfo()
 	s.step()
 
-	# optionally particle data , or screenshot
-	#pp.save( 'flipParts_%04d.uni' % s.frame );
-
+	# optionally save particle data , or screenshot
+	#pp.save( 'flipParts_%04d.uni' % s.frame ); 
 	if 0 and (GUI):
 		gui.screenshot( 'flip04_%04d.png' % s.frame );
 
