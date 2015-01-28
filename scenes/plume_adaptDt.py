@@ -50,6 +50,7 @@ source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*v
 
 
 #main loop
+lastFrame = -1
 while s.frame < frames:
 	
 	maxvel = vel.getMaxValue()
@@ -70,7 +71,7 @@ while s.frame < frames:
 	#timings.display()
 	s.step()
 
-	if 0 and (GUI) and (lastFrame!=frame) and (s.frame%1==0):
+	if 0 and (GUI) and (lastFrame!=s.frame) and (s.frame%1==0):
 		gui.screenshot( 'addt05_%04d.png' % s.frame );
 	lastFrame = s.frame
 
