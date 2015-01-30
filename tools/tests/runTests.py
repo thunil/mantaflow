@@ -66,6 +66,7 @@ if getVisualSetting():
 
 	if not os.path.exists( outpngdir ):
 		os.makedirs( outpngdir )	
+	print("Note - running in visual test mode...");
 
 # limit the runs for debugging
 visModeDebugCount = 0

@@ -32,10 +32,15 @@ KERNEL(bnd=1)
 void InitFmIn (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ignoreWalls, int obstacleType) {
 	const int idx = flags.index(i,j,k);
 	const Real v = phi[idx];
-	if (v>=0 && (!ignoreWalls || (flags[idx] & obstacleType) == 0))
-		fmFlags[idx] = FlagInited;
-	else
-		fmFlags[idx] = 0;
+	if (ignoreWalls) {
+		if (v>=0. && ((flags[idx] & obstacleType) == 0) )
+			fmFlags[idx] = FlagInited;
+		else
+			fmFlags[idx] = 0;
+	} else {
+		if (v>=0) fmFlags[idx] = FlagInited;
+		else      fmFlags[idx] = 0;
+	}
 }
 
 KERNEL(bnd=1) 
@@ -48,15 +53,19 @@ void InitFmOut (FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& phi, bool ign
 			fmFlags[idx] = 0;
 			phi[idx] = 0;
 		}
-	}
-	else
+	} else {
 		fmFlags[idx] = (v<0) ? FlagInited : 0;
+	}
 }
 
 KERNEL(bnd=1) 
-void SetUninitialized (Grid<int>& fmFlags, LevelsetGrid& phi, const Real val) {
-	if (fmFlags(i,j,k) != FlagInited)
-		phi(i,j,k) = val;
+void SetUninitialized (Grid<int>& flags, Grid<int>& fmFlags, LevelsetGrid& phi, const Real val, int ignoreWalls, int obstacleType) {
+	if(ignoreWalls) {
+		if ( (fmFlags(i,j,k) != FlagInited) && ((flags(i,j,k) & obstacleType) == 0) ) {
+			phi(i,j,k) = val; }
+	} else {
+		if ( (fmFlags(i,j,k) != FlagInited) ) phi(i,j,k) = val;
+	}
 }
 
 template<bool inward>
@@ -68,8 +77,8 @@ inline bool isAtInterface(Grid<int>& fmFlags, LevelsetGrid& phi, const Vec3i& p)
 		if (!fmFlags.isInBounds(pn)) continue;
 		
 		if (fmFlags(pn) != FlagInited) continue;
-		if ((inward && phi(pn) >= 0) || 
-			(!inward && phi(pn) < 0)) return true;
+		if (( inward && phi(pn) >= 0.) || 
+			(!inward && phi(pn) <  0.)) return true;
 	}
 	return false;
 }
@@ -120,7 +129,6 @@ void LevelsetGrid::reinitMarching(
 	
 	Grid<int> fmFlags(mParent);
 	LevelsetGrid& phi = *this;
-
 	FastMarch<FmHeapEntryIn,  -1> marchIn (flags, fmFlags, phi, maxTime, NULL, NULL);
 	
 	// march inside
@@ -128,7 +136,7 @@ void LevelsetGrid::reinitMarching(
 	
 	FOR_IJK_BND(flags, 1) {
 		if (fmFlags(i,j,k) == FlagInited) continue;
-		if ((flags(i,j,k) & obstacleType) != 0) continue;
+		if (ignoreWalls && ((flags(i,j,k) & obstacleType) != 0)) continue;
 		const Vec3i p(i,j,k);
 				
 		if(isAtInterface<true>(fmFlags, phi, p)) {
@@ -138,10 +146,10 @@ void LevelsetGrid::reinitMarching(
 			// add neighbors that are not at the interface
 			for (int nb=0; nb<2*dim; nb++) {
 				const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
-				if ((flags.get(pn) & obstacleType) != 0) continue;
+				if (ignoreWalls && ((flags.get(pn) & obstacleType) != 0)) continue;
 				
 				// check neighbors of neighbor
-				if (phi(pn) < 0 && !isAtInterface<true>(fmFlags, phi, pn)) {
+				if (phi(pn) < 0. && !isAtInterface<true>(fmFlags, phi, pn)) {
 					marchIn.addToList(pn, p); 
 				}
 			}            
@@ -153,13 +161,13 @@ void LevelsetGrid::reinitMarching(
 	// now march out...    
 	
 	// set un initialized regions
-	SetUninitialized (fmFlags, phi, -maxTime - 1.); 
+	SetUninitialized (flags, fmFlags, phi, -maxTime - 1., ignoreWalls, obstacleType); 
 
 	InitFmOut (flags, fmFlags, phi, ignoreWalls, obstacleType);
 	
 	FastMarch<FmHeapEntryOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport, normSpeed);
 
-	// NT_DEBUG
+	// NT_DEBUG , finalize - still experimental
 	if(normSpeed && velTransport) {
 		FOR_IJK_BND(flags, 1) {
 			Vec3 vel  = velTransport->getCentered(i,j,k);
@@ -173,7 +181,7 @@ void LevelsetGrid::reinitMarching(
 		// normal version, inwards march is done, now add all outside values (0..2] to list
 		// note, this might move the interface a bit! but keeps a nice signed distance field...        
 		FOR_IJK_BND(flags, 1) {
-			if ((flags(i,j,k) & obstacleType) != 0) continue;
+			if (ignoreWalls && ((flags(i,j,k) & obstacleType) != 0)) continue;
 			const Vec3i p(i,j,k);
 			
 			// check nbs
@@ -181,7 +189,7 @@ void LevelsetGrid::reinitMarching(
 				const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
 				
 				if (fmFlags(pn) != FlagInited) continue;
-				if ((flags.get(pn) & obstacleType) != 0) continue;
+				if (ignoreWalls && ((flags.get(pn) & obstacleType)) != 0) continue;
 				
 				const Real nbPhi = phi(pn);
 				
@@ -194,7 +202,7 @@ void LevelsetGrid::reinitMarching(
 		// alternative version, keep interface, do not distort outer cells
 		// add all ouside values, but not those at the IF layer
 		FOR_IJK_BND(flags, 1) {
-			if ((flags(i,j,k) & obstacleType) != 0) continue;
+			if (ignoreWalls && ((flags(i,j,k) & obstacleType) != 0)) continue;
 			
 			// only look at ouside values
 			const Vec3i p(i,j,k);
@@ -207,19 +215,20 @@ void LevelsetGrid::reinitMarching(
 				// add neighbors that are not at the interface
 				for (int nb=0; nb<2*dim; nb++) {
 					const Vec3i pn(p + neighbors[nb]); // index always valid due to bnd=1                
-					if ((flags.get(pn) & obstacleType) != 0) continue;
+					if (ignoreWalls && ((flags.get(pn) & obstacleType) != 0)) continue;
 				
 					// check neighbors of neighbor
-					if (phi(pn) > 0 && !isAtInterface<false>(fmFlags, phi, pn))
+					if (phi(pn) > 0. && !isAtInterface<false>(fmFlags, phi, pn)) {
 						marchOut.addToList(pn, p);
+					}
 				}            
 			}
 		}
 	}    
 	marchOut.performMarching();
-	
+
 	// set un initialized regions
-	SetUninitialized (fmFlags, phi, +maxTime + 1.);    
+	SetUninitialized (flags, fmFlags, phi, +maxTime + 1., ignoreWalls, obstacleType);    
 }
 
 void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
