@@ -159,6 +159,7 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
 	// update field
 	mFmFlags[idx] = FlagIsOnHeap;
 	mLevelset[idx] = ttime;
+	// debug info std::cout<<"set "<< idx <<","<< ttime <<"\n";
 	
 	if (mVelTransport.isInitialized())
 		mVelTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
