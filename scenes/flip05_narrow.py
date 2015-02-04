@@ -1,21 +1,23 @@
 #
-# Flip scene with adaptive time stepping (otherwise similar to flip02)
+# Flip scene with particle seeding only in a narrow band around the surface
 # 
 from manta import *
 
 # how many frames to calculate 
 frames    = 200
 
+# no. of cells around surface
 narrowBand = 5;
 
 # solver params
-dim = 2
+dim = 3
 res = 64
 gs = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
 s = Solver(name='main', gridSize = gs, dim=dim)
 
+# adaptive time stepping
 s.frameLength = 0.6   # length of one frame (in "world time")
 s.timestepMin = 0.2   # time step range
 s.timestepMax = 2.0
@@ -88,19 +90,16 @@ if fluidVel!=0:
 	fluidVel.applyToGrid( grid=vel , value=gs*fluidSetVel )
 	mapGridToPartsVec3(source=vel, parts=pp, target=pVel )
 
-# testing the real channel while resampling - original particles
-# will have a value of 0.1, new particle will get a value from the tstGrid
-testInitGridWithPos(tstGrid)
-
 if 1 and (GUI):
 	gui = Gui()
 	gui.show( dim==2 )
 	gui.pause()
 	  
 	# show all particles shaded by velocity
-	gui.nextPdata()
-	gui.nextPartDisplay()
-	gui.nextPartDisplay()
+	if(dim==2):
+		gui.nextPdata()
+		gui.nextPartDisplay()
+		gui.nextPartDisplay()
 
 
 
@@ -156,20 +155,19 @@ while s.frame < frames:
 	pVel.setSource( vel, isMAC=True )
 	adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor , narrowBand=narrowBand ) 
 
-	if 0 and (dim==3):
+	if 1 and (dim==3):
 		phi.createMesh(mesh)
 	
 	#timings.display()
 	#s.printMemInfo()
 	s.step()
 
-	# optionally particle data , or screenshot
-	#pp.save( 'flipParts_%04d.uni' % s.frame );
-
+	# optionally particle data , or screenshot 
 	if 0 and (GUI):
 		nbid = 0;
 		if narrowBand>0:
 			nbid = int(narrowBand);
-		gui.screenshot( 'flip07nb%02d_%04d.png' % (nbid,s.frame) );
+		gui.screenshot( 'flip05nb%02d_%04d.png' % (nbid,s.frame) );
+	#pp.save( 'flipParts_%04d.uni' % s.frame );
 
 
