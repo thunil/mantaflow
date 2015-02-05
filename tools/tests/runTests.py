@@ -30,6 +30,12 @@ platform=platform.system()
 if   platform == 'Linux' or platform == 'Darwin':
 	platform = 0; # unix
 elif platform == 'Windows' and os.name=='nt':
+	# windows specifics:
+	#    - some commands depend on the operating system - check platform
+	#    - cygwin under windows doesn't behave like linux nor like windows at my computer and cannot be distinguished
+	#      from the normal windows console -> set platform manually to 2 if needed
+	#      cygwin should be detected by os.name==posix but it doesn't work at my computer
+	#    - some print messages needed to set default codepage of the console to UTF-8 with the command "chcp 65001"
 	platform = 1; # windows
 elif platform == 'Windows' and os.name == 'posix':
 	platform = 2; # probably cygwin
@@ -57,7 +63,7 @@ basedir  = os.path.dirname (sys.argv[0])
 # store test data in separate directory
 datadir = dataDirectory(sys.argv[0])
 if not os.path.exists( datadir ):
-	os.makedirs( datadir )	
+    os.makedirs( datadir )    
 
 if getGenRefFileSetting():
 	print("\nNote - generating test data for all tests!");
@@ -71,13 +77,13 @@ currdate = str(currdate)[:-1]
 visModeTrashDir = basedir+"/trash"
 outpngdir       = basedir+"/result_%s"%(currdate)
 if getVisualSetting():
-	dirname = basedir+"/runtimes"
-	if not os.path.exists( dirname ):
-		os.makedirs( dirname )	
-	# make sure no previous files are left
-	if not os.path.exists( visModeTrashDir ):
-		os.makedirs( visModeTrashDir )	
-	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
+    dirname = basedir+"/runtimes"
+    if not os.path.exists( dirname ):
+        os.makedirs( dirname )    
+    # make sure no previous files are left
+    if not os.path.exists( visModeTrashDir ):
+        os.makedirs( visModeTrashDir )    
+    os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
 
 	if not os.path.exists( outpngdir ):
 		os.makedirs( outpngdir )	
@@ -86,12 +92,16 @@ if getVisualSetting():
 # limit the runs for debugging
 visModeDebugCount = 0
 
-files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
-#print("Debug - using test scene files: "+files);
-
+# old: files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
+if platform==1:
+    files = os.popen("dir /a-d /b "+basedir+"\\"+str(filePrefix)+"????_*.py").read() 
+elif platform==0:
+    files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
+elif platform==2:
+    files = os.popen("ls "+basedir+str(filePrefix)+"????_*.py").read() # some cygwin under windows
+print ("Debug - using test scene files: "+files)
 
 # ready to go...
-
 num = 0
 numOks = 0
 numFail = 0
@@ -195,5 +205,4 @@ elif (numFail==0) and (numOks>0):
 else:
 	print("Oh no :( the following tests failed: %s \n" % failedTests);
 	exit(2)
-
 
