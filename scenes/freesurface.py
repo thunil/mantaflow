@@ -5,7 +5,7 @@
 from manta import *
 
 # solver params
-dim = 3
+dim = 2
 res = 64
 gs = vec3(res,res,res)
 if (dim==2):
@@ -22,12 +22,15 @@ pressure = s.create(RealGrid)
 mesh = s.create(Mesh)
 
 # scene setup
-flags.initDomain(boundaryWidth=0)
+flags.initDomain(boundaryWidth=2)
+setOpenBound(flags,'y') 
 basin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1,0.2,1))
 drop  = s.create(Sphere, center=gs*vec3(0.5,0.5,0.5), radius=res*0.15)
 phi = basin.computeLevelset()
 phi.join(drop.computeLevelset())
 flags.updateFromLevelset(phi)
+
+
 		
 if (GUI):
 	gui = Gui()

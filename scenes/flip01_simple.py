@@ -26,7 +26,7 @@ pp       = s.create(BasicParticleSystem)
 pVel     = pp.create(PdataVec3) 
 
 # scene setup
-flags.initDomain(boundaryWidth=0)
+flags.initDomain(boundaryWidth=2) # MLE: should not use default 0, leads to asymmetry and other inaccuracies
 # enable one of the following
 fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1)) # breaking dam
 #fluidbox = s.create(Box, p0=gs*vec3(0.4,0.72,0.4), p1=gs*vec3(0.6,0.92,0.6)) # centered falling block
@@ -37,7 +37,8 @@ flags.updateFromLevelset(phiInit)
 # note, there's no resamplig here, so we need _LOTS_ of particles...
 sampleFlagsWithParticles( flags=flags, parts=pp, discretization=particleNumber, randomness=0.2 )
 
-	
+setOpenBound(flags,'xX')
+
 if (GUI):
 	gui = Gui()
 	gui.show()

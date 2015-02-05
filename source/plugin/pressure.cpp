@@ -80,35 +80,6 @@ void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure)
 }
 
 
-KERNEL void SetOpenBound(Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real> &Ak,FlagGrid& flags,MACGrid& vel, 
-							Vector3D<bool> lo, Vector3D<bool> up) 
-{
-
-	if (!flags.isFluid(i,j,k))
-		return;
-	
-	int b = flags.getBoundaryWidth();
-
-	// set matrix stencil in and at boundary to empty
-	if((lo.x && i <= b+1)||(up.x && i >= maxX-b-2)||(lo.y && j <= b+1)||(up.y && j >= maxY-b-2))
-		A0(i,j,k) = (flags.is3D()) ? 6. : 4.;
-	
-	if ((lo.x && i <= b)||(up.x && i >= maxX-b-2))					 Ai(i,j,k) = .0;
-	if ((lo.y && j <= b)||(up.y && j >= maxY-b-2))					 Aj(i,j,k) = .0;
-	if (flags.is3D() && ((lo.z && k <= b)||(up.z && k >= maxZ-b-2))) Ak(i,j,k) = .0;
-
-	// set velocity boundary conditions
-	if (lo.x && i == b)				vel(b,j,k) = vel(b+1,j,k);
-	if (lo.y && j == b)				vel(i,b,k) = vel(i,b+1,k);
-	if (up.x && i == maxX-b-1)		vel(maxX-b-1,j,k) = vel(maxX-b-2,j,k);
-	if (up.y && j == maxY-b-1)		vel(i,maxY-b-1,k) = vel(i,maxY-b-2,k);
-	if(flags.is3D()) {
-		if (lo.z && k == b)			vel(i,j,b) = vel(i,j,b+1);
-		if (up.z && k == maxZ-b-1)	vel(i,j,maxZ-b-1) = vel(i,j,maxZ-b-2); 
-	}
-}
-
-
 //! Kernel: Set matrix rhs for outflow
 KERNEL void SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<bool> upperBound, int height)
 {
@@ -228,17 +199,6 @@ int CountEmptyCells(FlagGrid& flags) {
 // *****************************************************************************
 // Main pressure solve
 
-inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bool>& up) {
-	for(size_t i=0; i<desc.size(); i++) {
-		if (desc[i] == 'x') lo.x = true;
-		else if (desc[i] == 'y') lo.y = true;
-		else if (desc[i] == 'z') lo.z = true;
-		else if (desc[i] == 'X') up.x = true;
-		else if (desc[i] == 'Y') up.y = true;
-		else if (desc[i] == 'Z') up.z = true;
-		else errMsg("invalid character in boundary description string. Only [xyzXYZ] allowed.");
-	}
-}
 
 KERNEL (bnd=1) void KnupdateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions) {
 
@@ -273,7 +233,7 @@ PYTHON void updateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions
 }
 
 //! Perform pressure projection of the velocity grid
-PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string openBound="",
+PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, 
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0, 
                      MACGrid* fractions = 0,
@@ -287,13 +247,6 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
                      bool useL2Norm = false, 
 					 Grid<Real>* retRhs = NULL )
 {
-	// parse strings
-	Vector3D<bool> loOpenBound, upOpenBound, loOutflow, upOutflow;
-	convertDescToVec(openBound, loOpenBound, upOpenBound);
-	convertDescToVec(outflow, loOutflow, upOutflow);
-	if (vel.is2D() && (loOpenBound.z || upOpenBound.z))
-		errMsg("open boundaries for z specified for 2D grid");
-	
 	// reserve temp grids
 	FluidSolver* parent = flags.getParent();
 	Grid<Real> rhs(parent);
@@ -311,8 +264,6 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 		
 	// setup matrix and boundaries
 	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak, fractions);
-
-	SetOpenBound (A0, Ai, Aj, Ak, flags, vel, loOpenBound, upOpenBound);
 	
 	if (phi) {
 		ApplyGhostFluidDiagonal(A0, flags, *phi, gfClamp);

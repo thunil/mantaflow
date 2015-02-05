@@ -17,8 +17,10 @@ vel = s.create(MACGrid)
 density = s.create(RealGrid)
 pressure = s.create(RealGrid)
 
-flags.initDomain()
+flags.initDomain(boundaryWidth=2) # MLE: should not use default 0, leads to asymmetry
 flags.fillGrid()
+
+setOpenBound(flags,'Y')
 
 if (GUI):
 	gui = Gui()
