@@ -537,7 +537,7 @@ KERNEL template<class S>
 void knInterpolateGridTempl(Grid<S>& target, Grid<S>& source, const Vec3& sourceFactor , Vec3 offset, int orderSpace=1 ) {
 	Vec3 pos = Vec3(i,j,k) * sourceFactor + offset;
 	if(!source.is3D()) pos[2] = 0; // allow 2d -> 3d
-	target(i,j,k) = source.getInterpolated(pos);
+	target(i,j,k) = source.getInterpolatedHi(pos, orderSpace);
 } 
 // template glue code - choose interpolation based on template arguments
 template<class GRID>
