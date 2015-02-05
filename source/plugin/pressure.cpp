@@ -79,6 +79,58 @@ void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure)
 	}
 }
 
+inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bool>& up) {
+	for (size_t i = 0; i<desc.size(); i++) {
+		if (desc[i] == 'x') lo.x = true;
+		else if (desc[i] == 'y') lo.y = true;
+		else if (desc[i] == 'z') lo.z = true;
+		else if (desc[i] == 'X') up.x = true;
+		else if (desc[i] == 'Y') up.y = true;
+		else if (desc[i] == 'Z') up.z = true;
+		else errMsg("invalid character in boundary description string. Only [xyzXYZ] allowed.");
+	}
+}
+
+// set boundary cells of open walls to empty cells 
+PYTHON void setOpenBound(FlagGrid& flags, string openBound = ""){
+	if (openBound == "") return;
+	Vector3D<bool> lo, up;
+	convertDescToVec(openBound, lo, up);
+
+	// look for how many cells form the boundary in order to know which cells must be set to air / outflow
+	// assume a maximum boundary width of 3 cells (everything beyond counts as inner obstacle)
+	int b = 3;
+	for (int i = 0; i < b; i++){ // check boundary width
+		if ((!flags.is3D()&&!flags.isObstacle(i, 5, 0))||(flags.is3D()&&flags.isObstacle(i,5,5))) {
+			b = i; 
+			break;
+		}
+	}
+
+	FOR_IJK(flags){
+		bool loX = lo.x && i < b; // a cell which belongs to the lower x open bound
+		bool loY = lo.y && j < b; // a cell which belongs to the lower y open bound
+		bool upX = up.x && i >= flags.getSizeX() - b; // a cell which belongs to the upper x open bound
+		bool upY = up.y && j >= flags.getSizeY() - b; // a cell which belongs to the upper y open bound
+		bool innerI = i>=b && i<flags.getSizeX() - b; // a cell which does not belong to the lower or upper x bound
+		bool innerJ = j>=b && j<flags.getSizeY() - b; // a cell which does not belong to the lower or upper y bound
+
+		// when setting boundaries to open: don't set shared part of wall to empty if neighboring wall is not open
+		if (flags.is2D()){
+			if ((loX || upX) && (loY || upY || innerJ) && flags.isObstacle(i,j,k)) flags(i, j, k) = flags.TypeEmpty;
+			if ((loY || upY) && (loX || upX || innerI) && flags.isObstacle(i, j, k)) flags(i, j, k) = flags.TypeEmpty;
+		}
+		else{
+			bool loZ = lo.z && k < b; // a cell which belongs to the lower z open bound
+			bool upZ = up.z && k >= flags.getSizeZ() - b; // a cell which belongs to the upper z open bound
+			bool innerK = k>b && k<flags.getSizeZ() - b; // a cell which does not belong to the lower or upper z bound
+			if ((loX || upX) && ((loY && loZ) || (upY && upZ) || (innerJ && innerK)) && flags.isObstacle(i, j, k)) flags(i, j, k) = flags.TypeEmpty;
+			if ((loY || upY) && ((loX && loZ) || (upX && loZ) || (innerI && innerK)) && flags.isObstacle(i, j, k)) flags(i, j, k) = flags.TypeEmpty;
+			if ((loZ || upZ) && ((loX && loY) || (upX && loY) || (innerI && innerJ)) && flags.isObstacle(i, j, k)) flags(i, j, k) = flags.TypeEmpty;
+		}
+	}
+}
+
 
 //! Kernel: Set matrix rhs for outflow
 KERNEL void SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<bool> upperBound, int height)
@@ -199,6 +251,7 @@ int CountEmptyCells(FlagGrid& flags) {
 // *****************************************************************************
 // Main pressure solve
 
+<<<<<<< HEAD
 
 KERNEL (bnd=1) void KnupdateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions) {
 
@@ -232,6 +285,8 @@ PYTHON void updateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions
 	KnupdateFractions(flags, phi, fractions);
 }
 
+=======
+>>>>>>> Corrected open bounds, works only for smoke (so far)
 //! Perform pressure projection of the velocity grid
 PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, 
                      Grid<Real>* phi = 0, 
@@ -262,7 +317,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	Grid<Real> pca2(parent);
 	Grid<Real> pca3(parent);
 		
-	// setup matrix and boundaries
+	// setup matrix and boundaries 
 	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak, fractions);
 	
 	if (phi) {
