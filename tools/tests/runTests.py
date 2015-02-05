@@ -65,11 +65,11 @@ datadir = dataDirectory(sys.argv[0])
 if not os.path.exists( datadir ):
     os.makedirs( datadir )    
 
-if getGenRefFileSetting():
-	print("\nNote - generating test data for all tests!");
-	print("Tests results will not be evaluated...\n");
-
 #unix only: currdate = os.popen("date \"+%y%m%d%H%M\"").read() 
+if getGenRefFileSetting():
+    print ("\nNote - generating test data for all tests!")
+    print ("Tests results will not be evaluated...\n")
+    
 currdate = '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now())
 currdate = str(currdate)[:-1]
 
