@@ -48,7 +48,7 @@ for t in range(frames):
 	setWallBcs(flags=flags, vel=vel)	
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-9e-3,0), flags=flags)
 	
-	solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='Y', cgAccuracy=accuracy, cgMaxIterFac=5. )
+	solvePressure(flags=flags, vel=vel, pressure=pressure, cgAccuracy=accuracy, cgMaxIterFac=5. )
 	setWallBcs(flags=flags, vel=vel)
 	
 	s.step()
@@ -58,6 +58,8 @@ for t in range(frames):
 
 
 # check final state
+#density.save('test_1010_plume2d_dens.uni')
+#vel.save('test_1010_plume2d_vel.uni')
 doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.0005 , thresholdStrict=1e-08 )
 doTestGrid( sys.argv[0],"vel"  , s, vel     , threshold=0.0005 , thresholdStrict=1e-08 )
 
