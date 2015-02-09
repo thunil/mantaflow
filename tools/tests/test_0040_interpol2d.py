@@ -107,15 +107,15 @@ for t in range(1):
 	if doGui:
 		gui.pause()
 
-	doTestGrid( sys.argv[0], "scalar1"  , normSolv, density   , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "scalar2"  , smSolv, sm_density  , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "scalar3"  , smSolv, sm_density2 , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "vec3t1"   , normSolv, v3        , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "vec3t2"   , smSolv  , sm_v3     , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "vec3t3"   , smSolv  , sm_v32    , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "macvel1"  , normSolv, macvel    , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "macvel2"  , smSolv  , sm_macvel , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "macvel3"  , smSolv  , sm_macvel2, threshold=1e-08 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "scalar1"  , normSolv, density   , threshold=1e-06 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "scalar2"  , smSolv, sm_density  , threshold=1e-06 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "scalar3"  , smSolv, sm_density2 , threshold=1e-06 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "vec3t1"   , normSolv, v3        , threshold=1e-06 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "vec3t2"   , smSolv  , sm_v3     , threshold=1e-06 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "vec3t3"   , smSolv  , sm_v32    , threshold=1e-06 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "macvel1"  , normSolv, macvel    , threshold=1e-06 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "macvel2"  , smSolv  , sm_macvel , threshold=1e-06 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "macvel3"  , smSolv  , sm_macvel2, threshold=1e-06 , thresholdStrict=1e-14  )
 
 
 
@@ -160,14 +160,14 @@ for t in range(1):
 	if doGui:
 		gui.pause()
 
-	doTestGrid( sys.argv[0], "hi_scalar1"  , normSolv, density   , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "hi_scalar2"  , smSolv, sm_density  , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "hi_scalar3"  , smSolv, sm_density2 , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "hi_vec3t1"   , normSolv, v3        , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "hi_vec3t2"   , smSolv  , sm_v3     , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "hi_vec3t3"   , smSolv  , sm_v32    , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "hi_macvel1"  , normSolv, macvel    , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "hi_macvel2"  , smSolv  , sm_macvel , threshold=1e-08 , thresholdStrict=1e-14  )
-	doTestGrid( sys.argv[0], "hi_macvel3"  , smSolv  , sm_macvel2, threshold=1e-08 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "hi_scalar1"  , normSolv, density   , threshold=1e-05 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "hi_scalar2"  , smSolv, sm_density  , threshold=1e-05 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "hi_scalar3"  , smSolv, sm_density2 , threshold=1e-05 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "hi_vec3t1"   , normSolv, v3        , threshold=1e-05 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "hi_vec3t2"   , smSolv  , sm_v3     , threshold=1e-05 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "hi_vec3t3"   , smSolv  , sm_v32    , threshold=1e-05 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "hi_macvel1"  , normSolv, macvel    , threshold=1e-05 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "hi_macvel2"  , smSolv  , sm_macvel , threshold=1e-05 , thresholdStrict=1e-14  )
+	doTestGrid( sys.argv[0], "hi_macvel3"  , smSolv  , sm_macvel2, threshold=1e-05 , thresholdStrict=1e-14  )
 
 
