@@ -17,10 +17,10 @@ vel = s.create(MACGrid)
 density = s.create(RealGrid)
 pressure = s.create(RealGrid)
 
-flags.initDomain(boundaryWidth=2) # MLE: should not use default 0, leads to asymmetry
+flags.initDomain(boundaryWidth=1) # MLE: should not use default 0, leads to asymmetry -> default value = 1
 flags.fillGrid()
 
-setOpenBound(flags,'Y')
+setOpenBound(flags,'xX')
 
 if (GUI):
 	gui = Gui()
@@ -40,9 +40,10 @@ for t in range(400):
 	setWallBcs(flags=flags, vel=vel)    
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-4e-3,0), flags=flags)
 	
-	solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='YxX')
+	solvePressure(flags=flags, vel=vel, pressure=pressure)
+
 	setWallBcs(flags=flags, vel=vel)
 	
-	timings.display()    
+	#timings.display()    
 	s.step()
 
