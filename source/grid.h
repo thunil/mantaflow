@@ -242,7 +242,7 @@ protected:
 //! Special functions for FlagGrid
 PYTHON class FlagGrid : public Grid<int> {
 public:
-	PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show), mBoundaryWidth(0) { 
+	PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show), mBoundaryWidth(1) { 
 		mType = (GridType)(TypeFlags | TypeInt); }
 	
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
@@ -275,6 +275,10 @@ public:
 	inline bool isInflow(int i, int j, int k) const { return get(i,j,k) & TypeInflow; }
 	inline bool isInflow(const Vec3i& pos) const { return get(pos) & TypeInflow; }
 	inline bool isInflow(const Vec3& pos) const { return getAt(pos) & TypeInflow; }
+	inline bool isOutflow(int idx) const { return get(idx) & TypeOutflow; }
+	inline bool isOutflow(int i, int j, int k) const { return get(i, j, k) & TypeOutflow; }
+	inline bool isOutflow(const Vec3i& pos) const { return get(pos) & TypeOutflow; }
+	inline bool isOutflow(const Vec3& pos) const { return getAt(pos) & TypeOutflow; }
 	inline bool isEmpty(int idx) const { return get(idx) & TypeEmpty; }
 	inline bool isEmpty(int i, int j, int k) const { return get(i,j,k) & TypeEmpty; }
 	inline bool isEmpty(const Vec3i& pos) const { return get(pos) & TypeEmpty; }
@@ -287,8 +291,8 @@ public:
 	inline int getBoundaryWidth() const {return mBoundaryWidth;}
 
 	// Python callables
-	PYTHON void initDomain(int boundaryWidth=0);
-	PYTHON void initBoundaries(int boundaryWidth=0);
+	PYTHON void initDomain(int boundaryWidth=1);
+	PYTHON void initBoundaries(int boundaryWidth=1);
 	PYTHON void updateFromLevelset(LevelsetGrid& levelset);    
 	PYTHON void fillGrid(int type=TypeFluid);
 
