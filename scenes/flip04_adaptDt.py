@@ -124,6 +124,7 @@ while s.frame < frames:
 	gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
 	unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
 	extrapolateLsSimple(phi=phi, distance=4, inside=True); 
+	# note - outside levelset doesnt matter...
 
 	# forces & pressure solve
 	addGravity(flags=flags, vel=vel, gravity=(0,-0.003,0))

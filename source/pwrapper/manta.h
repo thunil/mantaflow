@@ -20,11 +20,6 @@
 #define returns(X) extern X;
 #define alias typedef
 
-// Define plugin documentation group
-// all plugin functions and classes will automatically be added to this group
-//! @defgroup Plugins Plugins
-//! @defgroup PyClasses Classes exposed to Python
-
 #include "general.h"
 #include "vectorbase.h"
 #include "registry.h"
