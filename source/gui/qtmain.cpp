@@ -124,13 +124,12 @@ void guiWaitFinish() {
 //******************************************************************************
 // Python adapter class
 
-
 // external callback functions 
-void updateQtGui(bool full, int frame, const string& curPlugin) {    
+void updateQtGui(bool full, int frame, float time, const string& curPlugin) {    
 	if (!gGuiThread->getWindow()->isVisible()) return;
 	if (gGuiThread->getWindow()->closeRequest()) throw Error("User interrupt");    
 	
-	if (full && frame >= 0) gGuiThread->getWindow()->setStep(frame);
+	if (full && frame >= 0) gGuiThread->getWindow()->setStep(frame, time);
 	gMainThread->sendAndWait(full ? (int)MainWnd::EventFullUpdate : (int)MainWnd::EventStepUpdate);
 	
 	if (gGuiThread->getWindow()->pauseRequest()) {

@@ -7,7 +7,7 @@
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Main
+ * Include pwrapper headers
  *
  ******************************************************************************/
 

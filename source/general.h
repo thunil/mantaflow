@@ -24,6 +24,16 @@
 
 namespace Manta {
 
+// ui data exchange
+#ifdef GUI
+	// defined in qtmain.cpp
+	extern void updateQtGui(bool full, int frame, float time, const std::string& curPlugin);
+#else
+	// dummy function if GUI is not enabled
+	inline void updateQtGui(bool full, int frame, float time, const std::string& curPlugin) {}
+#endif
+
+
 // activate debug mode if _DEBUG is defined (eg for windows)
 #ifndef DEBUG
 #ifdef _DEBUG
@@ -123,14 +133,15 @@ template<class T> inline T clamp(const T& val, const T& vmin, const T& vmax) {
 	return val;
 }
 
-template<class T> inline T nmod(const T& a, const T& b);
-template<> inline int nmod(const int& a, const int& b) { int c=a%b; return (c<0) ? (c+b) : c; }
-template<> inline float nmod(const float& a, const float& b) { float c=std::fmod(a,b); return (c<0) ? (c+b) : c; }
-template<> inline double nmod(const double& a, const double& b) { double c=std::fmod(a,b); return (c<0) ? (c+b) : c; }
-template<class T> inline T safeDivide(const T& a, const T& b);
-template<> inline int safeDivide<int>(const int &a, const int& b) { return (b) ? (a/b) : a; }
-template<> inline float safeDivide<float>(const float &a, const float& b) { return (b) ? (a/b) : a; }
-template<> inline double safeDivide<double>(const double &a, const double& b) { return (b) ? (a/b) : a; }
+template<class T> inline T      nmod(const T& a, const T& b);
+template<>        inline int    nmod(const int& a, const int& b) { int c=a%b; return (c<0) ? (c+b) : c; }
+template<>        inline float  nmod(const float& a, const float& b) { float c=std::fmod(a,b); return (c<0) ? (c+b) : c; }
+template<>        inline double nmod(const double& a, const double& b) { double c=std::fmod(a,b); return (c<0) ? (c+b) : c; }
+
+template<class T> inline T      safeDivide(const T& a, const T& b);
+template<>        inline int    safeDivide<int>(const int &a, const int& b) { return (b) ? (a/b) : a; }
+template<>        inline float  safeDivide<float>(const float &a, const float& b) { return (b) ? (a/b) : a; }
+template<>        inline double safeDivide<double>(const double &a, const double& b) { return (b) ? (a/b) : a; }
 
 inline bool c_isnan(float c) { 
 	volatile float d=c;

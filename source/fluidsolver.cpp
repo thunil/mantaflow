@@ -19,13 +19,6 @@
 using namespace std;
 namespace Manta {
 
-#ifdef GUI
-	// defined in qtmain.cpp
-	extern void updateQtGui(bool full, int frame, const std::string& curPlugin);
-#else
-	inline void updateQtGui(bool full, int frame, const std::string& curPlugin) {}
-#endif
-
 //******************************************************************************
 // Gridstorage-related members
 
@@ -120,7 +113,7 @@ void FluidSolver::step() {
 		}
 	}
 
-	updateQtGui(true, mFrame, "FluidSolver::step");
+	updateQtGui(true, mFrame,mTimeTotal, "FluidSolver::step");
 }
 
 void FluidSolver::printMemInfo() {
