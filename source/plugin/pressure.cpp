@@ -20,7 +20,7 @@ namespace Manta {
 //! Kernel: Construct the right-hand side of the poisson equation
 KERNEL(bnd=1, reduce=+) returns(int cnt=0) returns(double sum=0)
 void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, 
-			  Grid<Real>* perCellCorr) 
+			  Grid<Real>* perCellCorr, MACGrid* fractions)
 {
 	if (!flags.isFluid(i,j,k)) {
 		rhs(i,j,k) = 0;
@@ -29,9 +29,16 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 	   
 	// compute divergence 
 	// no flag checks: assumes vel at obstacle interfaces is set to zero
-	Real set =          vel(i,j,k).x - vel(i+1,j,k).x + 
-						vel(i,j,k).y - vel(i,j+1,k).y; 
-	if(vel.is3D()) set+=vel(i,j,k).z - vel(i,j,k+1).z;
+	Real set(0);
+	if(!fractions) {
+		set =               vel(i,j,k).x - vel(i+1,j,k).x + 
+				 			vel(i,j,k).y - vel(i,j+1,k).y; 
+		if(vel.is3D()) set+=vel(i,j,k).z - vel(i,j,k+1).z;
+	}else{
+		set =               fractions->get(i,j,k).x*vel(i,j,k).x - fractions->get(i+1,j,k).x*vel(i+1,j,k).x + 
+							fractions->get(i,j,k).y*vel(i,j,k).y - fractions->get(i,j+1,k).y*vel(i,j+1,k).y; 
+		if(vel.is3D()) set+=fractions->get(i,j,k).z*vel(i,j,k).z - fractions->get(i,j,k+1).z*vel(i,j,k+1).z;
+	}
 	
 	// per cell divergence correction
 	if(perCellCorr) 
@@ -233,11 +240,44 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 	}
 }
 
+KERNEL (bnd=1) void KnupdateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions) {
+
+	fractions(i,j,k).x = fractions(i,j,k).y = fractions(i,j,k).z = static_cast<float>(flags(i,j,k) & 1);
+
+	Real tmp = 0.;
+	tmp = fabs((phi(i,j,k) + phi(i-1,j,k))/2.);
+    if(tmp < 1.0 && !((phi(i,j,k)<0) == (phi(i-1,j,k)<0)) ) {
+    	fractions(i,j,k).x = tmp;
+    }else if( (flags(i-1,j,k) == 2 && flags(i,j,k) == 1) || (flags(i,j,k) == 2 && flags(i-1,j,k) == 1)) {
+		fractions(i,j,k).x = 0.;
+    }
+    tmp = fabs((phi(i,j,k) + phi(i,j-1,k))/2.);
+    if(tmp < 1.0 && !((phi(i,j,k)<0) == (phi(i,j-1,k)<0)) ) {
+    	fractions(i,j,k).y = tmp;
+    }else if( (flags(i,j-1,k) == 2 && flags(i,j,k) == 1) || (flags(i,j,k) == 2 && flags(i,j-1,k) == 1)) {
+		fractions(i,j,k).y = 0.;
+    }
+    if(flags.is3D()) {
+	    tmp = fabs((phi(i,j,k) + phi(i,j,k-1))/2.);
+	    if(tmp < 1.0 && !((phi(i,j,k)<0) == (phi(i,j,k-1)<0)) ) {
+	    	fractions(i,j,k).z = tmp;
+	    }else if( (flags(i,j,k-1) == 2 && flags(i,j,k) == 1) || (flags(i,j,k) == 2 && flags(i,j,k-1) == 1)) {
+			fractions(i,j,k).z = 0.;
+	    }
+	}
+
+}
+
+PYTHON void updateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions) {
+	KnupdateFractions(flags, phi, fractions);
+}
 
 //! Perform pressure projection of the velocity grid
 PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string openBound="",
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0, 
+                     MACGrid* fractions = 0,
+                     Grid<Real>* A0_ = 0,
                      Real gfClamp = 1e-04,
                      Real cgMaxIterFac = 1.5,
                      Real cgAccuracy = 1e-3,
@@ -271,7 +311,10 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 	Grid<Real> pca3(parent);
 		
 	// setup matrix and boundaries
-	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak);
+	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak, fractions);
+	if(A0_) {
+		A0_->copyFrom(A0);//test grid for debugging in the GUI
+	}
 	SetOpenBound (A0, Ai, Aj, Ak, flags, vel, loOpenBound, upOpenBound);
 	
 	if (phi) {
@@ -279,7 +322,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 	}
 	
 	// compute divergence and init right hand side
-	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr);
+	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, fractions);
 	
 	if (!outflow.empty())
 		SetOutflow (rhs, loOutflow, upOutflow, outflowHeight);
@@ -288,21 +331,21 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 		rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
 	
 	// check whether we need to fix some pressure value...
-	int fixPidx = -1;
-	int numEmpty = CountEmptyCells(flags);
-	if(numEmpty==0) {
-		FOR_IJK_BND(flags,1) {
-			if(flags.isFluid(i,j,k)) {
-				fixPidx = flags.index(i,j,k);
-				break;
-			}
-		}
-		//debMsg("No empty cells! Fixing pressure of cell "<<fixPidx<<" to zero",1);
-	}
-	if(fixPidx>=0) {
-		flags[fixPidx] |= FlagGrid::TypeZeroPressure;
-		rhs[fixPidx] = 0.; 
-	}
+	// int fixPidx = -1;
+	// int numEmpty = CountEmptyCells(flags);
+	// if(numEmpty==0) {
+	// 	FOR_IJK_BND(flags,1) {
+	// 		if(flags.isFluid(i,j,k)) {
+	// 			fixPidx = flags.index(i,j,k);
+	// 			break;
+	// 		}
+	// 	}
+	// 	//debMsg("No empty cells! Fixing pressure of cell "<<fixPidx<<" to zero",1);
+	// }
+	// if(fixPidx>=0) {
+	// 	flags[fixPidx] |= FlagGrid::TypeZeroPressure;
+	// 	rhs[fixPidx] = 0.; 
+	// }
 
 	// CG setup
 	// note: the last factor increases the max iterations for 2d, which right now can't use a preconditioner 
@@ -332,8 +375,8 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
 	}
 
-	if(fixPidx>=0)
-		flags[fixPidx] &= ~FlagGrid::TypeZeroPressure;
+	// if(fixPidx>=0)
+	// 	flags[fixPidx] &= ~FlagGrid::TypeZeroPressure;
 
 	// optionally , return RHS
 	if(retRhs) {

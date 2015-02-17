@@ -85,7 +85,8 @@ PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3
 
 		
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
-KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up, bool admm) {
+KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up, bool admm,
+					MACGrid* fractions=0, Grid<Real>* phi=0) {
 
 	bool curFluid = flags.isFluid(i,j,k);
     bool curObstacle = flags.isObstacle(i,j,k);
@@ -113,6 +114,72 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vecto
 	// check up.z
 	if(!up.z && k>0 && curObstacle && flags.isFluid(i,j,k-1) && ((admm&&vel(i,j,k).z>0)||!admm)) vel(i,j,k).z = 0;
 	
+	//if fractions and levelset are present, use better boundary condition at obstacles
+	if(fractions && phi) {
+
+		if(flags.is3D()) {
+
+			if( (fractions->get(i,j,k).x > 0. && fractions->get(i,j,k).x < 1.) || 
+				(fractions->get(i,j,k).y > 0. && fractions->get(i,j,k).y < 1.) || 
+				(fractions->get(i,j,k).z > 0. && fractions->get(i,j,k).z < 1.) ) {
+
+				//calculate normal on levelset field
+			    Real dphi_i = phi->get(i+1,j,k)-phi->get(i,j,k);
+				Real dphi_j = phi->get(i,j+1,k)-phi->get(i,j,k);
+				Real dphi_k = phi->get(i,j,k+1)-phi->get(i,j,k);
+
+				Real norm = std::max(1.e-7f,static_cast<float>(std::sqrt(dphi_i*dphi_i + dphi_j*dphi_j + dphi_k*dphi_k)));
+
+				Vec3 normal;
+				normal.x = dphi_i / norm;
+				normal.y = dphi_j / norm;
+				normal.z = dphi_k / norm;
+
+				//set normal component of velocity to zero
+				Real dot = normal.x * vel(i,j,k).x + normal.y * vel(i,j,k).y + normal.z * vel(i,j,k).z;
+				Vec3 tangential;
+				tangential.x = vel(i,j,k).x - dot * normal.x;
+				tangential.y = vel(i,j,k).y - dot * normal.y;
+				tangential.z = vel(i,j,k).z - dot * normal.z;
+			
+				vel(i,j,k).x = tangential.x;
+				vel(i,j,k).y = tangential.y;
+				vel(i,j,k).z = tangential.z;
+
+			}
+
+		}else{
+
+			if( (fractions->get(i,j,k).x > 0. && fractions->get(i,j,k).x < 1.) || 
+				(fractions->get(i,j,k).y > 0. && fractions->get(i,j,k).y < 1.) ) {
+
+				//calculate normal on levelset field
+			    Real dphi_i = phi->get(i+1,j,k)-phi->get(i,j,k);
+				Real dphi_j = phi->get(i,j+1,k)-phi->get(i,j,k);
+
+				Real norm = std::max(1.e-7f,static_cast<float>(std::sqrt(dphi_i*dphi_i + dphi_j*dphi_j)));
+
+				Vec3 normal;
+				normal.x = dphi_i / norm;
+				normal.y = dphi_j / norm;
+				normal.z = 1.;
+
+				//set normal component of velocity to zero
+				Real dot = normal.x * vel(i,j,k).x + normal.y * vel(i,j,k).y;
+				Vec3 tangential;
+				tangential.x = vel(i,j,k).x - dot * normal.x;
+				tangential.y = vel(i,j,k).y - dot * normal.y;
+				tangential.z = 0.;
+			
+				vel(i,j,k).x = tangential.x;
+				vel(i,j,k).y = tangential.y;
+				vel(i,j,k).z = tangential.z;
+
+			}
+
+		}
+
+	}
 
 	/* MLE consider later	
 	if (curFluid) {
@@ -128,10 +195,11 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vecto
 
 // MLE 2014-07-04
 //! set no-stick boundary condition on walls
-PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, string openBound="", bool admm=false) {
+PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, string openBound="", bool admm=false,
+	                   MACGrid* fractions = 0, Grid<Real>* phi = 0) {
 	Vector3D<bool> lo, up;
     convertDescToVec(openBound, lo, up);
-    KnSetWallBcs(flags, vel, lo, up, admm);
+    KnSetWallBcs(flags, vel, lo, up, admm, fractions, phi);
 } 
 //! Kernel: gradient norm operator
 KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
