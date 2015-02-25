@@ -63,20 +63,15 @@ void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure)
 		if (flags.isFluid(i,j-1,k)) vel[idx].y -= (pressure[idx] - pressure(i,j-1,k));
 		if (flags.is3D() && flags.isFluid(i,j,k-1)) vel[idx].z -= (pressure[idx] - pressure(i,j,k-1));
  
-		if (flags.isEmpty(i-1,j,k)||flags.isOutflow(i-1,j,k)) vel[idx].x -= pressure[idx];
-		if (flags.isEmpty(i,j-1,k) || flags.isOutflow(i,j-1,k)) vel[idx].y -= pressure[idx];
-		if (flags.is3D() && (flags.isEmpty(i,j,k-1) || flags.isOutflow(i,j,k-1))) vel[idx].z -= pressure[idx];
+		if (flags.isEmpty(i-1,j,k)) vel[idx].x -= pressure[idx];
+		if (flags.isEmpty(i,j-1,k)) vel[idx].y -= pressure[idx];
+		if (flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx].z -= pressure[idx];
 	}
-	else if (flags.isEmpty(idx)||flags.isOutflow(idx))
+	else if (flags.isEmpty(idx))
 	{
-		if (flags.isFluid(i-1,j,k)) vel[idx].x += pressure(i-1,j,k);
-		else                        vel[idx].x  = 0.f;
-		if (flags.isFluid(i,j-1,k)) vel[idx].y += pressure(i,j-1,k);
-		else                        vel[idx].y  = 0.f;
-		if (flags.is3D() ) {
-		if (flags.isFluid(i,j,k-1)) vel[idx].z += pressure(i,j,k-1);
-		else                        vel[idx].z  = 0.f;
-		}
+		if (flags.isFluid(i - 1, j, k)) vel[idx].x += pressure(i - 1, j, k);
+		if (flags.isFluid(i, j - 1, k)) vel[idx].y += pressure(i, j - 1, k);
+		if (flags.is3D() && flags.isFluid(i,j,k-1)) vel[idx].z += pressure(i,j,k-1);
 	}
 }
 
@@ -92,67 +87,77 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 	}
 }
 
-inline void correctPhi(Grid<Real>& phi, int i, int j, int k){ phi(i,j,k) = 0.5; }
-
-void setCellToOutflow(FlagGrid& flags, Grid<Real>* phi, int i, int j, int k){
-	flags(i,j,k) = flags.TypeOutflow;
-	if (phi) correctPhi(*phi, i,j,k);
-}
-
-PYTHON void resetOpenBound(FlagGrid& flags, Grid<Real>* phi = 0){
-	if (phi){
-		FOR_IJK(flags) if (flags.isOutflow(i, j, k)) correctPhi(*phi, i, j, k);
+PYTHON void resetOpenBound(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* parts = 0, Grid<Real>* real = 0, Grid<int>* index = 0, ParticleIndexSystem* indexSys = 0){
+	// check if phi and parts -> pindex and gpi already created -> access particles from cell index, avoid additional looping over particles
+	if (parts && (!index || !indexSys)){
+		if (phi) debMsg("resetOpenBound for phi and particles, but missing index and indexSys for enhanced particle access!",1);
+		for (int idx = 0; idx < (int)parts->size(); idx++) 
+			if (parts->isActive(idx) && flags.isInBounds(parts->getPos(idx)) && flags.isOutflow(parts->getPos(idx))) parts->kill(idx);
 	}
-}
-
-PYTHON void resetOpenBoundFLIP(FlagGrid& flags, BasicParticleSystem& parts, Grid<Real>* phi = 0){
-	for (int idx = 0; idx<(int)parts.size(); idx++) {
-		if (flags.isOutflow(parts.getPos(idx))) parts.kill(idx);
+	FOR_IJK(flags){
+		if (flags.isOutflow(i,j,k)){
+			flags(i, j, k) &= ~FlagGrid::TypeFluid; // make sure there is not fluid flag set
+			// the particles in a cell i,j,k are particles[index(i,j,k)] to particles[index(i+1,j,k)-1]
+			if (parts && index && indexSys){
+				int isysIdxS = index->index(i, j, k);
+				int pStart = (*index)(isysIdxS), pEnd = 0;
+				if (flags.isInBounds(isysIdxS + 1)) pEnd = (*index)(isysIdxS + 1);
+				else								pEnd = indexSys->size();
+				// now loop over particles in cell
+				for (int p = pStart; p<pEnd; ++p) {
+					int psrc = (*indexSys)[p].sourceIndex;
+					if (parts->isActive(psrc) && flags.isInBounds(parts->getPos(psrc))) parts->kill(psrc);
+				}
+			}
+			if (phi) (*phi)(i, j, k) = 0.5;
+			if (real) (*real)(i, j, k) = 0;
+		}
 	}
-	resetOpenBound(flags, phi);
+	if (parts) parts->doCompress();
 }
 
-// set boundary cells of open walls to empty cells 
-PYTHON void setOpenBound(FlagGrid& flags, string openBound = "", Grid<Real>* phi = 0){
-	if (openBound == "") return;
-	Vector3D<bool> lo, up;
-	convertDescToVec(openBound, lo, up);
-	if (flags.is2D() && (lo.z || up.z))
-		errMsg("open boundaries for z specified for 2D grid");
-
-	// look for how many cells form the boundary in order to know which cells must be set to air / outflow
-	// assume a maximum boundary width of 3 cells (everything beyond counts as inner obstacle)
-	int b = 3;
-	for (int i = 0; i < b; i++){ // check boundary width
-		if ((!flags.is3D()&&!flags.isObstacle(i, 5, 0))||(flags.is3D()&&flags.isObstacle(i,5,5))) {
-			b = i; 
+int checkBWidth(FlagGrid& flags, int bWidth){
+	for (int i = 0; i < bWidth; i++){ // check boundary width
+		if ((!flags.is3D() && !flags.isObstacle(i, 5, 0)) || (flags.is3D() && !flags.isObstacle(i, 5, 5))) {
+			bWidth = i;
 			break;
 		}
 	}
+	return bWidth;
+}
+
+// set boundary cells of open walls to empty cells 
+PYTHON void setOpenBound(FlagGrid& flags, string openBound = "", int type = FlagGrid::TypeOutflow | FlagGrid::TypeEmpty, int bWidth=-1){
+	if (openBound == "") return;
+	Vector3D<bool> lo, up;
+	convertDescToVec(openBound, lo, up);
+	if (flags.is2D() && (lo.z || up.z)) errMsg("open boundaries for z specified for 2D grid");
+
+	// look for how many cells form the boundary in order to know which cells must be set to air / outflow
+	// assume a maximum boundary width of 3 cells (everything beyond counts as inner obstacle)
+	if (bWidth = -1) bWidth = checkBWidth(flags, 3);
 
 	FOR_IJK(flags){
-		bool loX = lo.x && i < b; // a cell which belongs to the lower x open bound
-		bool loY = lo.y && j < b; // a cell which belongs to the lower y open bound
-		bool upX = up.x && i >= flags.getSizeX() - b; // a cell which belongs to the upper x open bound
-		bool upY = up.y && j >= flags.getSizeY() - b; // a cell which belongs to the upper y open bound
-		bool innerI = i>=b && i<flags.getSizeX() - b; // a cell which does not belong to the lower or upper x bound
-		bool innerJ = j>=b && j<flags.getSizeY() - b; // a cell which does not belong to the lower or upper y bound
+		bool loX = lo.x && i < bWidth; // a cell which belongs to the lower x open bound
+		bool loY = lo.y && j < bWidth; // a cell which belongs to the lower y open bound
+		bool upX = up.x && i >= flags.getSizeX() - bWidth; // a cell which belongs to the upper x open bound
+		bool upY = up.y && j >= flags.getSizeY() - bWidth; // a cell which belongs to the upper y open bound
+		bool innerI = i>=bWidth && i<flags.getSizeX() - bWidth; // a cell which does not belong to the lower or upper x bound
+		bool innerJ = j>=bWidth && j<flags.getSizeY() - bWidth; // a cell which does not belong to the lower or upper y bound
 
 		// when setting boundaries to open: don't set shared part of wall to empty if neighboring wall is not open
-		if (flags.is2D()){
-			if ((loX || upX) && (loY || upY || innerJ) && flags.isObstacle(i, j, k)) setCellToOutflow(flags, phi, i, j, k);
-			if ((loY || upY) && (loX || upX || innerI) && flags.isObstacle(i, j, k)) setCellToOutflow(flags, phi, i, j, k);
+		if (flags.is2D() && (loX||upX||loY||upY)){
+			if ((loX || upX || innerI) && (loY || upY || innerJ) && flags.isObstacle(i, j, k)) flags(i, j, k) = type;
 		}
 		else{
-			bool loZ = lo.z && k < b; // a cell which belongs to the lower z open bound
-			bool upZ = up.z && k >= flags.getSizeZ() - b; // a cell which belongs to the upper z open bound
-			bool innerK = k>b && k<flags.getSizeZ() - b; // a cell which does not belong to the lower or upper z bound
-			if ((loX || upX) && ((loY && loZ) || (upY && upZ) || (innerJ && innerK)) && flags.isObstacle(i, j, k)) setCellToOutflow(flags, phi, i, j, k);
-			if ((loY || upY) && ((loX && loZ) || (upX && loZ) || (innerI && innerK)) && flags.isObstacle(i, j, k)) setCellToOutflow(flags, phi, i, j, k);
-			if ((loZ || upZ) && ((loX && loY) || (upX && loY) || (innerI && innerJ)) && flags.isObstacle(i, j, k)) setCellToOutflow(flags, phi, i, j, k);
+			bool loZ = lo.z && k < bWidth; // a cell which belongs to the lower z open bound
+			bool upZ = up.z && k >= flags.getSizeZ() - bWidth; // a cell which belongs to the upper z open bound
+			bool innerK = k>=bWidth && k<flags.getSizeZ() - bWidth; // a cell which does not belong to the lower or upper z bound
+			if (loX || upX || loY || upY || loZ || upZ){
+				if ((loX || upX || innerI) && (loY || upY || innerJ) && (loZ || upZ || innerK) && flags.isObstacle(i, j, k)) flags(i, j, k) = type;
+			}
 		}
 	}
-	//flags.save("flagsOpenBounds.uni");
 }
 
 // *****************************************************************************
@@ -182,13 +187,13 @@ void ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<R
 	int idx = flags.index(i,j,k);
 	if (!flags.isFluid(idx)) return;
 
-	if (flags.isEmpty(i-1,j,k)||flags.isOutflow(i-1,j,k)) A0[idx] -= ghostFluidHelper(idx, -X, phi, gfClamp);
-	if (flags.isEmpty(i+1,j,k)||flags.isOutflow(i+1,j,k)) A0[idx] -= ghostFluidHelper(idx, +X, phi, gfClamp);
-	if (flags.isEmpty(i,j-1,k)||flags.isOutflow(i,j-1,k)) A0[idx] -= ghostFluidHelper(idx, -Y, phi, gfClamp);
-	if (flags.isEmpty(i,j+1,k)||flags.isOutflow(i,j+1,k)) A0[idx] -= ghostFluidHelper(idx, +Y, phi, gfClamp);
+	if (flags.isEmpty(i-1,j,k)) A0[idx] -= ghostFluidHelper(idx, -X, phi, gfClamp);
+	if (flags.isEmpty(i+1,j,k)) A0[idx] -= ghostFluidHelper(idx, +X, phi, gfClamp);
+	if (flags.isEmpty(i,j-1,k)) A0[idx] -= ghostFluidHelper(idx, -Y, phi, gfClamp);
+	if (flags.isEmpty(i,j+1,k)) A0[idx] -= ghostFluidHelper(idx, +Y, phi, gfClamp);
 	if (flags.is3D()) {
-		if (flags.isEmpty(i,j,k-1)||flags.isOutflow(i,j,k-1)) A0[idx] -= ghostFluidHelper(idx, -Z, phi, gfClamp);
-		if (flags.isEmpty(i,j,k+1)||flags.isOutflow(i,j,k+1)) A0[idx] -= ghostFluidHelper(idx, +Z, phi, gfClamp);
+		if (flags.isEmpty(i,j,k-1)) A0[idx] -= ghostFluidHelper(idx, -Z, phi, gfClamp);
+		if (flags.isEmpty(i,j,k+1)) A0[idx] -= ghostFluidHelper(idx, +Z, phi, gfClamp);
 	}
 }
 
@@ -200,20 +205,15 @@ void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<R
 	const int idx = flags.index(i,j,k);
 	if (flags.isFluid(idx))
 	{
-		if (flags.isEmpty(i-1,j,k)||flags.isOutflow(i-1,j,k)) vel[idx][0] += pressure[idx] * ghostFluidHelper(idx, -X, phi, gfClamp);
-		if (flags.isEmpty(i,j-1,k)||flags.isOutflow(i,j-1,k)) vel[idx][1] += pressure[idx] * ghostFluidHelper(idx, -Y, phi, gfClamp);
-		if (flags.is3D() && (flags.isEmpty(i,j,k-1)||flags.isOutflow(i,j,k-1))) vel[idx][2] += pressure[idx] * ghostFluidHelper(idx, -Z, phi, gfClamp);
+		if (flags.isEmpty(i-1,j,k)) vel[idx][0] += pressure[idx] * ghostFluidHelper(idx, -X, phi, gfClamp);
+		if (flags.isEmpty(i,j-1,k)) vel[idx][1] += pressure[idx] * ghostFluidHelper(idx, -Y, phi, gfClamp);
+		if (flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx][2] += pressure[idx] * ghostFluidHelper(idx, -Z, phi, gfClamp);
 	}
-	else if (flags.isEmpty(idx)||flags.isOutflow(idx))
+	else if (flags.isEmpty(idx))
 	{
 		if (flags.isFluid(i-1,j,k)) vel[idx][0] -= pressure(i-1,j,k) * ghostFluidHelper(idx-X, +X, phi, gfClamp);
-		else                        vel[idx].x  = 0.f;
 		if (flags.isFluid(i,j-1,k)) vel[idx][1] -= pressure(i,j-1,k) * ghostFluidHelper(idx-Y, +Y, phi, gfClamp);
-		else                        vel[idx].y  = 0.f;
-		if (flags.is3D() ) {
-		if (flags.isFluid(i,j,k-1)) vel[idx][2] -= pressure(i,j,k-1) * ghostFluidHelper(idx-Z, +Z, phi, gfClamp);
-		else                        vel[idx].z  = 0.f;
-		}
+		if (flags.is3D() && flags.isFluid(i,j,k-1)) vel[idx][2] -= pressure(i,j,k-1) * ghostFluidHelper(idx-Z, +Z, phi, gfClamp);
 	}
 }
 
@@ -235,15 +235,15 @@ void ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags,
 	const int idx = flags.index(i,j,k);
 	if (flags.isFluid(idx))
 	{
-		if( (flags.isEmpty(i-1,j,k)||flags.isOutflow(i-1,j,k)) && (ghostFluidWasClamped(idx, -X, phi, gfClamp)) )
+		if( (flags.isEmpty(i-1,j,k)) && (ghostFluidWasClamped(idx, -X, phi, gfClamp)) )
 			vel[idx-X][0] = vel[idx][0];
-		if( (flags.isEmpty(i,j-1,k)||flags.isOutflow(i,j-1,k)) && (ghostFluidWasClamped(idx, -Y, phi, gfClamp)) )
+		if( (flags.isEmpty(i,j-1,k)) && (ghostFluidWasClamped(idx, -Y, phi, gfClamp)) )
 			vel[idx-Y][1] = vel[idx][1];
 		if( flags.is3D() && 
-		   (flags.isEmpty(i,j,k-1)||flags.isOutflow(i,j,k-1)) && (ghostFluidWasClamped(idx, -Z, phi, gfClamp)) )
+		   (flags.isEmpty(i,j,k-1)) && (ghostFluidWasClamped(idx, -Z, phi, gfClamp)) )
 			vel[idx-Z][2] = vel[idx][2];
 	}
-	else if (flags.isEmpty(idx)||flags.isOutflow(idx))
+	else if (flags.isEmpty(idx))
 	{
 		if( (i>-1) && (flags.isFluid(i-1,j,k)) && ( ghostFluidWasClamped(idx-X, +X, phi, gfClamp) ) )
 			vel[idx][0] = vel[idx-X][0];
@@ -258,7 +258,7 @@ void ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags,
 //! Kernel: Compute min value of Real grid
 KERNEL(idx, reduce=+) returns(int numEmpty=0)
 int CountEmptyCells(FlagGrid& flags) {
-	if (flags.isEmpty(idx)||flags.isOutflow(idx)) numEmpty++;
+	if (flags.isEmpty(idx) ) numEmpty++;
 }
 
 // *****************************************************************************

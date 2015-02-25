@@ -1,15 +1,15 @@
 /******************************************************************************
- *
- * MantaFlow fluid solver framework
- * Copyright 2011 Tobias Pfaff, Nils Thuerey 
- *
- * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
- *
- * Set boundary conditions, gravity
- *
- ******************************************************************************/
+*
+* MantaFlow fluid solver framework
+* Copyright 2011 Tobias Pfaff, Nils Thuerey
+*
+* This program is free software, distributed under the terms of the
+* GNU General Public License (GPL)
+* http://www.gnu.org/licenses
+*
+* Set boundary conditions, gravity
+*
+******************************************************************************/
 
 #include "vectorbase.h"
 #include "grid.h"
@@ -18,6 +18,7 @@
 using namespace std;
 
 namespace Manta { 
+
 
 //! add Forces between fl/fl and fl/em cells
 KERNEL(bnd=1) void KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
@@ -70,7 +71,28 @@ PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3
 	KnAddBuoyancy(flags,density, vel, f);
 }
 
-		
+PYTHON void applyConvectiveBC(FlagGrid& flags, MACGrid& velSrc, MACGrid& velPrev, int bWidth, double timeStep) {
+	MACGrid velDst(velSrc.getParent());
+	double bulkVel = 10;// max((Real)1.0, velSrc.getMaxAbs());
+	FOR_IJK(flags){
+		if (flags.isOutflow(i, j, k)||flags.isInflow(i,j,k)) {
+			// convective BC:			dv/dt + bulkVel*dv/dn = 0
+			// at lower border     dv/dn = u(i+1)-u(i) 
+			// at higher border    dv/dn = u(i-1)-u(i)
+			//					   dv/dt = (u(i)(t) - u(i)(t-1))/timestep
+			if (i <= bWidth)					velDst(i, j, k).x = ((velSrc(i, j, k).x - velPrev(i, j, k).x) / timeStep + bulkVel*velSrc(i+1,j,k).x) / bulkVel;
+			if (i >= flags.getSizeX()-bWidth-1) velDst(i, j, k).x = ((velSrc(i, j, k).x - velPrev(i, j, k).x) / timeStep + bulkVel*velSrc(i-1,j,k).x) / bulkVel;
+			if (j <= bWidth)					velDst(i, j, k).y = ((velSrc(i, j, k).y - velPrev(i, j, k).y) / timeStep + bulkVel*velSrc(i,j+1,k).y) / bulkVel;
+			if (j >= flags.getSizeY()-bWidth-1) velDst(i, j, k).y = ((velSrc(i, j, k).y - velPrev(i, j, k).y) / timeStep + bulkVel*velSrc(i,j-1,k).y) / bulkVel;
+				
+		}
+	}
+	// copy only border values into srcVel
+	FOR_IJK(flags){
+		if (i <= bWidth || j <= bWidth || i >= flags.getSizeX() - bWidth - 1 || j >= flags.getSizeY() - bWidth - 1) velSrc(i, j, k) = velDst(i, j, k);
+	}
+}
+
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
 KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up, bool admm,
 					MACGrid* fractions=0, Grid<Real>* phi=0) {
@@ -79,8 +101,7 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vecto
     bool curObstacle = flags.isObstacle(i,j,k);
 	if (!curFluid && !curObstacle) return;
 
-	// MLE 2014-07-04
-	// if not admm, leave it as in orig
+	// MLE 2014-07-04: if not admm, leave it as in orig
 	// if openBound, don't correct anything (solid is as empty)
 	// if admm, correct if vel is pointing outwards
 	
@@ -139,14 +160,14 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vecto
 
 	/* MLE consider later	
 	if (curFluid) {
-		if ((i>0 && flags.isStick(i - 1, j, k)) || (i<flags.getSizeX() - 1 && flags.isStick(i + 1, j, k)))
-			vel(i, j, k).y = vel(i, j, k).z = 0;
-		if ((j>0 && flags.isStick(i, j - 1, k)) || (j<flags.getSizeY() - 1 && flags.isStick(i, j + 1, k)))
-			vel(i, j, k).x = vel(i, j, k).z = 0;
-		if (vel.is3D() && ((k>0 && flags.isStick(i, j, k - 1)) || (k<flags.getSizeZ() - 1 && flags.isStick(i, j, k + 1))))
-			vel(i, j, k).x = vel(i, j, k).y = 0;
+		if ((i>0 && flags.isStick(i-1,j,k)) || (i<flags.getSizeX()-1 && flags.isStick(i+1,j,k)))
+			vel(i,j,k).y = vel(i,j,k).z = 0;
+		if ((j>0 && flags.isStick(i,j-1,k)) || (j<flags.getSizeY()-1 && flags.isStick(i,j+1,k)))
+			vel(i,j,k).x = vel(i,j,k).z = 0;
+		if (vel.is3D() && ((k>0 && flags.isStick(i,j,k-1)) || (k<flags.getSizeZ()-1 && flags.isStick(i,j,k+1))))
+			vel(i,j,k).x = vel(i,j,k).y = 0;
 	}
-*/
+	*/
 }
 
 //! set no-stick boundary condition on walls

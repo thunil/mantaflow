@@ -1,5 +1,5 @@
 #
-# Simple example scene for a 2D simulation
+# Very simple example scene for a 2D simulation
 # Simulation of a buoyant smoke density plume
 #
 from manta import *
@@ -12,25 +12,24 @@ s.timestep = 1.0
 timings = Timings()
 
 # prepare grids
-flags = s.create(FlagGrid)
-vel = s.create(MACGrid)
-density = s.create(RealGrid)
+flags    = s.create(FlagGrid)
+vel      = s.create(MACGrid)
+velPrev  = s.create(MACGrid)
+density  = s.create(RealGrid)
 pressure = s.create(RealGrid)
 
-flags.initDomain(boundaryWidth=1) # MLE: should not use default 0, leads to asymmetry -> default value = 1
+flags.initDomain(boundaryWidth=1) 
 flags.fillGrid()
 
-setOpenBound(flags,'xX')
-
 if (GUI):
-	gui = Gui()
-	gui.show( True ) 
-	#gui.pause()
+    gui = Gui()
+    gui.show( True ) 
+    #gui.pause()
 
 source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*vec3(0, 0.02, 0))
-	
+    
 #main loop
-for t in range(400):
+for t in range(500):
 	if t<300:
 		source.applyToGrid(grid=density, value=1)
 		
