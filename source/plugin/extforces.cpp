@@ -1,19 +1,20 @@
 /******************************************************************************
-*
-* MantaFlow fluid solver framework
-* Copyright 2011 Tobias Pfaff, Nils Thuerey
-*
-* This program is free software, distributed under the terms of the
-* GNU General Public License (GPL)
-* http://www.gnu.org/licenses
-*
-* Set boundary conditions, gravity
-*
-******************************************************************************/
+ *
+ * MantaFlow fluid solver framework
+ * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ *
+ * This program is free software, distributed under the terms of the
+ * GNU General Public License (GPL) 
+ * http://www.gnu.org/licenses
+ *
+ * Set boundary conditions, gravity
+ *
+ ******************************************************************************/
 
 #include "vectorbase.h"
 #include "grid.h"
 #include "commonkernels.h"
+#include "particle.h"
 
 using namespace std;
 
@@ -71,26 +72,116 @@ PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3
 	KnAddBuoyancy(flags,density, vel, f);
 }
 
-PYTHON void applyConvectiveBC(FlagGrid& flags, MACGrid& velSrc, MACGrid& velPrev, int bWidth, double timeStep) {
-	MACGrid velDst(velSrc.getParent());
-	double bulkVel = 10;// max((Real)1.0, velSrc.getMaxAbs());
+inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bool>& up) {
+	for (size_t i = 0; i<desc.size(); i++) {
+		if (desc[i] == 'x') lo.x = true;
+		else if (desc[i] == 'y') lo.y = true;
+		else if (desc[i] == 'z') lo.z = true;
+		else if (desc[i] == 'X') up.x = true;
+		else if (desc[i] == 'Y') up.y = true;
+		else if (desc[i] == 'Z') up.z = true;
+		else errMsg("invalid character in boundary description string. Only [xyzXYZ] allowed.");
+	}
+}
+
+// set boundary cells of open walls to empty cells 
+PYTHON void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type = FlagGrid::TypeOutflow | FlagGrid::TypeEmpty){
+	if (openBound == "") return;
+	Vector3D<bool> lo, up;
+	convertDescToVec(openBound, lo, up);
+	if (flags.is2D() && (lo.z || up.z)) errMsg("open boundaries for z specified for 2D grid");
+
 	FOR_IJK(flags){
-		if (flags.isOutflow(i, j, k)||flags.isInflow(i,j,k)) {
-			// convective BC:			dv/dt + bulkVel*dv/dn = 0
-			// at lower border     dv/dn = u(i+1)-u(i) 
-			// at higher border    dv/dn = u(i-1)-u(i)
-			//					   dv/dt = (u(i)(t) - u(i)(t-1))/timestep
-			if (i <= bWidth)					velDst(i, j, k).x = ((velSrc(i, j, k).x - velPrev(i, j, k).x) / timeStep + bulkVel*velSrc(i+1,j,k).x) / bulkVel;
-			if (i >= flags.getSizeX()-bWidth-1) velDst(i, j, k).x = ((velSrc(i, j, k).x - velPrev(i, j, k).x) / timeStep + bulkVel*velSrc(i-1,j,k).x) / bulkVel;
-			if (j <= bWidth)					velDst(i, j, k).y = ((velSrc(i, j, k).y - velPrev(i, j, k).y) / timeStep + bulkVel*velSrc(i,j+1,k).y) / bulkVel;
-			if (j >= flags.getSizeY()-bWidth-1) velDst(i, j, k).y = ((velSrc(i, j, k).y - velPrev(i, j, k).y) / timeStep + bulkVel*velSrc(i,j-1,k).y) / bulkVel;
-				
+		bool loX = lo.x && i <= bWidth; // a cell which belongs to the lower x open bound
+		bool loY = lo.y && j <= bWidth; // a cell which belongs to the lower y open bound
+		bool upX = up.x && i >= flags.getSizeX() - bWidth - 1; // a cell which belongs to the upper x open bound
+		bool upY = up.y && j >= flags.getSizeY() - bWidth - 1; // a cell which belongs to the upper y open bound
+		bool innerI = i>bWidth && i<flags.getSizeX() - bWidth - 1; // a cell which does not belong to the lower or upper x bound
+		bool innerJ = j>bWidth && j<flags.getSizeY() - bWidth - 1; // a cell which does not belong to the lower or upper y bound
+
+		// when setting boundaries to open: don't set shared part of wall to empty if neighboring wall is not open
+		if (flags.is2D() && (loX||upX||loY||upY)){
+			if ((loX || upX || innerI) && (loY || upY || innerJ) && flags.isObstacle(i, j, k)) flags(i, j, k) = type;
+		}
+		else{
+			bool loZ = lo.z && k <= bWidth; // a cell which belongs to the lower z open bound
+			bool upZ = up.z && k >= flags.getSizeZ() - bWidth - 1; // a cell which belongs to the upper z open bound
+			bool innerK = k>bWidth && k<flags.getSizeZ() - bWidth - 1; // a cell which does not belong to the lower or upper z bound
+			if (loX || upX || loY || upY || loZ || upZ){
+				if ((loX || upX || innerI) && (loY || upY || innerJ) && (loZ || upZ || innerK) && flags.isObstacle(i, j, k)) flags(i, j, k) = type;
+			}
 		}
 	}
-	// copy only border values into srcVel
-	FOR_IJK(flags){
-		if (i <= bWidth || j <= bWidth || i >= flags.getSizeX() - bWidth - 1 || j >= flags.getSizeY() - bWidth - 1) velSrc(i, j, k) = velDst(i, j, k);
+}
+
+PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* parts = 0, Grid<Real>* real = 0, Grid<int>* index = 0, ParticleIndexSystem* indexSys = 0){
+	// check if phi and parts -> pindex and gpi already created -> access particles from cell index, avoid extra looping over particles
+	if (parts && (!index || !indexSys)){
+		if (phi) debMsg("resetOpenBound for phi and particles, but missing index and indexSys for enhanced particle access!",1);
+		for (int idx = 0; idx < (int)parts->size(); idx++) 
+			if (parts->isActive(idx) && flags.isInBounds(parts->getPos(idx)) && flags.isOutflow(parts->getPos(idx))) parts->kill(idx);
 	}
+	FOR_IJK(flags){
+		if (flags.isOutflow(i,j,k)){
+			flags(i, j, k) = (flags(i, j, k) | FlagGrid::TypeEmpty) & ~FlagGrid::TypeFluid; // make sure there is not fluid flag set and to reset the empty flag
+			// the particles in a cell i,j,k are particles[index(i,j,k)] to particles[index(i+1,j,k)-1]
+			if (parts && index && indexSys){
+				int isysIdxS = index->index(i, j, k);
+				int pStart = (*index)(isysIdxS), pEnd = 0;
+				if (flags.isInBounds(isysIdxS + 1)) pEnd = (*index)(isysIdxS + 1);
+				else								pEnd = indexSys->size();
+				// now loop over particles in cell
+				for (int p = pStart; p<pEnd; ++p) {
+					int psrc = (*indexSys)[p].sourceIndex;
+					if (parts->isActive(psrc) && flags.isInBounds(parts->getPos(psrc))) parts->kill(psrc);
+				}
+			}
+			if (phi) (*phi)(i, j, k) = 0.5;
+			if (real) (*real)(i, j, k) = 0;
+		}
+	}
+	if (parts) parts->doCompress();
+}
+
+KERNEL void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid& velDst, MACGrid& velPrev, Real factor, int depth){
+	if (flags.isOutflow(i,j,k)){
+		bool done=false;
+		int dim = flags.is3D() ? 3 : 2;
+		Vec3i cur, low, up, flLow, flUp;
+		cur = low = up = flLow = flUp = Vec3i(i,j,k);
+		for (int c = 0; c<dim; c++){
+			low[c] = flLow[c] = cur[c]-1;
+			up[c] = flUp[c] = cur[c]+1;
+			for (int d = 0; d<depth; d++){
+				if (cur[c]>d && flags.isFluid(flLow)) {	
+					velDst(i,j,k)[c] = ((vel(i,j,k)[c] - velPrev(i,j,k)[c]) / factor) + vel(low)[c];
+					done=true;
+				}
+				if (cur[c]<flags.getSize()[c]-d-1 && flags.isFluid(flUp))	{
+					// check for cells equally far away from two fluid cells -> average value between both sides
+					if (done) velDst(i,j,k)[c] = 0.5*(velDst(i,j,k)[c] + ((vel(i,j,k)[c] - velPrev(i,j,k)[c]) / factor) + vel(up)[c]);
+					else velDst(i,j,k)[c] = ((vel(i,j,k)[c] - velPrev(i,j,k)[c]) / factor) + vel(up)[c];
+					done=true;
+				}
+				flLow[c]=flLow[c]-1;
+				flUp[c]=flUp[c]+1;
+				if (done) break;
+			}
+			low = up = flLow = flUp = cur;
+			done=false;
+		}
+	}
+}
+
+KERNEL void copyChangedVels(FlagGrid& flags, MACGrid& velDst, MACGrid& vel){
+	if (flags.isOutflow(i,j,k)) vel(i, j, k) = velDst(i, j, k);
+}
+
+PYTHON void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double timeStep, int depth=2, double bulkVel = 8) {
+	// alternative for bulkVel: bulkVel = max((Real)1.0, vel.getMaxAbs());
+	MACGrid velDst(vel.getParent());
+	extrapolateVelConvectiveBC(flags, vel, velDst, velPrev, timeStep*bulkVel, depth);
+	copyChangedVels(flags,velDst,vel);
 }
 
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
