@@ -24,7 +24,7 @@ mesh = s.create(Mesh)
 
 # scene setup
 bWidth=1
-openB='y'
+openB='xX'
 flags.initDomain(boundaryWidth=bWidth)
 basin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1,0.2,1))
 drop  = s.create(Sphere, center=gs*vec3(0.5,0.5,0.5), radius=res*0.15)

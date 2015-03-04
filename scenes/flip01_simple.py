@@ -34,7 +34,7 @@ if usePhi:
 
 # scene setup
 bWidth=1
-openB='xX'
+openB='y'
 flags.initDomain(boundaryWidth=bWidth) # MLE: should not use default 0, leads to asymmetry and other inaccuracies
 # enable one of the following
 fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1)) # breaking dam

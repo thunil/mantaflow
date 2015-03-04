@@ -129,17 +129,17 @@ void ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src,
 }
 
 //! Kernel: Apply symmetric stored Matrix. 2D version
-KERNEL(idx) 
+KERNEL
 void ApplyMatrix2D (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
 					Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
 {
 	unusedParameter(Ak); // only there for parameter compatibility with ApplyMatrix
-	
+	int idx = flags.index(i,j,k);
 	if (flags[idx] & FlagGrid::TypeZeroPressure) { 
 		dst[idx]=0.; return; 
 	}
 
-	if (!flags.isFluid(idx)) {
+	if (!flags.isFluid(idx)||(!flags.isInBounds(Vec3i(i,j,k),1)&&(flags.isInflow(idx)||flags.isOutflow(idx)))) {
 		dst[idx] = src[idx]; return;
 	}    
 
