@@ -13,7 +13,7 @@ dim = 3
 # how much to upres the XL sim?
 upres = 3
 # resolution
-res = 40
+res = 42
 
 # small
 smgs = vec3(res/upres,res/upres,res/upres)

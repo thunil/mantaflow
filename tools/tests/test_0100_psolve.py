@@ -36,7 +36,6 @@ velSource.applyToGrid(grid=vel, value=vec3(0.15, 0.3, 0.21) )
 solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-04)
 s.step()
 
-#pressure.save('test_0100_psolve_pressure0.uni')
 # check - note, unfortunately low threshold here necessary for float<>double comparisons...
 doTestGrid( sys.argv[0], "pressure0" , s, pressure , threshold=1e-04, thresholdStrict=1e-10)
 
@@ -50,8 +49,6 @@ setWallBcs(flags=flags, vel=vel)
 solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-04)
 setWallBcs(flags=flags, vel=vel)
 s.step()
-
-#pressure.save('test_0100_psolve_pressure.uni')
 
 # check final state
 doTestGrid( sys.argv[0], "pressure" , s, pressure , threshold=1e-04, thresholdStrict=1e-10)

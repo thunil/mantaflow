@@ -240,7 +240,7 @@ static inline bool isNotFluidMAC(FlagGrid& flags, int i, int j, int k)
 
 //! template function for performing SL advection
 template<class GridType> 
-void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, GridType& orig, int order, Real strength, int orderSpace) {
+void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, GridType& orig, int order, Real strength, int orderSpace, bool openBounds, int depth) {
 	typedef typename GridType::BASETYPE T;
 	
 	Real dt = parent->getDt();
@@ -270,9 +270,67 @@ void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, Gr
 	}
 }
 
+Vec3 getBulkVel(FlagGrid& flags, MACGrid& vel, int i, int j, int k){
+	Vec3 avg = Vec3(0,0,0);
+	int count = 0;
+	int size=1; // stencil size
+	int nmax = (flags.is3D() ? size : 0);
+	for (int n = -nmax; n<=nmax;n++){
+		for (int m = -size; m<=size; m++){
+			for (int l = -size; l<=size; l++){
+				if (flags.isInBounds(Vec3i(i+l,j+m,k+n),0) && (flags.isFluid(i+l,j+m,k+n)||flags.isOutflow(i+l,j+m,k+n))){
+					avg += vel(i+l,j+m,k+n);
+					count++;
+				}
+			}
+		}
+	}
+	return count>0 ? avg/count : avg;
+}
+
+KERNEL void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid& velDst, MACGrid& velPrev, Real timeStep, int depth){
+	if (flags.isOutflow(i,j,k)){
+		Vec3 bulkVel = getBulkVel(flags,vel,i,j,k);
+		bool done=false;
+		int dim = flags.is3D() ? 3 : 2;
+		Vec3i cur, low, up, flLow, flUp;
+		cur = low = up = flLow = flUp = Vec3i(i,j,k);
+		for (int c = 0; c<dim; c++){
+			Real factor = timeStep*max((Real)1.0,bulkVel[c]); // prevent the extrapolated velocity from exploding when bulk velocity below 1
+			low[c] = flLow[c] = cur[c]-1;
+			up[c] = flUp[c] = cur[c]+1;
+			for (int d = 0; d<depth; d++){
+				if (cur[c]>d && flags.isFluid(flLow)) {	
+					velDst(i,j,k)[c] = ((vel(i,j,k)[c] - velPrev(i,j,k)[c]) / factor) + vel(low)[c];
+					done=true;
+				}
+				if (cur[c]<flags.getSize()[c]-d-1 && flags.isFluid(flUp)) {
+					// check for cells equally far away from two fluid cells -> average value between both sides
+					if (done) velDst(i,j,k)[c] = 0.5*(velDst(i,j,k)[c] + ((vel(i,j,k)[c] - velPrev(i,j,k)[c]) / factor) + vel(up)[c]);
+					else velDst(i,j,k)[c] = ((vel(i,j,k)[c] - velPrev(i,j,k)[c]) / factor) + vel(up)[c];
+					done=true;
+				}
+				flLow[c]=flLow[c]-1;
+				flUp[c]=flUp[c]+1;
+				if (done) break;
+			}
+			low = up = flLow = flUp = cur;
+			done=false;
+		}
+	}
+}
+
+KERNEL void copyChangedVels(FlagGrid& flags, MACGrid& velDst, MACGrid& vel){ if (flags.isOutflow(i,j,k)) vel(i, j, k) = velDst(i, j, k); }
+
+void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double timeStep, int depth=2) {
+	MACGrid velDst(vel.getParent());
+	extrapolateVelConvectiveBC(flags, vel, velDst, velPrev, max(1.0,timeStep*4), depth);
+	copyChangedVels(flags,velDst,vel);
+}
+
 //! template function for performing SL advection: specialized version for MAC grids
 template<> 
-void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, MACGrid& orig, int order, Real strength, int orderSpace) {
+void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, MACGrid& orig, int order, Real strength, int orderSpace, bool openBounds, int depth) {
 	Real dt = parent->getDt();
 	
 	// forward step
@@ -282,6 +340,7 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 	if (orderSpace != 1) { debMsg("Warning higher order for MAC grids not yet implemented...",1); }
 
 	if (order == 1) {
+		if (openBounds) applyOutflowBC(flags, fwd, orig, dt, depth);
 		orig.swap(fwd);
 	}
 	else if (order == 2) { // MacCormack 
@@ -297,25 +356,26 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 		// clamp values
 		MacCormackClampMAC (flags, vel, newGrid, orig, fwd, dt); 
 		
+		if (openBounds) applyOutflowBC(flags, newGrid, orig, dt, depth);
 		orig.swap(newGrid);
 	}
 }
 
 //! Perform semi-lagrangian advection of target Real- or Vec3 grid
-PYTHON void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid, 
-						   int order = 1, Real strength = 1.0, int orderSpace = 1 )
+PYTHON void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid,
+						   int order = 1, Real strength = 1.0, int orderSpace = 1, bool openBounds = false, int depth = 2)
 {    
 	assertMsg(order==1 || order==2, "AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");
 	
 	// determine type of grid    
 	if (grid->getType() & GridBase::TypeReal) {
-		fnAdvectSemiLagrange< Grid<Real> >(flags->getParent(), *flags, *vel, *((Grid<Real>*) grid), order, strength, orderSpace);
+		fnAdvectSemiLagrange< Grid<Real> >(flags->getParent(), *flags, *vel, *((Grid<Real>*) grid), order, strength, orderSpace, openBounds, depth);
 	}
 	else if (grid->getType() & GridBase::TypeMAC) {    
-		fnAdvectSemiLagrange< MACGrid >(flags->getParent(), *flags, *vel, *((MACGrid*) grid), order, strength, orderSpace);
+		fnAdvectSemiLagrange< MACGrid >(flags->getParent(), *flags, *vel, *((MACGrid*) grid), order, strength, orderSpace, openBounds, depth);
 	}
 	else if (grid->getType() & GridBase::TypeVec3) {    
-		fnAdvectSemiLagrange< Grid<Vec3> >(flags->getParent(), *flags, *vel, *((Grid<Vec3>*) grid), order, strength, orderSpace);
+		fnAdvectSemiLagrange< Grid<Vec3> >(flags->getParent(), *flags, *vel, *((Grid<Vec3>*) grid), order, strength, orderSpace, openBounds, depth);
 	}
 	else
 		errMsg("AdvectSemiLagrange: Grid Type is not supported (only Real, Vec3, MAC, Levelset)");    

@@ -3,25 +3,30 @@
 # and without any particle resampling
 # 
 from manta import *
+import sys
+
+l = len(sys.argv)
+openB = sys.argv[1] if l>=2 else 'xX'
+bWidth = int(sys.argv[2]) if l>=3 else 1
+factor = vec3(int(sys.argv[3]),int(sys.argv[4]),int(sys.argv[5])) if l>=6 else vec3(1,1,1)
 
 # solver params
 dim = 2
 particleNumber = 2
 res = 64
-gs = vec3(res,res,res)
+gs = vec3(factor.x*res,factor.y*res,factor.z*res)
 if (dim==2):
     gs.z=1
     particleNumber = 3 # use more particles in 2d
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.5
 
-usePhi = True
+usePhi = False
 
 # prepare grids and particles
 flags    = s.create(FlagGrid)
 vel      = s.create(MACGrid)
 velOld   = s.create(MACGrid)
-velPrev = s.create(MACGrid)
 pressure = s.create(RealGrid)
 tmpVec3  = s.create(VecGrid)
 pp       = s.create(BasicParticleSystem) 
@@ -33,11 +38,13 @@ if usePhi:
     gpi    = s.create(IntGrid) 
 
 # scene setup
-bWidth=1
-openB='y'
 flags.initDomain(boundaryWidth=bWidth) # MLE: should not use default 0, leads to asymmetry and other inaccuracies
 # enable one of the following
-fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1)) # breaking dam
+p0=vec3(0,0,0)
+p1=vec3(0.4,0.6,1)
+a=vec3(0.5,0.5,0.5)*gs+p0-vec3(0.5,0.5,0.5)*(gs/factor)
+b=a+(p1-p0)*(gs/factor)
+fluidbox = s.create(Box, p0=a, p1=b) # breaking dam
 #fluidbox = s.create(Box, p0=gs*vec3(0.4,0.72,0.4), p1=gs*vec3(0.6,0.92,0.6)) # centered falling block
 phi = fluidbox.computeLevelset()
 flags.updateFromLevelset(phi)
@@ -51,11 +58,11 @@ setOpenBound(flags,bWidth,openB,FlagOutflow|FlagEmpty)
 sampleLevelsetWithParticles(phi=phi,flags=flags,parts=pp,discretization=particleNumber,randomness=0.05) if usePhi else sampleFlagsWithParticles( flags=flags, parts=pp, discretization=particleNumber, randomness=0.2 )
         
 #main loop
-for t in range(2500):
+for t in range(500):
     
     # FLIP 
     pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False ) 
-    mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=tmpVec3 ) 
+    mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=tmpVec3)
     extrapolateMACFromWeight( vel=vel , distance=2, weight=tmpVec3 ) 
     markFluidCells( parts=pp, flags=flags )
 
@@ -69,10 +76,9 @@ for t in range(2500):
     else:
         resetOutflow(flags=flags,parts=pp) 
         
-    addGravity(flags=flags, vel=vel, gravity=(0,-0.002,0))
+    addGravity(flags=flags, vel=vel, gravity=(0,(-0.002/max(factor.x,max(factor.y,factor.z))),0))
 
     # pressure solve
-    applyOutflowBC(flags,vel,velPrev,s.timestep,bWidth+1,4)
     setWallBcs(flags=flags, vel=vel)    
     solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi) if usePhi else solvePressure(flags=flags, vel=vel, pressure=pressure)
     setWallBcs(flags=flags, vel=vel)
@@ -83,7 +89,6 @@ for t in range(2500):
     # FLIP velocity update
     flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97 )
     
-    #gui.screenshot('flip_xX_%04d.png' % t )
-    velPrev.copyFrom(vel)
+    gui.screenshot('flip01_'+openB+'_'+str(bWidth)+'_('+str(int(factor.x))+','+str(int(factor.y))+')_%04d.png' % t)
     s.step()
 

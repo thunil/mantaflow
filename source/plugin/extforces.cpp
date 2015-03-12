@@ -114,7 +114,7 @@ PYTHON void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int
 	}
 }
 
-PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* parts = 0, Grid<Real>* real = 0, Grid<int>* index = 0, ParticleIndexSystem* indexSys = 0, bool fluidOutflow = false){
+PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* parts = 0, Grid<Real>* real = 0, Grid<int>* index = 0, ParticleIndexSystem* indexSys = 0){
 	// check if phi and parts -> pindex and gpi already created -> access particles from cell index, avoid extra looping over particles
 	if (parts && (!index || !indexSys)){
 		if (phi) debMsg("resetOpenBound for phi and particles, but missing index and indexSys for enhanced particle access!",1);
@@ -122,9 +122,8 @@ PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSyst
 			if (parts->isActive(idx) && flags.isInBounds(parts->getPos(idx)) && flags.isOutflow(parts->getPos(idx))) parts->kill(idx);
 	}
 	FOR_IJK(flags){
-		if (flags.isOutflow(i,j,k)||flags.isInflow(i,j,k)){
-			if (flags.isOutflow(i,j,k)&&!fluidOutflow) flags(i, j, k) = (flags(i, j, k) | FlagGrid::TypeEmpty) & ~FlagGrid::TypeFluid; // make sure there is not fluid flag set and to reset the empty flag
-			if (flags.isInflow(i,j,k)||fluidOutflow) flags(i, j, k) = (flags(i, j, k) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty; 
+		if (flags.isOutflow(i,j,k)){
+			flags(i, j, k) = (flags(i, j, k) | FlagGrid::TypeEmpty) & ~FlagGrid::TypeFluid; // make sure there is not fluid flag set and to reset the empty flag
 			// the particles in a cell i,j,k are particles[index(i,j,k)] to particles[index(i+1,j,k)-1]
 			if (parts && index && indexSys){
 				int isysIdxS = index->index(i, j, k);
@@ -142,67 +141,6 @@ PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSyst
 		}
 	}
 	if (parts) parts->doCompress();
-}
-
-KERNEL void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid& velDst, MACGrid& velPrev, Real factor, int depth, bool otherExtra){
-	if (flags.isOutflow(i,j,k)||flags.isInflow(i,j,k)){
-		bool done=false;
-		int dim = flags.is3D() ? 3 : 2;
-		Vec3i cur, low, up, flLow, flUp;
-		cur = low = up = flLow = flUp = Vec3i(i,j,k);
-		for (int c = 0; c<dim; c++){
-			low[c] = flLow[c] = cur[c]-1;
-			up[c] = flUp[c] = cur[c]+1;
-			for (int d = 0; d<depth; d++){
-				if (cur[c]>d && flags.isFluid(flLow)) {	
-					velDst(i,j,k)[c] = ((vel(i,j,k)[c] - velPrev(i,j,k)[c]) / factor) + vel(low)[c];
-					done=true;
-				}
-				if (cur[c]<flags.getSize()[c]-d-1 && flags.isFluid(flUp))	{
-					// check for cells equally far away from two fluid cells -> average value between both sides
-					if (done) velDst(i,j,k)[c] = 0.5*(velDst(i,j,k)[c] + ((vel(i,j,k)[c] - velPrev(i,j,k)[c]) / factor) + vel(up)[c]);
-					else velDst(i,j,k)[c] = ((vel(i,j,k)[c] - velPrev(i,j,k)[c]) / factor) + vel(up)[c];
-					done=true;
-				}
-				flLow[c]=flLow[c]-1;
-				flUp[c]=flUp[c]+1;
-				if (otherExtra){ // extrapolate from fluid value
-					low[c]=low[c]-1;
-					up[c]=up[c]+1;
-				}
-				if (done) break;
-			}
-			low = up = flLow = flUp = cur;
-			done=false;
-		}
-	}
-}
-
-KERNEL void copyChangedVels(FlagGrid& flags, MACGrid& velDst, MACGrid& vel){
-	if (flags.isOutflow(i,j,k)||flags.isInflow(i,j,k)) vel(i, j, k) = velDst(i, j, k);
-}
-
-KERNEL void classifyOpenCell(FlagGrid& flags, MACGrid& vel){
-	if (flags.isOutflow(i,j,k)){
-		if (i<=2 && vel(i,j,k).x>0) flags(i,j,k) =  FlagGrid::TypeInflow | FlagGrid::TypeFluid;
-		if (i>=flags.getSizeX()-3 && vel(i,j,k).x < 0) flags(i,j,k) =  FlagGrid::TypeInflow | FlagGrid::TypeFluid;
-		if (j<=2 && vel(i,j,k).y>0) flags(i,j,k) =  FlagGrid::TypeInflow | FlagGrid::TypeFluid;
-		if (j>=flags.getSizeY()-3 && vel(i,j,k).y<0) flags(i,j,k) =  FlagGrid::TypeInflow | FlagGrid::TypeFluid;
-	}
-	if (flags.isInflow(i,j,k)){
-		if (i<=2 && vel(i,j,k).x<0) flags(i,j,k) =  FlagGrid::TypeOutflow | FlagGrid::TypeEmpty;
-		if (i>=flags.getSizeX()-3 && vel(i,j,k).x > 0) flags(i,j,k) =  FlagGrid::TypeOutflow | FlagGrid::TypeEmpty;
-		if (j<=2 && vel(i,j,k).y<0) flags(i,j,k) =  FlagGrid::TypeOutflow | FlagGrid::TypeEmpty;
-		if (j>=flags.getSizeY()-3 && vel(i,j,k).y>0) flags(i,j,k) =  FlagGrid::TypeOutflow | FlagGrid::TypeEmpty;
-	}
-}
-
-PYTHON void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double timeStep, int depth=2, double bulkVel = 8, bool fluidInflow=false, bool fluidOutflow = false, bool otherExtra = false) {
-	// alternative for bulkVel: bulkVel = max((Real)1.0, vel.getMaxAbs());
-	MACGrid velDst(vel.getParent());
-	extrapolateVelConvectiveBC(flags, vel, velDst, velPrev, timeStep*bulkVel, depth, otherExtra);
-	copyChangedVels(flags,velDst,vel);
-	if(fluidInflow && !fluidOutflow) classifyOpenCell(flags, vel);
 }
 
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
