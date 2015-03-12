@@ -66,7 +66,7 @@ void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure)
 		if (flags.isEmpty(i,j-1,k)) vel[idx].y -= pressure[idx];
 		if (flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx].z -= pressure[idx];
 	}
-	else if (flags.isEmpty(idx)&&!flags.isOutflow(idx)) // don't change velocities in outflow
+	else if (flags.isEmpty(idx)&&!flags.isOutflow(idx)) // don't change velocities in outflow cells
 	{
 		if (flags.isFluid(i-1,j,k)) vel[idx].x += pressure(i-1,j,k);
 		else                        vel[idx].x  = 0.f;
@@ -128,7 +128,7 @@ void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<R
 		if (flags.isEmpty(i,j-1,k)) vel[idx][1] += pressure[idx] * ghostFluidHelper(idx, -Y, phi, gfClamp);
 		if (flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx][2] += pressure[idx] * ghostFluidHelper(idx, -Z, phi, gfClamp);
 	}
-	else if (flags.isEmpty(idx)&&!flags.isOutflow(idx))
+	else if (flags.isEmpty(idx)&&!flags.isOutflow(idx)) // do not change velocities in outflow cells
 	{
 		if (flags.isFluid(i-1,j,k)) vel[idx][0] -= pressure(i-1,j,k) * ghostFluidHelper(idx-X, +X, phi, gfClamp);
 		else                        vel[idx].x  = 0.f;

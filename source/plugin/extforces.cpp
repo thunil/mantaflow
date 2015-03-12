@@ -20,7 +20,6 @@ using namespace std;
 
 namespace Manta { 
 
-
 //! add Forces between fl/fl and fl/em cells
 KERNEL(bnd=1) void KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
 	bool curFluid = flags.isFluid(i,j,k);
@@ -84,12 +83,12 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 	}
 }
 
-// set boundary cells of open walls to empty cells 
+//! add empty and outflow flag to cells of open boundaries 
 PYTHON void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type = FlagGrid::TypeOutflow | FlagGrid::TypeEmpty){
 	if (openBound == "") return;
 	Vector3D<bool> lo, up;
 	convertDescToVec(openBound, lo, up);
-	if (flags.is2D() && (lo.z || up.z)) errMsg("open boundaries for z specified for 2D grid");
+	//if (flags.is2D() && (lo.z || up.z)) errMsg("open boundaries for z specified for 2D grid");
 
 	FOR_IJK(flags){
 		bool loX = lo.x && i <= bWidth; // a cell which belongs to the lower x open bound
@@ -114,6 +113,7 @@ PYTHON void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int
 	}
 }
 
+//! delete fluid and ensure empty flag in outflow cells, delete particles and density and set phi to 0.5
 PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* parts = 0, Grid<Real>* real = 0, Grid<int>* index = 0, ParticleIndexSystem* indexSys = 0){
 	// check if phi and parts -> pindex and gpi already created -> access particles from cell index, avoid extra looping over particles
 	if (parts && (!index || !indexSys)){

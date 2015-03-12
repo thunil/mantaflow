@@ -270,11 +270,13 @@ void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, Gr
 	}
 }
 
+//! calculate local propagation velocity for cell (i,j,k)
 Vec3 getBulkVel(FlagGrid& flags, MACGrid& vel, int i, int j, int k){
 	Vec3 avg = Vec3(0,0,0);
 	int count = 0;
 	int size=1; // stencil size
 	int nmax = (flags.is3D() ? size : 0);
+	// average the neighboring fluid / outflow cell's velocity
 	for (int n = -nmax; n<=nmax;n++){
 		for (int m = -size; m<=size; m++){
 			for (int l = -size; l<=size; l++){
@@ -288,6 +290,7 @@ Vec3 getBulkVel(FlagGrid& flags, MACGrid& vel, int i, int j, int k){
 	return count>0 ? avg/count : avg;
 }
 
+//! extrapolate normal velocity components into outflow cell
 KERNEL void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid& velDst, MACGrid& velPrev, Real timeStep, int depth){
 	if (flags.isOutflow(i,j,k)){
 		Vec3 bulkVel = getBulkVel(flags,vel,i,j,k);
@@ -295,10 +298,12 @@ KERNEL void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid& v
 		int dim = flags.is3D() ? 3 : 2;
 		Vec3i cur, low, up, flLow, flUp;
 		cur = low = up = flLow = flUp = Vec3i(i,j,k);
+		// iterate over each velocity component x, y, z
 		for (int c = 0; c<dim; c++){
 			Real factor = timeStep*max((Real)1.0,bulkVel[c]); // prevent the extrapolated velocity from exploding when bulk velocity below 1
 			low[c] = flLow[c] = cur[c]-1;
 			up[c] = flUp[c] = cur[c]+1;
+			// iterate over depth to allow for extrapolation into more distant outflow cells
 			for (int d = 0; d<depth; d++){
 				if (cur[c]>d && flags.isFluid(flLow)) {	
 					velDst(i,j,k)[c] = ((vel(i,j,k)[c] - velPrev(i,j,k)[c]) / factor) + vel(low)[c];
@@ -320,10 +325,12 @@ KERNEL void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid& v
 	}
 }
 
+//! copy extrapolated velocity components
 KERNEL void copyChangedVels(FlagGrid& flags, MACGrid& velDst, MACGrid& vel){ if (flags.isOutflow(i,j,k)) vel(i, j, k) = velDst(i, j, k); }
 
+//! extrapolate normal velocity components into open boundary cells (marked as outflow cells)
 void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double timeStep, int depth=2) {
-	MACGrid velDst(vel.getParent());
+	MACGrid velDst(vel.getParent()); // do not overwrite vel while it is read
 	extrapolateVelConvectiveBC(flags, vel, velDst, velPrev, max(1.0,timeStep*4), depth);
 	copyChangedVels(flags,velDst,vel);
 }
