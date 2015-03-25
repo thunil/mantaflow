@@ -97,7 +97,9 @@ PbClass* FluidSolver::create(PbType t, PbTypeVec T, const string& name) {
 	if (t.str() == "")
 		errMsg("Need to specify object type. Use e.g. Solver.create(FlagGrid, ...) or Solver.create(type=FlagGrid, ...)");
 	
-	return PbClass::createPyObject(t.str() + T.str(), name, _args, this);
+	PbClass* ret = PbClass::createPyObject(t.str() + T.str(), name, _args, this);
+	//_args.check(); // NT_DEBUG , todo add here ...
+	return ret;
 }
 
 void FluidSolver::step() {

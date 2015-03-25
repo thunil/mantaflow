@@ -127,6 +127,10 @@ public:
 	inline bool has(const std::string& key) {
 		return getItem(key, false) != NULL;
 	}
+	inline void deleteItem(const std::string& key) {
+		if( mData.find(key) != mData.end() )
+			mData.erase( mData.find(key) );
+	}
 	
 	inline PyObject* linArgs() { return mLinArgs; }
 	inline PyObject* kwds() { return mKwds; }
