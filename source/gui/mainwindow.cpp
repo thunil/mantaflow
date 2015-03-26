@@ -166,11 +166,13 @@ bool MainWnd::event(QEvent* e) {
 	}
 	else if (e->type() == (QEvent::Type)EventStepUpdate) {        
 		if (!mRequestClose) {
-			if (mRequestPause)
+			if (mRequestPause) {
 				emit painterEvent(Painter::UpdateFull);
-			else
+				mGlWidget->updateGL();
+			} else {
 				emit painterEvent(Painter::UpdateStep);
-			mGlWidget->updateGL();
+				// redraw not necessary? old: mGlWidget->updateGL();
+			}
 		}
 		emit wakeMain();
 		return true;
