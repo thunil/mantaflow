@@ -17,14 +17,14 @@ s = Solver(name='main', gridSize = gs, dim=3)
 s.timestep = 0.58
 
 # prepare grids and particles
-flags    = s.create(FlagGrid)
-vel      = s.create(MACGrid)
-velOld   = s.create(MACGrid)
-pressure = s.create(RealGrid)
-tmpVec3  = s.create(VecGrid)
-density  = s.create(RealGrid)
+flags    = FlagGrid(parent = s)
+vel      = MACGrid(parent = s)
+velOld   = MACGrid(parent = s)
+pressure = RealGrid(parent = s)
+tmpVec3  = VecGrid(parent = s)
+density  = RealGrid(parent = s)
 
-pp       = s.create(BasicParticleSystem) 
+pp       = BasicParticleSystem(parent = s) 
 # add velocity data to particles
 pVel     = pp.create(PdataVec3) 
 pDens    = pp.create(PdataReal) 
@@ -33,7 +33,7 @@ pDens    = pp.create(PdataReal)
 flags.initDomain(boundaryWidth=0)
 
 # noise field
-noise = s.create(NoiseField, loadFromFile=True )
+noise = NoiseField(parent = s, loadFromFile=True )
 noise.posScale = vec3(100) # high frequency
 noise.clamp = True
 noise.clampNeg = 0
@@ -52,8 +52,8 @@ if 0 and (GUI):
 genRefFiles = getGenRefFileSetting()
 if (genRefFiles==1):
 	# enable one of the following
-	fluidbox1 = s.create(Box, p0=gs*vec3(0.2,0.2,0.2), p1=gs*vec3(0.8,0.4,0.8))
-	fluidbox2 = s.create(Box, p0=gs*vec3(0.2,0.6,0.2), p1=gs*vec3(0.8,0.8,0.8))
+	fluidbox1 = Box(parent=s, p0=gs*vec3(0.2,0.2,0.2), p1=gs*vec3(0.8,0.4,0.8))
+	fluidbox2 = Box(parent=s, p0=gs*vec3(0.2,0.6,0.2), p1=gs*vec3(0.8,0.8,0.8))
 	phiInit = fluidbox1.computeLevelset()
 	phiInit.join( fluidbox2.computeLevelset() )
 	flags.updateFromLevelset(phiInit)
