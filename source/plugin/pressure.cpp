@@ -328,21 +328,21 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 		rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
 	
 	// check whether we need to fix some pressure value...
-	// int fixPidx = -1;
-	// int numEmpty = CountEmptyCells(flags);
-	// if(numEmpty==0) {
-	// 	FOR_IJK_BND(flags,1) {
-	// 		if(flags.isFluid(i,j,k)) {
-	// 			fixPidx = flags.index(i,j,k);
-	// 			break;
-	// 		}
-	// 	}
-	// 	//debMsg("No empty cells! Fixing pressure of cell "<<fixPidx<<" to zero",1);
-	// }
-	// if(fixPidx>=0) {
-	// 	flags[fixPidx] |= FlagGrid::TypeZeroPressure;
-	// 	rhs[fixPidx] = 0.; 
-	// }
+	int fixPidx = -1;
+	int numEmpty = CountEmptyCells(flags);
+	if(numEmpty==0) {
+		FOR_IJK_BND(flags,1) {
+			if(flags.isFluid(i,j,k)) {
+				fixPidx = flags.index(i,j,k);
+				break;
+			}
+		}
+		//debMsg("No empty cells! Fixing pressure of cell "<<fixPidx<<" to zero",1);
+	}
+	if(fixPidx>=0) {
+		flags[fixPidx] |= FlagGrid::TypeZeroPressure;
+		rhs[fixPidx] = 0.; 
+	}
 
 	// CG setup
 	// note: the last factor increases the max iterations for 2d, which right now can't use a preconditioner 
@@ -372,8 +372,8 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
 	}
 
-	// if(fixPidx>=0)
-	// 	flags[fixPidx] &= ~FlagGrid::TypeZeroPressure;
+	if(fixPidx>=0)
+		flags[fixPidx] &= ~FlagGrid::TypeZeroPressure;
 
 	// optionally , return RHS
 	if(retRhs) {
