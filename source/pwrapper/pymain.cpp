@@ -76,7 +76,7 @@ void runScript(vector<string>& args) {
 	delete[] buf;    
 #else
 	// for linux, use this as it produces nicer error messages
-	PyRun_SimpleFileEx(fp, filename.c_str(), 1);    
+	PyRun_SimpleFileEx(fp, filename.c_str(), 0);  
 	fclose(fp);    
 #endif
 	
