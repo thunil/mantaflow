@@ -277,7 +277,6 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0, 
                      MACGrid* fractions = 0,
-                     Grid<Real>* A0_ = 0,
                      Real gfClamp = 1e-04,
                      Real cgMaxIterFac = 1.5,
                      Real cgAccuracy = 1e-3,
@@ -312,9 +311,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, s
 		
 	// setup matrix and boundaries
 	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak, fractions);
-	if(A0_) {
-		A0_->copyFrom(A0);//test grid for debugging in the GUI
-	}
+
 	SetOpenBound (A0, Ai, Aj, Ak, flags, vel, loOpenBound, upOpenBound);
 	
 	if (phi) {

@@ -117,65 +117,34 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vecto
 	//if fractions and levelset are present, use better boundary condition at obstacles
 	if(fractions && phi) {
 
-		if(flags.is3D()) {
+		if( (fractions->get(i,j,k).x > 0. && fractions->get(i,j,k).x < 1.) || 
+			(fractions->get(i,j,k).y > 0. && fractions->get(i,j,k).y < 1.) ) {
 
-			if( (fractions->get(i,j,k).x > 0. && fractions->get(i,j,k).x < 1.) || 
-				(fractions->get(i,j,k).y > 0. && fractions->get(i,j,k).y < 1.) || 
-				(fractions->get(i,j,k).z > 0. && fractions->get(i,j,k).z < 1.) ) {
-
-				//calculate normal on levelset field
-			    Real dphi_i = phi->get(i+1,j,k)-phi->get(i,j,k);
-				Real dphi_j = phi->get(i,j+1,k)-phi->get(i,j,k);
-				Real dphi_k = phi->get(i,j,k+1)-phi->get(i,j,k);
-
-				Real norm = std::max(1.e-7f,static_cast<float>(std::sqrt(dphi_i*dphi_i + dphi_j*dphi_j + dphi_k*dphi_k)));
-
-				Vec3 normal;
-				normal.x = dphi_i / norm;
-				normal.y = dphi_j / norm;
-				normal.z = dphi_k / norm;
-
-				//set normal component of velocity to zero
-				Real dot = normal.x * vel(i,j,k).x + normal.y * vel(i,j,k).y + normal.z * vel(i,j,k).z;
-				Vec3 tangential;
-				tangential.x = vel(i,j,k).x - dot * normal.x;
-				tangential.y = vel(i,j,k).y - dot * normal.y;
-				tangential.z = vel(i,j,k).z - dot * normal.z;
-			
-				vel(i,j,k).x = tangential.x;
-				vel(i,j,k).y = tangential.y;
-				vel(i,j,k).z = tangential.z;
-
+			//calculate normal on levelset field
+			Vec3 dphi;
+		    dphi.x = phi->get(i+1,j,k)-phi->get(i,j,k);
+			dphi.y = phi->get(i,j+1,k)-phi->get(i,j,k);
+			dphi.z = 0.;
+			if(flags.is3D()) {
+				if(fractions->get(i,j,k).z > 0. && fractions->get(i,j,k).z < 1.) {
+					dphi.z = phi->get(i,j,k-1)-phi->get(i,j,k);
+				}
 			}
 
-		}else{
+			Real norm = normalize(dphi);
 
-			if( (fractions->get(i,j,k).x > 0. && fractions->get(i,j,k).x < 1.) || 
-				(fractions->get(i,j,k).y > 0. && fractions->get(i,j,k).y < 1.) ) {
+			Vec3 normal;
+			normal.x = dphi.x / norm;
+			normal.y = dphi.y / norm;
+			normal.z = 1.;
+			if(flags.is3D()) normal.z = dphi.z / norm;
 
-				//calculate normal on levelset field
-			    Real dphi_i = phi->get(i+1,j,k)-phi->get(i,j,k);
-				Real dphi_j = phi->get(i,j+1,k)-phi->get(i,j,k);
-
-				Real norm = std::max(1.e-7f,static_cast<float>(std::sqrt(dphi_i*dphi_i + dphi_j*dphi_j)));
-
-				Vec3 normal;
-				normal.x = dphi_i / norm;
-				normal.y = dphi_j / norm;
-				normal.z = 1.;
-
-				//set normal component of velocity to zero
-				Real dot = normal.x * vel(i,j,k).x + normal.y * vel(i,j,k).y;
-				Vec3 tangential;
-				tangential.x = vel(i,j,k).x - dot * normal.x;
-				tangential.y = vel(i,j,k).y - dot * normal.y;
-				tangential.z = 0.;
+			//set normal component of velocity to zero
+			Real dotpr = dot(normal, vel(i,j,k));
 			
-				vel(i,j,k).x = tangential.x;
-				vel(i,j,k).y = tangential.y;
-				vel(i,j,k).z = tangential.z;
-
-			}
+			vel(i,j,k).x -= dotpr * normal.x;
+			vel(i,j,k).y -= dotpr * normal.y;
+			if(flags.is3D()) vel(i,j,k).z -= dotpr * normal.z;
 
 		}
 
