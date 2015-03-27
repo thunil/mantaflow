@@ -5,12 +5,11 @@
 #import pdb; pdb.set_trace()
 
 from manta import *
-dim = 2
+
 # solver params
 res = 64
 gs = vec3(res,1.5*res,res)
-if (dim==2): gs.z = 1  # 2D
-s = FluidSolver(name='main', gridSize = gs, dim=dim)
+s = FluidSolver(name='main', gridSize = gs)
 s.timestep = 1.0
 timings = Timings()
 
