@@ -17,6 +17,7 @@
 #include "particle.h"
 #include "noisefield.h"
 #include "simpleimage.h"
+#include "mesh.h"
 
 using namespace std;
 
@@ -91,6 +92,53 @@ PYTHON LevelsetGrid obstacleLevelset(FlagGrid& flags) {
 
 	return levelset;
 }    
+
+
+//*****************************************************************************
+// blender init functions 
+
+KERNEL 
+void KnApplyEmission(FlagGrid& flags, Grid<Real>& density, Grid<Real>& emission, bool isAbsolute) 
+{
+	if (!flags.isFluid(i,j,k) || emission(i,j,k) == 0.) return;
+	if (isAbsolute)
+		density(i,j,k) = emission(i,j,k);
+	else
+		density(i,j,k) += emission(i,j,k);
+}
+
+//! Add emission values
+//isAbsolute: whether to add emission values to existing, or replace
+PYTHON void applyEmission(FlagGrid& flags, Grid<Real>& density, Grid<Real>& emission, bool isAbsolute) {
+	KnApplyEmission(flags, density, emission, isAbsolute);
+}
+
+// blender init functions for meshes
+
+KERNEL 
+void KnApplyDensity(FlagGrid& flags, Grid<Real>& density, Grid<Real>& sdf, Real value, Real sigma) 
+{
+	if (!flags.isFluid(i,j,k) || sdf(i,j,k) > sigma) return;
+	density(i,j,k) = value;
+}
+//! Init noise-modulated density inside mesh
+PYTHON void densityInflowMeshNoise(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Mesh* mesh, Real scale=1.0, Real sigma=0)
+{
+	LevelsetGrid sdf(density.getParent(), false);
+	mesh->computeLevelset(sdf, 1.);
+	KnApplyNoise(flags, density, noise, sdf, scale, sigma);
+}
+
+//! Init constant density inside mesh
+PYTHON void densityInflowMesh(FlagGrid& flags, Grid<Real>& density, Mesh* mesh, Real value=1., Real cutoff = 7, Real sigma=0)
+{
+	LevelsetGrid sdf(density.getParent(), false);
+	mesh->computeLevelset(sdf, 2., cutoff);
+	KnApplyDensity(flags, density, sdf, value, sigma);
+}
+
+
+//*****************************************************************************
 
 //! check for symmetry , optionally enfore by copying
 PYTHON void checkSymmetry( Grid<Real>& a, Grid<Real>* err=NULL, bool symmetrize=false, int axis=0, int bound=0)

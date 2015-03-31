@@ -24,6 +24,8 @@
 namespace Manta {
 
 // fwd decl
+class GridBase;
+class LevelsetGrid;
 class FlagGrid;
 class MACGrid;
 class Shape;
@@ -142,6 +144,10 @@ public:
     PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
     PYTHON void scale(Vec3 s);
     PYTHON void offset(Vec3 o);
+
+	PYTHON void computeLevelset(LevelsetGrid& levelset, Real sigma, Real cutoff=-1.);
+	//! map mesh to grid with sdf
+	PYTHON void applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags=0, Real cutoff=-1.);
     
     // ops
     Mesh& operator=(const Mesh& o);
@@ -190,6 +196,7 @@ public:
     
     void addTriChannel(TriChannel* c) { mTriChannels.push_back(c); rebuildChannels(); }
     void addNodeChannel(NodeChannel* c) { mNodeChannels.push_back(c); rebuildChannels(); }
+
 protected:    
     void rebuildChannels();
     
