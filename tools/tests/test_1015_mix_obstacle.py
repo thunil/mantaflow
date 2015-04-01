@@ -8,7 +8,7 @@ from helperInclude import *
 
 dim = 2
 # solver params
-res = 32
+res = 42
 gs = vec3(res,1.5*res,res)
 if (dim==2): gs.z = 1  # 2D
 s = FluidSolver(name='main', gridSize = gs, dim=dim)
@@ -35,19 +35,26 @@ if 0 and (GUI):
     gui.show(); gui.pause()
 
 #main loop
-for t in range(300):
+for t in range(140):
 
 	source.applyToGrid(grid=density, value=1)
 
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2, strength=1.0)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2)
+	
+	addBuoyancy(flags=flags, density=density, vel=vel, gravity=vec3(0,-3e-3,0))
 	
 	#need to call update fractions before this for better obstacle BC
-	setWallBcs(flags=flags, vel=vel, fractions=fractions, phi=phi)
-	addBuoyancy(flags=flags, density=density, vel=vel, gravity=vec3(0,-1e-3,0))
-	
-	solvePressure(flags=flags, vel=vel, pressure=pressure, fractions=fractions)
-	setWallBcs(flags=flags, vel=vel, fractions=fractions, phi=phi)
+	if 1:
+		# with volume fractions
+		setWallBcs(flags=flags, vel=vel, fractions=fractions, phi=phi)
+		solvePressure(flags=flags, vel=vel, pressure=pressure, fractions=fractions)
+		setWallBcs(flags=flags, vel=vel, fractions=fractions, phi=phi)
+	else:
+		# old boundaries
+		setWallBcs(flags=flags, vel=vel)
+		solvePressure(flags=flags, vel=vel, pressure=pressure)
+		setWallBcs(flags=flags, vel=vel)
 
 	s.step()
 
