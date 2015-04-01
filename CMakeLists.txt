@@ -335,14 +335,14 @@ if (1)
 	set(ZLIB_SRC adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c
 				 inflate.c infback.c inftrees.c inffast.c trees.c uncompr.c zutil.c)
 	foreach(it ${ZLIB_SRC})
-		list(APPEND SILENT_SOURCES dependencies/zlib-1.2.8/${it})
+		list(APPEND SILENT_SOURCES dependencies/zlib-1.2.8/${it}) 
+	endforeach(it)
 
 	set(ZLIB_ADDFLAGS "-Dverbose=-1")
 	if(NOT WIN32)
 		set(ZLIB_ADDFLAGS "-Wno-implicit-function-declaration -Dverbose=-1")
 	endif()
-	endforeach(it)
-	  set_source_files_properties(${SILENT_SOURCES} PROPERTIES COMPILE_FLAGS "${ZLIB_ADDFLAGS}")
+	set_source_files_properties(${SILENT_SOURCES} PROPERTIES COMPILE_FLAGS "${ZLIB_ADDFLAGS}")
 
 	list(APPEND INCLUDE_PATHS dependencies/zlib-1.2.8)
 else()
