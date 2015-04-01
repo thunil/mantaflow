@@ -141,7 +141,7 @@ int CompMinInt(Grid<int>& val) {
 }
 
 //! Kernel: Compute max value of int grid
-KERNEL(idx, reduce=max) returns(int maxVal=std::numeric_limits<int>::min())
+KERNEL(idx, reduce=max) returns(int maxVal=-std::numeric_limits<int>::max())
 int CompMaxInt(Grid<int>& val) {
 	if (val[idx] > maxVal)
 		maxVal = val[idx];
@@ -489,11 +489,11 @@ template class Grid<Vec3>;
 // enable in grid.h
 
 #if ENABLE_GRID_TEST_DATATYPE==1
-// NT_DEBUG ? template<> const char* Namify<nbVector>::S = "TestDatatype";
+// NT_DEBUG ?  template<> const char* Namify<nbVector>::S = "TestDatatype";
 
-template<> Real Grid<nbVector>::getMinValue()    { return 0.; }
-template<> Real Grid<nbVector>::getMaxAbsValue() { return 0.; }
-template<> Real Grid<nbVector>::getMaxValue()    { return 0.; }
+template<> Real Grid<nbVector>::getMin() { return 0.; }
+template<> Real Grid<nbVector>::getMax() { return 0.; }
+template<> Real Grid<nbVector>::getMaxAbs()      { return 0.; }
 
 KERNEL void knNbvecTestKernel (Grid<nbVector>& target) { target(i,j,k).push_back(i+j+k); }
 

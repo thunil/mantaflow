@@ -12,7 +12,8 @@
 # 2xxx for "real" 3d sims
 # 204x ff. are liquids
 # 
-
+import datetime
+import platform
 import os
 import shutil
 import sys
@@ -24,16 +25,29 @@ from helperGeneric import *
 # in the current working directory... this should be changed at some 
 # point.
 
+# determine platform
+platform=platform.system()
+if   platform == 'Linux' or platform == 'Darwin':
+	platform = 0; # unix
+elif platform == 'Windows' and os.name=='nt':
+	platform = 1; # windows
+elif platform == 'Windows' and os.name == 'posix':
+	platform = 2; # probably cygwin
+else:
+	platform = 0; 
+	print("OS cannot be detected (%s), assuming unix" % platform);
+ 
+
 # debugging, print outputs from all manta calls
 printAllOutpus = 0
 filePrefix = "test_"
 
 if(len(sys.argv)<2):
-	print "Usage runTests.py <manta-executable>"
+	print("Usage runTests.py <manta-executable>")
 	exit(1)
 
 manta = sys.argv[1]
-print "Using mantaflow executable '" + manta + "' " 
+print ("Using mantaflow executable '" + manta + "' " )
 
 
 # extract path from script call
@@ -46,8 +60,37 @@ if not os.path.exists( datadir ):
 	os.makedirs( datadir )	
 
 if getGenRefFileSetting():
-	print "\nNote - generating test data for all tests!"
-	print "Tests results will not be evaluated...\n"
+	print("\nNote - generating test data for all tests!");
+	print("Tests results will not be evaluated...\n");
+
+#unix only: currdate = os.popen("date \"+%y%m%d%H%M\"").read() 
+currdate = '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now())
+currdate = str(currdate)[:-1]
+
+# in visual mode, also track runtimes
+visModeTrashDir = basedir+"/trash"
+outpngdir       = basedir+"/result_%s"%(currdate)
+if getVisualSetting():
+	dirname = basedir+"/runtimes"
+	if not os.path.exists( dirname ):
+		os.makedirs( dirname )	
+	# make sure no previous files are left
+	if not os.path.exists( visModeTrashDir ):
+		os.makedirs( visModeTrashDir )	
+	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
+
+	if not os.path.exists( outpngdir ):
+		os.makedirs( outpngdir )	
+	print("Note - running in visual test mode...");
+
+# limit the runs for debugging
+visModeDebugCount = 0
+
+files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
+#print("Debug - using test scene files: "+files);
+
+
+# ready to go...
 
 currdate = os.popen("date \"+%y%m%d%H%M\"").read() 
 currdate = str(currdate)[:-1]
@@ -90,8 +133,16 @@ for file in files:
 	(utime1, stime1, cutime1, cstime1, elapsed_time1) = os.times() 
 
 	num += 1
-	print "Running '" + file + "' "
-	result = os.popen(manta + " " + file + " 2>&1 ").read() 
+	print("Running '" + file + "' ");
+	# result = os.popen(manta + " " + file + " 2>&1 ").read() 
+	if   platform == 1:
+		result = os.popen('"'+ manta + '" '+ file).read() 
+	elif platform == 0:
+		result = os.popen(manta + " " + file + " 2>&1 ").read() 
+	elif platform == 2:
+		result = os.popen('"'+ manta + '" '+ file).read() 
+
+	(utime2, stime2, cutime2, cstime2, elapsed_time2) = os.times() 
 
 	(utime2, stime2, cutime2, cstime2, elapsed_time2) = os.times() 
 
@@ -112,9 +163,9 @@ for file in files:
 	numFail += len(fails)
 
 	if (len(fails)>0) or (printAllOutpus==1):
-		print
-		print "Full output: " + result
-		print
+		print(" ");
+		print("Full output: " + result);
+		print(" ");
 
 	# store benchmarking results (if theres any output) , and generate plot
 	timefile = "%s/runtimes/%s_v%d" % (basedir, os.path.basename(file), getVisualSetting()) 
@@ -125,12 +176,12 @@ for file in files:
 			text_file.write( "%s %f \n" % (currdate,runtime) );
 			text_file.close();
 		else:
-			print "Zero runtime! Something went wrong..."
+			print("Zero runtime! Something went wrong...");
 		
 		gnuplotExe = "/usr/bin/gnuplot"
 		if len( os.getenv('MANTA_GNUPLOT', "") )>0:
 			gnuplotExe = os.getenv('MANTA_GNUPLOT', "")
-		print "Using %s" % gnuplotExe
+		print("Using %s" % gnuplotExe);
 		if os.path.isfile(gnuplotExe):
 			plot = Popen(gnuplotExe, stdin=PIPE)
 			plot.stdin.write("unset key\n")
@@ -151,28 +202,28 @@ for file in files:
 		log_file.write(result); log_file.close();
 
 if getGenRefFileSetting():
-	print "Test data generated"
+	print("Test data generated");
 	exit(0)
 
 if getVisualSetting():
-	print "Viusal data generated"
+	print("Viusal data generated");
 	# now convert & remove all ppms"
 	os.popen("for i in ./test_*.ppm ; do convert $i $(basename $i .ppm).png; done")
 	os.popen( "mv ./test_*.png %s"%(outpngdir)  )
 	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
 	exit(0)
 
-print "\n ============================================= \n"
-print "Test summary: "  + str(numOks) + " passed, " + str(numFail) + " failed.   (from "+str(num) + " files) "
+print("\n ============================================= \n");
+print("Test summary: "  + str(numOks) + " passed, " + str(numFail) + " failed.   (from "+str(num) + " files) ");
 
 if (numFail==0) and (numOks==0):
-	print "Failure! Perhaps manta executable didnt work, or runTests not called in test directory \n"
+	print("Failure! Perhaps manta executable didnt work, or runTests not called in test directory \n");
 	exit(1)
 elif (numFail==0) and (numOks>0):
-	print "All good :) \n"
+	print("All good :) \n");
 	exit(0)
 else:
-	print "Oh no :( the following tests failed: %s \n" % failedTests
+	print("Oh no :( the following tests failed: %s \n" % failedTests);
 	exit(2)
 
 

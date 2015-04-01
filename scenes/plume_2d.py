@@ -38,7 +38,7 @@ for t in range(400):
 	setWallBcs(flags=flags, vel=vel)    
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-4e-3,0), flags=flags)
 	
-	solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='Y')
+	solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='YxX')
 	setWallBcs(flags=flags, vel=vel)
 	
 	timings.display()    

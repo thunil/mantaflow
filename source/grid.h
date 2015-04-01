@@ -344,6 +344,9 @@ template<> inline void FluidSolver::freeGridPointer<nbVector>(nbVector* ptr) {
 inline nbVector operator+ ( const nbVector &v1, const nbVector &v2 ) {
 	assertMsg(false,"Never call!"); return nbVector(); 
 }
+inline nbVector operator- ( const nbVector &v1, const nbVector &v2 ) {
+	assertMsg(false,"Never call!"); return nbVector(); 
+}
 inline nbVector operator* ( const nbVector &v1, const nbVector &v2 ) {
 	assertMsg(false,"Never call!"); return nbVector(); 
 }

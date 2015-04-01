@@ -19,6 +19,8 @@
 #include "fileio.h"
 #include "kernel.h"
 #include "shapes.h"
+#include "noisefield.h"
+#include <stack>
 
 using namespace std;
 namespace Manta {
@@ -554,6 +556,277 @@ void Mesh::sanityCheck(bool strict, vector<int>* deletedNodes, map<int,bool>* ta
 		}        
 	}
 }
+
+//*****************************************************************************
+// rasterization
+
+void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff = 0.);
+
+//! helper vec3 array container
+struct CVec3Ptr {
+	Real *x, *y, *z; 
+	inline Vec3 get(int i) const { return Vec3(x[i],y[i],z[i]); };
+	inline void set(int i, const Vec3& v) { x[i]=v.x; y[i]=v.y; z[i]=v.z; };
+};
+//! helper vec3 array, for CUDA compatibility, remove at some point
+struct CVec3Array {    
+	CVec3Array(int sz) {
+		x.resize(sz);
+		y.resize(sz);
+		z.resize(sz);        
+	}    
+	CVec3Array(const std::vector<Vec3>& v) {
+		x.resize(v.size());
+		y.resize(v.size());
+		z.resize(v.size());
+		for (size_t i=0; i<v.size(); i++) {
+			x[i] = v[i].x;
+			y[i] = v[i].y;
+			z[i] = v[i].z;
+		}
+	}
+	CVec3Ptr data() {
+		CVec3Ptr a = { x.data(), y.data(), z.data()};
+		return a;
+	}
+	inline const Vec3 operator[](int idx) const { return Vec3((Real)x[idx], (Real)y[idx], (Real)z[idx]); }
+	inline void set(int idx, const Vec3& v) { x[idx] = v.x; y[idx] = v.y; z[idx] = v.z; }	
+	inline int size() { return x.size(); }    
+	std::vector<Real> x, y, z;
+};
+
+	
+//void SDFKernel(const int* partStart, const int* partLen, CVec3Ptr pos, CVec3Ptr normal, Real* sdf, Vec3i gridRes, int intRadius, Real safeRadius2, Real cutoff2, Real isigma2);
+//! helper for rasterization
+static void SDFKernel(Grid<int>& partStart, Grid<int>& partLen, CVec3Ptr pos, CVec3Ptr normal, LevelsetGrid& sdf, Vec3i gridRes, int intRadius, Real safeRadius2, Real cutoff2, Real isigma2)
+{
+	for (int cnt_x(0); cnt_x < gridRes[0]; ++cnt_x) {
+		for (int cnt_y(0); cnt_y < gridRes[1]; ++cnt_y) {
+			for (int cnt_z(0); cnt_z < gridRes[2]; ++cnt_z) {
+				// cell index, center
+				Vec3i cell = Vec3i(cnt_x, cnt_y, cnt_z);
+				if (cell.x >= gridRes.x || cell.y >= gridRes.y || cell.z >= gridRes.z) return;    
+				Vec3 cpos = Vec3(cell.x + 0.5f, cell.y + 0.5f, cell.z + 0.5f);
+				Real sum = 0.0f;
+				Real dist = 0.0f;
+				
+				// query cells within block radius
+				Vec3i minBlock = Vec3i(max(cell.x - intRadius,0), max(cell.y - intRadius,0), max(cell.z - intRadius,0));
+				Vec3i maxBlock = Vec3i(min(cell.x + intRadius, gridRes.x - 1), min(cell.y + intRadius, gridRes.y - 1), min(cell.z + intRadius, gridRes.z - 1)); 
+				for (int i=minBlock.x; i<=maxBlock.x; i++)
+					for (int j=minBlock.y; j<=maxBlock.y; j++)
+						for (int k=minBlock.z; k<=maxBlock.z; k++) {
+							// test if block is within radius
+							Vec3 d = Vec3(cell.x-i, cell.y-j, cell.z-k);                
+							Real normSqr = d[0]*d[0] + d[1]*d[1] + d[2]*d[2]; 
+							if (normSqr > safeRadius2) continue;
+							
+							// find source cell, and divide it into thread blocks
+							int block = i + gridRes.x * (j + gridRes.y * k);
+							int slen = partLen[block];
+							if (slen == 0) continue;
+							int start = partStart[block];
+							
+							// process sources
+							for(int s=0; s<slen; s++) {                     
+								
+								// actual sdf kernel
+								Vec3 r = cpos - pos.get(start+s);
+								Real normSqr = r[0]*r[0] + r[1]*r[1] + r[2]*r[2]; 
+								Real r2 = normSqr;
+								if (r2 < cutoff2) {
+									Real w = expf(-r2*isigma2);
+									sum += w;
+									dist += dot(normal.get(start+s), r) * w;                        
+								}
+							}
+						}
+				// writeback
+				if (sum > 0.0f) {
+					//sdf[cell.x + gridRes.x * (cell.y + gridRes.y * cell.z)] = dist / sum;    
+					sdf(cell.x ,cell.y ,cell.z) = dist / sum;    
+				}
+			}	
+		}
+	}
+}
+
+static inline int _cIndex(const Vec3& pos, const Vec3i& s) {
+	Vec3i p = toVec3i(pos);
+	if (p.x < 0 || p.y < 0 || p.z < 0 || p.x >= s.x || p.y >= s.y || p.z >= s.z) return -1;
+	return p.x + s.x * (p.y + s.y * p.z);
+}
+
+//! Kernel: Apply a shape to a grid, setting value inside
+KERNEL template<class T> 
+void ApplyMeshToGrid (Grid<T>* grid, Grid<Real> sdf, T value, FlagGrid* respectFlags) {
+	if (respectFlags && respectFlags->isObstacle(i,j,k))
+		return;
+	if (sdf(i,j,k) < 0)
+	{	
+		(*grid)(i,j,k) = value;
+	}
+}
+
+void Mesh::applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags, Real cutoff) {
+	FluidSolver dummy(grid->getSize());
+	LevelsetGrid mesh_sdf(&dummy, false);
+	meshSDF(*this, mesh_sdf, 2., cutoff);
+	
+	if (grid->getType() & GridBase::TypeInt)
+		ApplyMeshToGrid<int> ((Grid<int>*)grid, mesh_sdf, _args.get<int>("value"), respectFlags);
+	else if (grid->getType() & GridBase::TypeReal)
+		ApplyMeshToGrid<Real> ((Grid<Real>*)grid, mesh_sdf, _args.get<Real>("value"), respectFlags);
+	else if (grid->getType() & GridBase::TypeVec3)
+		ApplyMeshToGrid<Vec3> ((Grid<Vec3>*)grid, mesh_sdf, _args.get<Vec3>("value"), respectFlags);
+	else
+		errMsg("Shape::applyToGrid(): unknown grid type");
+}
+
+void Mesh::computeLevelset(LevelsetGrid& levelset, Real sigma, Real cutoff) {
+	meshSDF( *this, levelset, sigma, cutoff); 
+}
+
+void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
+{  
+	if (cutoff<0) cutoff = 2*sigma;
+	Real maxEdgeLength = 0.75;
+	Real numSamplesPerCell = 0.75;
+	
+	Vec3i gridRes = levelset.getSize();
+	Vec3 mult = toVec3(gridRes) / toVec3(mesh.getParent()->getGridSize());
+	
+	// prepare center values
+	std::vector<Vec3> center;
+	std::vector<Vec3> normals;
+	short bigEdges(0);
+	std::vector<Vec3> samplePoints;
+	for(size_t i=0; i<mesh.numTris(); i++){	
+		center.push_back(Vec3(mesh.getFaceCenter(i) * mult));
+		normals.push_back(mesh.getFaceNormal(i));
+		//count big, stretched edges
+		bigEdges = 0;
+		for (short edge(0); edge <3; ++edge){
+			if(norm(mesh.getEdge(i,edge)) > maxEdgeLength){
+				bigEdges += 1 << edge;
+			}
+		}
+		if(bigEdges > 0){
+			samplePoints.clear();
+			short iterA, pointA, iterB, pointB;
+			int numSamples0 = norm(mesh.getEdge(i,1)) * numSamplesPerCell;
+			int numSamples1 = norm(mesh.getEdge(i,2)) * numSamplesPerCell;
+			int numSamples2 = norm(mesh.getEdge(i,0)) * numSamplesPerCell;
+			if(! (bigEdges & (1 << 0))){
+				//loop through 0,1
+				iterA = numSamples1;
+				pointA = 0;
+				iterB = numSamples2;
+				pointB = 1;
+			}
+			else if(! (bigEdges & (1 << 1))){
+				//loop through 1,2
+				iterA = numSamples2;
+				pointA = 1;
+				iterB = numSamples0;
+				pointB = 2;
+				
+			}
+			else{
+				//loop through 2,0
+				iterA = numSamples0;
+				pointA = 2;
+				iterB = numSamples1;
+				pointB = 0;
+			}
+			
+			Real u(0.),v(0.),w(0.); // barycentric uvw coords
+			Vec3 samplePoint,normal;
+			for (int sample0(0); sample0 < iterA; ++sample0){
+				u = Real(1. * sample0 / iterA);
+				for (int sample1(0); sample1 < iterB; ++sample1){
+					v = Real(1. * sample1 / iterB);
+					w = 1 - u - v;
+					if (w < 0.)
+						continue;
+					samplePoint = 	mesh.getNode(i,pointA) * mult * u + 
+					mesh.getNode(i,pointB) * mult * v + 
+					mesh.getNode(i,(3 - pointA - pointB)) * mult * w;
+					samplePoints.push_back(samplePoint);
+					normal = mesh.getFaceNormal(i);
+					normals.push_back(normal);							
+				}
+			}
+			center.insert(center.end(), samplePoints.begin(), samplePoints.end());
+		}
+	}	
+
+	// prepare grid    
+	levelset.setConst( -cutoff );
+	
+	// 1. count sources per cell
+	// NT_DEBUG todo, use IndexInt
+	Grid<int> srcPerCell(levelset.getParent());
+	for (size_t i=0; i<center.size(); i++) {
+		int idx = _cIndex(center[i], gridRes);
+		if (idx >= 0)
+			srcPerCell[idx]++;
+	}
+	
+	// 2. create start index lookup
+	Grid<int> srcCellStart(levelset.getParent());
+	int cnt=0;
+	FOR_IJK(srcCellStart) {
+		int idx = srcCellStart.index(i,j,k);
+		srcCellStart[idx] = cnt;
+		cnt += srcPerCell[idx];
+	}
+	
+	// 3. reorder nodes
+	CVec3Array reorderPos(center.size());
+	CVec3Array reorderNormal(center.size());
+	{
+		Grid<int> curSrcCell(levelset.getParent());
+		for (int i=0; i<(int)center.size(); i++) {
+			int idx = _cIndex(center[i], gridRes);
+			if (idx < 0) continue;
+			int idx2 = srcCellStart[idx] + curSrcCell[idx];
+			reorderPos.set(idx2, center[i]);
+			reorderNormal.set(idx2, normals[i]);
+			curSrcCell[idx]++;
+		}
+	}
+	
+	// construct parameters
+	Real safeRadius = cutoff + sqrt(3.0)*0.5;
+	Real safeRadius2 = safeRadius*safeRadius;
+	Real cutoff2 = cutoff*cutoff;
+	Real isigma2 = 1.0/(sigma*sigma);
+	int intRadius = (int)(cutoff+0.5);
+	
+	SDFKernel( srcCellStart, srcPerCell,
+			  reorderPos.data(), reorderNormal.data(), 
+			  levelset, gridRes, intRadius, safeRadius2, cutoff2, isigma2);
+	
+	// floodfill outside
+	std::stack<Vec3i> outside;
+	FOR_IJK(levelset) {
+		if (levelset(i,j,k) >= cutoff-1.0f) 
+			outside.push(Vec3i(i,j,k));
+	}
+	while(!outside.empty()) {
+		Vec3i c = outside.top();
+		outside.pop();
+		levelset(c) = cutoff;
+		if (c.x > 0 && levelset(c.x-1, c.y, c.z) < 0) outside.push(Vec3i(c.x-1,c.y,c.z));
+		if (c.y > 0 && levelset(c.x, c.y-1, c.z) < 0) outside.push(Vec3i(c.x,c.y-1,c.z));
+		if (c.z > 0 && levelset(c.x, c.y, c.z-1) < 0) outside.push(Vec3i(c.x,c.y,c.z-1));
+		if (c.x < levelset.getSizeX()-1 && levelset(c.x+1, c.y, c.z) < 0) outside.push(Vec3i(c.x+1,c.y,c.z));
+		if (c.y < levelset.getSizeY()-1 && levelset(c.x, c.y+1, c.z) < 0) outside.push(Vec3i(c.x,c.y+1,c.z));
+		if (c.z < levelset.getSizeZ()-1 && levelset(c.x, c.y, c.z+1) < 0) outside.push(Vec3i(c.x,c.y,c.z+1));
+	};
+}
+	
 
 
 } //namespace
