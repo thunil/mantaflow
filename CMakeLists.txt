@@ -319,6 +319,7 @@ endif(DOXYGEN_FOUND)
 # Link libraries
 
 # Python
+set(Python_ADDITIONAL_VERSIONS 3.4)
 find_package(PythonLibs QUIET)
 if((NOT PYTHONLIBS_FOUND) AND WIN32)
 	set(PYTHON_INCLUDE_DIR "${WIN_PYTHON_PATH}/include")
@@ -336,9 +337,9 @@ if (1)
 	foreach(it ${ZLIB_SRC})
 		list(APPEND SILENT_SOURCES dependencies/zlib-1.2.8/${it})
 
-	set(ZLIB_ADDFLAGS "")
+	set(ZLIB_ADDFLAGS "-Dverbose=-1")
 	if(NOT WIN32)
-		set(ZLIB_ADDFLAGS "-Wno-implicit-function-declaration")
+		set(ZLIB_ADDFLAGS "-Wno-implicit-function-declaration -Dverbose=-1")
 	endif()
 	endforeach(it)
 	  set_source_files_properties(${SILENT_SOURCES} PROPERTIES COMPILE_FLAGS "${ZLIB_ADDFLAGS}")

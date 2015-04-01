@@ -85,7 +85,8 @@ PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3
 
 		
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
-KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up, bool admm) {
+KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up, bool admm,
+					MACGrid* fractions=0, Grid<Real>* phi=0) {
 
 	bool curFluid = flags.isFluid(i,j,k);
     bool curObstacle = flags.isObstacle(i,j,k);
@@ -113,6 +114,41 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vecto
 	// check up.z
 	if(!up.z && k>0 && curObstacle && flags.isFluid(i,j,k-1) && ((admm&&vel(i,j,k).z>0)||!admm)) vel(i,j,k).z = 0;
 	
+	//if fractions and levelset are present, use better boundary condition at obstacles
+	if(fractions && phi) {
+
+		if( (fractions->get(i,j,k).x > 0. && fractions->get(i,j,k).x < 1.) || 
+			(fractions->get(i,j,k).y > 0. && fractions->get(i,j,k).y < 1.) ) {
+
+			//calculate normal on levelset field
+			Vec3 dphi;
+		    dphi.x = phi->get(i+1,j,k)-phi->get(i,j,k);
+			dphi.y = phi->get(i,j+1,k)-phi->get(i,j,k);
+			dphi.z = 0.;
+			if(flags.is3D()) {
+				if(fractions->get(i,j,k).z > 0. && fractions->get(i,j,k).z < 1.) {
+					dphi.z = phi->get(i,j,k-1)-phi->get(i,j,k);
+				}
+			}
+
+			Real norm = normalize(dphi);
+
+			Vec3 normal;
+			normal.x = dphi.x / norm;
+			normal.y = dphi.y / norm;
+			normal.z = 1.;
+			if(flags.is3D()) normal.z = dphi.z / norm;
+
+			//set normal component of velocity to zero
+			Real dotpr = dot(normal, vel(i,j,k));
+			
+			vel(i,j,k).x -= dotpr * normal.x;
+			vel(i,j,k).y -= dotpr * normal.y;
+			if(flags.is3D()) vel(i,j,k).z -= dotpr * normal.z;
+
+		}
+
+	}
 
 	/* MLE consider later	
 	if (curFluid) {
@@ -128,10 +164,11 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vecto
 
 // MLE 2014-07-04
 //! set no-stick boundary condition on walls
-PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, string openBound="", bool admm=false) {
+PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, string openBound="", bool admm=false,
+	                   MACGrid* fractions = 0, Grid<Real>* phi = 0) {
 	Vector3D<bool> lo, up;
     convertDescToVec(openBound, lo, up);
-    KnSetWallBcs(flags, vel, lo, up, admm);
+    KnSetWallBcs(flags, vel, lo, up, admm, fractions, phi);
 } 
 //! Kernel: gradient norm operator
 KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
