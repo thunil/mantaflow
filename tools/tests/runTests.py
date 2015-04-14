@@ -63,13 +63,13 @@ basedir  = os.path.dirname (sys.argv[0])
 # store test data in separate directory
 datadir = dataDirectory(sys.argv[0])
 if not os.path.exists( datadir ):
-    os.makedirs( datadir )    
+	os.makedirs( datadir )    
 
 #unix only: currdate = os.popen("date \"+%y%m%d%H%M\"").read() 
 if getGenRefFileSetting():
-    print ("\nNote - generating test data for all tests!")
-    print ("Tests results will not be evaluated...\n")
-    
+	print ("\nNote - generating test data for all tests!")
+	print ("Tests results will not be evaluated...\n")
+
 currdate = '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now())
 currdate = str(currdate)[:-1]
 
@@ -77,13 +77,13 @@ currdate = str(currdate)[:-1]
 visModeTrashDir = basedir+"/trash"
 outpngdir       = basedir+"/result_%s"%(currdate)
 if getVisualSetting():
-    dirname = basedir+"/runtimes"
-    if not os.path.exists( dirname ):
-        os.makedirs( dirname )    
-    # make sure no previous files are left
-    if not os.path.exists( visModeTrashDir ):
-        os.makedirs( visModeTrashDir )    
-    os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
+	dirname = basedir+"/runtimes"
+	if not os.path.exists( dirname ):
+		os.makedirs( dirname )    
+	# make sure no previous files are left
+   	if not os.path.exists( visModeTrashDir ):
+		os.makedirs( visModeTrashDir )    
+   	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
 
 	if not os.path.exists( outpngdir ):
 		os.makedirs( outpngdir )	
@@ -94,12 +94,12 @@ visModeDebugCount = 0
 
 # old: files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
 if platform==1:
-    files = os.popen("dir /a-d /b "+basedir+"\\"+str(filePrefix)+"????_*.py").read() 
+	files = os.popen("dir /a-d /b "+basedir+"\\"+str(filePrefix)+"????_*.py").read() 
 elif platform==0:
-    files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
+	files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
 elif platform==2:
-    files = os.popen("ls "+basedir+str(filePrefix)+"????_*.py").read() # some cygwin under windows
-print ("Debug - using test scene files: "+files)
+	files = os.popen("ls "+basedir+str(filePrefix)+"????_*.py").read() # some cygwin under windows
+#print ("Debug - using test scene files: "+files)
 
 # ready to go...
 num = 0

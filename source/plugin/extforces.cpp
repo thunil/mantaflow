@@ -71,6 +71,7 @@ PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3
 	KnAddBuoyancy(flags,density, vel, f);
 }
 
+//! helper to parse openbounds string [xXyYzZ] , convert to 2 vec3 
 inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bool>& up) {
 	for (size_t i = 0; i<desc.size(); i++) {
 		if (desc[i] == 'x') lo.x = true;
@@ -147,7 +148,7 @@ PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSyst
 KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up, bool admm,
 					MACGrid* fractions=0, Grid<Real>* phi=0) {
 
-	bool curFluid = flags.isFluid(i,j,k);
+	bool curFluid    = flags.isFluid(i,j,k);
     bool curObstacle = flags.isObstacle(i,j,k);
 	if (!curFluid && !curObstacle) return;
 
@@ -172,7 +173,7 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vecto
 	// check up.z
 	if(!up.z && k>0 && curObstacle && flags.isFluid(i,j,k-1) && ((admm&&vel(i,j,k).z>0)||!admm)) vel(i,j,k).z = 0;
 	
-	//if fractions and levelset are present, use better boundary condition at obstacles
+	//if fractions and levelset are present, zero normal component
 	if(fractions && phi) {
 
 		if( (fractions->get(i,j,k).x > 0. && fractions->get(i,j,k).x < 1.) || 
@@ -202,10 +203,8 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vecto
 			
 			vel(i,j,k).x -= dotpr * normal.x;
 			vel(i,j,k).y -= dotpr * normal.y;
-			if(flags.is3D()) vel(i,j,k).z -= dotpr * normal.z;
-
-		}
-
+			if(flags.is3D()) vel(i,j,k).z -= dotpr * normal.z; 
+		} 
 	}
 
 	/* MLE consider later	
