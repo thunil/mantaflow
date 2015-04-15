@@ -71,7 +71,7 @@ PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3
 	KnAddBuoyancy(flags,density, vel, f);
 }
 
-//! helper to parse openbounds string [xXyYzZ] , convert to 2 vec3 
+//! helper to parse openbounds string [xXyYzZ] , convert to vec3 
 inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bool>& up) {
 	for (size_t i = 0; i<desc.size(); i++) {
 		if (desc[i] == 'x') lo.x = true;
@@ -145,33 +145,35 @@ PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSyst
 }
 
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
-KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vector3D<bool> up, bool admm,
+KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, bool equal,
 					MACGrid* fractions=0, Grid<Real>* phi=0) {
 
-	bool curFluid    = flags.isFluid(i,j,k);
-    bool curObstacle = flags.isObstacle(i,j,k);
-	if (!curFluid && !curObstacle) return;
-
-	// MLE 2014-07-04: if not admm, leave it as in orig
-	// if openBound, don't correct anything (solid is as empty)
-	// if admm, correct if vel is pointing outwards
+	bool curFluid = flags.isFluid(i,j,k);
+	bool curObs = flags.isObstacle(i,j,k);
+	if (!curFluid && !curObs) return;
 	
-	// if "inner" obstacle vel
-	if(i>0 && curObstacle && !flags.isFluid(i-1,j,k)) vel(i,j,k).x = 0;
-	if(j>0 && curObstacle && !flags.isFluid(i,j-1,k)) vel(i,j,k).y = 0;
-
-	// check lo.x
-	if(!lo.x && i>0 && curFluid && flags.isObstacle(i-1,j,k) && ((admm&&vel(i,j,k).x<0)||!admm)) vel(i,j,k).x = 0;
-	// check up.x
-	if(!up.x && i>0 && curObstacle && flags.isFluid(i-1,j,k) && ((admm&&vel(i,j,k).x>0)||!admm)) vel(i,j,k).x = 0;
-	// check lo.y
-	if(!lo.y && j>0 && curFluid && flags.isObstacle(i,j-1,k) && ((admm&&vel(i,j,k).y<0)||!admm)) vel(i,j,k).y = 0;
-	// check up.y
-	if(!up.y && j>0 && curObstacle && flags.isFluid(i,j-1,k) && ((admm&&vel(i,j,k).y>0)||!admm)) vel(i,j,k).y = 0;
-	// check lo.z
-	if(!lo.z && k>0 && curFluid && flags.isObstacle(i,j,k-1) && ((admm&&vel(i,j,k).z<0)||!admm)) vel(i,j,k).z = 0;
-	// check up.z
-	if(!up.z && k>0 && curObstacle && flags.isFluid(i,j,k-1) && ((admm&&vel(i,j,k).z>0)||!admm)) vel(i,j,k).z = 0;
+	// we use i>0 instead of bnd=1 to check outer wall
+	if (i>0 && flags.isObstacle(i-1,j,k) && (!curFluid || equal || vel(i,j,k).x<0))
+		vel(i,j,k).x = 0;
+	if (i>0 && curObs && flags.isFluid(i-1,j,k) && (equal || vel(i,j,k).x>0))
+		vel(i,j,k).x = 0;
+	if (j>0 && flags.isObstacle(i,j-1,k) && (!curFluid || equal || vel(i,j,k).y<0))
+		vel(i,j,k).y = 0;
+	if (j>0 && curObs && flags.isFluid(i,j-1,k) && (equal || vel(i,j,k).y>0))
+		vel(i,j,k).y = 0;
+	if (vel.is2D() || (k>0 && flags.isObstacle(i,j,k-1) && (!curFluid || equal || vel(i,j,k).z<0)))
+		vel(i,j,k).z = 0;
+	if (vel.is2D() || (k>0 && curObs && flags.isFluid(i,j,k-1) && (equal || vel(i,j,k).z>0)))
+		vel(i,j,k).z = 0;
+		
+	if (curFluid) {
+		if ((i>0 && flags.isStick(i-1,j,k)) || (i<flags.getSizeX()-1 && flags.isStick(i+1,j,k)))
+			vel(i,j,k).y = vel(i,j,k).z = 0;
+		if ((j>0 && flags.isStick(i,j-1,k)) || (j<flags.getSizeY()-1 && flags.isStick(i,j+1,k)))
+			vel(i,j,k).x = vel(i,j,k).z = 0;
+		if (vel.is3D() && ((k>0 && flags.isStick(i,j,k-1)) || (k<flags.getSizeZ()-1 && flags.isStick(i,j,k+1))))
+			vel(i,j,k).x = vel(i,j,k).y = 0;
+	}
 	
 	//if fractions and levelset are present, zero normal component
 	if(fractions && phi) {
@@ -206,27 +208,12 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, Vector3D<bool> lo, Vecto
 			if(flags.is3D()) vel(i,j,k).z -= dotpr * normal.z; 
 		} 
 	}
-
-	/* MLE consider later	
-	if (curFluid) {
-		if ((i>0 && flags.isStick(i-1,j,k)) || (i<flags.getSizeX()-1 && flags.isStick(i+1,j,k)))
-			vel(i,j,k).y = vel(i,j,k).z = 0;
-		if ((j>0 && flags.isStick(i,j-1,k)) || (j<flags.getSizeY()-1 && flags.isStick(i,j+1,k)))
-			vel(i,j,k).x = vel(i,j,k).z = 0;
-		if (vel.is3D() && ((k>0 && flags.isStick(i,j,k-1)) || (k<flags.getSizeZ()-1 && flags.isStick(i,j,k+1))))
-			vel(i,j,k).x = vel(i,j,k).y = 0;
-	}
-	*/
 }
 
 //! set no-stick boundary condition on walls
-PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, string openBound="", bool admm=false,
-	                   MACGrid* fractions = 0, Grid<Real>* phi = 0) {
-	Vector3D<bool> lo, up;
-    convertDescToVec(openBound, lo, up);
-    KnSetWallBcs(flags, vel, lo, up, admm, fractions, phi);
+PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real>* phi = 0, bool equal = true) {
+	KnSetWallBcs(flags, vel, equal);
 } 
-
 
 //! Kernel: gradient norm operator
 KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
