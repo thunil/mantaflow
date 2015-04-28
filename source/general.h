@@ -18,6 +18,10 @@
 #include <sstream>
 #include <cmath>
 
+#if (defined(WIN32) || defined(_WIN32))
+#include <algorithm>
+#endif
+
 namespace Manta {
 
 // activate debug mode if _DEBUG is defined (eg for windows)
