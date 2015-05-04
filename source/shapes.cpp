@@ -174,6 +174,7 @@ KERNEL void BoxSDF(Grid<Real>& phi, const Vec3& p1, const Vec3& p2) {
 		Real mx = max(p.x-p2.x, p1.x-p.x);
 		Real my = max(p.y-p2.y, p1.y-p.y);
 		Real mz = max(p.z-p2.z, p1.z-p.z);
+		if(!phi.is3D()) mz = mx; // skip for 2d...
 		phi(i,j,k) = max(mx,max(my,mz));
 	} else if (p.y <= p2.y && p.y >= p1.y && p.z <= p2.z && p.z >= p1.z) {
 		// outside plane X
