@@ -47,7 +47,6 @@ velSource.applyToGrid(grid=vel, value=vec3(1.5, 3, 2.1) )
 
 setWallBcs(flags=flags, vel=vel) 
 solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-04)
-setWallBcs(flags=flags, vel=vel)
 s.step()
 
 # check final state
