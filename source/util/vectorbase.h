@@ -350,10 +350,12 @@ inline const Vector3D<S>& projectNormalTo ( const Vector3D<S>& v, const Vector3D
 }
 
 //! Compute the magnitude (length) of the vector
+//! (clamps to 0 and 1 with VECTOR_EPSILON)
 template<class S>
 inline S norm ( const Vector3D<S>& v ) {
 	S l = v.x*v.x + v.y*v.y + v.z*v.z;
-	return ( fabs ( l-1. ) < VECTOR_EPSILON*VECTOR_EPSILON ) ? 1. : sqrt ( l );
+	if     (        l      <= VECTOR_EPSILON*VECTOR_EPSILON ) return(0.);
+	return ( fabs ( l-1. ) <  VECTOR_EPSILON*VECTOR_EPSILON ) ? 1. : sqrt ( l );
 }
 
 //! Compute squared magnitude
