@@ -145,27 +145,21 @@ PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSyst
 }
 
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
-KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, bool equal,
+KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
 					MACGrid* fractions=0, Grid<Real>* phi=0) {
 
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs = flags.isObstacle(i,j,k);
-	if (!curFluid && !curObs) return;
+
+	if (curObs){
+		vel(i,j,k) = Vec3(0,0,0);
+	}else{
+		if (i>0 && flags.isObstacle(i-1,j,k)) vel(i,j,k).x = 0;
+		if (j>0 && flags.isObstacle(i,j-1,k)) vel(i,j,k).y = 0;
+		if (flags.is2D() || (k>0 && flags.isObstacle(i,j,k-1))) vel(i,j,k).z = 0;
+	}
 	
-	// we use i>0 instead of bnd=1 to check outer wall
-	if (i>0 && flags.isObstacle(i-1,j,k) && (!curFluid || equal || vel(i,j,k).x<0))
-		vel(i,j,k).x = 0;
-	if (i>0 && curObs && flags.isFluid(i-1,j,k) && (equal || vel(i,j,k).x>0))
-		vel(i,j,k).x = 0;
-	if (j>0 && flags.isObstacle(i,j-1,k) && (!curFluid || equal || vel(i,j,k).y<0))
-		vel(i,j,k).y = 0;
-	if (j>0 && curObs && flags.isFluid(i,j-1,k) && (equal || vel(i,j,k).y>0))
-		vel(i,j,k).y = 0;
-	if (vel.is2D() || (k>0 && flags.isObstacle(i,j,k-1) && (!curFluid || equal || vel(i,j,k).z<0)))
-		vel(i,j,k).z = 0;
-	if (vel.is2D() || (k>0 && curObs && flags.isFluid(i,j,k-1) && (equal || vel(i,j,k).z>0)))
-		vel(i,j,k).z = 0;
-		
+	// currently not tested
 	if (curFluid) {
 		if ((i>0 && flags.isStick(i-1,j,k)) || (i<flags.getSizeX()-1 && flags.isStick(i+1,j,k)))
 			vel(i,j,k).y = vel(i,j,k).z = 0;
@@ -211,8 +205,8 @@ KERNEL void KnSetWallBcs(FlagGrid& flags, MACGrid& vel, bool equal,
 }
 
 //! set no-stick boundary condition on walls
-PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real>* phi = 0, bool equal = true) {
-	KnSetWallBcs(flags, vel, equal);
+PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real>* phi = 0) {
+	KnSetWallBcs(flags, vel);
 } 
 
 //! Kernel: gradient norm operator
