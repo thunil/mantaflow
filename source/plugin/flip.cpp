@@ -25,6 +25,7 @@ namespace Manta {
 
 // init
 
+//! note - this is a simplified version , sampleLevelsetWithParticles has more functionality
 PYTHON void sampleFlagsWithParticles( FlagGrid& flags, BasicParticleSystem& parts, 
 		int discretization, Real randomness ) 
 {
@@ -33,8 +34,6 @@ PYTHON void sampleFlagsWithParticles( FlagGrid& flags, BasicParticleSystem& part
 	Vec3 disp (1.0 / discretization, 1.0 / discretization, 1.0/discretization);
 	RandomStream mRand(9832);
  
-	//clear(); 
-
 	FOR_IJK_BND(flags, 0) {
 		if ( flags.isObstacle(i,j,k) ) continue;
 		if ( flags.isFluid(i,j,k) ) {
@@ -45,14 +44,19 @@ PYTHON void sampleFlagsWithParticles( FlagGrid& flags, BasicParticleSystem& part
 				Vec3 subpos = pos + disp * Vec3(0.5+di, 0.5+dj, 0.5+dk);
 				subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
 				if(!is3D) subpos[2] = 0.5; 
-				parts.add( BasicParticleData(subpos) );
+				parts.addBuffered( subpos);
 			}
 		}
 	}
+	parts.insertBufferedParticles();
 }
 
+//! sample a level set with particles, use reset to clear the particle buffer,
+//! and skipEmpty for a continuous inflow (in the latter case, only empty cells will
+//! be re-filled once they empty when calling sampleLevelsetWithParticles during 
+//! the main loop).
 PYTHON void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, BasicParticleSystem& parts, 
-		int discretization, Real randomness, bool reset=false ) 
+		int discretization, Real randomness, bool reset=false, bool skipEmpty=false ) 
 {
 	bool is3D = phi.is3D();
 	Real jlen = randomness / discretization;
@@ -66,6 +70,7 @@ PYTHON void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, Bas
 
 	FOR_IJK_BND(phi, 0) {
 		if ( flags.isObstacle(i,j,k) ) continue;
+		if ( skipEmpty && flags.isEmpty(i,j,k) ) continue;
 		if ( phi(i,j,k) < 1.733 ) {
 			Vec3 pos (i,j,k);
 			for (int dk=0; dk<(is3D ? discretization : 1); dk++)
@@ -75,11 +80,14 @@ PYTHON void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, Bas
 				subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
 				if(!is3D) subpos[2] = 0.5; 
 				if( phi.getInterpolated(subpos) > 0. ) continue; 
-				parts.add( BasicParticleData(subpos) );
+				parts.addBuffered( subpos);
 			}
 		}
 	}
+
+	parts.insertBufferedParticles();
 }
+
 
 PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
 	// remove all fluid cells
@@ -102,6 +110,7 @@ PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
 PYTHON void testInitGridWithPos(Grid<Real>& grid) {
 	FOR_IJK(grid) { grid(i,j,k) = norm( Vec3(i,j,k) ); }
 }
+
 
 
 //! helper to calculate particle radius factor to cover the diagonal of a cell in 2d/3d
