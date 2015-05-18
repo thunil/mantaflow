@@ -56,7 +56,7 @@ PYTHON void sampleFlagsWithParticles( FlagGrid& flags, BasicParticleSystem& part
 //! be re-filled once they empty when calling sampleLevelsetWithParticles during 
 //! the main loop).
 PYTHON void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, BasicParticleSystem& parts, 
-		int discretization, Real randomness, bool reset=false, bool skipEmpty=false ) 
+		int discretization, Real randomness, bool reset=false, bool refillEmpty=false ) 
 {
 	bool is3D = phi.is3D();
 	Real jlen = randomness / discretization;
@@ -70,7 +70,7 @@ PYTHON void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, Bas
 
 	FOR_IJK_BND(phi, 0) {
 		if ( flags.isObstacle(i,j,k) ) continue;
-		if ( skipEmpty && flags.isEmpty(i,j,k) ) continue;
+		if ( refillEmpty && flags.isFluid(i,j,k) ) continue;
 		if ( phi(i,j,k) < 1.733 ) {
 			Vec3 pos (i,j,k);
 			for (int dk=0; dk<(is3D ? discretization : 1); dk++)
