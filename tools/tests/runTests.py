@@ -70,7 +70,7 @@ if getGenRefFileSetting():
 	print ("\nNote - generating test data for all tests!")
 	print ("Tests results will not be evaluated...\n")
 
-currdate = '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now())
+currdate = '{:%Y%m%d_%H%M%S}'.format(datetime.datetime.now())
 currdate = str(currdate)[:-1]
 
 # in visual mode, also track runtimes

@@ -263,19 +263,26 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	
 	// check whether we need to fix some pressure value...
 	int fixPidx = -1;
-	int numEmpty = CountEmptyCells(flags);
-	if(numEmpty==0) {
-		FOR_IJK_BND(flags,1) {
-			if(flags.isFluid(i,j,k)) {
-				fixPidx = flags.index(i,j,k);
-				break;
+	if(cgAccuracy<1e-10) 
+	{
+		if(FLOATINGPOINT_PRECISION==1) debMsg("Warning - high CG accuracy with single-precision floating point accuracy might not converge...",1);
+
+		// only enable for very high accuracies, can cause asymmetries otherwise
+		int numEmpty = CountEmptyCells(flags);
+		if(numEmpty==0) {
+			FOR_IJK_BND(flags,1) {
+				if(flags.isFluid(i,j,k)) {
+					fixPidx = flags.index(i,j,k);
+					break;
+				}
 			}
+			//debMsg("No empty cells! Fixing pressure of cell "<<fixPidx<<" to zero",1);
 		}
-		//debMsg("No empty cells! Fixing pressure of cell "<<fixPidx<<" to zero",1);
-	}
-	if(fixPidx>=0) {
-		flags[fixPidx] |= FlagGrid::TypeZeroPressure;
-		rhs[fixPidx] = 0.; 
+		if(fixPidx>=0) {
+			flags[fixPidx] |= FlagGrid::TypeZeroPressure;
+			rhs[fixPidx] = 0.; 
+			debMsg("Zero-pressure value at "<<fixPidx<<" activated.", 2);
+		}
 	}
 
 	// CG setup
@@ -296,7 +303,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	for (int iter=0; iter<maxIter; iter++) {
 		if (!gcg->iterate()) iter=maxIter;
 	} 
-	//debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
+	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", final residual:"<<gcg->getSigma(), 1);
 	delete gcg;
 	
 	CorrectVelocity(flags, vel, pressure ); 
