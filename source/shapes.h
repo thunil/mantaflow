@@ -26,7 +26,7 @@ class Mesh;
 //! Base class for all shapes
 PYTHON class Shape : public PbClass {
 public:
-	enum GridType { TypeNone = 0, TypeBox = 1, TypeSphere = 2, TypeCylinder };
+	enum GridType { TypeNone = 0, TypeBox = 1, TypeSphere = 2, TypeCylinder = 3, TypeSlope = 4 };
 	
 	PYTHON Shape(FluidSolver* parent);
 	
@@ -124,7 +124,31 @@ protected:
 	Real mRadius, mZ;
 };
 
-	
+//! Slope shape
+// generates a levelset based on a plane
+// plane is specified by two angles and an offset on the y axis in (offset vector would be ( 0, offset, 0) )
+// the two angles are specified in degrees, between: y-axis and x-axis 
+//                                                   y-axis and z-axis
+PYTHON class Slope : public Shape {
+public:
+	PYTHON Slope (FluidSolver* parent, Real anglexy, Real angleyz, Real origin, Vec3 gs);
+
+	virtual void setOrigin (const Real& origin)  { mOrigin=origin; }
+	virtual void setAnglexy(const Real& anglexy) { mAnglexy=anglexy; }
+	virtual void setAngleyz(const Real& angleyz) { mAnglexy=angleyz; }
+
+	inline Real getOrigin()   const { return mOrigin; }
+	inline Real getmAnglexy() const { return mAnglexy; }
+	inline Real getmAngleyz() const { return mAngleyz; }
+	virtual bool isInside(const Vec3& pos) const;
+	virtual void generateMesh(Mesh* mesh);
+	virtual void generateLevelset(Grid<Real>& phi);
+
+protected:
+	Real mAnglexy, mAngleyz;
+	Real mOrigin;
+	Vec3 mGs;
+};
 
 } //namespace
 #endif

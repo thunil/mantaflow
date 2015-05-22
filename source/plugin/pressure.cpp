@@ -188,42 +188,10 @@ int CountEmptyCells(FlagGrid& flags) {
 // *****************************************************************************
 // Main pressure solve
 
-KERNEL (bnd=1) void KnupdateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions) {
-
-	fractions(i,j,k).x = fractions(i,j,k).y = fractions(i,j,k).z = static_cast<float>(flags(i,j,k) & 1);
-
-	Real tmp = 0.;
-	tmp = fabs((phi(i,j,k) + phi(i-1,j,k))/2.);
-    if(tmp < 1.0 && !((phi(i,j,k)<0) == (phi(i-1,j,k)<0)) ) {
-    	fractions(i,j,k).x = tmp;
-    }else if( (flags(i-1,j,k) == 2 && flags(i,j,k) == 1) || (flags(i,j,k) == 2 && flags(i-1,j,k) == 1)) {
-		fractions(i,j,k).x = 0.;
-    }
-    tmp = fabs((phi(i,j,k) + phi(i,j-1,k))/2.);
-    if(tmp < 1.0 && !((phi(i,j,k)<0) == (phi(i,j-1,k)<0)) ) {
-    	fractions(i,j,k).y = tmp;
-    }else if( (flags(i,j-1,k) == 2 && flags(i,j,k) == 1) || (flags(i,j,k) == 2 && flags(i,j-1,k) == 1)) {
-		fractions(i,j,k).y = 0.;
-    }
-    if(flags.is3D()) {
-	    tmp = fabs((phi(i,j,k) + phi(i,j,k-1))/2.);
-	    if(tmp < 1.0 && !((phi(i,j,k)<0) == (phi(i,j,k-1)<0)) ) {
-	    	fractions(i,j,k).z = tmp;
-	    }else if( (flags(i,j,k-1) == 2 && flags(i,j,k) == 1) || (flags(i,j,k) == 2 && flags(i,j,k-1) == 1)) {
-			fractions(i,j,k).z = 0.;
-	    }
-	}
-
-}
-
-PYTHON void updateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions) {
-	KnupdateFractions(flags, phi, fractions);
-}
-
 //! Perform pressure projection of the velocity grid
 PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      Grid<Real>* phi = 0, 
-                     Grid<Real>* perCellCorr = 0, 
+                     Grid<Real>* perCellCorr = 0,
                      MACGrid* fractions = 0,
                      Real gfClamp = 1e-04,
                      Real cgMaxIterFac = 1.5,
@@ -250,7 +218,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 		
 	// setup matrix and boundaries 
 	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak, fractions);
-	
+
 	if (phi) {
 		ApplyGhostFluidDiagonal(A0, flags, *phi, gfClamp);
 	}
@@ -313,8 +281,8 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
 	}
 
-	if(fixPidx>=0)
-		flags[fixPidx] &= ~FlagGrid::TypeZeroPressure;
+	// if(fixPidx>=0)
+	// 	flags[fixPidx] &= ~FlagGrid::TypeZeroPressure;
 
 	// optionally , return RHS
 	if(retRhs) {

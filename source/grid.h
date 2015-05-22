@@ -242,18 +242,19 @@ protected:
 //! Special functions for FlagGrid
 PYTHON class FlagGrid : public Grid<int> {
 public:
-	PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show), mBoundaryWidth(0) { 
+	PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show) { 
 		mType = (GridType)(TypeFlags | TypeInt); }
 	
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
 	enum CellType { 
-		TypeNone = 0,
-		TypeFluid = 1,
+		TypeNone     = 0,
+		TypeFluid    = 1,
 		TypeObstacle = 2,
-		TypeEmpty = 4,
-		TypeInflow = 8,
-		TypeOutflow = 16,
-		TypeStick = 128,
+		TypeEmpty    = 4,
+		TypeInflow   = 8,
+		TypeOutflow  = 16,
+		TypeOpen     = 32,
+		TypeStick    = 128,
 		TypeReserved = 256,
 		// 2^10 - 2^14 reserved for moving obstacles
 		TypeZeroPressure = (1<<15) 
@@ -283,21 +284,33 @@ public:
 	inline bool isOutflow(int i, int j, int k) const { return get(i, j, k) & TypeOutflow; }
 	inline bool isOutflow(const Vec3i& pos) const { return get(pos) & TypeOutflow; }
 	inline bool isOutflow(const Vec3& pos) const { return getAt(pos) & TypeOutflow; }
+	inline bool isOpen(int idx) const { return get(idx) & TypeOpen; }
+	inline bool isOpen(int i, int j, int k) const { return get(i, j, k) & TypeOpen; }
+	inline bool isOpen(const Vec3i& pos) const { return get(pos) & TypeOpen; }
+	inline bool isOpen(const Vec3& pos) const { return getAt(pos) & TypeOpen; }
 	inline bool isStick(int idx) const { return get(idx) & TypeStick; }
 	inline bool isStick(int i, int j, int k) const { return get(i,j,k) & TypeStick; }
 	inline bool isStick(const Vec3i& pos) const { return get(pos) & TypeStick; }
 	inline bool isStick(const Vec3& pos) const { return getAt(pos) & TypeStick; }
 	
-	inline int getBoundaryWidth() const {return mBoundaryWidth;}
-
+	void InitMinXWall(const int &boundaryWidth, Grid<Real>& phiWalls);
+	void InitMaxXWall(const int &boundaryWidth, Grid<Real>& phiWalls);
+	void InitMinYWall(const int &boundaryWidth, Grid<Real>& phiWalls);
+	void InitMaxYWall(const int &boundaryWidth, Grid<Real>& phiWalls);
+	void InitMinZWall(const int &boundaryWidth, Grid<Real>& phiWalls);
+	void InitMaxZWall(const int &boundaryWidth, Grid<Real>& phiWalls);
 	// Python callables
-	PYTHON void initDomain(int boundaryWidth=0);
-	PYTHON void initBoundaries(int boundaryWidth=0);
+	PYTHON void initDomain( const int &boundaryWidth   = 0 
+						  , const std::string &wall    = "xXyYzZ"
+						  , const std::string &open    = "      "
+						  , const std::string &inflow  = "      "
+						  , const std::string &outflow = "      "
+						  , Grid<Real>* phiWalls       = 0x00 );
+
+	void initBoundaries( const int &boundaryWidth, const int *types );
+
 	PYTHON void updateFromLevelset(LevelsetGrid& levelset);    
 	PYTHON void fillGrid(int type=TypeFluid);
-
-protected:
-	int mBoundaryWidth;
 
 };
 

@@ -379,4 +379,81 @@ void Cylinder::generateLevelset(Grid<Real>& phi) {
 	CylinderSDF(phi, mCenter, mRadius, mZDir, mZ);
 }
 
+Slope::Slope(FluidSolver* parent, Real anglexy, Real angleyz, Real origin, Vec3 gs)
+	: Shape(parent), mAnglexy(anglexy), mAngleyz(angleyz), mOrigin(origin), mGs(gs)
+{
+	mType = TypeSlope;
+}
+
+void Slope::generateMesh(Mesh* mesh) {
+
+	const int oldtri = mesh->numTris();
+
+	Vec3 v1(0.,mOrigin,0.);
+	mesh->addNode(Node(v1));
+
+	Real dy1 = mGs.z * std::tan(mAngleyz);
+	Vec3 v2(0., mOrigin - dy1, mGs.z);
+	mesh->addNode(Node(v2));
+
+	Real dy2 = mGs.x * std::tan(mAnglexy);
+	Vec3 v3(mGs.x, v2.y - dy2, mGs.z);
+	mesh->addNode(Node(v3));
+
+	Vec3 v4(mGs.x, mOrigin - dy2, 0.);
+	mesh->addNode(Node(v4));
+
+	mesh->addTri(Triangle(0, 1, 2));
+	mesh->addTri(Triangle(2, 3, 0));
+
+	mesh->rebuildCorners(oldtri, -1);
+	mesh->rebuildLookup(oldtri,-1);
+
+}
+
+bool Slope::isInside(const Vec3& pos) const {
+
+	const Real alpha = -mAnglexy * M_PI / 180.;
+	const Real beta  = -mAngleyz * M_PI / 180.;
+
+	Vec3 n(0,1,0);
+
+	n.x = std::sin(alpha)*std::cos(beta);
+	n.y = std::cos(alpha)*std::cos(beta);
+	n.z = std::sin(beta);
+
+	normalize(n);
+
+	const Real fac = std::sqrt(n.x*n.x + n.y*n.y + n.z*n.z);
+
+	return ((n.x*(double)pos.x + n.y*(double)pos.y + n.z*(double)pos.z - mOrigin) / fac) <= 0.;
+
+
+}
+
+KERNEL void SlopeSDF(const Vec3 &n, Grid<Real> &phiObs, const Real &fac, const Real &origin) {
+
+	phiObs(i,j,k) = (n.x*(double)i + n.y*(double)j + n.z*(double)k - origin) * fac;
+
+}
+
+void Slope::generateLevelset(Grid<Real>& phi) {
+
+	const Real alpha = -mAnglexy * M_PI / 180.;
+	const Real beta  = -mAngleyz * M_PI / 180.;
+
+	Vec3 n(0,1,0);
+
+	n.x = std::sin(alpha)*std::cos(beta);
+	n.y = std::cos(alpha)*std::cos(beta);
+	n.z = std::sin(beta);
+
+	normalize(n);
+
+	const Real fac = 1. / std::sqrt(n.x*n.x + n.y*n.y + n.z*n.z);
+
+	SlopeSDF(n, phi, fac, mOrigin);
+
+}
+
 } //namespace

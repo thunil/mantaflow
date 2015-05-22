@@ -376,5 +376,164 @@ PYTHON Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
 	return maxVal;
 }
 
+KERNEL void KninitVel(Grid<Real> &phiObs, MACGrid& vel, const Vec3& val) {
+	if(phiObs(i,j,k) > -2) vel(i,j,k) = val;
+}
+
+PYTHON void initVel(Grid<Real> &phiObs, MACGrid& vel, const Vec3& val) {
+	KninitVel(phiObs, vel, val);
+}
+
+KERNEL void kninitVortexVelocity(Grid<Real> &phiObs, MACGrid& vel, const Vec3 &center, const Real &radius) {
+	
+	if(phiObs(i,j,k) >= -1.) {
+
+		Real dx = i - center.x; if(dx>=0) dx -= .5; else dx += .5;
+		Real dy = j - center.y;
+		Real r = std::sqrt(dx*dx+dy*dy);
+		Real alpha = atan2(dy,dx);
+
+		vel(i,j,k).x = -std::sin(alpha)*(r/radius);
+
+		dx = i - center.x;
+		dy = j - center.y; if(dy>=0) dy -= .5; else dy += .5;
+		r = std::sqrt(dx*dx+dy*dy);
+		alpha = atan2(dy,dx);
+
+		vel(i,j,k).y = std::cos(alpha)*(r/radius);
+
+	}
+
+}
+
+PYTHON void initVortexVelocity(Grid<Real> &phiObs, MACGrid& vel, const Vec3 &center, const Real &radius) {
+	kninitVortexVelocity(phiObs,  vel, center, radius);
+}
+
+KERNEL (bnd=1) void KnUpdateFractions(FlagGrid& flags, Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth) {
+
+// walls at domain bounds and inner objects
+	fractions(i,j,k).x = clamp( ((phiObs(i,j,k) + phiObs(i-1,j,k))*.5)  , 0.,1.);
+	fractions(i,j,k).y = clamp( ((phiObs(i,j,k) + phiObs(i,j-1,k))*.5)  , 0.,1.);
+    if(phiObs.is3D()) {
+		fractions(i,j,k).z = clamp( ((phiObs(i,j,k) + phiObs(i,j,k-1))*.5)  , 0.,1.);
+	}
+
+// remaining BCs at the domain boundaries
+
+	const int w = boundaryWidth;
+
+// x-direction boundaries
+	if(i <= w+1) {                     //min x
+		//inflow
+		if(flags.isInflow(i-1,j,k)) {
+			fractions(i,j,k).x = fractions(i,j,k).y = 1.; if(flags.is3D()) fractions(i,j,k).z = 1.;
+		}
+		//outflow
+		if(flags.isOutflow(i-1,j,k)) {
+			fractions(i,j,k).x = fractions(i,j,k).y = 1.; if(flags.is3D()) fractions(i,j,k).z = 1.;
+		}
+		//open
+		if(flags.isOpen(i-1,j,k)) {
+			fractions(i,j,k).x = fractions(i,j,k).y = 1.; if(flags.is3D()) fractions(i,j,k).z = 1.;
+		}
+	}
+	if(i >= flags.getSizeX()-w-2) {    //max x
+		//inflow
+		if(flags.isInflow(i+1,j,k)) {
+			fractions(i+1,j,k).x = fractions(i+1,j,k).y = 1.; if(flags.is3D()) fractions(i+1,j,k).z = 1.;
+		}
+		//outflow
+		if(flags.isOutflow(i+1,j,k)) {
+			fractions(i+1,j,k).x = fractions(i+1,j,k).y = 1.; if(flags.is3D()) fractions(i+1,j,k).z = 1.;
+		}
+		//open
+		if(flags.isOpen(i+1,j,k)) {
+			fractions(i+1,j,k).x = fractions(i+1,j,k).y = 1.; if(flags.is3D()) fractions(i+1,j,k).z = 1.;
+		}
+	}
+// y-direction boundaries
+ 	if(j <= w+1) {                     //min y
+		//inflow
+		if(flags.isInflow(i,j-1,k)) {
+			fractions(i,j,k).x = fractions(i,j,k).y = 1.; if(flags.is3D()) fractions(i,j,k).z = 1.;
+		}
+		//outflow
+		if(flags.isOutflow(i,j-1,k)) {
+			fractions(i,j,k).x = fractions(i,j,k).y = 1.; if(flags.is3D()) fractions(i,j,k).z = 1.;
+		}
+		//open
+		if(flags.isOpen(i,j-1,k)) {
+			fractions(i,j,k).x = fractions(i,j,k).y = 1.; if(flags.is3D()) fractions(i,j,k).z = 1.;
+		}
+ 	}
+ 	if(j >= flags.getSizeY()-w-2) {      //max y
+		//inflow
+		if(flags.isInflow(i,j+1,k)) {
+			fractions(i,j+1,k).x = fractions(i,j+1,k).y = 1.; if(flags.is3D()) fractions(i,j+1,k).z = 1.;
+		}
+		//outflow
+		if(flags.isOutflow(i,j+1,k)) {
+			fractions(i,j+1,k).x = fractions(i,j+1,k).y = 1.; if(flags.is3D()) fractions(i,j+1,k).z = 1.;
+		}
+		//open
+		if(flags.isOpen(i,j+1,k)) {
+			fractions(i,j+1,k).x = fractions(i,j+1,k).y = 1.; if(flags.is3D()) fractions(i,j+1,k).z = 1.;
+		}
+ 	}
+// z-direction boundaries
+	if(flags.is3D()) {
+		if(k <= w+1) {                 //min z
+			//inflow
+			if(flags.isInflow(i,j,k-1)) {
+				fractions(i,j,k).x = fractions(i,j,k).y = 1.; if(flags.is3D()) fractions(i,j,k).z = 1.;
+			}
+			//outflow
+			if(flags.isOutflow(i,j,k-1)) {
+				fractions(i,j,k).x = fractions(i,j,k).y = 1.; if(flags.is3D()) fractions(i,j,k).z = 1.;
+			}
+			//open
+			if(flags.isOpen(i,j,k-1)) {
+				fractions(i,j,k).x = fractions(i,j,k).y = 1.; if(flags.is3D()) fractions(i,j,k).z = 1.;
+			}
+		}
+		if(j >= flags.getSizeZ()-w-2) { //max z
+			//inflow
+			if(flags.isInflow(i,j,k+1)) {
+				fractions(i,j,k+1).x = fractions(i,j,k+1).y = 1.; if(flags.is3D()) fractions(i,j,k+1).z = 1.;
+			}
+			//outflow
+			if(flags.isOutflow(i,j,k+1)) {
+				fractions(i,j,k+1).x = fractions(i,j,k+1).y = 1.; if(flags.is3D()) fractions(i,j,k+1).z = 1.;
+			}
+			//open
+			if(flags.isOpen(i,j,k+1)) {
+				fractions(i,j,k+1).x = fractions(i,j,k+1).y = 1.; if(flags.is3D()) fractions(i,j,k+1).z = 1.;
+			}
+		}
+	}
+
+}
+
+KERNEL (bnd=1) void KnUpdateFlags(FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs) {
+
+	Real test = 0.;
+	test += fractions.get(i,j,k).x;
+	test += fractions.get(i+1,j,k).x;
+	test += fractions.get(i,j,k).y;
+	test += fractions.get(i,j+1,k).y;
+	if (flags.is3D()) test += fractions.get(i,j,k).z;
+	if (flags.is3D()) test += fractions.get(i,j,k+1).z;
+
+	if(test==0. || phiObs(i,j,k) < 0.) flags(i,j,k) = 2;
+
+}
+
+PYTHON void updateFractions(FlagGrid& flags, Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth=0) {
+	fractions.setConst( Vec3(0.) );
+	KnUpdateFractions(flags, phiObs, fractions, boundaryWidth);
+	KnUpdateFlags(flags,fractions, phiObs);
+}
+
 } // namespace
 
