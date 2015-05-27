@@ -17,7 +17,7 @@ printBuildInfo()
 upres = 4
  
 # overall wavelet noise strength
-wltStrength = 0.6
+wltStrength = 0.3
 
 # how many grids of uv coordinates to use (more than 2 usually dont pay off here)
 uvs = 1
@@ -38,7 +38,7 @@ sm.timestep = 1.5
 timings = Timings()
 
 # note - world space velocity, convert to grid space later
-velInflow = vec3(2, 0, 0)
+velInflow = vec3(0.015, 0, 0)
 
 # inflow noise field
 noise = sm.create(NoiseField, fixedSeed=265, loadFromFile=True)
