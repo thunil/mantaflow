@@ -263,38 +263,39 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
 			 	vel(i,j,k).z -= dotpr * dphi.z;
 
 			}
-
-		 }
+		}
 
 // domain bounds
- 		const int w = boundaryWidth;
+		
+		const int w = boundaryWidth;
+
 // x-direction boundaries
  		if (i <= w+1 && phiObs->get(i-1,j,k) <= 0.) {
-			vel(i,j,k).x = 0.;
-			vel(i,j,k).y = vel(w+1,j,k).x; if(vel.is3D()) {vel(i,j,k).z = vel(w+1,j,k).z;}
+			vel(i-1,j,k).x = 0.;
+			vel(i-1,j,k).y = vel(w+1,j,k).x; if(vel.is3D()) {vel(i-1,j,k).z = vel(w+1,j,k).z;}
 		}
-		if (i >= vel.getSizeX()-w-2 && phiObs->get(i+1,j,k) <= 0.) {
-			vel(i,j,k).x = 0.;
-			vel(i,j,k).y = vel(vel.getSizeX()-w-2,j,k).x; if(vel.is3D()) {vel(i,j,k).z = vel(vel.getSizeX()-w-2,j,k).z;}
+		if (i >= vel.getSizeX()-w-1 && phiObs->get(i+1,j,k) <= 0.) {
+			vel(i+1,j,k).x = 0.;
+			vel(i+1,j,k).y = vel(vel.getSizeX()-w-2,j,k).x; if(vel.is3D()) {vel(i+1,j,k).z = vel(vel.getSizeX()-w-2,j,k).z;}
 		}
 // y-direction boundaries
 		if (j <= w+1 && phiObs->get(i,j-1,k) <= 0.) {
-			vel(i,j,k).y = 0.;
-			vel(i,j,k).x = vel(i,w+1,k).x; if(vel.is3D()) {vel(i,j,k).z = vel(i,w+1,k).z;}
+			vel(i,j-1,k).y = 0.;
+			vel(i,j-1,k).x = vel(i,w+1,k).x; if(vel.is3D()) {vel(i,j-1,k).z = vel(i,w+1,k).z;}
 		}
-		if (j >= vel.getSizeY()-w-2 && phiObs->get(i,j+1,k) <= 0.) {
-			vel(i,j,k).y   = 0.;
-			vel(i,j,k).x = vel(i,vel.getSizeY()-w-2,k).x; if(vel.is3D()) {vel(i,j,k).z = vel(i,vel.getSizeY()-w-2,k).z;}
+		if (j >= vel.getSizeY()-w-1 && phiObs->get(i,j,k) <= 0.) {
+			vel(i,j+1,k).y = 0.;
+			vel(i,j+1,k).x = vel(i,vel.getSizeY()-w-2,k).x; if(vel.is3D()) {vel(i,j+1,k).z = vel(i,vel.getSizeY()-w-2,k).z;}
 		}
 // z-direction boundaries
 		if( vel.is3D() ) {
 			if (k <= w+1 && phiObs->get(i,j,k-1) <= 0.) {
-				vel(i,j,k).z = 0.;
-				vel(i,j,k).x = vel(i,j,w+1).x; vel(i,j,k).y = vel(i,j,w+1).z;
+				vel(i,j,k-1).z = 0.;
+				vel(i,j,k-1).x = vel(i,j,w+1).x; vel(i,j,k-1).y = vel(i,j,w+1).z;
 			}
-			if (j >= vel.getSizeZ()-w-2 && phiObs->get(i,j,k+1) <= 0.) {
-				vel(i,j,k).z = 0.;
-				vel(i,j,k).x = vel(i,j,vel.getSizeZ()-w-2).x; vel(i,j,k).z = vel(i,j,vel.getSizeZ()-w-2).z;
+			if (j >= vel.getSizeZ()-w-1 && phiObs->get(i,j,k+1) <= 0.) {
+				vel(i,j,k+1).z = 0.;
+				vel(i,j,k+1).x = vel(i,j,vel.getSizeZ()-w-2).x; vel(i,j,k+1).z = vel(i,j,vel.getSizeZ()-w-2).z;
 			}
 		}
 
