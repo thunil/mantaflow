@@ -136,7 +136,7 @@ public:
 	PYTHON void clear();
 			
 	//! Advect particle in grid velocity field
-	PYTHON void advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle=true );
+	PYTHON void advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle=true, bool stopInObstacle=true );
 	
 	//! Project particles outside obstacles
 	PYTHON void projectOutside(Grid<Vec3>& gradient);
@@ -399,20 +399,24 @@ void ParticleSystem<S>::transformPositions( Vec3i dimOld, Vec3i dimNew )
 // check for deletion/invalid position, otherwise return velocity
 KERNEL(pts) template<class S> returns(std::vector<Vec3> u(size))
 std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const FlagGrid& flags, Real dt,
-		bool deleteInObstacle )
+		bool deleteInObstacle, bool stopInObstacle )
 {
 	if (p[idx].flag & ParticleBase::PDELETE) {
-		u[idx] =_0;
-	} else if (!flags.isInBounds(p[idx].pos,1) || flags.isObstacle(p[idx].pos)) {
-		u[idx] = _0;
-
-		// for simple tracer particles, its convenient to delete particles right away
-		// for other sim types, eg flip, we can try to fix positions later on
-		if(deleteInObstacle) 
-			p[idx].flag |= ParticleBase::PDELETE;
-	} else {
-		u[idx] = vel.getInterpolated(p[idx].pos) * dt;
-	}
+		u[idx] =_0; return;
+	} 
+	// special handling
+	/*NT_DEBUG if(deleteInObstacle || stopInObstacle) {
+		if (!flags.isInBounds(p[idx].pos, 1) || flags.isObstacle(p[idx].pos) ) {
+			if(stopInObstacle)
+				u[idx] = _0; 
+			// for simple tracer particles, its convenient to delete particles right away
+			// for other sim types, eg flip, we can try to fix positions later on
+			if(deleteInObstacle) 
+				p[idx].flag |= ParticleBase::PDELETE; 
+			return;
+		} 
+	}*/
+	u[idx] = vel.getInterpolated(p[idx].pos) * dt;
 };
 
 // final check after advection to make sure particles haven't escaped
@@ -440,20 +444,20 @@ static inline Vec3 bisectBacktracePos(const FlagGrid& flags, const Vec3& oldp, c
 
 // at least make sure all particles are inside domain
 KERNEL(pts) template<class S>
-void KnClampPositions(std::vector<S>& p, const FlagGrid& flags, ParticleDataImpl<Vec3> *posOld = NULL)
+void KnClampPositions(std::vector<S>& p, const FlagGrid& flags, ParticleDataImpl<Vec3> *posOld = NULL, bool stopInObstacle=true)
 {
 	if (p[idx].flag & ParticleBase::PDELETE) return;
 	if (!flags.isInBounds(p[idx].pos,0) ) {
 		p[idx].pos = clamp( p[idx].pos, Vec3(0.), toVec3(flags.getSize())-Vec3(1.) );
 	} 
-	if (flags.isObstacle(p[idx].pos)) {
+	if (stopInObstacle && (flags.isObstacle(p[idx].pos)) ) {
 		p[idx].pos = bisectBacktracePos(flags, (*posOld)[idx], p[idx].pos);
 	}
 }
 
 // advection plugin
 template<class S>
-void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle ) {
+void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode, bool deleteInObstacle, bool stopInObstacle ) {
 	// position clamp requires old positions, backup
 	ParticleDataImpl<Vec3> *posOld = NULL;
 	if(!deleteInObstacle) {
@@ -463,11 +467,11 @@ void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrat
 	}
 
 	// update positions
-	GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle );
+	GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle, stopInObstacle );
 	integratePointSet(kernel, integrationMode);
 
 	if(!deleteInObstacle) {
-		KnClampPositions<S>  ( mData, flags, posOld );
+		KnClampPositions<S>  ( mData, flags, posOld , stopInObstacle );
 		delete posOld;
 	} else {
 		KnDeleteInObstacle<S>( mData, flags);
