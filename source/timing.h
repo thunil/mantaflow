@@ -29,6 +29,8 @@ public:
 	void saveMean(const std::string& filename);
 	void start(FluidSolver* parent, const std::string& name);
 	void stop(FluidSolver* parent, const std::string& name);
+    void enable() { mEnabled = true; } 
+	void disable() { mEnabled = false; }
 protected:
 	void step();
 	struct TimingSet {
@@ -44,6 +46,7 @@ protected:
 	MuTime mPluginTimer;
 	std::string mLastPlugin;
 	std::map<std::string, std::vector<TimingSet> > mData;
+    bool mEnabled;
 };
 
 // Python interface
@@ -53,6 +56,10 @@ public:
 	
 	PYTHON void display() { TimingData::instance().print(); }
 	PYTHON void saveMean(std::string file) { TimingData::instance().saveMean(file); }
+
+    //! Enclose steps of the simulation that should not be timed with disable() and enable()
+   	PYTHON void enable() { TimingData::instance().enable(); }
+   	PYTHON void disable() { TimingData::instance().disable(); }
 };
 
 }

@@ -25,9 +25,10 @@ namespace Manta {
 template<class T> class Grid;
 class ParticleDataBase;
 template<class T> class ParticleDataImpl;
+class Mesh;
 
 //! Baseclass for particle systems. Does not implement any data
-PYTHON class ParticleBase : public PbClass {
+PYTHON() class ParticleBase : public PbClass {
 public:
 	enum SystemType { BASE=0, PARTICLE, VORTEX, FILAMENT, FLIP, TURBULENCE, INDEX };
 	
@@ -38,7 +39,7 @@ public:
 		PINVALID      = (1<<30), // unused
 	};
 
-	PYTHON ParticleBase(FluidSolver* parent);
+	PYTHON() ParticleBase(FluidSolver* parent);
 	virtual ~ParticleBase();
 
 	//! copy all the particle data thats registered with the other particle system to this one
@@ -57,7 +58,7 @@ public:
 	// particle data functions
 
 	//! create a particle data object
-	PYTHON PbClass* create(PbType type, PbTypeVec T=PbTypeVec(), const std::string& name = "");
+	PYTHON() PbClass* create(PbType type, PbTypeVec T=PbTypeVec(), const std::string& name = "");
 	//! add a particle data field, set its parent particle-system pointer
 	void registerPdata(ParticleDataBase* pdata);
 	void registerPdataReal(ParticleDataImpl<Real>* pdata);
@@ -94,9 +95,9 @@ protected:
 
 //! Main class for particle systems
 /*! Basetype S must at least contain flag, pos fields */
-PYTHON template<class S> class ParticleSystem : public ParticleBase {
+PYTHON() template<class S> class ParticleSystem : public ParticleBase {
 public:    
-	PYTHON ParticleSystem(FluidSolver* parent) : ParticleBase(parent), mDeletes(0), mDeleteChunk(0) {}
+	PYTHON() ParticleSystem(FluidSolver* parent) : ParticleBase(parent), mDeletes(0), mDeleteChunk(0) {}
 	virtual ~ParticleSystem() {};
 	
 	virtual SystemType getType() const { return S::getType(); };
@@ -105,7 +106,7 @@ public:
 	inline S& operator[](int idx)             { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 	inline const S& operator[](int idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 	// return size of container
-	PYTHON inline int size() const { return mData.size(); }
+	PYTHON() inline int size() const { return mData.size(); }
 	// slow virtual function of base class, also returns size
 	virtual int getSizeSlow() const { return size(); }
 
@@ -114,11 +115,11 @@ public:
 	inline bool isActive(int idx)  { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PDELETE) == 0; }
 	
 	//! safe accessor for python
-	PYTHON void setPos(int idx, const Vec3& pos) { DEBUG_ONLY(checkPartIndex(idx)); mData[idx].pos = pos; }
-	PYTHON Vec3 getPos(int idx)                  { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].pos; }
+	PYTHON() void setPos(int idx, const Vec3& pos) { DEBUG_ONLY(checkPartIndex(idx)); mData[idx].pos = pos; }
+	PYTHON() Vec3 getPos(int idx)                  { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].pos; }
 	//! copy all positions into pdata vec3 field
-	PYTHON void getPosPdata(ParticleDataImpl<Vec3>& target);
-	PYTHON void setPosPdata(ParticleDataImpl<Vec3>& source);
+	PYTHON() void getPosPdata(ParticleDataImpl<Vec3>& target);
+	PYTHON() void setPosPdata(ParticleDataImpl<Vec3>& source);
 	//! transform coordinate system from one grid size to another (usually upon load)
 	void transformPositions( Vec3i dimOld, Vec3i dimNew );
 
@@ -171,13 +172,13 @@ public:
 	int  flag;
 };
 
-PYTHON class BasicParticleSystem : public ParticleSystem<BasicParticleData> {
+PYTHON() class BasicParticleSystem : public ParticleSystem<BasicParticleData> {
 public:
-	PYTHON BasicParticleSystem(FluidSolver* parent);
+	PYTHON() BasicParticleSystem(FluidSolver* parent);
 	
 	//! file io
-	PYTHON void save(std::string name);
-	PYTHON void load(std::string name);
+	PYTHON() void save(std::string name);
+	PYTHON() void load(std::string name);
 
 	// save to text file
 	void writeParticlesText(std::string name);
@@ -185,13 +186,16 @@ public:
 	void writeParticlesRawPositionsGz(std::string name);
 	void writeParticlesRawVelocityGz(std::string name);
 
+    //! create a triangle mesh from particles
+	PYTHON() void createSphereMesh(Mesh& mesh, Real radius, int sphereQual=0, Grid<Real>* phi=0, Real minPhi=-999, int inc=1);
+
 	// add particles in python
-	PYTHON void addParticle(Vec3 pos) { add(BasicParticleData(pos)); }
+	PYTHON() void addParticle(Vec3 pos) { add(BasicParticleData(pos)); }
 
 	// dangerous, get low level access - avoid usage, only used in vortex filament advection for now
 	std::vector<BasicParticleData>& getData() { return mData; }
 
-	PYTHON void printParts(int start=-1, int stop=-1, bool printIndex=false); 
+	PYTHON() void printParts(int start=-1, int stop=-1, bool printIndex=false); 
 };
 
 
@@ -214,7 +218,7 @@ public:
 	//Vec3 pos; // enable for debugging
 };
 
-PYTHON class ParticleIndexSystem : public ParticleSystem<ParticleIndexData> {
+PYTHON() class ParticleIndexSystem : public ParticleSystem<ParticleIndexData> {
 public:
 	PYTHON ParticleIndexSystem(FluidSolver* parent) : ParticleSystem<ParticleIndexData>(parent) {};
 	
@@ -227,10 +231,10 @@ public:
 //******************************************************************************
 
 //! Particle set with connectivity
-PYTHON template<class DATA, class CON> 
+PYTHON() template<class DATA, class CON> 
 class ConnectedParticleSystem : public ParticleSystem<DATA> {
 public:
-	PYTHON ConnectedParticleSystem(FluidSolver* parent) : ParticleSystem<DATA>(parent) {}
+	PYTHON() ConnectedParticleSystem(FluidSolver* parent) : ParticleSystem<DATA>(parent) {}
 	
 	// accessors
 	inline bool isSegActive(int i) { return (mSegments[i].flag & ParticleBase::PDELETE) == 0; }    
@@ -248,9 +252,9 @@ protected:
 //******************************************************************************
 
 //! abstract interface for particle data
-PYTHON class ParticleDataBase : public PbClass {
+PYTHON() class ParticleDataBase : public PbClass {
 public:
-	PYTHON ParticleDataBase(FluidSolver* parent);
+	PYTHON() ParticleDataBase(FluidSolver* parent);
 	virtual ~ParticleDataBase(); 
 
 	// data type IDs, in line with those for grids
@@ -276,10 +280,10 @@ protected:
 
 
 //! abstract interface for particle data
-PYTHON template<class T>
+PYTHON() template<class T>
 class ParticleDataImpl : public ParticleDataBase {
 public:
-	PYTHON ParticleDataImpl(FluidSolver* parent);
+	PYTHON() ParticleDataImpl(FluidSolver* parent);
 	ParticleDataImpl(FluidSolver* parent, ParticleDataImpl<T>* other);
 	virtual ~ParticleDataImpl();
 
@@ -290,10 +294,10 @@ public:
 	inline const T operator[](int idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 
 	// set all values to 0, note - different from particleSystem::clear! doesnt modify size of array (has to stay in sync with parent system)
-	PYTHON void clear();
+	PYTHON() void clear();
 
 	//! set grid from which to get data...
-	PYTHON void setSource(Grid<T>* grid, bool isMAC=false );
+	PYTHON() void setSource(Grid<T>* grid, bool isMAC=false );
 
 	// particle data base interface
 	virtual int  getSizeSlow() const;
@@ -310,24 +314,24 @@ public:
 	void initNewValue(int idx, Vec3 pos);
 
 	// python interface (similar to grid data)
-	PYTHON void setConst(T s);
-	PYTHON ParticleDataImpl<T>& copyFrom(const ParticleDataImpl<T>& a);
-	PYTHON void add(const ParticleDataImpl<T>& a);
-	PYTHON void sub(const ParticleDataImpl<T>& a);
-	PYTHON void addConst(T s);
-	PYTHON void addScaled(const ParticleDataImpl<T>& a, const T& factor); 
-	PYTHON void mult( const ParticleDataImpl<T>& a);
-	PYTHON void multConst(T s);
-	PYTHON void clamp(Real min, Real max);
-	PYTHON Real getMaxAbsValue();
-	PYTHON Real getMaxValue();
-	PYTHON Real getMinValue();    
+	PYTHON() void setConst(T s);
+	PYTHON() ParticleDataImpl<T>& copyFrom(const ParticleDataImpl<T>& a);
+	PYTHON() void add(const ParticleDataImpl<T>& a);
+	PYTHON() void sub(const ParticleDataImpl<T>& a);
+	PYTHON() void addConst(T s);
+	PYTHON() void addScaled(const ParticleDataImpl<T>& a, const T& factor); 
+	PYTHON() void mult( const ParticleDataImpl<T>& a);
+	PYTHON() void multConst(T s);
+	PYTHON() void clamp(Real min, Real max);
+	PYTHON() Real getMaxAbsValue();
+	PYTHON() Real getMaxValue();
+	PYTHON() Real getMinValue();    
 
-	PYTHON void printPdata(int start=-1, int stop=-1, bool printIndex=false); 
+	PYTHON() void printPdata(int start=-1, int stop=-1, bool printIndex=false); 
 	
 	//! file io
-	PYTHON void save(std::string name);
-	PYTHON void load(std::string name);
+	PYTHON() void save(std::string name);
+	PYTHON() void load(std::string name);
 protected:
 	//! data storage
 	std::vector<T> mData; 
@@ -338,9 +342,9 @@ protected:
 	bool mGridSourceMAC;
 };
 
-PYTHON alias ParticleDataImpl<int>  PdataInt;
-PYTHON alias ParticleDataImpl<Real> PdataReal;
-PYTHON alias ParticleDataImpl<Vec3> PdataVec3;
+PYTHON() alias ParticleDataImpl<int>  PdataInt;
+PYTHON() alias ParticleDataImpl<Real> PdataReal;
+PYTHON() alias ParticleDataImpl<Vec3> PdataVec3;
 
 
 //******************************************************************************

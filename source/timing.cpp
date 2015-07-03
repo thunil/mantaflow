@@ -17,7 +17,7 @@
 using namespace std;
 namespace Manta {
 
-TimingData::TimingData() : updated(false), num(0) {
+TimingData::TimingData() : updated(false), num(0), mEnabled(true) {
 }
 
 void TimingData::start(FluidSolver* parent, const string& name) {
@@ -26,7 +26,7 @@ void TimingData::start(FluidSolver* parent, const string& name) {
 }
 
 void TimingData::stop(FluidSolver* parent, const string& name) {
-	if (mLastPlugin == name && name != "FluidSolver::step") {
+	if (mEnabled && mLastPlugin == name && name != "FluidSolver::step") {
 		updated = true;
 		const string parentName = parent ? parent->getName() : "";
 		MuTime diff = mPluginTimer.update();

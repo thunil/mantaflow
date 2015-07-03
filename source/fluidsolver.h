@@ -41,6 +41,8 @@ public:
 	
 	PYTHON void printMemInfo();
 	
+    PYTHON void print(const std::string& msg) { printf("%s\n", msg.c_str()); }
+	
 	//! Advance the solver one timestep, update GUI if present
 	PYTHON void step();
 	
@@ -83,7 +85,7 @@ protected:
 		int used;
 	};
 	
-	GridStorage<int> mGridsInt;
+	GridStorage<int>  mGridsInt;
 	GridStorage<Real> mGridsReal;
 	GridStorage<Vec3> mGridsVec;
 };

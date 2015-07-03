@@ -24,11 +24,11 @@ namespace Manta {
 class LevelsetGrid;
 	
 //! Base class for all grids
-PYTHON class GridBase : public PbClass {
+PYTHON() class GridBase : public PbClass {
 public:
 	enum GridType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4, TypeMAC = 8, TypeLevelset = 16, TypeFlags = 32 };
 		
-	PYTHON GridBase(FluidSolver* parent);
+	PYTHON() GridBase(FluidSolver* parent);
 	
 	//! Get the grids X dimension
 	inline int getSizeX() const { return mSize.x; }
@@ -83,11 +83,11 @@ protected:
 };
 
 //! Grid class
-PYTHON template<class T>
+PYTHON() template<class T>
 class Grid : public GridBase {
 public:
 	//! init new grid, values are set to zero
-	PYTHON Grid(FluidSolver* parent, bool show = true);
+	PYTHON() Grid(FluidSolver* parent, bool show = true);
 	//! create new & copy content from another grid
 	Grid(const Grid<T>& a);
 	//! return memory to solver
@@ -95,11 +95,11 @@ public:
 	
 	typedef T BASETYPE;
 	
-	PYTHON void save(std::string name);
-	PYTHON void load(std::string name);
+	PYTHON() void save(std::string name);
+	PYTHON() void load(std::string name);
 	
 	//! set all cells to zero
-	PYTHON void clear();
+	PYTHON() void clear();
 	
 	//! all kinds of access functions, use grid(), grid[] or grid.get()
 	//! access data
@@ -143,45 +143,45 @@ public:
 	//! warning - do not use "=" for grids in python, this copies the reference! not the grid content...
 	//Grid<T>& operator=(const Grid<T>& a);
 	//! copy content from other grid (use this one instead of operator= !)
-	PYTHON Grid<T>& copyFrom(const Grid<T>& a); // { *this = a; }
+	PYTHON() Grid<T>& copyFrom(const Grid<T>& a); // { *this = a; }
 
 	// helper functions to work with grids in scene files 
 
 	//! add/subtract other grid
-	PYTHON void add(const Grid<T>& a);
-	PYTHON void sub(const Grid<T>& a);
+	PYTHON() void add(const Grid<T>& a);
+	PYTHON() void sub(const Grid<T>& a);
 	//! set all cells to constant value
-	PYTHON void setConst(T s);
+	PYTHON() void setConst(T s);
 	//! add constant to all grid cells
-	PYTHON void addConst(T s);
+	PYTHON() void addConst(T s);
 	//! add scaled other grid to current one (note, only "Real" factor, "T" type not supported here!)
-	PYTHON void addScaled(const Grid<T>& a, const T& factor); 
+	PYTHON() void addScaled(const Grid<T>& a, const T& factor); 
 	//! multiply contents of grid
-	PYTHON void mult( const Grid<T>& a);
+	PYTHON() void mult( const Grid<T>& a);
 	//! multiply each cell by a constant scalar value
-	PYTHON void multConst(T s);
+	PYTHON() void multConst(T s);
 	//! clamp content to range (for vec3, clamps each component separately)
-	PYTHON void clamp(Real min, Real max);
+	PYTHON() void clamp(Real min, Real max);
 	
 	// common compound operators
 	//! get absolute max value in grid 
-	PYTHON Real getMaxAbs();
+	PYTHON() Real getMaxAbs();
 	//! get max value in grid 
-	PYTHON Real getMax();
+	PYTHON() Real getMax();
 	//! get min value in grid 
-	PYTHON Real getMin();    
+	PYTHON() Real getMin();    
 	//! set all boundary cells to constant value (Dirichlet)
-	PYTHON void setBound(T value, int boundaryWidth=1);
+	PYTHON() void setBound(T value, int boundaryWidth=1);
 	//! set all boundary cells to last inner value (Neumann)
-	PYTHON void setBoundNeumann(int boundaryWidth=1);
+	PYTHON() void setBoundNeumann(int boundaryWidth=1);
 
 	//! for compatibility, old names:
-	PYTHON Real getMaxAbsValue() { return getMaxAbs(); }
-	PYTHON Real getMaxValue()    { return getMax(); }
-	PYTHON Real getMinValue()    { return getMin(); }
+	PYTHON() Real getMaxAbsValue() { return getMaxAbs(); }
+	PYTHON() Real getMaxValue()    { return getMax(); }
+	PYTHON() Real getMinValue()    { return getMin(); }
 
 	//! debugging helper, print grid from python
-	PYTHON void printGrid(int zSlice=-1,  bool printIndex=false); 
+	PYTHON() void printGrid(int zSlice=-1,  bool printIndex=false); 
 
 	// c++ only operators
 	template<class S> Grid<T>& operator+=(const Grid<S>& a);
@@ -202,14 +202,14 @@ protected:
 };
 
 // Python doesn't know about templates: explicit aliases needed
-PYTHON alias Grid<int>  IntGrid;
-PYTHON alias Grid<Real> RealGrid;
-PYTHON alias Grid<Vec3> VecGrid;
+PYTHON() alias Grid<int>  IntGrid;
+PYTHON() alias Grid<Real> RealGrid;
+PYTHON() alias Grid<Vec3> VecGrid;
 
 //! Special function for staggered grids
-PYTHON class MACGrid : public Grid<Vec3> {
+PYTHON() class MACGrid : public Grid<Vec3> {
 public:
-	PYTHON MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { 
+	PYTHON() MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { 
 		mType = (GridType)(TypeMAC | TypeVec3); }
 	
 	// specialized functions for interpolating MAC information
@@ -240,9 +240,9 @@ protected:
 };
 
 //! Special functions for FlagGrid
-PYTHON class FlagGrid : public Grid<int> {
+PYTHON() class FlagGrid : public Grid<int> {
 public:
-	PYTHON FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show), mBoundaryWidth(0) { 
+	PYTHON() FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show), mBoundaryWidth(0) { 
 		mType = (GridType)(TypeFlags | TypeInt); }
 	
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
@@ -287,10 +287,10 @@ public:
 	inline int getBoundaryWidth() const {return mBoundaryWidth;}
 
 	// Python callables
-	PYTHON void initDomain(int boundaryWidth=0);
-	PYTHON void initBoundaries(int boundaryWidth=0);
-	PYTHON void updateFromLevelset(LevelsetGrid& levelset);    
-	PYTHON void fillGrid(int type=TypeFluid);
+	PYTHON() void initDomain(int boundaryWidth=0);
+	PYTHON() void initBoundaries(int boundaryWidth=0);
+	PYTHON() void updateFromLevelset(LevelsetGrid& levelset);    
+	PYTHON() void fillGrid(int type=TypeFluid);
 
 protected:
 	int mBoundaryWidth;
@@ -536,7 +536,7 @@ inline Vec3 getGradient(const Grid<Real>& data, int i, int j, int k) {
 }
 
 // interpolate grid from one size to another size
-KERNEL template<class S>
+KERNEL() template<class S>
 void knInterpolateGridTempl(Grid<S>& target, Grid<S>& source, const Vec3& sourceFactor , Vec3 offset, int orderSpace=1 ) {
 	Vec3 pos = Vec3(i,j,k) * sourceFactor + offset;
 	if(!source.is3D()) pos[2] = 0; // allow 2d -> 3d

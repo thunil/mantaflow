@@ -18,6 +18,8 @@
 #   include <GL/glu.h>
 #endif
 #include <cmath>
+#include <iostream>
+#include <fstream>
 #include "painter.h"
 
 namespace Manta {
@@ -277,6 +279,12 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
 			screenshot(filename);
 			mScreenshotNumber++;
 		}
+
+        // Camera save to/load from file (load with F1-F4, +ctrl to save)
+        else if (Qt::Key_F1 <= key && key <= Qt::Key_F4) {
+            if (ctrl) saveCam(key - Qt::Key_F1 + 1);
+            else      loadCam(key - Qt::Key_F1 + 1);
+        }
 		
 		else return false;
 	}
@@ -293,6 +301,30 @@ void GLWidget::updatePlane(int plane) {
 	emit painterEvent(Painter::EventSetPlane, mPlane);
 }
 
+void GLWidget::saveCam(int key)
+{
+    std::stringstream fname;
+    fname << "cam" << key << ".txt";
+    std::ofstream file(fname.str());
+    if (file.fail()) { std::cerr << "saveCam could not open file" << std::endl; return; }
+    file << "pos " << mCamPos.x << " " << mCamPos.y << " " << mCamPos.z << std::endl;
+    file << "rot " << mRotX << " " << mRotY << std::endl;
+    file.close();
+    std::cout << "Camera saved to " << fname.str() << std::endl;
+}
+
+void GLWidget::loadCam(int key)
+{
+    std::stringstream fname;
+    fname << "cam" << key << ".txt";
+    std::ifstream file(fname.str());
+    if (file.fail()) return;
+    std::string token;
+    file >> token >> mCamPos.x >> mCamPos.y >> mCamPos.z;
+    file >> token >> mRotX >> mRotY;
+    file.close();
+    std::cout << "Camera loaded from " << fname.str() << std::endl;
+}
 
 
 }

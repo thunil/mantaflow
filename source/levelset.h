@@ -19,23 +19,33 @@
 namespace Manta {
 class Mesh;
 
+
 //! Special function for levelsets
-PYTHON class LevelsetGrid : public Grid<Real> {
+PYTHON() class LevelsetGrid : public Grid<Real> {
 public:
-	PYTHON LevelsetGrid(FluidSolver* parent, bool show = true);
+	PYTHON() LevelsetGrid(FluidSolver* parent, bool show = true);
 	
 	//! reconstruct the levelset using fast marching
-	PYTHON void reinitMarching(FlagGrid& flags, Real maxTime=4.0, 
+	PYTHON() void reinitMarching(FlagGrid& flags, Real maxTime=4.0, 
 			MACGrid* velTransport=NULL, bool ignoreWalls=false, bool correctOuterLayer=true, 
 			int obstacleType = FlagGrid::TypeObstacle, Grid<Real>* scalarTransport = NULL );
+
+    PYTHON() void reinitExact(FlagGrid& flags);
+
 	//! create a triangle mesh from the levelset isosurface
-	PYTHON void createMesh(Mesh& mesh);
+	PYTHON() void createMesh(Mesh& mesh);
 	
 	//! union with another levelset
-	PYTHON void join(const LevelsetGrid& o);
+	PYTHON() void join(const LevelsetGrid& o);
+
+    //! intersection with another levelset
+	PYTHON() void intersect(const LevelsetGrid& o);
+
+    //! difference with another levelset
+	PYTHON() void difference(const LevelsetGrid& o);
 	
 	//! initialize levelset from flags (+/- 0.5 heaviside)
-	PYTHON void initFromFlags(FlagGrid& flags, bool ignoreWalls=false);
+	PYTHON() void initFromFlags(FlagGrid& flags, bool ignoreWalls=false);
 	
 	static Real invalidTimeValue();
 };

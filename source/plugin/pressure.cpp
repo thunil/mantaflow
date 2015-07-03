@@ -80,7 +80,7 @@ void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure)
 }
 
 
-KERNEL void SetOpenBound(Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real> &Ak,FlagGrid& flags,MACGrid& vel, 
+KERNEL() void SetOpenBound(Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real> &Ak,FlagGrid& flags,MACGrid& vel, 
 							Vector3D<bool> lo, Vector3D<bool> up) 
 {
 
@@ -110,7 +110,7 @@ KERNEL void SetOpenBound(Grid<Real> &A0,Grid<Real> &Ai,Grid<Real> &Aj,Grid<Real>
 
 
 //! Kernel: Set matrix rhs for outflow
-KERNEL void SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<bool> upperBound, int height)
+KERNEL() void SetOutflow (Grid<Real>& rhs, Vector3D<bool> lowerBound, Vector3D<bool> upperBound, int height)
 {
 	if ((lowerBound.x && i < height) || (upperBound.x && i >= maxX-1-height) ||
 		(lowerBound.y && j < height) || (upperBound.y && j >= maxY-1-height) ||
@@ -268,12 +268,12 @@ KERNEL (bnd=1) void KnupdateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid&
 
 }
 
-PYTHON void updateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions) {
+PYTHON() void updateFractions(FlagGrid& flags, Grid<Real>& phi, MACGrid& fractions) {
 	KnupdateFractions(flags, phi, fractions);
 }
 
 //! Perform pressure projection of the velocity grid
-PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string openBound="",
+PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, string openBound="",
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0, 
                      MACGrid* fractions = 0,

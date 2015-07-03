@@ -321,6 +321,28 @@ inline bool operator!= (const Vector3D<S>& s1, const Vector3D<S>& s2) {
 // External functions
 //************************************************************************
 
+//! Minimum
+template<class S>
+inline S min ( const S& t, const S& v ) {
+	return t<v ? t : v;
+}
+
+template<class S>
+inline Vector3D<S> min ( const Vector3D<S> &t, const Vector3D<S> &v ) {
+	return Vector3D<S>(t.x<v.x ? t.x : v.x, t.y<v.y ? t.y : v.y, t.z<v.z ? t.z : v.z);    
+}
+
+//! Maximum
+template<class S>
+inline S max ( const S& t, const S& v ) {
+	return t>v ? t : v;
+}
+
+template<class S>
+inline Vector3D<S> max ( const Vector3D<S> &t, const Vector3D<S> &v ) {
+	return Vector3D<S>(t.x>v.x ? t.x : v.x, t.y>v.y ? t.y : v.y, t.z>v.z ? t.z : v.z);    
+}
+
 //! Dot product
 template<class S>
 inline S dot ( const Vector3D<S> &t, const Vector3D<S> &v ) {
@@ -569,10 +591,10 @@ template<class T> inline Vector3D<float> toVec3f ( T v ) {
 // Specializations for common math functions
 /**************************************************************************/
 
-template<> inline Vec3 clamp<Vec3>(const Vec3& a, const Vec3& b, const Vec3& c) {
-	return Vec3 ( clamp(a.x, b.x, c.x),
-				  clamp(a.y, b.y, c.y),
-				  clamp(a.z, b.z, c.z) );    
+template<class T> inline Vector3D<T> clamp(const Vector3D<T>& a, const Vector3D<T>& b, const Vector3D<T>& c) {
+	return Vector3D<T> ( clamp(a.x, b.x, c.x),
+				         clamp(a.y, b.y, c.y),
+				         clamp(a.z, b.z, c.z) );    
 }
 template<> inline Vec3 safeDivide<Vec3>(const Vec3 &a, const Vec3& b) { 
 	return Vec3(safeDivide(a.x,b.x), safeDivide(a.y,b.y), safeDivide(a.z,b.z));

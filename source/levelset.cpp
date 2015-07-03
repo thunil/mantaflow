@@ -118,6 +118,24 @@ void LevelsetGrid::join(const LevelsetGrid& o) {
 	KnJoin(*this, o);
 }
 
+//! Kernel: perform levelset intersection
+KERNEL(idx) void KnIntersect(Grid<Real>& a, const Grid<Real>& b) {
+	a[idx] = max(a[idx], b[idx]);
+}
+
+void LevelsetGrid::intersect(const LevelsetGrid& o) {
+	KnIntersect(*this, o);
+}
+
+//! Kernel: perform levelset difference (a-b)
+KERNEL(idx) void KnDifference(Grid<Real>& a, const Grid<Real>& b) {
+	a[idx] = max(a[idx], -b[idx]);
+}
+
+void LevelsetGrid::difference(const LevelsetGrid& o) {
+	KnDifference(*this, o);
+}
+
 //! re-init levelset and extrapolate velocities (in & out)
 //  note - uses flags to identify border (could also be done based on ls values)
 void LevelsetGrid::reinitMarching(
@@ -231,6 +249,84 @@ void LevelsetGrid::reinitMarching(
 	SetUninitialized (flags, fmFlags, phi, +maxTime + 1., ignoreWalls, obstacleType);    
 }
 
+//! re-init levelset and extrapolate velocities (in & out), slow but exact method
+void LevelsetGrid::reinitExact(FlagGrid& flags)
+{
+    const int dim = (is3D() ? 3 : 2);
+    LevelsetGrid& phi = *this;
+
+    std::vector<Vec3> surfacePoints;
+
+    FOR_IJK(phi)
+    {
+        const Vec3i p(i,j,k);
+
+        for (int nb=0; nb<dim; nb++) 
+        {
+		    const Vec3i pn(p + neighbors[2*nb]);
+
+            if (isInBounds(pn) && (flags.isFluid(p) || flags.isFluid(pn)))
+            {
+                Real phi0 = phi(p);
+                Real phi1 = phi(pn);
+
+                if (phi0*phi1 < 0)
+                {
+                    Real t = phi0 / (phi0 - phi1);                    
+                    Vec3 intersection = toVec3(p) + t* toVec3(neighbors[2*nb]);
+                    surfacePoints.push_back(intersection);
+                }
+            }            
+        }
+    }
+
+    FOR_IJK(phi)
+    {
+        const Vec3 p(i,j,k);
+
+        //size_t nearestPoint = size_t(-1);
+        Real nearestDistSqr = 1E14;
+        for (size_t s = 0; s < surfacePoints.size(); s++)
+        {
+            Real dsqr = normSquare(p - surfacePoints[s]);
+            if (dsqr < nearestDistSqr)
+            {
+                //nearestPoint   = i;
+                nearestDistSqr = dsqr;
+            }
+        }
+
+        Real sign = phi(i,j,k) < 0 ? -1 : 1;
+        phi(i,j,k) = sign * std::sqrt(nearestDistSqr);
+    }
+
+    FOR_IJK(phi)
+    {
+        const Vec3i p(i,j,k);
+        
+        if (flags.isObstacle(p))
+        {
+            Real phiSum = 0;
+            int n = 0;
+
+            for (int nb=0; nb<2*dim; nb++) 
+            {
+		        const Vec3i pn(p + neighbors[nb]);
+
+                if (phi.isInBounds(pn) && !flags.isObstacle(pn))
+                {
+                    phiSum += phi(pn);
+                    n++;
+                }
+            }
+
+            if (n>0) { 
+                phi(p) = phiSum / Real(n); 
+            }
+        }
+    }
+}
+
 void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
 	FOR_IDX(*this) {
 		if (flags.isFluid(idx) || (ignoreWalls && flags.isObstacle(idx)))
@@ -296,7 +392,7 @@ void LevelsetGrid::createMesh(Mesh& mesh) {
 
 					// init isolevel vertex
 					Node vertex;
-					vertex.pos = p1 + (p2-p1)*mu;
+					vertex.pos = p1 + (p2-p1)*mu + Vec3(Real(0.5));
 					vertex.normal = getNormalized( 
 										getGradient( *this, i+cubieOffsetX[e1], j+cubieOffsetY[e1], k+cubieOffsetZ[e1]) * (1.0-mu) +
 										getGradient( *this, i+cubieOffsetX[e2], j+cubieOffsetY[e2], k+cubieOffsetZ[e2]) * (    mu)) ;

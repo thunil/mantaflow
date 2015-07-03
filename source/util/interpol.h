@@ -66,11 +66,16 @@ static inline void checkIndexInterpol(const Vec3i& size, int idx) {
     const int Y = size.x;    
         
 template <class T>
-inline T interpol(const T* data, const Vec3i& size, const int Z, const Vec3& pos) {
+inline T interpol(const T* data, const Vec3i& size, const int Z, const Vec3& pos, T* minVal=0, T* maxVal=0) {
     BUILD_INDEX
     int idx = xi + Y * yi + Z * zi;    
     DEBUG_ONLY(checkIndexInterpol(size,idx)); DEBUG_ONLY(checkIndexInterpol(size,idx+X+Y+Z));
-    
+
+    if (minVal) { *minVal = min(min(min(data[idx]  ,data[idx+X]  ),min(data[idx+Y]  ,data[idx+X+Y]  )),
+                                min(min(data[idx+Z],data[idx+Y+Z]),min(data[idx+X+Z],data[idx+X+Y+Z]))); }
+    if (maxVal) { *maxVal = max(max(max(data[idx]  ,data[idx+X]  ),max(data[idx+Y]  ,data[idx+X+Y]  )),
+                                max(max(data[idx+Z],data[idx+Y+Z]),max(data[idx+X+Z],data[idx+X+Y+Z]))); }
+
     return  ((data[idx]    *t0 + data[idx+Y]    *t1) * s0
            + (data[idx+X]  *t0 + data[idx+X+Y]  *t1) * s1) * f0
            +((data[idx+Z]  *t0 + data[idx+Y+Z]  *t1) * s0

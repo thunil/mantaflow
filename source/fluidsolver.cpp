@@ -124,10 +124,11 @@ void FluidSolver::step() {
 }
 
 void FluidSolver::printMemInfo() {
+    int n = mGridSize.x * mGridSize.y * mGridSize.z;
 	std::ostringstream msg;
-	msg << "Allocated grids: int " << mGridsInt.used  <<"/"<< mGridsInt.grids.size()  <<", ";
-	msg <<                  "real "<< mGridsReal.used <<"/"<< mGridsReal.grids.size() <<", ";
-	msg <<                  "vec3 "<< mGridsVec.used  <<"/"<< mGridsVec.grids.size()  <<". ";
+	msg << "Allocated grids: int " << mGridsInt.used  <<"/"<< mGridsInt.grids.size()  <<" ("<<n*sizeof(int) /(1<<20)<<"MB each), ";
+	msg <<                  "real "<< mGridsReal.used <<"/"<< mGridsReal.grids.size() <<" ("<<n*sizeof(Real)/(1<<20)<<"MB each), ";
+	msg <<                  "vec3 "<< mGridsVec.used  <<"/"<< mGridsVec.grids.size()  <<" ("<<n*sizeof(Vec3)/(1<<20)<<"MB each), ";
 	printf("%s\n", msg.str().c_str() );
 }
 
@@ -156,7 +157,7 @@ void FluidSolver::adaptTimestep(Real maxVel)
 			mLockDt = true;
 		}
 	}
-	debMsg( "Frame "<<mFrame<<" current max vel: "<<maxVel<<" , dt: "<<mDt<<", "<<mTimePerFrame<<"/"<<mFrameLength<<" lock:"<<mLockDt , 1);
+	debMsg( "Frame "<<mFrame<<" current max vel: "<<maxVel<<" , dt: "<<mDt<<", "<<mTimePerFrame<<"/"<<mFrameLength<<" lock:"<<mLockDt<<", cfl: "<<maxVel*mDt, 1);
 	mAdaptDt = true;
 
 	// sanity check

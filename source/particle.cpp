@@ -20,6 +20,7 @@
 #include "particle.h"
 #include "levelset.h"
 #include "fileio.h"
+#include "mesh.h"
 
 using namespace std;
 namespace Manta {
@@ -176,7 +177,6 @@ void BasicParticleSystem::writeParticlesRawVelocityGz(string name) {
 #	endif
 }
 
-
 void BasicParticleSystem::load(string name ) {
 	if (name.find_last_of('.') == string::npos)
 		errMsg("file '" + name + "' does not have an extension");
@@ -202,6 +202,50 @@ void BasicParticleSystem::save(string name) {
 		this->writeParticlesRawVelocityGz(name);
 	else
 		errMsg("particle '" + name +"' filetype not supported for saving");
+}
+
+void BasicParticleSystem::createSphereMesh(Mesh& mesh, Real radius, int sphereQual, Grid<Real>* phi, Real minPhi, int inc)
+{
+    mesh.clear();
+
+    std::vector<Vec3> spherev;
+    std::vector<int> spheret;
+    if (sphereQual==0)
+    {
+        // Tetrahedron
+        spherev = {Vec3(-1,-1,-1), Vec3(1,1,-1), Vec3(-1,1,1), Vec3(1,-1,1)};
+        spheret = {0,1,3, 1,0,2, 0,3,2, 1,2,3};
+    }
+    else if (sphereQual==1)
+    {
+        // Octahedron
+        Real x = std::sqrt(Real(0.5));
+        spherev = {Vec3(0,0,-1), Vec3(-x,-x,0), Vec3(x,-x,0), Vec3(-x,x,0), Vec3(x,x,0), Vec3(0,0,1)};
+        spheret = {0,2,1, 0,4,2, 0,3,4, 0,1,3, 5,1,2, 5,2,4, 5,4,3, 5,3,1};
+    }
+    else
+    {
+        errMsg("Invalid value for sphereQuality");
+    }
+    std::vector<int> vind(spherev.size(), -1);
+    
+    for(int i=0; i<this->size(); i+=inc) {
+		Vec3 p = this->getPos(i);
+        if (!this->isActive(i)) continue;
+        if (phi && phi->getInterpolated(p) < minPhi ) continue;
+
+        Node v;
+        for (int j=0; j<spherev.size(); ++j) {
+            v.pos    = p + radius * spherev[j];
+            v.normal = getNormalized(spherev[j]);
+            vind[j] = mesh.addNode(v);
+        }
+
+        for (int j=0; j<spheret.size(); j+=3) {
+            Triangle t(vind[spheret[j]], vind[spheret[j+1]], vind[spheret[j+2]]);
+            mesh.addTri(t);
+        }
+	}
 }
 
 void BasicParticleSystem::printParts(int start, int stop, bool printIndex)

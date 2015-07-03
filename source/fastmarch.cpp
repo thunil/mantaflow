@@ -268,33 +268,33 @@ void knExtrapolateIntoBnd (FlagGrid& flags, MACGrid& vel)
 	Vec3 v(0,0,0);
 	if( i==0 ) { 
 		v = vel(i+1,j,k);
-		if(v[0] < 0.) v[0] = 0.;
+		/*if(v[0] < 0.)*/ v[0] = 0.;
 		c++;
 	}
 	else if( i==(flags.getSizeX()-1) ) { 
 		v = vel(i-1,j,k);
-		if(v[0] > 0.) v[0] = 0.;
+		/*if(v[0] > 0.)*/ v[0] = 0.;
 		c++;
 	}
 	if( j==0 ) { 
 		v = vel(i,j+1,k);
-		if(v[1] < 0.) v[1] = 0.;
+		/*if(v[1] < 0.)*/ v[1] = 0.;
 		c++;
 	}
 	else if( j==(flags.getSizeY()-1) ) { 
 		v = vel(i,j-1,k);
-		if(v[1] > 0.) v[1] = 0.;
+		/*if(v[1] > 0.)*/ v[1] = 0.;
 		c++;
 	}
 	if(flags.is3D()) {
 	if( k==0 ) { 
 		v = vel(i,j,k+1);
-		if(v[2] < 0.) v[2] = 0.;
+		/*if(v[2] < 0.)*/ v[2] = 0.;
 		c++;
 	}
-	else if( k==(flags.getSizeY()-1) ) { 
+	else if( k==(flags.getSizeZ()-1) ) { 
 		v = vel(i,j,k-1);
-		if(v[2] > 0.) v[2] = 0.;
+		/*if(v[2] > 0.)*/ v[2] = 0.;
 		c++;
 	} }
 	if(c>0) {
@@ -437,7 +437,7 @@ static const Vec3i nbExt2d[4] = {
 	Vec3i(1,-1,0), Vec3i(-1,-1,0) };
 
 KERNEL(bnd=1) template<class S>
-void knExtrapolateLsSimple (Grid<S>& val, int distance , Grid<int>& tmp , const int d , S direction )
+void knExtrapolateLsSimple (Grid<S>& val, int distance , Grid<int>& tmp , const int d , S direction, FlagGrid* flags, bool ignoreWalls )
 {
 	const int dim = (val.is3D() ? 3:2); 
 	if (tmp(i,j,k) != 0) return;
@@ -455,7 +455,11 @@ void knExtrapolateLsSimple (Grid<S>& val, int distance , Grid<int>& tmp , const 
 
 	if(nbs>0) {
 		tmp(p) = d+1;
-		val(p) = avg / nbs + direction;
+        if (ignoreWalls && flags->isObstacle(p)) {
+            val(p) = avg / nbs;
+        } else {
+		    val(p) = avg / nbs + direction;
+        }
 	} 
 }
 
@@ -467,7 +471,7 @@ void knSetRemaining (Grid<S>& phi, Grid<int>& tmp, S distance )
 	phi(i,j,k) = distance;
 }
 
-PYTHON void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=false )
+PYTHON void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=false, FlagGrid* flags=0, bool ignoreWalls=false )
 {
 	Grid<int> tmp( phi.getParent() );
 	tmp.clear();
@@ -478,28 +482,42 @@ PYTHON void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=
 	if(!inside) { 
 		// mark all inside
 		FOR_IJK_BND(phi,1) {
-			if ( phi(i,j,k) < 0. ) { tmp(i,j,k) = 1; }
+			if ( phi(i,j,k) < 0. && (!ignoreWalls || !flags->isObstacle(i,j,k))) { tmp(i,j,k) = 1; }
 		} 
 	} else {
+		// mark all outside
 		direction = -1.;
 		FOR_IJK_BND(phi,1) {
-			if ( phi(i,j,k) > 0. ) { tmp(i,j,k) = 1; }
+			if ( phi(i,j,k) > 0. && (!ignoreWalls || !flags->isObstacle(i,j,k))) { tmp(i,j,k) = 1; }
 		} 
 	}
-	// + first layer around
+    // + first layer around
 	FOR_IJK_BND(phi,1) {
 		Vec3i p(i,j,k);
 		if ( tmp(p) ) continue;
-		for (int n=0; n<2*dim; ++n) {
-			if (tmp(p+nb[n])==1) {
-				tmp(i,j,k) = 2; n=2*dim;
-			}
-		}
+        if ( ignoreWalls && flags->isObstacle(i,j,k) ) {
+            int   nbs = 0;
+	        Real  avg(0.);
+            for (int n=0; n<2*dim; ++n) {
+			    if (tmp(p+nb[n])==1) {
+				    tmp(i,j,k) = 2;
+                    avg += phi(p+nb[n]); 
+                    ++nbs;
+			    }
+		    }
+            if (nbs > 0) phi(i,j,k) = avg / nbs;
+        } else {
+		    for (int n=0; n<2*dim; ++n) {
+			    if (tmp(p+nb[n])==1) {
+				    tmp(i,j,k) = 2; n=2*dim;
+			    }
+		    }
+        }
 	} 
 
 	// extrapolate for distance
 	for(int d=2; d<1+distance; ++d) {
-		knExtrapolateLsSimple<Real>(phi, distance, tmp, d, direction );
+		knExtrapolateLsSimple<Real>(phi, distance, tmp, d, direction, flags, ignoreWalls );
 	} 
 
 	// set all remaining cells to max
@@ -529,7 +547,7 @@ PYTHON void extrapolateVec3Simple (Grid<Vec3>& vel, Grid<Real>& phi, int distanc
 	} 
 
 	for(int d=2; d<1+distance; ++d) {
-		knExtrapolateLsSimple<Vec3>(vel, distance, tmp, d, Vec3(0.) );
+		knExtrapolateLsSimple<Vec3>(vel, distance, tmp, d, Vec3(0.), 0, false );
 	} 
 	knSetRemaining<Vec3>(vel, tmp, Vec3(0.) );
 }
