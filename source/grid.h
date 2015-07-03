@@ -129,6 +129,7 @@ public:
 	
 	// interpolated access
 	inline T    getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
+  	inline T    getInterpolated(const Vec3& pos, T* min, T*max) const { return interpol<T>(mData, mSize, mStrideZ, pos, min, max); }
 	inline void setInterpolated(const Vec3& pos, const T& val, Grid<Real>& sumBuffer) const { setInterpol<T>(mData, mSize, mStrideZ, pos, val, &sumBuffer[0]); }
 	// higher order interpolation (1=linear, 2=cubic)
 	inline T getInterpolatedHi(const Vec3& pos, int order) const { 
