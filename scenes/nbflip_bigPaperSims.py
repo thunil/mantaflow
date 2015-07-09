@@ -37,6 +37,7 @@ dim = 3
 if scene == 0: res = 128; gs = vec3(2*res,1.5*res,res)
 if scene == 1: res = 100; gs = vec3(2*res,2*res,2*res)
 if scene == 2: res = 128; gs = vec3(res,2*res,res)
+if dim==2: gs.z = 1;
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.print('Solver grid resolution is: %i x %i x %i' % (gs.x, gs.y, gs.z))
 
@@ -75,7 +76,8 @@ phiBackup = s.create(RealGrid)
 vel      = s.create(MACGrid)
 velOld   = s.create(MACGrid)
 velParts = s.create(MACGrid)
-mapWeights = s.create(MACGrid)
+mapWeights  = s.create(MACGrid)
+mapWeights2 = s.create(MACGrid)
 
 pp        = s.create(BasicParticleSystem) 
 pVel      = pp.create(PdataVec3) 
@@ -107,11 +109,11 @@ if scene == 0: # Dropping stuff
 		dropmesh = s.create(Mesh)
 		capitalletters = [chr(ord('A')+i) for i in range(0,26)]
 		dropmesh.load( '../scenes/letters/' + capitalletters[dropcounter_] + '.obj')
-		dropmesh.scale( vec3(res/3.0) );
+		dropmesh.scale( vec3(gs.x/6.0) );
 		dropx = [1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2]
 		dropz = [1, 0, 1, 2, 0, 1, 0, 2, 1, 0, 1]
 		t = vec3(dropx[dropcounter_]/2, random.random(), dropz[dropcounter_]/2)
-		dropmesh.offset( t*vec3(res*0.40,res*0.7,res*0.20) + (1-t)*vec3(res*1.6,res*0.8,res*0.8) );
+		dropmesh.offset( t*gs*vec3(0.2,0.45,0.2) + (1-t)*gs*vec3(0.8,0.53,0.8) );
 		dropmesh.computeLevelset(dropphi, 2);
 		phi.join( dropphi ) 
 		flags.updateFromLevelset(phi)
@@ -139,11 +141,12 @@ elif scene == 1: # Cylinders
 
 elif scene == 2: # Pour	
 	flags.setConst(2)
+	H = vec3(1,1,dim-2)
 	
-	c = s.create(Cylinder, center=res*vec3(0.6,1,0.5), radius=res*0.4-1, z=res*vec3(0,1-1/res,0))
+	c = s.create(Cylinder, center=gs*vec3(0.6,0.5,0.5), radius=gs.x*0.4-1, z=gs*vec3(0,0.5-1/gs.y,0))
 	c.applyToGrid(flags, value=4)
 	phiObs = c.computeLevelset()
-	c = s.create(Box, p0=res*vec3(0,1.4,0)+1, p1=res*vec3(1,2,1)-1)
+	c = s.create(Box, p0=gs*vec3(0,0.7,0)+H, p1=gs*vec3(1,1,1)-H)
 	c.applyToGrid(flags, value=4)
 	phiObs.join( c.computeLevelset() )
 	phiObs.multConst(-1)
@@ -151,17 +154,17 @@ elif scene == 2: # Pour
 
 	def pour():
 		if s.frame == 152:
-			c = s.create(Box, p0=res*vec3(0,1.4,0)+1, p1=res*vec3(1,2,1)-1)
+			c = s.create(Box, p0=gs*vec3(0,0.7,0)+H, p1=gs*vec3(1,1,1)-H)
 			c.applyToGrid(flags, value=2)
-			c = s.create(Cylinder, center=res*vec3(0.6,1.7,0.5), radius=res*0.4-1, z=res*vec3(0,0.3-1/res,0))
+			c = s.create(Cylinder, center=gs*vec3(0.6,0.85,0.5), radius=gs.x*0.4-1, z=gs*vec3(0,0.15-1/gs.y,0))
 			c.applyToGrid(flags, value=4)
 	
 		if s.frame > 140: return
 		s.print('POURING')
-		source  = s.create(Sphere, center=res*vec3(0.3,1.7,0.5), radius=res*0.15)
-		source2 = s.create(Sphere, center=res*vec3(0.3,1.7,0.5), radius=res*0.15+1)
+		source  = s.create(Sphere, center=gs*vec3(0.3,0.85,0.5), radius=gs.x*0.15)
+		source2 = s.create(Sphere, center=gs*vec3(0.3,0.85,0.5), radius=gs.x*0.15+1)
 		phi.join( source.computeLevelset() )
-		source2.applyToGrid( grid=vel , value=res*vec3(.03,-.02,0) )
+		source2.applyToGrid( grid=vel , value=gs*vec3(.03,-.01,0) )
 		flags.updateFromLevelset(phi)
 		
 flags.updateFromLevelset(phi)
@@ -199,12 +202,14 @@ while s.frame < [200, 250, 250][scene]:
 	if (s.cfl < 1000): s.adaptTimestep( maxVel )
 
 	if scene == 0: # Dropping stuff
+		timings.disable()
 		if s.frame >= dropcounter*10 and dropcounter < 9:
 			dropstuff(dropcounter)
 			dropcounter = dropcounter + 1
+		timings.enable()
 
 	# velocities are extrapolated at the end of each step
-	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=(scene in [1,2]) ) 
+	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=(scene in [1]) ) 
 	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1)
 	flags.updateFromLevelset(phi)
 	if simtype != "flip":
@@ -225,17 +230,22 @@ while s.frame < [200, 250, 250][scene]:
 		#phi.reinitMarching(flags, maxTime=4, ignoreWalls=True)
 
 	if simtype in ["flip0", "flip", "nbflip"]:
-		extrapolateLsSimple(phi=phi, distance=3, flags=flags, ignoreWalls=True)
+		extrapolateLsSimple(phi=phi, distance=3, flags=flags, ignoreWalls=True, copyIntoBnd=1)
 		flags.updateFromLevelset(phi)
 
 	# make sure we have velocities throught liquid region
 	if simtype == "nbflip":
 		mapPartsToMAC(vel=velParts, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=mapWeights, kernelType=kernelType );
+		mapWeights2.copyFrom(mapWeights)
+		extrapolateMACFromWeight( vel=velParts , distance=2, weight=mapWeights2 ) 
 		combineGridVel(vel=velParts, weight=mapWeights , combineVel=vel, phi=phi, narrowBand=combineBand, thresh=0.1)
 		velOld.copyFrom(vel)
 	elif simtype == "flip":
 		mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=mapWeights, kernelType=kernelType  );
+		extrapolateMACFromWeight( vel=vel , distance=2, weight=mapWeights ) 
 		
+	if scene == 2: pour() # Pour
+
 	# forces & pressure solve
 	addGravity(flags=flags, vel=vel, gravity=gravity)
 	setWallBcs(flags=flags, vel=vel)
@@ -254,8 +264,7 @@ while s.frame < [200, 250, 250][scene]:
 
 	if simtype in ["flip", "nbflip"]:	
 		flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95 )
-
-	if scene == 2: pour() # Pour				
+		
 		
 	# set source grids for resampling, used in adjustNumber!
 	if simtype in ["flip", "nbflip"]:
@@ -272,11 +281,12 @@ while s.frame < [200, 250, 250][scene]:
 	else:
 		adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor ) 
 
-	timings.disable()
-	phiMesh.copyFrom(phi)
-	phiMesh.difference(phiObs)
-	phiMesh.createMesh(mesh)
-	timings.enable()
+	if dim==3:
+		timings.disable()
+		phiMesh.copyFrom(phi)
+		phiMesh.difference(phiObs)
+		phiMesh.createMesh(mesh)
+		timings.enable()
 		
 	timings.display()
 	s.printMemInfo()

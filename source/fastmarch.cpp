@@ -471,7 +471,18 @@ void knSetRemaining (Grid<S>& phi, Grid<int>& tmp, S distance )
 	phi(i,j,k) = distance;
 }
 
-PYTHON void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=false, FlagGrid* flags=0, bool ignoreWalls=false )
+KERNEL(bnd=0) template<class S>
+void knCopyIntoBnd(Grid<S>& phi, int copyIntoBnd)
+{
+    Vec3i p(i,j,k);
+    if (!phi.isInBounds(p,copyIntoBnd))
+    {
+        Vec3i n = max(Vec3i(copyIntoBnd), min(phi.getSize()-copyIntoBnd-1, p));
+        phi(p) = phi(n);
+    }
+}
+
+PYTHON void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=false, FlagGrid* flags=0, bool ignoreWalls=false, int copyIntoBnd=0)
 {
 	Grid<int> tmp( phi.getParent() );
 	tmp.clear();
@@ -496,6 +507,7 @@ PYTHON void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=
 		Vec3i p(i,j,k);
 		if ( tmp(p) ) continue;
         if ( ignoreWalls && flags->isObstacle(i,j,k) ) {
+            // extrapolate/copy phi into walls, don't increase value
             int   nbs = 0;
 	        Real  avg(0.);
             for (int n=0; n<2*dim; ++n) {
@@ -522,6 +534,12 @@ PYTHON void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=
 
 	// set all remaining cells to max
 	knSetRemaining<Real>(phi, tmp, Real(direction * (distance+2)) );
+
+    // Copy values into boundary of width 'copyIntoBnd' from nearest non-boundary cells
+    if (copyIntoBnd)
+    {
+        knCopyIntoBnd<Real>(phi, copyIntoBnd);
+    }
 }
 
 // extrapolate centered vec3 values from marked fluid cells

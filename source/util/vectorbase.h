@@ -327,6 +327,7 @@ inline S min ( const S& t, const S& v ) {
 	return t<v ? t : v;
 }
 
+//! Component-wise minimum
 template<class S>
 inline Vector3D<S> min ( const Vector3D<S> &t, const Vector3D<S> &v ) {
 	return Vector3D<S>(t.x<v.x ? t.x : v.x, t.y<v.y ? t.y : v.y, t.z<v.z ? t.z : v.z);    
@@ -338,6 +339,7 @@ inline S max ( const S& t, const S& v ) {
 	return t>v ? t : v;
 }
 
+//! Component-wise maximum
 template<class S>
 inline Vector3D<S> max ( const Vector3D<S> &t, const Vector3D<S> &v ) {
 	return Vector3D<S>(t.x>v.x ? t.x : v.x, t.y>v.y ? t.y : v.y, t.z>v.z ? t.z : v.z);    
