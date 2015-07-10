@@ -19,7 +19,7 @@ if len(sys.argv)>3: scene = int(sys.argv[3])
 
 # Configuration 
 if scene == 0: simname = "waves"
-if scene == 1: simname = "drop"
+if scene == 1: simname = "drop_test"
 simtype = ["levelset", "flip0", "flip", "nbflip","nbflipd"][simtypeno]
 narrowBand  = 3; # nbflip only: no. of cells around surface which contain particles
 combineBand = 2; # nbflip only: no. of cells around surface which are influenced by particles
@@ -240,7 +240,7 @@ while s.frame < 1000:
 		
 	# optionally particle data , or screenshot, or stats
 	saveInterval = 1
-	if 1 and s.frame!=lastframe and (saveInterval==1 or s.frame%saveInterval==1):
+	if 0 and s.frame!=lastframe and (saveInterval==1 or s.frame%saveInterval==1):
 		timings.disable()
 		fileind = (s.frame-1) / saveInterval
 		mesh.save( outdir + 'mesh/fluidsurface_final_%04d.bobj.gz' % fileind )
@@ -265,14 +265,15 @@ while s.frame < 1000:
 		#    gui.screenshot( '../vid/frames/flip05_st%i_nb%02i_cb%02i_kt%i_%04d.png' % (simtypeno,round(narrowBand*10),round(combineBand*10),kernelType, s.frame) )
 		timings.enable()
 
-	if 1 and s.frame!=lastframe:
+	if 0 and s.frame!=lastframe:
 		timings.disable()
 		if fstats == None: 
 			fstats = open(outdir + simtype + '_stats.txt', 'w')
 			fstats.write('timestep totalenergy kineticenergy volume\n')
 		fstats.write('%i %f %f %f\n' % (s.frame-1, nrg, kin, vol))
 		timings.enable()
-		lastframe = s.frame
+	
+	lastframe = s.frame
 		
 if fstats != None: fstats.close()
 timings.saveMean(outdir + 'meantimings.txt')

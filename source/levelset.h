@@ -46,7 +46,10 @@ public:
 	
 	//! initialize levelset from flags (+/- 0.5 heaviside)
 	PYTHON() void initFromFlags(FlagGrid& flags, bool ignoreWalls=false);
-	
+
+    //! set grid to  value
+    PYTHON() void applyToGrid(GridBase* grid, FlagGrid* respectFlags=0, Real isoval=0.);	
+
 	static Real invalidTimeValue();
 };
 

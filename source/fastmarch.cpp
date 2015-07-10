@@ -264,41 +264,30 @@ void knExtrapolateMACSimple (MACGrid& vel, int distance , Grid<int>& tmp , const
 KERNEL(bnd=0)
 void knExtrapolateIntoBnd (FlagGrid& flags, MACGrid& vel)
 {
-	int c=0;
-	Vec3 v(0,0,0);
-	if( i==0 ) { 
-		v = vel(i+1,j,k);
-		/*if(v[0] < 0.)*/ v[0] = 0.;
-		c++;
-	}
-	else if( i==(flags.getSizeX()-1) ) { 
-		v = vel(i-1,j,k);
-		/*if(v[0] > 0.)*/ v[0] = 0.;
-		c++;
-	}
-	if( j==0 ) { 
-		v = vel(i,j+1,k);
-		/*if(v[1] < 0.)*/ v[1] = 0.;
-		c++;
-	}
-	else if( j==(flags.getSizeY()-1) ) { 
-		v = vel(i,j-1,k);
-		/*if(v[1] > 0.)*/ v[1] = 0.;
-		c++;
-	}
-	if(flags.is3D()) {
-	if( k==0 ) { 
-		v = vel(i,j,k+1);
-		/*if(v[2] < 0.)*/ v[2] = 0.;
-		c++;
-	}
-	else if( k==(flags.getSizeZ()-1) ) { 
-		v = vel(i,j,k-1);
-		/*if(v[2] > 0.)*/ v[2] = 0.;
-		c++;
-	} }
-	if(c>0) {
-		vel(i,j,k) = v/(Real)c;
+	Vec3i p(i,j,k);
+	int dim = flags.is3D() ? 3 : 2;
+
+	// consider one velocity component at a time
+	for (int d = 0; d < dim; d++)
+	{
+		int d2 = (d+1)%dim;
+		int d3 = (d+2)%dim;
+		Vec3i nb = clamp(p, Vec3i(1,1,1), flags.getSize()-2);
+		if (dim==2) nb.z = 0;
+
+		// Velocity direction: normal to boundary
+		if (p[d] <= 1) {
+			nb[d] = 2; // correct for staggered grid asymmetry
+			vel(p)[d] = std::max(Real(0), vel(nb)[d]);
+		} else if (p[d] == (flags.getSize()[d]-1)) {
+			vel(p)[d] = std::min(Real(0), vel(nb)[d]);
+		}
+		// Velocity direction: tangential to boundary
+		else if (p[d2]==0 || p[d2]==(flags.getSize()[d2]-1) 
+			|| p[d3]==0 || p[d3]==(flags.getSize()[d3]-1))
+		{
+			vel(p)[d] = vel(nb)[d];
+		}
 	}
 }
 
@@ -478,6 +467,7 @@ void knCopyIntoBnd(Grid<S>& phi, int copyIntoBnd)
     if (!phi.isInBounds(p,copyIntoBnd))
     {
         Vec3i n = max(Vec3i(copyIntoBnd), min(phi.getSize()-copyIntoBnd-1, p));
+        if (phi.is2D()) n.z = 0;
         phi(p) = phi(n);
     }
 }

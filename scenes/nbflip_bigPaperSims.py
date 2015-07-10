@@ -15,7 +15,7 @@ if len(sys.argv)>2: simtypeno = int(sys.argv[2])
 # 0: Dropping stuff, 
 # 1: Cylinders, 
 # 2: Pour
-scene = 2
+scene = 0
 if len(sys.argv)>3: scene = int(sys.argv[3])
 
 
@@ -115,6 +115,7 @@ if scene == 0: # Dropping stuff
 		t = vec3(dropx[dropcounter_]/2, random.random(), dropz[dropcounter_]/2)
 		dropmesh.offset( t*gs*vec3(0.2,0.45,0.2) + (1-t)*gs*vec3(0.8,0.53,0.8) );
 		dropmesh.computeLevelset(dropphi, 2);
+		dropphi.applyToGrid(vel, value=vec3(0,0,0), isoval=1)
 		phi.join( dropphi ) 
 		flags.updateFromLevelset(phi)
 		sampleLevelsetWithParticles( phi=dropphi, flags=flags, parts=pp, discretization=2, randomness=0.4 )
@@ -201,13 +202,6 @@ while s.frame < [200, 250, 250][scene]:
 	maxVel = vel.getMaxValue()
 	if (s.cfl < 1000): s.adaptTimestep( maxVel )
 
-	if scene == 0: # Dropping stuff
-		timings.disable()
-		if s.frame >= dropcounter*10 and dropcounter < 9:
-			dropstuff(dropcounter)
-			dropcounter = dropcounter + 1
-		timings.enable()
-
 	# velocities are extrapolated at the end of each step
 	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=(scene in [1]) ) 
 	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1)
@@ -263,6 +257,12 @@ while s.frame < [200, 250, 250][scene]:
 	if simtype in ["flip", "nbflip"]:	
 		flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95 )
 		
+	if scene == 0: # Dropping stuff
+		timings.disable()
+		if s.frame >= dropcounter*10 and dropcounter < 9:
+			dropstuff(dropcounter)
+			dropcounter = dropcounter + 1
+		timings.enable()
 		
 	# set source grids for resampling, used in adjustNumber!
 	if simtype in ["flip", "nbflip"]:

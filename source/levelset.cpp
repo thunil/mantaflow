@@ -336,6 +336,29 @@ void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
 	}
 }
 
+
+KERNEL template<class T> 
+void knApplyLevelsetToGrid (Grid<T>* grid, LevelsetGrid* phi, T value, FlagGrid* respectFlags, Real isoval) {
+	if (respectFlags && respectFlags->isObstacle(i,j,k))
+		return;
+	if ((*phi)(i,j,k) < isoval)
+	{	
+		(*grid)(i,j,k) = value;
+	}
+}
+
+void LevelsetGrid::applyToGrid(GridBase* grid, FlagGrid* respectFlags, Real isoval)
+{
+	if (grid->getType() & GridBase::TypeInt)
+		knApplyLevelsetToGrid<int> ((Grid<int>*)grid, (LevelsetGrid*)this, _args.get<int>("value"), respectFlags, isoval);
+    else if (grid->getType() & GridBase::TypeReal)
+		knApplyLevelsetToGrid<Real> ((Grid<Real>*)grid, this, _args.get<Real>("value"), respectFlags, isoval);
+	else if (grid->getType() & GridBase::TypeVec3)
+		knApplyLevelsetToGrid<Vec3> ((Grid<Vec3>*)grid, this, _args.get<Vec3>("value"), respectFlags, isoval);
+	else
+		errMsg("LevelsetGrid::applyToGrid(): unknown grid type");
+}
+
 //! run marching cubes to create a mesh for the 0-levelset
 void LevelsetGrid::createMesh(Mesh& mesh) {
 	assertMsg(is3D(), "Only 3D grids supported so far");
