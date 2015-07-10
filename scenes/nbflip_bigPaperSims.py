@@ -223,11 +223,9 @@ while s.frame < [200, 250, 250][scene]:
 		phi.addConst(1.); # shrink slightly
 		phi.join( phiParts );
 		extrapolateLsSimple(phi=phi, distance=narrowBand+2, inside=True, flags=flags, ignoreWalls=True)
-		#phi.reinitMarching(flags, maxTime=narrowBand+2, ignoreWalls=True)
 	elif simtype in ["flip0", "flip"]:
 		phi.copyFrom( phiParts );
 		extrapolateLsSimple(phi=phi, distance=4, inside=True, flags=flags, ignoreWalls=True)
-		#phi.reinitMarching(flags, maxTime=4, ignoreWalls=True)
 
 	if simtype in ["flip0", "flip", "nbflip"]:
 		extrapolateLsSimple(phi=phi, distance=3, flags=flags, ignoreWalls=True, copyIntoBnd=1)
@@ -238,7 +236,7 @@ while s.frame < [200, 250, 250][scene]:
 		mapPartsToMAC(vel=velParts, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=mapWeights, kernelType=kernelType );
 		mapWeights2.copyFrom(mapWeights)
 		extrapolateMACFromWeight( vel=velParts , distance=2, weight=mapWeights2 ) 
-		combineGridVel(vel=velParts, weight=mapWeights , combineVel=vel, phi=phi, narrowBand=combineBand, thresh=0.1)
+		combineGridVel(vel=velParts, weight=mapWeights , combineVel=vel, phi=phi, narrowBand=combineBand, thresh=0.0001)
 		velOld.copyFrom(vel)
 	elif simtype == "flip":
 		mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=mapWeights, kernelType=kernelType  );

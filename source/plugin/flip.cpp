@@ -126,10 +126,9 @@ PYTHON() void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& 
 				continue;
 			}
 
-            Real phiMin, phiMax;
-			Real phiv = phi.getInterpolated( parts.getPos(idx), &phiMin, &phiMax );
+			Real phiv = phi.getInterpolated( parts.getPos(idx) );
 			if( phiv > 0 ) { parts.kill(idx); continue; }
-			if( narrowBand>0. && (phiv < -narrowBand || phiMin < -narrowBand-2 || phiMax > 2)) { parts.kill(idx); continue; }
+			if( narrowBand>0. && phiv < -narrowBand) { parts.kill(idx); continue; }
 
 			bool atSurface = false;
 			if (phiv > SURFACE_LS) atSurface = true;
@@ -487,7 +486,7 @@ void knCombineVels(MACGrid& vel, Grid<Vec3>& w, MACGrid& combineVel, LevelsetGri
                 vel[idx][c] = 0;
             }
         } else {
-            // Broken narrow-band FLIP        
+            // Erroneous narrow-band FLIP (with momentum gain)
             Real t = clamp(w[idx][c] / thresh, Real(0), Real(1));
             combineVel[idx][c] = (1-t) * combineVel[idx][c] + t * vel[idx][c];
             vel[idx][c] = t < Real(0.5) ? 0 : -1;
