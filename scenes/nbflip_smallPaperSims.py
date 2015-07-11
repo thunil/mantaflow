@@ -18,8 +18,9 @@ if len(sys.argv)>3: scene = int(sys.argv[3])
 
 
 # Configuration 
-if scene == 0: simname = "waves"
-if scene == 1: simname = "drop_test"
+if scene == 0: simname = "waves_test"
+if scene == 1: simname = "drops"
+if scene == 2: simname = "bwcomp"
 simtype = ["levelset", "flip0", "flip", "nbflip","nbflipd"][simtypeno]
 narrowBand  = 3; # nbflip only: no. of cells around surface which contain particles
 combineBand = 2; # nbflip only: no. of cells around surface which are influenced by particles
@@ -31,7 +32,7 @@ if simtype in ["levelset", "flip0"]: kernelType = 0
 dim = 3
 
 if scene == 0: res = 32; gs = vec3(res,res,res) # Waves
-if scene == 1: res = 32; gs = vec3(res,res,res) # Drop
+if scene == 1: res = 64; gs = vec3(res,res,res) # Drop
 if dim==2: gs.z = 1
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.print('Solver grid resolution is: %i x %i x %i' % (gs.x, gs.y, gs.z))
@@ -96,13 +97,14 @@ phiObs.multConst(-1)
 if scene == 0: # Waves
 	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.31,1.0)) # basin
 	phi.join( fluidBasin.computeLevelset() )
-	fluidSphere = s.create(Sphere, center=gs*vec3(0.5,0.2,0.5), radius=gs.x*0.2) # basin
+	fluidSphere = s.create(Sphere, center=gs*vec3(0.5,0.27,0.5), radius=gs.x*0.2) # basin
 	phi.join( fluidSphere.computeLevelset() )
 if scene == 1: # Drop
 	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.3,1.0)) # basin
 	phi.join( fluidBasin.computeLevelset() )
-	fluidSphere = s.create(Sphere, center=gs*vec3(0.5,0.6,0.5), radius=gs.x*0.1) # basin
-	phi.join( fluidSphere.computeLevelset() )
+	for cen in [vec3(0.3,0.8,0.3), vec3(0.5,0.6,0.7), vec3(0.7,0.7,0.6)]:
+		fluidSphere = s.create(Sphere, center=gs*cen, radius=gs.x*0.1) # basin
+		phi.join( fluidSphere.computeLevelset() )
 
 			
 flags.updateFromLevelset(phi)
@@ -135,7 +137,7 @@ for subdir in ['mesh', 'meshparts', 'meshspheres']:
 lastframe = 0
 timestep = -1
 fstats = None
-while s.frame < 1000:
+while s.frame < [500,300][scene]:
 	timestep = timestep + 1
 	s.print('\n### Frame %i - Timestep %i ###\n' % (s.frame,timestep))
 	
@@ -208,9 +210,11 @@ while s.frame < 1000:
 	if simtype in ["flip", "nbflip"]:
 		flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95 )
 	if simtype in ["nbflipd"]:
-		updateParticleDistance(parts=pp, partPhi=pphi, phi=phi, t=0.666)
-		flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95, partPhi=pphi, pphiPIC=-narrowBand, pphiFLIP=-1 )
-		#flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95)
+		# Note: Using phi based flip factor either produces worse results, or is too dissipative because of PIC
+		#       Don't use it in sims for paper.
+		#updateParticleDistance(parts=pp, partPhi=pphi, phi=phi, t=1)
+		#flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95, partPhi=pphi, pphiPIC=-narrowBand, pphiFLIP=-1 )
+		flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95)
 		
 	# set source grids for resampling, used in adjustNumber!
 	if simtype in ["flip", "nbflip", "nbflipd"]:
