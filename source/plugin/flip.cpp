@@ -605,7 +605,7 @@ PYTHON() Real calcKineticEnergy( FlagGrid& flags, MACGrid& vel )
     return tot;
 }
 
-PYTHON() Real calcTotalEnergy( FlagGrid& flags, MACGrid& vel, Vec3 gravity)
+PYTHON() Real calcTotalEnergy( FlagGrid& flags, MACGrid& vel, Vec3 gravity, bool noprint=false )
 {
     if ((gravity.x == 0) + (gravity.y == 0) + (gravity.z == 0) != 2)
     {
@@ -629,21 +629,21 @@ PYTHON() Real calcTotalEnergy( FlagGrid& flags, MACGrid& vel, Vec3 gravity)
             tot += g * ijk[c];
         }
 	}
-	debMsg("Total energy "<< tot,1);
+	if (!noprint) debMsg("Total energy "<< tot,1);
     return tot;
 }
 
-PYTHON() Real calcFluidVolume( FlagGrid& flags )
+PYTHON() Real calcFluidVolume( FlagGrid& flags, bool noprint=false )
 {
 	int tot = 0.;
 	FOR_IJK_BND(flags, 1) {
 		if (flags.isFluid(i,j,k)) tot += 1;
 	}
-	debMsg("Total volume "<< Real(tot),1);
+	if (!noprint) debMsg("Total volume "<< Real(tot),1);
     return Real(tot);
 }
 
-PYTHON() Real calcDivergence( FlagGrid& flags, MACGrid& vel )
+PYTHON() Real calcDivergence( FlagGrid& flags, MACGrid& vel, bool noprint=false )
 {
 	Real div = 0.;
 	FOR_IJK_BND(flags, 1) {
@@ -654,7 +654,7 @@ PYTHON() Real calcDivergence( FlagGrid& flags, MACGrid& vel )
                  + vel(i,j,k+1)[2] - vel(i,j,k)[2];
         }
 	}
-	debMsg("Total divergence "<< div,1);
+	if (!noprint) debMsg("Total divergence "<< div,1);
     return div;
 }
 
