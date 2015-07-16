@@ -495,7 +495,7 @@ void knCombineVels(MACGrid& vel, Grid<Vec3>& w, MACGrid& combineVel, LevelsetGri
 }
 
 PYTHON() void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel, LevelsetGrid* phi=NULL,
-    Real narrowBand=0.0, Real thresh=0.1) {
+    Real narrowBand=0.0, Real thresh=0.0) {
 	knCombineVels(vel, weight, combineVel, phi, narrowBand, thresh);
 }
 

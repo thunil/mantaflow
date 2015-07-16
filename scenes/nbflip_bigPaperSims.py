@@ -79,7 +79,6 @@ vel      = s.create(MACGrid)
 velOld   = s.create(MACGrid)
 velParts = s.create(MACGrid)
 mapWeights  = s.create(MACGrid)
-mapWeights2 = s.create(MACGrid)
 
 pp        = s.create(BasicParticleSystem) 
 pVel      = pp.create(PdataVec3) 
@@ -95,7 +94,8 @@ gpi    = s.create(IntGrid)
 flags.initDomain(boundaryWidth=0)
 phi.initFromFlags(flags)
 
-phiObs = s.create(Box, p0=vec3(1,1,1), p1=gs-1).computeLevelset()
+H = vec3(1,1,dim-2)	
+phiObs = s.create(Box, p0=H, p1=gs-H).computeLevelset()
 phiObs.multConst(-1)
 
 if scene == 0: # Dropping stuff
@@ -122,31 +122,31 @@ if scene == 0: # Dropping stuff
 		flags.updateFromLevelset(phi)
 		sampleLevelsetWithParticles( phi=dropphi, flags=flags, parts=pp, discretization=2, randomness=0.4 )
 
-elif scene == 1: # Cylinders	
-	for cen in [vec3(0.5,1,1.75), 
-			    vec3(0.6,1,1.50), 
-			    vec3(0.7,1,1.25), 
-			    vec3(0.8,1,1.00), 
-			    vec3(0.9,1,0.75), 
-			    vec3(1.0,1,0.50), 
-				vec3(1.1,1,0.25)]:
-		c = s.create(Cylinder, center=res*cen+vec3(0,1,0), radius=res*0.05, z=res*vec3(0, 1, 0))
-		phiObs.join(c.computeLevelset())
-		c.applyToGrid(flags, value=2)
+elif scene == 1: # Cylinders
+	if dim==3:
+		for cen in [vec3(0.25,0.5,0.875), 
+					vec3(0.30,0.5,0.750), 
+					vec3(0.35,0.5,0.625), 
+					vec3(0.40,0.5,0.500), 
+					vec3(0.45,0.5,0.375), 
+					vec3(0.50,0.5,0.250), 
+					vec3(0.55,0.5,0.125)]:
+			c = s.create(Cylinder, center=gs*cen+vec3(0,1,0), radius=gs.x*0.025, z=gs.x*vec3(0, 0.5, 0))
+			phiObs.join(c.computeLevelset())
+			c.applyToGrid(flags, value=2)
 
 	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.2,1.0)) # basin
 	phi.join( fluidBasin.computeLevelset() )
 
-	fluidBox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.30,0.6,0.30)) # basin
+	fluidBox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.30,0.6,0.30+(3-dim)*0.7)) # basin
 	phi.join( fluidBox.computeLevelset() )
 
 	phi.difference(phiObs)
 
 elif scene == 2: # Pour	
 	flags.setConst(2)
-	H = vec3(1,1,dim-2)
 
-	targetVolume = 0.72*gs.x*gs.x*gs.x
+	targetVolume = 0.55*gs.x*gs.x*gs.x
 	pourframes = 120
 	
 	c = s.create(Cylinder, center=gs*vec3(0.6,0.5,0.5), radius=gs.x*0.4-1, z=gs*vec3(0,0.5-1/gs.y,0))
@@ -166,6 +166,13 @@ elif scene == 2: # Pour
 		phi.join( source.computeLevelset() )
 		source2.applyToGrid( grid=vel , value=gs*vec3(.03,-.01,0) )
 		flags.updateFromLevelset(phi)
+		
+	def pourCorr():
+		vol = calcFluidVolume(flags,noprint=True)
+		strengthOverTime    = min(1, max(0, (s.frame - 60) / (pourframes - 60)))
+		currentTargetVolume = min(1, max(0, s.frame / pourframes)) * targetVolume
+		corr = (currentTargetVolume - vol) / (currentTargetVolume + 1E-3)
+		perCellCorr.setConst(0.05 * strengthOverTime * corr)
 		
 flags.updateFromLevelset(phi)
 
@@ -229,9 +236,10 @@ while s.frame < [200, 250, 250][scene]:
 	# make sure we have velocities throught liquid region
 	if simtype in ["nbflip","nbflip1","nb2flip","nb5flip"]:
 		mapPartsToMAC(vel=velParts, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=mapWeights, kernelType=kernelType );
-		mapWeights2.copyFrom(mapWeights)
-		extrapolateMACFromWeight( vel=velParts , distance=2, weight=mapWeights2 ) 
-		combineGridVel(vel=velParts, weight=mapWeights , combineVel=vel, phi=phi, narrowBand=combineBand, thresh=0.0001)
+		extrapolateMACFromWeight( vel=velParts , distance=2, weight=mapWeights )
+		# Note: extrapolateMACFromWeight modifies mapWeights, but this is ok in this case
+		#       (combineGridVel just requires mapWeights>0 for valid vertices)
+		combineGridVel(vel=velParts, weight=mapWeights , combineVel=vel, phi=phi, narrowBand=combineBand, thresh=0)
 		velOld.copyFrom(vel)
 	elif simtype == "flip":
 		mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=mapWeights, kernelType=kernelType  );
@@ -243,8 +251,7 @@ while s.frame < [200, 250, 250][scene]:
 	addGravity(flags=flags, vel=vel, gravity=gravity)
 	setWallBcs(flags=flags, vel=vel)
 	if scene == 2: # Pour
-		vol = calcFluidVolume(flags,noprint=True)
-		perCellCorr.setConst(0.05 * ((s.frame / pourframes)*targetVolume-vol ) / vol)
+		pourCorr()
 		solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi, perCellCorr=perCellCorr)
 	else:
 		solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi)
