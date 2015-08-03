@@ -324,11 +324,5 @@ void LevelsetGrid::createMesh(Mesh& mesh) {
 	//mesh.rebuildLookup();
 }
 
-KERNEL void KnCombineLevelsets(Grid<Real>& phiObs, Grid<Real>& phiWalls ) {
-	phiObs(i,j,k) = std::min(phiObs(i,j,k), phiWalls(i,j,k));
-}
-PYTHON void CombineLevelsets(Grid<Real>& phiObs, Grid<Real>& phiWalls ) {
-	KnCombineLevelsets(phiObs,phiWalls);
-}
 
 } //namespace

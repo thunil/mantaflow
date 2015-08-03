@@ -171,105 +171,97 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
 				vel(i,j,k).x = vel(i,j,k).y = 0;
 		}
 
-	//if fractions and levelset are present, zero normal component
 	} else {
+		// if fractions and levelset are present, zero normal component 
+		// in all obstacle regions
 
-// inner objects
-		bool xcheck = fractions->get(i,j,k).x > 0. && fractions->get(i,j,k).x < 1.;
-		bool ycheck = fractions->get(i,j,k).y > 0. && fractions->get(i,j,k).y < 1.;
-		bool zcheck = fractions->get(i,j,k).z > 0. && fractions->get(i,j,k).z < 1.;
+		bool xcheck = curObs | flags.isObstacle(i-1,j,k);
+		bool ycheck = curObs | flags.isObstacle(i,j-1,k);
+		bool zcheck = curObs | flags.isObstacle(i,j,k-1); 
 
-		Vec3 dphi(0.,0.,0.);
+		if( xcheck )  { 
+			Vec3 dphi(0.,0.,0.);
+			const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i-1,j,k))*.5;
+			Real tmp2 = (phiObs->get(i,j+1,k)+phiObs->get(i-1,j+1,k))*.5;
+			Real phi1 = (tmp1+tmp2)*.5;
+			tmp2 = (phiObs->get(i,j-1,k)+phiObs->get(i-1,j-1,k))*.5;
+			Real phi2 = (tmp1+tmp2)*.5;
+			
+			dphi.x = phiObs->get(i,j,k)-phiObs->get(i-1,j,k);
+			dphi.y = phi1-phi2;
 
-		if( xcheck || ycheck || zcheck ) {
-
-			if( xcheck )  {
-				
-				const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i-1,j,k))*.5;
-				Real tmp2 = (phiObs->get(i,j+1,k)+phiObs->get(i-1,j+1,k))*.5;
-				Real phi1 = (tmp1+tmp2)*.5;
-				tmp2 = (phiObs->get(i,j-1,k)+phiObs->get(i-1,j-1,k))*.5;
-				Real phi2 = (tmp1+tmp2)*.5;
-				
-				dphi.x = phiObs->get(i,j,k)-phiObs->get(i-1,j,k);
-				dphi.y = phi1-phi2;
-
-				if(phiObs->is3D()) {
-					tmp2 = (phiObs->get(i,j,k+1)+phiObs->get(i-1,j,k+1))*.5;
-					phi1 = (tmp1+tmp2)*.5;
-					tmp2 = (phiObs->get(i,j,k-1)+phiObs->get(i-1,j,k-1))*.5;
-					phi2 = (tmp1+tmp2)*.5;
-					dphi.z = phi1-phi2;
-				}
-
-				normalize(dphi);
-
-				Vec3 velMAC = vel.getAtMACX(i,j,k);
-			 	Real dotpr = dot(dphi, velMAC);
-			 	vel(i,j,k).x -= dotpr * dphi.x;
-
-			}
-
-			if( ycheck )  {
-				
-				const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i,j-1,k))*.5;
-				Real tmp2 = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j-1,k))*.5;
-				Real phi1 = (tmp1+tmp2)*.5;
-				tmp2 = (phiObs->get(i-1,j,k)+phiObs->get(i-1,j-1,k))*.5;
-				Real phi2 = (tmp1+tmp2)*.5;
-
-				dphi.x = phi1-phi2;
-				dphi.y = phiObs->get(i,j,k)-phiObs->get(i,j-1,k);
-
-				if(phiObs->is3D()) {
-					tmp2 = (phiObs->get(i,j,k+1)+phiObs->get(i,j-1,k+1))*.5;
-					phi1 = (tmp1+tmp2)*.5;
-					tmp2 = (phiObs->get(i,j,k-1)+phiObs->get(i,j-1,k-1))*.5;
-					phi2 = (tmp1+tmp2)*.5;
-					dphi.z = phi1-phi2;
-				}
-				
-				normalize(dphi);
-
-				Vec3 velMAC = vel.getAtMACY(i,j,k);
-			 	Real dotpr = dot(dphi, velMAC);
-			 	vel(i,j,k).y -= dotpr * dphi.y;
-
-			}
-
-			if( zcheck && phiObs->is3D() )  {
-
-				const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i,j,k-1))*.5;
-				Real tmp2 = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j,k-1))*.5;
-				Real phi1 = (tmp1+tmp2)*.5;
-				tmp2 = (phiObs->get(i-1,j,k)+phiObs->get(i-1,j,k-1))*.5;
-				Real phi2 = (tmp1+tmp2)*.5;
-
-				dphi.x = phi1-phi2;
-
-				tmp2 = (phiObs->get(i,j+1,k)+phiObs->get(i,j+1,k-1))*.5;
+			if(phiObs->is3D()) {
+				tmp2 = (phiObs->get(i,j,k+1)+phiObs->get(i-1,j,k+1))*.5;
 				phi1 = (tmp1+tmp2)*.5;
-				tmp2 = (phiObs->get(i,j-1,k)+phiObs->get(i,j-1,k-1))*.5;
+				tmp2 = (phiObs->get(i,j,k-1)+phiObs->get(i-1,j,k-1))*.5;
 				phi2 = (tmp1+tmp2)*.5;
-
-				dphi.y = phi1-phi2;
-
-				dphi.z = phiObs->get(i,j,k)-phiObs->get(i,j,k-1);
-
-				normalize(dphi);
-
-				Vec3 velMAC = vel.getAtMACZ(i,j,k);
-			 	Real dotpr = dot(dphi, velMAC);
-			 	vel(i,j,k).z -= dotpr * dphi.z;
-
+				dphi.z = phi1-phi2;
 			}
+
+			normalize(dphi);
+
+			Vec3 velMAC = vel.getAtMACX(i,j,k);
+			Real dotpr  = dot(dphi, velMAC);
+			vel(i,j,k).x -= dotpr * dphi.x; 
 		}
 
-// domain bounds
+		if( ycheck )  { 
+			Vec3 dphi(0.,0.,0.);
+			const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i,j-1,k))*.5;
+			Real tmp2 = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j-1,k))*.5;
+			Real phi1 = (tmp1+tmp2)*.5;
+			tmp2 = (phiObs->get(i-1,j,k)+phiObs->get(i-1,j-1,k))*.5;
+			Real phi2 = (tmp1+tmp2)*.5;
+
+			dphi.x = phi1-phi2;
+			dphi.y = phiObs->get(i,j,k)-phiObs->get(i,j-1,k);
+
+			if(phiObs->is3D()) {
+				tmp2 = (phiObs->get(i,j,k+1)+phiObs->get(i,j-1,k+1))*.5;
+				phi1 = (tmp1+tmp2)*.5;
+				tmp2 = (phiObs->get(i,j,k-1)+phiObs->get(i,j-1,k-1))*.5;
+				phi2 = (tmp1+tmp2)*.5;
+				dphi.z = phi1-phi2;
+			}
+			
+			normalize(dphi);
+
+			Vec3 velMAC = vel.getAtMACY(i,j,k);
+			Real dotpr = dot(dphi, velMAC);
+			vel(i,j,k).y -= dotpr * dphi.y; 
+		}
+
+		if( zcheck && phiObs->is3D() )  {
+			Vec3 dphi(0.,0.,0.); 
+			const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i,j,k-1))*.5;
+			Real tmp2 = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j,k-1))*.5;
+			Real phi1 = (tmp1+tmp2)*.5;
+			tmp2 = (phiObs->get(i-1,j,k)+phiObs->get(i-1,j,k-1))*.5;
+			Real phi2 = (tmp1+tmp2)*.5;
+
+			dphi.x = phi1-phi2;
+
+			tmp2 = (phiObs->get(i,j+1,k)+phiObs->get(i,j+1,k-1))*.5;
+			phi1 = (tmp1+tmp2)*.5;
+			tmp2 = (phiObs->get(i,j-1,k)+phiObs->get(i,j-1,k-1))*.5;
+			phi2 = (tmp1+tmp2)*.5;
+
+			dphi.y = phi1-phi2;
+
+			dphi.z = phiObs->get(i,j,k)-phiObs->get(i,j,k-1);
+
+			normalize(dphi);
+
+			Vec3 velMAC = vel.getAtMACZ(i,j,k);
+			Real dotpr = dot(dphi, velMAC);
+			vel(i,j,k).z -= dotpr * dphi.z; 
+		}
+
+		// domain bounds
 		
 		const int w = boundaryWidth;
 
-// x-direction boundaries
+		// x-direction boundaries
  		if (i <= w+1 && phiObs->get(i-1,j,k) <= 0.) {
 			vel(i-1,j,k).x = 0.;
 			vel(i-1,j,k).y = vel(w+1,j,k).x; if(vel.is3D()) {vel(i-1,j,k).z = vel(w+1,j,k).z;}
@@ -278,7 +270,7 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
 			vel(i+1,j,k).x = 0.;
 			vel(i+1,j,k).y = vel(vel.getSizeX()-w-2,j,k).x; if(vel.is3D()) {vel(i+1,j,k).z = vel(vel.getSizeX()-w-2,j,k).z;}
 		}
-// y-direction boundaries
+		// y-direction boundaries
 		if (j <= w+1 && phiObs->get(i,j-1,k) <= 0.) {
 			vel(i,j-1,k).y = 0.;
 			vel(i,j-1,k).x = vel(i,w+1,k).x; if(vel.is3D()) {vel(i,j-1,k).z = vel(i,w+1,k).z;}
@@ -287,7 +279,7 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
 			vel(i,j+1,k).y = 0.;
 			vel(i,j+1,k).x = vel(i,vel.getSizeY()-w-2,k).x; if(vel.is3D()) {vel(i,j+1,k).z = vel(i,vel.getSizeY()-w-2,k).z;}
 		}
-// z-direction boundaries
+		// z-direction boundaries
 		if( vel.is3D() ) {
 			if (k <= w+1 && phiObs->get(i,j,k-1) <= 0.) {
 				vel(i,j,k-1).z = 0.;

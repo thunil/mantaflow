@@ -4,7 +4,7 @@
 from manta import *
 
 # solver params
-new_BC = True
+new_BC = False
 dim    = 2
 res    = 64
 gs     = vec3(res,res,res)
@@ -27,7 +27,7 @@ pressure  = s.create(RealGrid)
 fractions = s.create(MACGrid)
 tmpVec3   = s.create(VecGrid)
 tstGrid   = s.create(RealGrid)
-phiWalls  = s.create(RealGrid)
+phiWalls  = s.create(LevelsetGrid)
 
 pp       = s.create(BasicParticleSystem) 
 pVel     = pp.create(PdataVec3) 
@@ -53,7 +53,7 @@ if setup==0:
 	phi = fluidbox.computeLevelset()
 	sphere = s.create(Sphere, center=gs*vec3(0.66,0.3,0.5), radius=res*0.2)
 	phiObs = sphere.computeLevelset()
-	CombineLevelsets(phiObs,phiWalls)
+	phiObs.join(phiWalls)
 elif setup==1:
 	# falling drop
 	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.1,1.0)) # basin

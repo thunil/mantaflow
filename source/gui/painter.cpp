@@ -316,6 +316,11 @@ void getCellCoordinates(const Vec3i& pos, Vec3 box[4], int dim) {
 	Vec3 p0(pos.x, pos.y, pos.z);
 	Vec3 p1(pos.x+1, pos.y+1, pos.z+1);
 	p1[dim] = p0[dim] = pos[dim] + 0.5;
+
+	// display lines with slight offsets
+	p0 += Vec3(0.01);
+	p1 -= Vec3(0.01); 
+
 	box[0] = p0;
 	box[3] = p0; box[3][dim2] = p1[dim2];
 	box[1] = p1; box[1][dim2] = p0[dim2];

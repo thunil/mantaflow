@@ -27,7 +27,7 @@ CombineLevelsets(phiObs,phiWalls)
 updateFractions(flags=flags, phiObs=phiObs, fractions=fractions)
 
 velInflow = vec3(.5,0,0)
-initVel(phiObs=phiObs, vel=vel, val=velInflow)
+initVelObs(phiObs=phiObs, vel=vel, val=velInflow)
 
 if (GUI):
 	gui = Gui()

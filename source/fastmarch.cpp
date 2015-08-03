@@ -344,16 +344,14 @@ PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 
 		dir[c] = 1;
 		tmp.clear();
 
-		// remove all fluid cells
+		// remove all fluid cells (not touching obstacles)
 		FOR_IJK_BND(flags,1) {
 			Vec3i p(i,j,k);
-			if (flags.isFluid(p) || flags.isFluid(p-dir) ) {
+			if((flags.isFluid(p) || flags.isFluid(p-dir) ) && 
+			   (!flags.isObstacle(p)) && (!flags.isObstacle(p-dir)) ) {
 				tmp(p) = 1;
 			}
 		}
-
-		// debug init! , enable for testing only - set varying velocities inside
-		//FOR_IJK_BND(flags,1) { if (tmp(i,j,k) == 0) continue; vel(i,j,k)[c] = (i+j+k+c+1.)*0.1; }
 		
 		// extrapolate for distance
 		for(int d=1; d<1+distance; ++d) {
