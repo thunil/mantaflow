@@ -423,7 +423,9 @@ inline static Real calcFraction(Real phi1, Real phi2)
 	Real denom = phi1-phi2;
 	if (denom > -1e-04) return 0.5; 
 
-	return std::max(Real(0), std::min(Real(1), 1. - phi1/denom ));
+	Real frac = 1. - phi1/denom;
+	if(frac<0.01) frac = 0.; // skip , dont mark as fluid
+	return std::max(Real(0), std::min(Real(1), frac ));
 }
 
 KERNEL (bnd=1) 
@@ -502,9 +504,8 @@ void KnUpdateFlags(FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs) {
 	test += fractions.get(i,j,k  ).z;
 	test += fractions.get(i,j,k+1).z; }
 
-	// NT_DEBUG check
 	if(test==0. && phiObs(i,j,k) < 0.) flags(i,j,k) = FlagGrid::TypeObstacle; 
-	else flags(i,j,k) &= ~FlagGrid::TypeObstacle; 
+	else flags(i,j,k) = FlagGrid::TypeEmpty; 
 }
 
 PYTHON void updateFractions(FlagGrid& flags, Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth=0) {

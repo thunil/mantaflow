@@ -347,6 +347,7 @@ template<> void GridPainter<int>::paint() {
 	
 	bool rbox = true;
 	bool skipFluid = mLocalGrid->getSize().max() > 40; 
+	skipFluid=false; // NT_DEBUG
 	bool drawLines = mLocalGrid->getSize().max() <= 80; 
 	if (drawLines) {
 		//glDepthFunc(GL_LESS);
@@ -357,16 +358,16 @@ template<> void GridPainter<int>::paint() {
 			flag = mLocalGrid->get(p);
 
 			if (flag & FlagGrid::TypeObstacle) {
-				glColor3f(0.2,0.2,0.2);
+				glColor3f(0.2,0.2,0.2); // dark gray
 			} else if (flag & FlagGrid::TypeOutflow) {
-				glColor3f(0.9,0.2,0);
+				glColor3f(0.9,0.3,0);   // orange
 			} else if (flag & FlagGrid::TypeEmpty) {
-				glColor3f(0.25,0,0);
+				glColor3f(0.25,0,0.2);  // dark purple
 			} else if (flag & FlagGrid::TypeFluid) {
 				if(skipFluid) continue;
-				glColor3f(0,0,0.75);
+				glColor3f(0,0,0.75);    // blue
 			} else {
-				glColor3f(0.5,0,0); // unknown
+				glColor3f(0.5,0,0); // unknown , medium red
 			}
 
 			getCellCoordinates(p, box, mDim); 

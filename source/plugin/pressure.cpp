@@ -199,6 +199,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      bool precondition = true,
                      bool enforceCompatibility = false,
                      bool useL2Norm = false, 
+                     bool zeroPressureFixing = false, 
 					 Grid<Real>* retRhs = NULL )
 {
 	// reserve temp grids
@@ -230,12 +231,12 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 		rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
 	
 	// check whether we need to fix some pressure value...
+	// (manually enable, or automatically for high accuracy, can cause asymmetries otherwise)
 	int fixPidx = -1;
-	if(cgAccuracy<1e-10) 
+	if(zeroPressureFixing || cgAccuracy<1e-07) 
 	{
-		if(FLOATINGPOINT_PRECISION==1) debMsg("Warning - high CG accuracy with single-precision floating point accuracy might not converge...",1);
+		if(FLOATINGPOINT_PRECISION==1) debMsg("Warning - high CG accuracy with single-precision floating point accuracy might not converge...", 2);
 
-		// only enable for very high accuracies, can cause asymmetries otherwise
 		int numEmpty = CountEmptyCells(flags);
 		if(numEmpty==0) {
 			FOR_IJK_BND(flags,1) {
@@ -249,7 +250,7 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 		if(fixPidx>=0) {
 			flags[fixPidx] |= FlagGrid::TypeZeroPressure;
 			rhs[fixPidx] = 0.; 
-			debMsg("Zero-pressure value at "<<fixPidx<<" activated.", 2);
+			debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 2);
 		}
 	}
 
@@ -281,8 +282,8 @@ PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
 	}
 
-	// if(fixPidx>=0)
-	// 	flags[fixPidx] &= ~FlagGrid::TypeZeroPressure;
+	if(fixPidx>=0)
+		flags[fixPidx] &= ~FlagGrid::TypeZeroPressure;
 
 	// optionally , return RHS
 	if(retRhs) {

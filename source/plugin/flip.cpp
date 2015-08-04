@@ -89,7 +89,7 @@ PYTHON void sampleLevelsetWithParticles( LevelsetGrid& phi, FlagGrid& flags, Bas
 }
 
 
-PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
+PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags, Grid<Real>* phiObs = NULL) {
 	// remove all fluid cells
 	FOR_IJK(flags) {
 		if (flags.isFluid(i,j,k)) {
@@ -103,6 +103,25 @@ PYTHON void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags) {
 		Vec3i p = toVec3i( parts.getPos(idx) );
 		if (flags.isInBounds(p) && flags.isEmpty(p))
 			flags(p) = (flags(p) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
+	}
+
+	// special for second order obstacle BCs, check empty cells in boundary region
+	if(phiObs) {
+		FOR_IJK_BND(flags, 1) {
+			if ( (*phiObs)(i,j,k)>0. ) continue;
+			if (flags.isEmpty(i,j,k)) {
+				bool set=false;
+				if( (flags.isFluid(i-1,j,k)) && (flags.isObstacle(i+1,j,k)) ) set=true;
+				if( (flags.isFluid(i+1,j,k)) && (flags.isObstacle(i-1,j,k)) ) set=true;
+				if( (flags.isFluid(i,j-1,k)) && (flags.isObstacle(i,j+1,k)) ) set=true;
+				if( (flags.isFluid(i,j+1,k)) && (flags.isObstacle(i,j-1,k)) ) set=true;
+				if(flags.is3D()) {
+				if( (flags.isFluid(i,j,k-1)) && (flags.isObstacle(i,j,k+1)) ) set=true;
+				if( (flags.isFluid(i,j,k+1)) && (flags.isObstacle(i,j,k-1)) ) set=true;
+				}
+				if(set) flags(i,j,k) = (flags(i,j,k) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
+			}
+		}
 	}
 }
 

@@ -334,7 +334,10 @@ void knUnprojectNormalComp (FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Re
 }
 // a simple extrapolation step , used for cases where there's no levelset
 // (note, less accurate than fast marching extrapolation!)
-PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4, LevelsetGrid* phiObs=NULL ) 
+// into obstacle is a special mode for second order obstable boundaries (extrapolating
+// only fluid velocities, not those at obstacles)
+PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4, 
+		LevelsetGrid* phiObs=NULL , bool intoObs = false ) 
 {
 	Grid<int> tmp( flags.getParent() );
 	int dim = (flags.is3D() ? 3:2);
@@ -347,10 +350,15 @@ PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 
 		// remove all fluid cells (not touching obstacles)
 		FOR_IJK_BND(flags,1) {
 			Vec3i p(i,j,k);
-			if((flags.isFluid(p) || flags.isFluid(p-dir) ) && 
-			   (!flags.isObstacle(p)) && (!flags.isObstacle(p-dir)) ) {
-				tmp(p) = 1;
+			bool mark = false;
+			if(!intoObs) {
+				if( flags.isFluid(p) || flags.isFluid(p-dir) ) mark = true;
+			} else {
+				if( (flags.isFluid(p) || flags.isFluid(p-dir) ) && 
+					(!flags.isObstacle(p)) && (!flags.isObstacle(p-dir)) ) mark = true;
 			}
+
+			if(mark) tmp(p) = 1;
 		}
 		
 		// extrapolate for distance
