@@ -157,26 +157,23 @@ void ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags,
 {
 	const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
 	const int idx = flags.index(i,j,k);
-	if (flags.isFluid(idx))
-	{
-		if( (flags.isEmpty(i-1,j,k)) && (ghostFluidWasClamped(idx, -X, phi, gfClamp)) )
-			vel[idx-X][0] = vel[idx][0];
-		if( (flags.isEmpty(i,j-1,k)) && (ghostFluidWasClamped(idx, -Y, phi, gfClamp)) )
-			vel[idx-Y][1] = vel[idx][1];
-		if( flags.is3D() && 
-		   (flags.isEmpty(i,j,k-1)) && (ghostFluidWasClamped(idx, -Z, phi, gfClamp)) )
-			vel[idx-Z][2] = vel[idx][2];
-	}
-	else if (flags.isEmpty(idx))
-	{
-		if( (i>-1) && (flags.isFluid(i-1,j,k)) && ( ghostFluidWasClamped(idx-X, +X, phi, gfClamp) ) )
-			vel[idx][0] = vel[idx-X][0];
-		if( (j>-1) && (flags.isFluid(i,j-1,k)) && ( ghostFluidWasClamped(idx-Y, +Y, phi, gfClamp) ) )
-			vel[idx][1] = vel[idx-Y][1];
-		if( flags.is3D() &&
-		  ( (k>-1) && (flags.isFluid(i,j,k-1)) && ( ghostFluidWasClamped(idx-Z, +Z, phi, gfClamp) ) ))
-			vel[idx][2] = vel[idx-Z][2];
-	}
+	if (!flags.isEmpty(idx)) return;
+
+	if( (flags.isFluid(i-1,j,k)) && ( ghostFluidWasClamped(idx-X, +X, phi, gfClamp) ) )
+		vel[idx][0] = vel[idx-X][0];
+	if( (flags.isFluid(i,j-1,k)) && ( ghostFluidWasClamped(idx-Y, +Y, phi, gfClamp) ) )
+		vel[idx][1] = vel[idx-Y][1];
+	if( flags.is3D() &&
+	  ( (flags.isFluid(i,j,k-1)) && ( ghostFluidWasClamped(idx-Z, +Z, phi, gfClamp) ) ))
+		vel[idx][2] = vel[idx-Z][2];
+
+	if( (flags.isFluid(i+1,j,k)) && ( ghostFluidWasClamped(idx+X, -X, phi, gfClamp)) )
+		vel[idx][0] = vel[idx+X][0];
+	if( (flags.isFluid(i,j+1,k)) && ( ghostFluidWasClamped(idx+Y, -Y, phi, gfClamp)) )
+		vel[idx][1] = vel[idx+Y][1];
+	if( flags.is3D() && 
+	   (flags.isFluid(i,j,k+1))  && ( ghostFluidWasClamped(idx+Z, -Z, phi, gfClamp)) )
+		vel[idx][2] = vel[idx+Z][2];
 }
 
 //! Kernel: Compute min value of Real grid

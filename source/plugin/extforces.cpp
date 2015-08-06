@@ -144,144 +144,147 @@ PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSyst
 }
 
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
-KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
-					MACGrid* fractions=0, Grid<Real>* phiObs=0, const int &boundaryWidth=0) {
+KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 
 	bool curFluid = flags.isFluid(i,j,k);
-	bool curObs = flags.isObstacle(i,j,k);
+	bool curObs   = flags.isObstacle(i,j,k);
 	if (!curFluid && !curObs) return; 
+
+	// we use i>0 instead of bnd=1 to check outer wall
+	if (i>0 && flags.isObstacle(i-1,j,k))						 vel(i,j,k).x = 0;
+	if (i>0 && curObs && flags.isFluid(i-1,j,k))				 vel(i,j,k).x = 0;
+	if (j>0 && flags.isObstacle(i,j-1,k))						 vel(i,j,k).y = 0;
+	if (j>0 && curObs && flags.isFluid(i,j-1,k))				 vel(i,j,k).y = 0;
+	if (vel.is2D() || (k>0 && flags.isObstacle(i,j,k-1)))		 vel(i,j,k).z = 0;
+	if (vel.is2D() || (k>0 && curObs && flags.isFluid(i,j,k-1))) vel(i,j,k).z = 0;
+	
+	if (curFluid) {
+		if ((i>0 && flags.isStick(i-1,j,k)) || (i<flags.getSizeX()-1 && flags.isStick(i+1,j,k)))
+			vel(i,j,k).y = vel(i,j,k).z = 0;
+		if ((j>0 && flags.isStick(i,j-1,k)) || (j<flags.getSizeY()-1 && flags.isStick(i,j+1,k)))
+			vel(i,j,k).x = vel(i,j,k).z = 0;
+		if (vel.is3D() && ((k>0 && flags.isStick(i,j,k-1)) || (k<flags.getSizeZ()-1 && flags.isStick(i,j,k+1))))
+			vel(i,j,k).x = vel(i,j,k).y = 0;
+	}
+
+}
+KERNEL void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
+							MACGrid* fractions, Grid<Real>* phiObs, const int &boundaryWidth=0) 
+{
+
+	bool curFluid = flags.isFluid(i,j,k);
+	bool curObs   = flags.isObstacle(i,j,k);
+	Vec3& v = velTarget(i,j,k);
+	v = vel(i,j,k);
+	if (!curFluid && !curObs) return; 
+
+	// zero normal component in all obstacle regions
+	if(flags.isInBounds(Vec3i(i,j,k),1)) {
+
+	if( curObs | flags.isObstacle(i-1,j,k) )  { 
+		Vec3 dphi(0.,0.,0.);
+		const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i-1,j,k))*.5;
+		Real tmp2 = (phiObs->get(i,j+1,k)+phiObs->get(i-1,j+1,k))*.5;
+		Real phi1 = (tmp1+tmp2)*.5;
+		tmp2 = (phiObs->get(i,j-1,k)+phiObs->get(i-1,j-1,k))*.5;
+		Real phi2 = (tmp1+tmp2)*.5;
+		
+		dphi.x = phiObs->get(i,j,k)-phiObs->get(i-1,j,k);
+		dphi.y = phi1-phi2;
+
+		if(phiObs->is3D()) {
+			tmp2 = (phiObs->get(i,j,k+1)+phiObs->get(i-1,j,k+1))*.5;
+			phi1 = (tmp1+tmp2)*.5;
+			tmp2 = (phiObs->get(i,j,k-1)+phiObs->get(i-1,j,k-1))*.5;
+			phi2 = (tmp1+tmp2)*.5;
+			dphi.z = phi1-phi2;
+		}
+
+		normalize(dphi); 
+		Vec3 velMAC = vel.getAtMACX(i,j,k);
+		velTarget(i,j,k).x = velMAC.x - dot(dphi, velMAC) * dphi.x; 
+	}
+
+	if( curObs | flags.isObstacle(i,j-1,k) )  { 
+		Vec3 dphi(0.,0.,0.);
+		const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i,j-1,k))*.5;
+		Real tmp2 = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j-1,k))*.5;
+		Real phi1 = (tmp1+tmp2)*.5;
+		tmp2 = (phiObs->get(i-1,j,k)+phiObs->get(i-1,j-1,k))*.5;
+		Real phi2 = (tmp1+tmp2)*.5;
+
+		dphi.x = phi1-phi2;
+		dphi.y = phiObs->get(i,j,k)-phiObs->get(i,j-1,k);
+
+		if(phiObs->is3D()) {
+			tmp2 = (phiObs->get(i,j,k+1)+phiObs->get(i,j-1,k+1))*.5;
+			phi1 = (tmp1+tmp2)*.5;
+			tmp2 = (phiObs->get(i,j,k-1)+phiObs->get(i,j-1,k-1))*.5;
+			phi2 = (tmp1+tmp2)*.5;
+			dphi.z = phi1-phi2;
+		}
+		
+		normalize(dphi); 
+		Vec3 velMAC = vel.getAtMACY(i,j,k);
+		velTarget(i,j,k).y = velMAC.y - dot(dphi, velMAC) * dphi.y; 
+	}
+
+	if( phiObs->is3D() && (curObs | flags.isObstacle(i,j,k-1)) )  {
+		Vec3 dphi(0.,0.,0.); 
+		const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i,j,k-1))*.5;
+
+		Real tmp2 = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j,k-1))*.5;
+		Real phi1 = (tmp1+tmp2)*.5;
+		tmp2 = (phiObs->get(i-1,j,k)+phiObs->get(i-1,j,k-1))*.5;
+		Real phi2 = (tmp1+tmp2)*.5; 
+		dphi.x = phi1-phi2;
+
+		tmp2 = (phiObs->get(i,j+1,k)+phiObs->get(i,j+1,k-1))*.5;
+		phi1 = (tmp1+tmp2)*.5;
+		tmp2 = (phiObs->get(i,j-1,k)+phiObs->get(i,j-1,k-1))*.5;
+		phi2 = (tmp1+tmp2)*.5; 
+		dphi.y = phi1-phi2;
+
+		dphi.z = phiObs->get(i,j,k) - phiObs->get(i,j,k-1);
+
+		normalize(dphi); 
+		Vec3 velMAC = vel.getAtMACZ(i,j,k);
+		velTarget(i,j,k).z = velMAC.z - dot(dphi, velMAC) * dphi.z; 
+	}
+	} // not at boundary
+
+	// domain sides
 	const int w = boundaryWidth;
 
-	if(!fractions || !phiObs) {
-
-		// we use i>0 instead of bnd=1 to check outer wall
-		if (i>0 && flags.isObstacle(i-1,j,k))						 vel(i,j,k).x = 0;
-		if (i>0 && curObs && flags.isFluid(i-1,j,k))				 vel(i,j,k).x = 0;
-		if (j>0 && flags.isObstacle(i,j-1,k))						 vel(i,j,k).y = 0;
-		if (j>0 && curObs && flags.isFluid(i,j-1,k))				 vel(i,j,k).y = 0;
-		if (vel.is2D() || (k>0 && flags.isObstacle(i,j,k-1)))		 vel(i,j,k).z = 0;
-		if (vel.is2D() || (k>0 && curObs && flags.isFluid(i,j,k-1))) vel(i,j,k).z = 0;
-		
-		if (curFluid) {
-			if ((i>0 && flags.isStick(i-1,j,k)) || (i<flags.getSizeX()-1 && flags.isStick(i+1,j,k)))
-				vel(i,j,k).y = vel(i,j,k).z = 0;
-			if ((j>0 && flags.isStick(i,j-1,k)) || (j<flags.getSizeY()-1 && flags.isStick(i,j+1,k)))
-				vel(i,j,k).x = vel(i,j,k).z = 0;
-			if (vel.is3D() && ((k>0 && flags.isStick(i,j,k-1)) || (k<flags.getSizeZ()-1 && flags.isStick(i,j,k+1))))
-				vel(i,j,k).x = vel(i,j,k).y = 0;
+	// x-direction boundaries
+	if ( phiObs->get(i,j,k) <= 0.) 
+	{
+		if (i <= w ) {
+			v.x = 0.;
+			v.y = vel(w+1,j,k).y; if(vel.is3D()) {v.z = vel(w+1,j,k).z;}
+		}
+		if (i >= vel.getSizeX()-w) {
+			v.x = 0.;
+			v.y = vel(vel.getSizeX()-w-2,j,k).y; if(vel.is3D()) {v.z = vel(vel.getSizeX()-w-2,j,k).z;}
 		}
 
-	} else {
-		// if fractions and levelset are present, zero normal component 
-		// in all obstacle regions
-
-		if( curObs | flags.isObstacle(i-1,j,k) )  { 
-			Vec3 dphi(0.,0.,0.);
-			const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i-1,j,k))*.5;
-			Real tmp2 = (phiObs->get(i,j+1,k)+phiObs->get(i-1,j+1,k))*.5;
-			Real phi1 = (tmp1+tmp2)*.5;
-			tmp2 = (phiObs->get(i,j-1,k)+phiObs->get(i-1,j-1,k))*.5;
-			Real phi2 = (tmp1+tmp2)*.5;
-			
-			dphi.x = phiObs->get(i,j,k)-phiObs->get(i-1,j,k);
-			dphi.y = phi1-phi2;
-
-			if(phiObs->is3D()) {
-				tmp2 = (phiObs->get(i,j,k+1)+phiObs->get(i-1,j,k+1))*.5;
-				phi1 = (tmp1+tmp2)*.5;
-				tmp2 = (phiObs->get(i,j,k-1)+phiObs->get(i-1,j,k-1))*.5;
-				phi2 = (tmp1+tmp2)*.5;
-				dphi.z = phi1-phi2;
-			}
-
-			normalize(dphi);
-
-			Vec3 velMAC = vel.getAtMACX(i,j,k);
-			Real dotpr  = dot(dphi, velMAC);
-			vel(i,j,k).x -= dotpr * dphi.x; 
+		if (j <= w ) {
+			v.y = 0.;
+			v.x = vel(w+1,j,k).x; if(vel.is3D()) {v.z = vel(w+1,j,k).z;}
+		}
+		if (j >= vel.getSizeY()-w) {
+			v.y = 0.;
+			v.x = vel(i,vel.getSizeY()-w-2,k).x; if(vel.is3D()) {v.z = vel(i,vel.getSizeY()-w-2,k).z;}
 		}
 
-		if( curObs | flags.isObstacle(i,j-1,k) )  { 
-			Vec3 dphi(0.,0.,0.);
-			const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i,j-1,k))*.5;
-			Real tmp2 = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j-1,k))*.5;
-			Real phi1 = (tmp1+tmp2)*.5;
-			tmp2 = (phiObs->get(i-1,j,k)+phiObs->get(i-1,j-1,k))*.5;
-			Real phi2 = (tmp1+tmp2)*.5;
-
-			dphi.x = phi1-phi2;
-			dphi.y = phiObs->get(i,j,k)-phiObs->get(i,j-1,k);
-
-			if(phiObs->is3D()) {
-				tmp2 = (phiObs->get(i,j,k+1)+phiObs->get(i,j-1,k+1))*.5;
-				phi1 = (tmp1+tmp2)*.5;
-				tmp2 = (phiObs->get(i,j,k-1)+phiObs->get(i,j-1,k-1))*.5;
-				phi2 = (tmp1+tmp2)*.5;
-				dphi.z = phi1-phi2;
-			}
-			
-			normalize(dphi);
-
-			Vec3 velMAC = vel.getAtMACY(i,j,k);
-			Real dotpr = dot(dphi, velMAC);
-			vel(i,j,k).y -= dotpr * dphi.y; 
+		if( vel.is3D() ) { 
+		if (k <= w ) {
+			v.z = 0.;
+			v.x = vel(w+1,j,k).x; v.y = vel(w+1,j,k).y;
 		}
-
-		if( phiObs->is3D() && (curObs | flags.isObstacle(i,j,k-1)) )  {
-			Vec3 dphi(0.,0.,0.); 
-			const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i,j,k-1))*.5;
-			Real tmp2 = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j,k-1))*.5;
-			Real phi1 = (tmp1+tmp2)*.5;
-			tmp2 = (phiObs->get(i-1,j,k)+phiObs->get(i-1,j,k-1))*.5;
-			Real phi2 = (tmp1+tmp2)*.5;
-
-			dphi.x = phi1-phi2;
-
-			tmp2 = (phiObs->get(i,j+1,k)+phiObs->get(i,j+1,k-1))*.5;
-			phi1 = (tmp1+tmp2)*.5;
-			tmp2 = (phiObs->get(i,j-1,k)+phiObs->get(i,j-1,k-1))*.5;
-			phi2 = (tmp1+tmp2)*.5;
-
-			dphi.y = phi1-phi2;
-
-			dphi.z = phiObs->get(i,j,k)-phiObs->get(i,j,k-1);
-
-			normalize(dphi);
-
-			Vec3 velMAC = vel.getAtMACZ(i,j,k);
-			Real dotpr = dot(dphi, velMAC);
-			vel(i,j,k).z -= dotpr * dphi.z; 
-		}
-
-		// domain bounds
-		
-		// x-direction boundaries
- 		if (i <= w+1 && phiObs->get(i-1,j,k) <= 0.) {
-			vel(i-1,j,k).x = 0.;
-			vel(i-1,j,k).y = vel(w+1,j,k).x; if(vel.is3D()) {vel(i-1,j,k).z = vel(w+1,j,k).z;}
-		}
-		if (i >= vel.getSizeX()-w-1 && phiObs->get(i+1,j,k) <= 0.) {
-			vel(i+1,j,k).x = 0.;
-			vel(i+1,j,k).y = vel(vel.getSizeX()-w-2,j,k).x; if(vel.is3D()) {vel(i+1,j,k).z = vel(vel.getSizeX()-w-2,j,k).z;}
-		}
-		// y-direction boundaries
-		if (j <= w+1 && phiObs->get(i,j-1,k) <= 0.) {
-			vel(i,j-1,k).y = 0.;
-			vel(i,j-1,k).x = vel(i,w+1,k).x; if(vel.is3D()) {vel(i,j-1,k).z = vel(i,w+1,k).z;}
-		}
-		if (j >= vel.getSizeY()-w-1 && phiObs->get(i,j,k) <= 0.) {
-			vel(i,j+1,k).y = 0.;
-			vel(i,j+1,k).x = vel(i,vel.getSizeY()-w-2,k).x; if(vel.is3D()) {vel(i,j+1,k).z = vel(i,vel.getSizeY()-w-2,k).z;}
-		}
-		// z-direction boundaries
-		if( vel.is3D() ) {
-		if (k <= w+1 && phiObs->get(i,j,k-1) <= 0.) {
-			vel(i,j,k-1).z = 0.;
-			vel(i,j,k-1).x = vel(i,j,w+1).x; vel(i,j,k-1).y = vel(i,j,w+1).z;
-		}
-		if (k >= vel.getSizeZ()-w-1 && phiObs->get(i,j,k+1) <= 0.) {
-			vel(i,j,k+1).z = 0.;
-			vel(i,j,k+1).x = vel(i,j,vel.getSizeZ()-w-2).x; vel(i,j,k+1).z = vel(i,j,vel.getSizeZ()-w-2).z;
+		if (k >= vel.getSizeZ()-w) {
+			v.z = 0.;
+			v.x = vel(i,j,vel.getSizeZ()-w-2).x; v.y = vel(i,j,vel.getSizeZ()-w-2).y; 
 		}
 		} // 3d
 
@@ -290,8 +293,14 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
 }
 
 //! set no-stick boundary condition on walls
-PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real>* phiObs = 0) {
-	KnSetWallBcs(flags, vel, fractions, phiObs);
+PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real>* phiObs = 0, int boundaryWidth=0) {
+	if(!fractions || !phiObs) {
+		KnSetWallBcs(flags, vel);
+	} else {
+		MACGrid tmpvel(vel.getParent());
+		KnSetWallBcsFrac(flags, vel, tmpvel, fractions, phiObs, boundaryWidth);
+		vel.swap(tmpvel);
+	}
 }
 
 KERNEL void KnapplyDensAtObstacle(Grid<Real>& phiObs, Grid<Real>& dens) {
