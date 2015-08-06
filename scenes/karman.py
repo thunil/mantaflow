@@ -1,7 +1,7 @@
 from manta import *
 
-new_BC     = True
-dim        = 2
+secOrderBc = True
+dim        = 3
 #res        = 124
 res        = 64
 gs         = vec3(2*res,res,res)
@@ -19,8 +19,9 @@ phiWalls  = s.create(LevelsetGrid)
 
 flags.initDomain(inflow="xX", phiWalls=phiWalls, boundaryWidth=0)
 
-sphere  = s.create(Sphere, center=gs*vec3(0.25,0.5,0.5), radius=res*0.2)
-phiObs = sphere.computeLevelset()
+#obstacle  = Sphere(   parent=s, center=gs*vec3(0.25,0.5,0.5), radius=res*0.2)
+obstacle  = Cylinder( parent=s, center=gs*vec3(0.25,0.5,0.5), radius=res*0.2, z=gs*vec3(0, 0, 1.0))
+phiObs    = obstacle.computeLevelset()
 
 phiObs.join(phiWalls)
 updateFractions( flags=flags, phiObs=phiObs, fractions=fractions)
@@ -60,7 +61,7 @@ for t in range(25000):
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2, orderSpace=1)  
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2, strength=1.0)
 
-	if(new_BC):
+	if(secOrderBc):
 		extrapolateMACSimple( flags=flags, vel=vel, distance=2 , intoObs=True);
 		setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)
 
@@ -82,7 +83,7 @@ for t in range(25000):
 
 	inter = 10
 	if 0 and (t % inter == 0):
-		if(new_BC):
+		if(secOrderBc):
 			gui.screenshot( 'newbc_%04d.png' % int(t/inter) );
 		else:
 			gui.screenshot( 'oldbc_%04d.png' % int(t/inter) );

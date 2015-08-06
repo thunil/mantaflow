@@ -138,8 +138,10 @@ inline Real calculateRadiusFactor(Grid<Real>& grid, Real factor) {
 } 
 
 //! re-sample particles based on an input levelset 
+// optionally skip seeding new particles in "exclude" SDF
 PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& flags, 
-		int minParticles, int maxParticles, LevelsetGrid& phi, Real radiusFactor=1. , Real narrowBand=-1. ) 
+		int minParticles, int maxParticles, LevelsetGrid& phi, Real radiusFactor=1. , Real narrowBand=-1. ,
+		Grid<Real>* exclude=NULL ) 
 {
 	// which levelset to use as threshold
 	const Real SURFACE_LS = -1.0 * calculateRadiusFactor(phi, radiusFactor);
@@ -179,6 +181,7 @@ PYTHON void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& fl
 		// skip cells near surface
 		if (phi(i,j,k) > SURFACE_LS) continue;
 		if( narrowBand>0. && phi(i,j,k) < -narrowBand ) { continue; }
+		if( exclude && ( (*exclude)(i,j,k) < 0.) ) { continue; }
 
 		if (flags.isFluid(i,j,k) && cnt < minParticles) {
 			for (int m=cnt; m < minParticles; m++) { 
@@ -393,6 +396,22 @@ PYTHON void averagedParticleLevelset( BasicParticleSystem& parts, ParticleIndexS
 }
 
 
+
+PYTHON void pushOutofObs(BasicParticleSystem& parts, FlagGrid& flags, Grid<Real>& phiObs, Real shift=0.05, Real thresh=0.)
+{
+    for(int idx=0;idx<parts.size();idx++) {
+        if (!parts.isActive(idx)) continue;
+        Vec3i p = toVec3i( parts.getPos(idx) );
+
+        if (!flags.isInBounds(p)) continue;
+        Real v = phiObs.getInterpolated(parts.getPos(idx));
+        if(v < thresh) {
+            Vec3 grad = getGradient( phiObs, p.x,p.y,p.z );
+            if( normalize(grad) < VECTOR_EPSILON ) continue;
+            parts.setPos(idx, parts.getPos(idx) + shift * grad );
+        }
+    }
+}
 
 
 //******************************************************************************
