@@ -396,21 +396,23 @@ PYTHON void averagedParticleLevelset( BasicParticleSystem& parts, ParticleIndexS
 }
 
 
-
-PYTHON void pushOutofObs(BasicParticleSystem& parts, FlagGrid& flags, Grid<Real>& phiObs, Real shift=0.05, Real thresh=0.)
+KERNEL(pts) 
+void knPushOutofObs(BasicParticleSystem& parts, FlagGrid& flags, Grid<Real>& phiObs, Real shift=0.05, Real thresh=0.)
 {
-    for(int idx=0;idx<parts.size();idx++) {
-        if (!parts.isActive(idx)) continue;
-        Vec3i p = toVec3i( parts.getPos(idx) );
+	if (!parts.isActive(idx)) return;
+	Vec3i p = toVec3i( parts.getPos(idx) );
 
-        if (!flags.isInBounds(p)) continue;
-        Real v = phiObs.getInterpolated(parts.getPos(idx));
-        if(v < thresh) {
-            Vec3 grad = getGradient( phiObs, p.x,p.y,p.z );
-            if( normalize(grad) < VECTOR_EPSILON ) continue;
-            parts.setPos(idx, parts.getPos(idx) + shift * grad );
-        }
-    }
+	if (!flags.isInBounds(p)) return;
+	Real v = phiObs.getInterpolated(parts.getPos(idx));
+	if(v < thresh) {
+		Vec3 grad = getGradient( phiObs, p.x,p.y,p.z );
+		if( normalize(grad) < VECTOR_EPSILON ) return;
+		parts.setPos(idx, parts.getPos(idx) + shift * grad );
+	}
+}
+//! slightly push particles out of obstacle levelset
+PYTHON void pushOutofObs(BasicParticleSystem& parts, FlagGrid& flags, Grid<Real>& phiObs, Real shift=0.05, Real thresh=0.) {
+	knPushOutofObs(parts, flags, phiObs, shift, thresh);
 }
 
 
