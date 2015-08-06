@@ -89,15 +89,14 @@ PYTHON void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int
 	if (openBound == "") return;
 	Vector3D<bool> lo, up;
 	convertDescToVec(openBound, lo, up);
-	//if (flags.is2D() && (lo.z || up.z)) errMsg("open boundaries for z specified for 2D grid");
 
 	FOR_IJK(flags){
 		bool loX = lo.x && i <= bWidth; // a cell which belongs to the lower x open bound
-		bool loY = lo.y && j <= bWidth; // a cell which belongs to the lower y open bound
+		bool loY = lo.y && j <= bWidth; 
 		bool upX = up.x && i >= flags.getSizeX() - bWidth - 1; // a cell which belongs to the upper x open bound
-		bool upY = up.y && j >= flags.getSizeY() - bWidth - 1; // a cell which belongs to the upper y open bound
+		bool upY = up.y && j >= flags.getSizeY() - bWidth - 1; 
 		bool innerI = i>bWidth && i<flags.getSizeX() - bWidth - 1; // a cell which does not belong to the lower or upper x bound
-		bool innerJ = j>bWidth && j<flags.getSizeY() - bWidth - 1; // a cell which does not belong to the lower or upper y bound
+		bool innerJ = j>bWidth && j<flags.getSizeY() - bWidth - 1; 
 
 		// when setting boundaries to open: don't set shared part of wall to empty if neighboring wall is not open
 		if (flags.is2D() && (loX||upX||loY||upY)){
@@ -150,7 +149,8 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
 
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs = flags.isObstacle(i,j,k);
-	if (!curFluid && !curObs) return;
+	if (!curFluid && !curObs) return; 
+	const int w = boundaryWidth;
 
 	if(!fractions || !phiObs) {
 
@@ -175,11 +175,7 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
 		// if fractions and levelset are present, zero normal component 
 		// in all obstacle regions
 
-		bool xcheck = curObs | flags.isObstacle(i-1,j,k);
-		bool ycheck = curObs | flags.isObstacle(i,j-1,k);
-		bool zcheck = curObs | flags.isObstacle(i,j,k-1); 
-
-		if( xcheck )  { 
+		if( curObs | flags.isObstacle(i-1,j,k) )  { 
 			Vec3 dphi(0.,0.,0.);
 			const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i-1,j,k))*.5;
 			Real tmp2 = (phiObs->get(i,j+1,k)+phiObs->get(i-1,j+1,k))*.5;
@@ -205,7 +201,7 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
 			vel(i,j,k).x -= dotpr * dphi.x; 
 		}
 
-		if( ycheck )  { 
+		if( curObs | flags.isObstacle(i,j-1,k) )  { 
 			Vec3 dphi(0.,0.,0.);
 			const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i,j-1,k))*.5;
 			Real tmp2 = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j-1,k))*.5;
@@ -231,7 +227,7 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
 			vel(i,j,k).y -= dotpr * dphi.y; 
 		}
 
-		if( zcheck && phiObs->is3D() )  {
+		if( phiObs->is3D() && (curObs | flags.isObstacle(i,j,k-1)) )  {
 			Vec3 dphi(0.,0.,0.); 
 			const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i,j,k-1))*.5;
 			Real tmp2 = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j,k-1))*.5;
@@ -259,8 +255,6 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
 
 		// domain bounds
 		
-		const int w = boundaryWidth;
-
 		// x-direction boundaries
  		if (i <= w+1 && phiObs->get(i-1,j,k) <= 0.) {
 			vel(i-1,j,k).x = 0.;
@@ -281,15 +275,15 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel,
 		}
 		// z-direction boundaries
 		if( vel.is3D() ) {
-			if (k <= w+1 && phiObs->get(i,j,k-1) <= 0.) {
-				vel(i,j,k-1).z = 0.;
-				vel(i,j,k-1).x = vel(i,j,w+1).x; vel(i,j,k-1).y = vel(i,j,w+1).z;
-			}
-			if (j >= vel.getSizeZ()-w-1 && phiObs->get(i,j,k+1) <= 0.) {
-				vel(i,j,k+1).z = 0.;
-				vel(i,j,k+1).x = vel(i,j,vel.getSizeZ()-w-2).x; vel(i,j,k+1).z = vel(i,j,vel.getSizeZ()-w-2).z;
-			}
+		if (k <= w+1 && phiObs->get(i,j,k-1) <= 0.) {
+			vel(i,j,k-1).z = 0.;
+			vel(i,j,k-1).x = vel(i,j,w+1).x; vel(i,j,k-1).y = vel(i,j,w+1).z;
 		}
+		if (k >= vel.getSizeZ()-w-1 && phiObs->get(i,j,k+1) <= 0.) {
+			vel(i,j,k+1).z = 0.;
+			vel(i,j,k+1).x = vel(i,j,vel.getSizeZ()-w-2).x; vel(i,j,k+1).z = vel(i,j,vel.getSizeZ()-w-2).z;
+		}
+		} // 3d
 
 	}
 

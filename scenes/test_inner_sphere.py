@@ -16,7 +16,6 @@ fractions = s.create(MACGrid)
 density   = s.create(RealGrid)
 
 flags.initDomain()
-flags.fillGrid()
 
 center = gs*vec3(0.5,0.5,0.5)
 radius = res*0.4
@@ -26,7 +25,9 @@ phiObs.multConst(-1)
 
 initVortexVelocity(phiObs=phiObs, vel=vel, center=center, radius=radius)
 
-updateFractions(flags=flags, phiObs=phiObs, fractions=fractions)
+updateFractions( flags=flags, phiObs=phiObs, fractions=fractions)
+setObstacleFlags(flags=flags, phiObs=phiObs, fractions=fractions)
+flags.fillGrid()
 
 if (GUI):
 	gui = Gui()

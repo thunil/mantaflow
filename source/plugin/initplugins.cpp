@@ -25,7 +25,7 @@ namespace Manta {
 	
 //! Apply noise to grid
 KERNEL 
-void KnApplyNoise(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Grid<Real>& sdf, Real scale, Real sigma) 
+void KnApplyNoiseInfl(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Grid<Real>& sdf, Real scale, Real sigma) 
 {
 	if (!flags.isFluid(i,j,k) || sdf(i,j,k) > sigma) return;
 	Real factor = clamp(1.0-0.5/sigma * (sdf(i,j,k)+sigma), 0.0, 1.0);
@@ -39,7 +39,15 @@ void KnApplyNoise(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise
 PYTHON void densityInflow(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Shape* shape, Real scale=1.0, Real sigma=0)
 {
 	Grid<Real> sdf = shape->computeLevelset();
-	KnApplyNoise(flags, density, noise, sdf, scale, sigma);
+	KnApplyNoiseInfl(flags, density, noise, sdf, scale, sigma);
+}
+//! Apply noise to real grid based on an SDF
+KERNEL void KnAddNoise(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Grid<Real>* sdf, Real scale) {
+	if (!flags.isFluid(i,j,k) || (sdf && (*sdf)(i,j,k) > 0.) ) return;
+	density(i,j,k) += noise.evaluate(Vec3(i,j,k)) * scale;
+}
+PYTHON void addNoise(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Grid<Real>* sdf=NULL, Real scale=1.0 ) {
+	KnAddNoise(flags, density, noise, sdf, scale );
 }
 
 //! sample noise field and set pdata with its values (for convenience, scale the noise values)
@@ -126,7 +134,7 @@ PYTHON void densityInflowMeshNoise(FlagGrid& flags, Grid<Real>& density, Wavelet
 {
 	LevelsetGrid sdf(density.getParent(), false);
 	mesh->computeLevelset(sdf, 1.);
-	KnApplyNoise(flags, density, noise, sdf, scale, sigma);
+	KnApplyNoiseInfl(flags, density, noise, sdf, scale, sigma);
 }
 
 //! Init constant density inside mesh
@@ -379,13 +387,6 @@ PYTHON Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
 //*****************************************************************************
 // helper functions for volume fractions
 
-KERNEL void KninitVelObs(Grid<Real> &phiObs, MACGrid& vel, const Vec3& val) {
-	if(phiObs(i,j,k) > -2.) vel(i,j,k) = val;
-}
-// NT_DEBUG necessary?
-PYTHON void initVelObs(Grid<Real> &phiObs, MACGrid& vel, const Vec3& val) {
-	KninitVelObs(phiObs, vel, val);
-}
 
 KERNEL void kninitVortexVelocity(Grid<Real> &phiObs, MACGrid& vel, const Vec3 &center, const Real &radius) {
 	
@@ -438,9 +439,10 @@ void KnUpdateFractions(FlagGrid& flags, Grid<Real>& phiObs, MACGrid& fractions, 
 	fractions(i,j,k).z = calcFraction( phiObs(i,j,k) , phiObs(i,j,k-1));
 	}
 
-	// remaining BCs at the domain boundaries
-
+	// remaining BCs at the domain boundaries 
 	const int w = boundaryWidth;
+	// only set if not in obstacle
+ 	if(phiObs(i,j,k)<0.) return;
 
 	// x-direction boundaries
 	if(i <= w+1) {                     //min x
@@ -474,22 +476,27 @@ void KnUpdateFractions(FlagGrid& flags, Grid<Real>& phiObs, MACGrid& fractions, 
  	}
 	// z-direction boundaries
 	if(flags.is3D()) {
-		if(k <= w+1) {                 //min z
-			if(	(flags.isInflow(i,j,k-1)) ||
-				(flags.isOutflow(i,j,k-1)) ||
-				(flags.isOpen(i,j,k-1)) ) {
-				fractions(i,j,k).x = fractions(i,j,k).y = 1.; if(flags.is3D()) fractions(i,j,k).z = 1.;
-			}
-		}
-		if(j >= flags.getSizeZ()-w-2) { //max z
-			if(	(flags.isInflow(i,j,k+1)) ||
-				(flags.isOutflow(i,j,k+1)) ||
-				(flags.isOpen(i,j,k+1)) ) {
-				fractions(i,j,k+1).x = fractions(i,j,k+1).y = 1.; if(flags.is3D()) fractions(i,j,k+1).z = 1.;
-			}
+	if(k <= w+1) {                 //min z
+		if(	(flags.isInflow(i,j,k-1)) ||
+			(flags.isOutflow(i,j,k-1)) ||
+			(flags.isOpen(i,j,k-1)) ) {
+			fractions(i,j,k).x = fractions(i,j,k).y = 1.; if(flags.is3D()) fractions(i,j,k).z = 1.;
 		}
 	}
+	if(j >= flags.getSizeZ()-w-2) { //max z
+		if(	(flags.isInflow(i,j,k+1)) ||
+			(flags.isOutflow(i,j,k+1)) ||
+			(flags.isOpen(i,j,k+1)) ) {
+			fractions(i,j,k+1).x = fractions(i,j,k+1).y = 1.; if(flags.is3D()) fractions(i,j,k+1).z = 1.;
+		}
+	}
+	}
 
+}
+
+PYTHON void updateFractions(FlagGrid& flags, Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth=0) {
+	fractions.setConst( Vec3(0.) );
+	KnUpdateFractions(flags, phiObs, fractions, boundaryWidth);
 }
 
 KERNEL (bnd=1) 
@@ -508,9 +515,7 @@ void KnUpdateFlags(FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs) {
 	else flags(i,j,k) = FlagGrid::TypeEmpty; 
 }
 
-PYTHON void updateFractions(FlagGrid& flags, Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth=0) {
-	fractions.setConst( Vec3(0.) );
-	KnUpdateFractions(flags, phiObs, fractions, boundaryWidth);
+PYTHON void setObstacleFlags(FlagGrid& flags, MACGrid& fractions, Grid<Real>& phiObs) {
 	KnUpdateFlags(flags,fractions, phiObs);
 }
 

@@ -439,6 +439,17 @@ PYTHON Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL)
 	return sum;
 }
 
+//! transfer data between real and vec3 grids
+
+KERNEL(idx) void knGetComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { 
+	target[idx] = source[idx][component]; 
+}
+PYTHON void getComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { knGetComponent(source, target, component); }
+
+KERNEL(idx) void knSetComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { 
+	target[idx][component] = source[idx]; 
+}
+PYTHON void setComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { knSetComponent(source, target, component); }
 
 //******************************************************************************
 // Specialization classes

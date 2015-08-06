@@ -112,11 +112,14 @@ Real LevelsetGrid::invalidTimeValue() {
 //! Kernel: perform levelset union
 KERNEL(idx) void KnJoin(Grid<Real>& a, const Grid<Real>& b) {
 	a[idx] = min(a[idx], b[idx]);
-}
+} 
+void LevelsetGrid::join(const LevelsetGrid& o) { KnJoin(*this, o); }
 
-void LevelsetGrid::join(const LevelsetGrid& o) {
-	KnJoin(*this, o);
-}
+//! subtract b, note does not preserve SDF!
+KERNEL(idx) void KnSubtract(Grid<Real>& a, const Grid<Real>& b) {
+	if(b[idx]<0.) a[idx] = b[idx] * -1.;
+} 
+void LevelsetGrid::subtract(const LevelsetGrid& o) { KnSubtract(*this, o); }
 
 //! re-init levelset and extrapolate velocities (in & out)
 //  note - uses flags to identify border (could also be done based on ls values)
