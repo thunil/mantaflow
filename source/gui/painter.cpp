@@ -311,15 +311,17 @@ inline Vec3i __fRange(Vec3i size, int dim, int plane) { Vec3i p(size); p[dim]=pl
 // cell center(i,j,k) -> (i+0.5,j+0.5,k+0.5) / N
 // 
 
-void getCellCoordinates(const Vec3i& pos, Vec3 box[4], int dim) {
+void getCellCoordinates(const Vec3i& pos, Vec3 box[4], int dim, bool offset=false) {
 	int dim2=(dim+1)%3;
 	Vec3 p0(pos.x, pos.y, pos.z);
 	Vec3 p1(pos.x+1, pos.y+1, pos.z+1);
 	p1[dim] = p0[dim] = pos[dim] + 0.5;
 
 	// display lines with slight offsets
-	p0 += Vec3(0.01);
-	p1 -= Vec3(0.01); 
+	if(offset) {
+		p0 += Vec3(0.01);
+		p1 -= Vec3(0.01); 
+	}
 
 	box[0] = p0;
 	box[3] = p0; box[3][dim2] = p1[dim2];
@@ -346,8 +348,7 @@ template<> void GridPainter<int>::paint() {
 	glColor3f(0.5,0,0);
 	
 	bool rbox = true;
-	bool skipFluid = mLocalGrid->getSize().max() > 40; 
-	skipFluid=false; // NT_DEBUG
+	bool skipFluid = mLocalGrid->getSize().max() >= 64; 
 	bool drawLines = mLocalGrid->getSize().max() <= 80; 
 	if (drawLines) {
 		//glDepthFunc(GL_LESS);
@@ -370,7 +371,7 @@ template<> void GridPainter<int>::paint() {
 				glColor3f(0.5,0,0); // unknown , medium red
 			}
 
-			getCellCoordinates(p, box, mDim); 
+			getCellCoordinates(p, box, mDim, true); 
 			for (int n=1;n<=8;n++)
 				glVertex(box[(n/2)%4], dx);
 		}

@@ -1,20 +1,19 @@
 from manta import *
 
-secOrderBc = True
-dim        = 3
+secOrderBc = False
+dim        = 2
 #res        = 124
 res        = 64
 gs         = vec3(2*res,res,res)
 if (dim==2): gs.z = 1
 s          = FluidSolver(name='main', gridSize = gs, dim=dim)
 s.timestep = 1.
-timings    = Timings()
 
 flags     = s.create(FlagGrid)
+density   = s.create(RealGrid)
 vel       = s.create(MACGrid)
 pressure  = s.create(RealGrid)
 fractions = s.create(MACGrid)
-density   = s.create(RealGrid)
 phiWalls  = s.create(LevelsetGrid)
 
 flags.initDomain(inflow="xX", phiWalls=phiWalls, boundaryWidth=0)
@@ -23,30 +22,35 @@ flags.initDomain(inflow="xX", phiWalls=phiWalls, boundaryWidth=0)
 obstacle  = Cylinder( parent=s, center=gs*vec3(0.25,0.5,0.5), radius=res*0.2, z=gs*vec3(0, 0, 1.0))
 phiObs    = obstacle.computeLevelset()
 
+# slightly larger copy for density source
+densInflow  = Cylinder( parent=s, center=gs*vec3(0.25,0.5,0.5), radius=res*0.21, z=gs*vec3(0, 0, 1.0))
+
 phiObs.join(phiWalls)
 updateFractions( flags=flags, phiObs=phiObs, fractions=fractions)
 setObstacleFlags(flags=flags, phiObs=phiObs, fractions=fractions)
 flags.fillGrid()
 
-velInflow = vec3(0.5,0,0)
+velInflow = vec3(0.9, 0, 0)
 vel.setConst(velInflow)
 
 # optionally randomize y component
-if 0:
+if 1:
 	noise = s.create(NoiseField, loadFromFile=True)
 	noise.posScale = vec3(75)
 	noise.clamp    = True
 	noise.clampNeg = -1.
 	noise.clampPos =  1.
 	testall = s.create(RealGrid); testall.setConst(-1.);
-	addNoise(flags=flags, density=density, noise=noise, sdf=testall, scale=1 )
+	addNoise(flags=flags, density=density, noise=noise, sdf=testall, scale=0.1 )
 
 setComponent(target=vel, source=density, component=1)
 density.setConst(0.)
 
 # cg solver params
-acc = 1e-04
+acc    = 1e-04
 cgiter = 5
+
+timings = Timings()
 
 if (GUI):
 	gui = Gui()
@@ -56,7 +60,9 @@ if (GUI):
 #main loop
 for t in range(25000):
 
-	applyDensAtObstacle(phiObs=phiObs, dens=density)
+	#applyDensAtObstacle(phiObs=phiObs, dens=density)
+	#densityInflow(flags=flags, density=density, shape=densInflow, scale=1, sigma=0.5)
+	densInflow.applyToGrid( grid=density, value=1. )
 
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2, orderSpace=1)  
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2, strength=1.0)
