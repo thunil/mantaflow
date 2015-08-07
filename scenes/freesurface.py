@@ -1,5 +1,6 @@
 #
-# Simple example for free-surface simulation with MacCormack advection
+# Simple example for free-surface simulation 
+# (and optionally second order free surface boundaries, or open/outflow boundaries)
 #
 
 from manta import *
@@ -12,8 +13,10 @@ if (dim==2):
 	gs.z=1
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.25
-ghostFluid = True
 accuracy = 5e-5
+
+ghostFluid = True
+doOpen     = False
 
 # prepare grids and particles
 flags = s.create(FlagGrid)
@@ -29,7 +32,9 @@ drop  = s.create(Sphere, center=gs*vec3(0.5,0.5,0.5), radius=res*0.15)
 phi = basin.computeLevelset()
 phi.join(drop.computeLevelset())
 flags.updateFromLevelset(phi)
-setOpenBound(flags,bWidth,'xXzZ',FlagOutflow|FlagEmpty) 
+
+if doOpen:
+	setOpenBound(flags,bWidth,'xXzZ',FlagOutflow|FlagEmpty) 
 		
 if (GUI):
 	gui = Gui()
@@ -41,13 +46,16 @@ if (GUI):
 for t in range(2000):
 	
 	# update and advect levelset
-	phi.reinitMarching(flags=flags, velTransport=vel) #, ignoreWalls=False)
+	phi.reinitMarching(flags=flags, velTransport=vel) 
 	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1)
-	resetOutflow(flags=flags,phi=phi)
+	resetPhiInObs(flags, phi)
+
+	if doOpen:
+		resetOutflow(flags=flags,phi=phi)
 	flags.updateFromLevelset(phi)
 	
 	# velocity self-advection
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, openBounds=True, depth=bWidth+1)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=1, openBounds=doOpen, depth=bWidth+1)
 	addGravity(flags=flags, vel=vel, gravity=vec3(0,-0.025,0))
 	
 	# pressure solve
@@ -58,8 +66,6 @@ for t in range(2000):
 		solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy)
 	setWallBcs(flags=flags, vel=vel)
 	
-	# note: these meshes are created by fast marching only, should smooth
-	#       geometry and normals before rendering (only in 3D for now)
 	if (dim==3):
 		phi.createMesh(mesh)
 		#mesh.save('phi%04d.bobj.gz' % t)

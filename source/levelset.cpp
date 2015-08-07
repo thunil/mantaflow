@@ -83,18 +83,6 @@ inline bool isAtInterface(Grid<int>& fmFlags, LevelsetGrid& phi, const Vec3i& p)
 	return false;
 }
 
-// helper function to compute gradient of a scalar grid
-/*inline Vec3 getGradient(const Grid<Real>& data, int i, int j, int k) {
-	if (i > data.getSizeX()-2) i= data.getSizeX()-2;
-	if (j > data.getSizeY()-2) j= data.getSizeY()-2;
-	if (k > data.getSizeZ()-2) k= data.getSizeZ()-2;
-	if (i < 1) i = 1;
-	if (j < 1) j = 1;
-	if (k < 1) k = 1;
-	return Vec3( data(i+1,j  ,k  ) - data(i-1,j  ,k  ) ,
-				 data(i  ,j+1,k  ) - data(i  ,j-1,k  ) ,
-				 data(i  ,j  ,k+1) - data(i  ,j  ,k-1) );
-}*/
 
 //************************************************************************
 // Levelset class def

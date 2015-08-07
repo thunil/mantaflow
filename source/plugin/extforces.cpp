@@ -71,6 +71,8 @@ PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3
 	KnAddBuoyancy(flags,density, vel, f);
 }
 
+// open boundaries
+
 //! helper to parse openbounds string [xXyYzZ] , convert to vec3 
 inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bool>& up) {
 	for (size_t i = 0; i<desc.size(); i++) {
@@ -142,6 +144,8 @@ PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSyst
 	}
 	if (parts) parts->doCompress();
 }
+
+// set obstacle boundary conditions
 
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
 KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
@@ -292,7 +296,8 @@ KERNEL void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
 
 }
 
-//! set no-stick boundary condition on walls
+//! set zero normal velocity boundary condition on walls
+// (optionally with second order accuracy using the fill fraction grid)
 PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real>* phiObs = 0, int boundaryWidth=0) {
 	if(!fractions || !phiObs) {
 		KnSetWallBcs(flags, vel);
@@ -302,6 +307,8 @@ PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Gr
 		vel.swap(tmpvel);
 	}
 }
+
+whats this? cleanup...
 
 KERNEL void KnapplyDensAtObstacle(Grid<Real>& phiObs, Grid<Real>& dens) {
 	if( phiObs.get(i,j,k) > 0. && phiObs.get(i,j,k) < 1.0 ) {

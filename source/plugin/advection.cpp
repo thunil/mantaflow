@@ -220,23 +220,6 @@ void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& o
 	dst(i,j,k) = dval;
 }
 
-/*static inline bool isNotFluid(FlagGrid& flags, int i, int j, int k)
-{
-	if ( flags.isFluid(i,j,k)   ) return false;
-	if ( flags.isFluid(i-1,j,k) ) return false; 
-	if ( flags.isFluid(i,j-1,k) ) return false; 
-	if ( flags.is3D() ) {
-		if ( flags.isFluid(i,j,k-1) ) return false;
-	}
-	return true;
-}
-
-static inline bool isNotFluidMAC(FlagGrid& flags, int i, int j, int k)
-{
-	if ( flags.isFluid(i,j,k)   ) return false;
-	return true;
-}*/
-
 
 //! template function for performing SL advection
 template<class GridType> 
@@ -269,6 +252,8 @@ void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, Gr
 		orig.swap(newGrid);
 	}
 }
+
+// outflow functions
 
 //! calculate local propagation velocity for cell (i,j,k)
 Vec3 getBulkVel(FlagGrid& flags, MACGrid& vel, int i, int j, int k){
@@ -334,6 +319,18 @@ void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double time
 	extrapolateVelConvectiveBC(flags, vel, velDst, velPrev, max(1.0,timeStep*4), depth);
 	copyChangedVels(flags,velDst,vel);
 }
+
+// advection helpers
+
+//! prevent parts of the surface getting "stuck" in obstacle regions
+KERNEL void knResetPhiInObs (FlagGrid& flags, Grid<Real>& sdf) {
+	if( flags.isObstacle(i,j,k) && (sdf(i,j,k)<0.) ) {
+		sdf(i,j,k) = 0.1;
+	}
+}
+PYTHON void resetPhiInObs (FlagGrid& flags, Grid<Real>& sdf) { knResetPhiInObs(flags, sdf); }
+
+// advection main calls
 
 //! template function for performing SL advection: specialized version for MAC grids
 template<> 
