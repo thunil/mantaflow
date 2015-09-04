@@ -1,0 +1,284 @@
+#
+# Flip scene with particle seeding only in a narrow band around the surface
+# 
+from manta import *
+import sys, os, time, random
+random.seed(5481232)
+
+# Command line arguments
+GUI = True
+if len(sys.argv)>1: GUI = (sys.argv[1] in ['True', 'true', '1'])
+
+simtypeno = 2
+if len(sys.argv)>2: simtypeno = int(sys.argv[2])
+
+# 0:
+scene = 1
+if len(sys.argv)>3: scene = int(sys.argv[3])
+
+
+# Configuration 
+if scene == 0: simname = "waves_test"
+if scene == 1: simname = "bdam_test"
+simtype = ["levelset", "flip0", "flip", "nbflip","nbflipd","nbflip1"][simtypeno]
+narrowBand  = 3; # nbflip only: no. of cells around surface which contain particles
+combineBand = 2; # nbflip only: no. of cells around surface which are influenced by particles
+kernelType  = 1; # XflipY only: particle mapping kernel (1: d-linear, 2: smooth SPH kernel with support of 4^d grid points)
+if simtype in ["levelset", "flip0", "flip"]: narrowBand = combineBand = 0
+if simtype in ["levelset", "flip0"]: kernelType = 0
+
+# solver params
+dim = 2
+
+if scene == 0: res = 32; gs = vec3(res,res,res) # Waves
+if scene == 1: res = 64; gs = vec3(res,res,res) # BDam
+if dim==2: gs.z = 1
+s = Solver(name='main', gridSize = gs, dim=dim)
+s.print('Solver grid resolution is: %i x %i x %i' % (gs.x, gs.y, gs.z))
+
+# Print sim type info
+s.print("Sim Type: %s" % simtype)
+if simtype in [        "nbflip", "nbflipd","nbflip1"]: s.print("NB%i, CB%i" % (narrowBand, combineBand))
+if simtype in ["flip", "nbflip", "nbflipd","nbflip1"]: s.print(", kernelType %i" % kernelType)
+s.print("")
+
+# adaptive time stepping
+s.frameLength = 1.0   # length of one frame (in "world time")
+s.timestep    = 0.5
+s.timestepMin = 0.2   # time step range
+s.timestepMax = 1.0
+s.cfl         = 5.0   # maximal velocity per cell, 0 to use fixed timesteps
+
+gravity = (0,-0.003,0)
+
+minParticles = pow(2,dim)
+timings = Timings()
+
+# size of particles 
+radiusFactor = 1.0
+
+# prepare grids and particles
+flags    = s.create(FlagGrid)
+
+phiParts = s.create(LevelsetGrid)
+phi      = s.create(LevelsetGrid)
+phiMesh  = s.create(LevelsetGrid)
+ttt      = s.create(RealGrid)
+perCellCorr = s.create(RealGrid)
+pressure = s.create(RealGrid)
+phiBackup = s.create(RealGrid)
+
+vel      = s.create(MACGrid)
+velOld   = s.create(MACGrid)
+velParts = s.create(MACGrid)
+velDiff  = s.create(MACGrid)
+mapWeights = s.create(MACGrid)
+mapWeights2 = s.create(MACGrid)
+
+pp        = s.create(BasicParticleSystem) 
+pphi      = pp.create(PdataReal) 
+pVel      = pp.create(PdataVec3) 
+mesh      = s.create(Mesh)
+meshparts = s.create(Mesh)
+meshspheres = s.create(Mesh)
+
+# acceleration data for particle nbs
+pindex = s.create(ParticleIndexSystem) 
+gpi    = s.create(IntGrid)
+
+# geometry in world units (to be converted to grid space upon init)
+flags.initDomain(boundaryWidth=0)
+phi.initFromFlags(flags)
+
+phiObs = s.create(Box, p0=vec3(1,1,1), p1=gs-1).computeLevelset()
+phiObs.multConst(-1)
+
+if scene == 0: # Waves
+	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.31,1.0)) # basin
+	phi.join( fluidBasin.computeLevelset() )
+	fluidSphere = s.create(Sphere, center=gs*vec3(0.5,0.27,0.5), radius=gs.x*0.2) # basin
+	phi.join( fluidSphere.computeLevelset() )
+if scene == 1: # BDam
+	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1,0.1,1)) # basin
+	phi.join( fluidBasin.computeLevelset() )
+	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0.3), p1=gs*vec3(0.6,0.5,1)) # basin
+	phi.join( fluidBasin.computeLevelset() )
+	
+
+flags.updateFromLevelset(phi)
+targetVolume = calcFluidVolume(flags)
+
+
+if simtype in ["flip0", "flip", "nbflip", "nbflipd", "nbflip1"]:
+	sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.4 )
+
+if simtype in ["flip", "nbflip", "nbflipd", "nbflip1"]:
+	mapGridToPartsVec3(source=vel, parts=pp, target=pVel )
+
+if 1 and (GUI):
+	gui = Gui()
+	gui.show( dim==2 )
+	gui.pause()
+	  
+	# show all particles shaded by velocity
+	if(dim==2):
+		gui.nextPdata()
+		#gui.nextPartDisplay()
+		#gui.nextPartDisplay()
+
+outdir = '../sim/'+simname+'/'+simtype+'/'
+for subdir in ['mesh', 'meshparts', 'meshspheres']:
+	os.makedirs(outdir + subdir, exist_ok=True)
+
+
+#main loop
+lastframe = 0
+timestep = -1
+fstats = None
+while s.frame < [500,500][scene]:
+	timestep = timestep + 1
+	s.print('\n### Frame %i - Timestep %i ###\n' % (s.frame,timestep))
+	
+	maxVel = vel.getMaxValue()
+	if (s.cfl < 1000): s.adaptTimestep( maxVel )
+
+	# velocities are extrapolated at the end of each step
+	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=(scene in [0]) ) 
+	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1)
+	flags.updateFromLevelset(phi)
+	if simtype == "nbflip1":
+		advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=1)
+	else:
+		advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+
+	# create approximate surface level set, resample particles
+	gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
+	unionParticleLevelset( pp, pindex, flags, gpi, phiParts , radiusFactor )
+
+	if simtype in ["nbflip", "nbflipd", "nbflip1"]:
+		phi.addConst(1.); # shrink slightly
+		phi.join( phiParts );
+		extrapolateLsSimple(phi=phi, distance=narrowBand+2, inside=True, flags=flags, ignoreWalls=True)
+	elif simtype in ["flip0", "flip"]:
+		phi.copyFrom( phiParts );
+		extrapolateLsSimple(phi=phi, distance=4, inside=True, flags=flags, ignoreWalls=True)
+
+	if simtype in ["flip0", "flip", "nbflip", "nbflipd", "nbflip1"]:
+		extrapolateLsSimple(phi=phi, distance=3, flags=flags, ignoreWalls=True, copyIntoBnd=1)
+		flags.updateFromLevelset(phi)
+
+	# make sure we have velocities throught liquid region
+	if simtype in ["nbflip", "nbflip1"]:
+		mapPartsToMAC(vel=velParts, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=mapWeights, kernelType=kernelType );
+		mapWeights2.copyFrom(mapWeights)
+		extrapolateMACFromWeight( vel=velParts , distance=2, weight=mapWeights2 ) 
+		velDiff.copyFrom(vel); velDiff.multConst(vec3(-1)) 
+		combineGridVel(vel=velParts, weight=mapWeights , combineVel=vel, phi=phi, narrowBand=combineBand, thresh=0.0001)
+		velDiff.add(vel)
+		velOld.copyFrom(vel)
+	elif simtype in ["nbflipd"]:
+		mapPartsToMAC(vel=velParts, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=mapWeights, kernelType=kernelType );
+		mapWeights2.copyFrom(mapWeights)
+		extrapolateMACFromWeight( vel=velParts , distance=2, weight=mapWeights2 ) 
+		velDiff.copyFrom(vel); velDiff.multConst(vec3(-1)) 
+		combineGridVel(vel=velParts, weight=mapWeights , combineVel=vel, thresh=[1,1E-4][scene])
+		velDiff.add(vel)
+		velOld.copyFrom(vel)
+	elif simtype == "flip":
+		velDiff.copyFrom(vel); velDiff.multConst(vec3(-1)) 
+		mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=mapWeights, kernelType=kernelType  );
+		extrapolateMACFromWeight( vel=vel , distance=2, weight=mapWeights ) 
+		velDiff.add(vel)
+		
+	# forces & pressure solve
+	addGravity(flags=flags, vel=vel, gravity=gravity)
+	setWallBcs(flags=flags, vel=vel)
+	vol = calcFluidVolume(flags)
+	perCellCorr.setConst(0.05 * ( targetVolume-vol ) / vol)
+	solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi, perCellCorr=perCellCorr)
+	setWallBcs(flags=flags, vel=vel)
+
+	# make sure we have proper velocities for levelset advection
+	if simtype in ["flip", "nbflip", "nbflipd", "nbflip1"]:
+		extrapolateMACSimple( flags=flags, vel=vel, distance=(int(maxVel*1.25 + 2.)) )
+		#extrapolateMACFromWeight( vel=vel , distance=(int(maxVel*1.1 + 2.)), weight=tmpVec3 ) 
+	elif simtype in ["levelset", "flip0"]:
+		phiBackup.copyFrom(phi)
+		phi.reinitMarching(flags=flags, velTransport=vel, ignoreWalls=False);	
+		phi.copyFrom(phiBackup);
+		phi.reinitExact(flags=flags)
+
+	if simtype in ["flip", "nbflip", "nbflip1"]:
+		flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95 )
+	if simtype in ["nbflipd"]:
+		# Note: Using phi based flip factor either produces worse results, or is too dissipative because of PIC
+		#       Don't use it in sims for paper.
+		#updateParticleDistance(parts=pp, partPhi=pphi, phi=phi, t=1)
+		#flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95, partPhi=pphi, pphiPIC=-narrowBand, pphiFLIP=-1 )
+		flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.95)
+		
+	# set source grids for resampling, used in adjustNumber!
+	if simtype in ["flip", "nbflip", "nbflipd", "nbflip1"]:
+		pVel.setSource( vel, isMAC=True )
+	else:
+		pVel.setSource( 0, isMAC=False )
+
+	nrg = calcTotalEnergy(flags,vel,gravity)
+	kin = calcKineticEnergy(flags,vel)
+
+	if simtype in ["nbflip", "nbflipd", "nbflip1"]:
+		adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor , narrowBand=narrowBand ) 
+	elif simtype in ["flip0", "flip"]:
+		adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi, radiusFactor=radiusFactor ) 
+
+	if dim==3:
+		timings.disable()
+		phiMesh.copyFrom(phi)
+		phiMesh.difference(phiObs)
+		phiMesh.createMesh(mesh)
+		timings.enable()
+		
+	#timings.display()
+	#s.printMemInfo()
+	#s.print('%i particles, %i bytes each, %i MB total' % (pp.size(),(12+4+12),pp.size()*(12+4+12)/(1<<20)))
+	s.step()
+		
+	# optionally particle data , or screenshot, or stats
+	saveInterval = 1
+	if 0 and s.frame!=lastframe and (saveInterval==1 or s.frame%saveInterval==1):
+		timings.disable()
+		fileind = (s.frame-1) / saveInterval
+		mesh.save( outdir + 'mesh/fluidsurface_final_%04d.bobj.gz' % fileind )
+				
+		if simtype in ["nbflip", "nbflipd", "nbflip1"]: 
+			pp.createSphereMesh(meshspheres, radius=0.2, sphereQual=1, inc=10)
+			meshspheres.save( outdir + 'meshspheres/fluidsurface_preview_%04d.bobj.gz' % fileind )
+			pp.createSphereMesh(meshspheres, radius=0.2, sphereQual=1)
+			meshspheres.save( outdir + 'meshspheres/fluidsurface_final_%04d.bobj.gz' % fileind )
+		else:
+			pp.createSphereMesh(meshspheres, radius=0.2, sphereQual=1, phi=phiMesh, minPhi=-1.5, inc=10)
+			meshspheres.save( outdir + 'meshspheres/fluidsurface_preview_%04d.bobj.gz' % fileind )
+			pp.createSphereMesh(meshspheres, radius=0.2, sphereQual=1, phi=phiMesh, minPhi=-1.5)
+			meshspheres.save( outdir + 'meshspheres/fluidsurface_final_%04d.bobj.gz' % fileind )
+
+		#phiMesh.copyFrom(phiParts)
+		#phiMesh.difference(phiObs)
+		#phiMesh.createMesh(meshparts)
+		#meshparts.save( outdir + 'meshparts/fluidsurface_final_%04d.bobj.gz' % fileind )
+		timings.enable()
+
+	if 0 and GUI and s.frame!=lastframe:
+		gui.screenshot( '../vid/frames/%s_%04d.png' % (simtype,s.frame-1) )
+
+	if 0 and s.frame!=lastframe:
+		timings.disable()
+		if fstats == None: 
+			fstats = open(outdir + simtype + '_stats.txt', 'w')
+			fstats.write('timestep totalenergy kineticenergy volume\n')
+		fstats.write('%i %f %f %f\n' % (s.frame-1, nrg, kin, vol))
+		timings.enable()
+	
+	lastframe = s.frame
+		
+if fstats != None: fstats.close()
+timings.saveMean(outdir + 'meantimings.txt')
