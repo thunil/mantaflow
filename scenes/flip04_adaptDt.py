@@ -150,7 +150,7 @@ while s.frame < frames:
 
 	# optionally save particle data , or screenshot
 	#pp.save( 'flipParts_%04d.uni' % s.frame ); 
-	if 1 and (GUI) and (lastFrame!=s.frame) and (s.frame%2==0):
+	if 0 and (GUI) and (lastFrame!=s.frame) and (s.frame%2==0):
 		gui.screenshot( 'flip04_%04d.png' % s.frame );
 	lastFrame = s.frame;
 
