@@ -329,24 +329,6 @@ PYTHON() void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, 
 	}
 }
 
-/*
-NT_DEBUG
-
-whats this? cleanup...
-
-KERNEL() void knApplyDensAtObstacle(Grid<Real>& phiObs, Grid<Real>& dens) {
-	if( phiObs.get(i,j,k) > 0. && phiObs.get(i,j,k) < 1.0 ) {
-		dens(i,j,k) = 1.0;
-	}else if (phiObs.get(i,j,k) < 0.) {
-		dens(i,j,k) = 0.0;
-	}
-}
-PYTHON() void applyDensAtObstacle(Grid<Real>& phiObs, Grid<Real>& dens) {
-	knApplyDensAtObstacle(phiObs, dens);
-}
-*/
-
-// vorticity confinement
 
 //! Kernel: gradient norm operator
 KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {

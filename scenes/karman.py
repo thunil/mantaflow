@@ -1,6 +1,6 @@
 from manta import *
 
-secOrderBc = False
+secOrderBc = True
 dim        = 2
 #res        = 124
 res        = 64

@@ -61,7 +61,7 @@ elif setup==1:
 	phi.join( fluidDrop.computeLevelset() )
 
 flags.updateFromLevelset(phi)
-setOpenBound(flags,bWidth,'xX',FlagOutflow|FlagEmpty)
+#setOpenBound(flags,bWidth,'xX',FlagOutflow|FlagEmpty)
 sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.05 )
 
 if fluidVel!=0:
