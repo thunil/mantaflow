@@ -15,8 +15,8 @@
 #define _MANTA_H
 
 // Remove preprocessor keywords, so there won't infere with autocompletion etc.
-#define KERNEL
-#define PYTHON
+#define KERNEL(...) extern int i,j,k,idx;
+#define PYTHON(...)
 
 // Define plugin documentation group
 // all plugin functions and classes will automatically be added to this group
