@@ -212,6 +212,9 @@ PYTHON() class MACGrid : public Grid<Vec3> {
 public:
 	PYTHON() MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { 
 		mType = (GridType)(TypeMAC | TypeVec3); }
+
+    //! computes magnitude of vectors in each cell
+    PYTHON() void getMagnitude(Grid<Real>& mag);
 	
 	// specialized functions for interpolating MAC information
 	inline Vec3 getCentered(int i, int j, int k) const;

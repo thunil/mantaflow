@@ -170,6 +170,25 @@ PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, string openBound="", bool 
     convertDescToVec(openBound, lo, up);
     KnSetWallBcs(flags, vel, lo, up, admm, fractions, phi);
 } 
+
+PYTHON void setAirToZero(FlagGrid& flags, MACGrid& vel) {
+    FOR_IJK(flags)
+    {
+        if (!flags.isFluid(i,j,k))
+        {
+            if (i>0 && !flags.isFluid(i-1,j,k)) vel.get(i,j,k) = Real(0);
+            if (j>0 && !flags.isFluid(i,j-1,k)) vel.get(i,j,k) = Real(0);
+            if (k>0 && !flags.isFluid(i,j,k-1)) vel.get(i,j,k) = Real(0);
+        }
+        else
+        {
+            if (i>0 && flags.isObstacle(i-1,j,k)) vel.get(i,j,k) = Real(0);
+            if (j>0 && flags.isObstacle(i,j-1,k)) vel.get(i,j,k) = Real(0);
+            if (k>0 && flags.isObstacle(i,j,k-1)) vel.get(i,j,k) = Real(0);
+        }
+    }
+} 
+
 //! Kernel: gradient norm operator
 KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
 	Vec3 grad = 0.5 * Vec3(        grid(i+1,j,k)-grid(i-1,j,k), 

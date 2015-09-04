@@ -443,6 +443,14 @@ PYTHON Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL)
 //******************************************************************************
 // Specialization classes
 
+void MACGrid::getMagnitude(Grid<Real>& mag) {
+    mag.clear();
+	FOR_IJK_BND(*this,1) {        
+        Vec3 v = getCentered(i,j,k);
+        mag.get(i,j,k) = std::sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+    }
+}
+
 void FlagGrid::initDomain(int boundaryWidth) {
 	FOR_IDX(*this)
 		mData[idx] = TypeEmpty;

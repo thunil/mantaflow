@@ -13,13 +13,14 @@ simtypeno = 2
 if len(sys.argv)>2: simtypeno = int(sys.argv[2])
 
 # 0:
-scene = 1
+scene = 0
 if len(sys.argv)>3: scene = int(sys.argv[3])
 
 
 # Configuration 
-if scene == 0: simname = "waves_test"
+if scene == 0: simname = "veldiff_drop"
 if scene == 1: simname = "bdam_test"
+if scene == 2: simname = "veldiff_drops"
 simtype = ["levelset", "flip0", "flip", "nbflip","nbflipd","nbflip1"][simtypeno]
 narrowBand  = 3; # nbflip only: no. of cells around surface which contain particles
 combineBand = 2; # nbflip only: no. of cells around surface which are influenced by particles
@@ -30,8 +31,9 @@ if simtype in ["levelset", "flip0"]: kernelType = 0
 # solver params
 dim = 2
 
-if scene == 0: res = 32; gs = vec3(res,res,res) # Waves
+if scene == 0: res = 128; gs = vec3(res,res,res) # Waves
 if scene == 1: res = 64; gs = vec3(res,res,res) # BDam
+if scene == 2: res = 128; gs = vec3(res,res,res) # Drop
 if dim==2: gs.z = 1
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.print('Solver grid resolution is: %i x %i x %i' % (gs.x, gs.y, gs.z))
@@ -67,6 +69,8 @@ ttt      = s.create(RealGrid)
 perCellCorr = s.create(RealGrid)
 pressure = s.create(RealGrid)
 phiBackup = s.create(RealGrid)
+velDiffMag  = s.create(RealGrid)
+velMag  = s.create(RealGrid)
 
 vel      = s.create(MACGrid)
 velOld   = s.create(MACGrid)
@@ -93,16 +97,25 @@ phi.initFromFlags(flags)
 phiObs = s.create(Box, p0=vec3(1,1,1), p1=gs-1).computeLevelset()
 phiObs.multConst(-1)
 
-if scene == 0: # Waves
-	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.31,1.0)) # basin
+if scene == 0: # Drop
+	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.2,1.0)) # basin
 	phi.join( fluidBasin.computeLevelset() )
-	fluidSphere = s.create(Sphere, center=gs*vec3(0.5,0.27,0.5), radius=gs.x*0.2) # basin
+	fluidSphere = s.create(Sphere, center=gs*vec3(0.3,0.4,0.5), radius=gs.x*0.1) # basin
 	phi.join( fluidSphere.computeLevelset() )
-if scene == 1: # BDam
-	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1,0.1,1)) # basin
+if scene == 1: # ------------
+	0
+if scene == 2: # Drops
+	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.2,1.0)) # basin
 	phi.join( fluidBasin.computeLevelset() )
-	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0.3), p1=gs*vec3(0.6,0.5,1)) # basin
-	phi.join( fluidBasin.computeLevelset() )
+	fluidSphere = s.create(Sphere, center=gs*vec3(0.25,0.35,0.5), radius=gs.x*0.1) # basin
+	phi.join( fluidSphere.computeLevelset() )
+	fluidSphere = s.create(Sphere, center=gs*vec3(0.75,0.45,0.5), radius=gs.x*0.1) # basin
+	phi.join( fluidSphere.computeLevelset() )
+	fluidSphere = s.create(Sphere, center=gs*vec3(0,0.45,0.5), radius=gs.x*0.05) # basin
+	phi.join( fluidSphere.computeLevelset() )
+	fluidSphere = s.create(Sphere, center=gs*vec3(1,0.55,0.5), radius=gs.x*0.05) # basin
+	phi.join( fluidSphere.computeLevelset() )
+
 	
 
 flags.updateFromLevelset(phi)
@@ -126,16 +139,15 @@ if 1 and (GUI):
 		#gui.nextPartDisplay()
 		#gui.nextPartDisplay()
 
-outdir = '../sim/'+simname+'/'+simtype+'/'
-for subdir in ['mesh', 'meshparts', 'meshspheres']:
+outdir = '../sim/'+simname+'/'
+for subdir in ['velMag', 'velDiffMag', 'flags', 'phi']:
 	os.makedirs(outdir + subdir, exist_ok=True)
 
 
 #main loop
 lastframe = 0
 timestep = -1
-fstats = None
-while s.frame < [500,500][scene]:
+while s.frame < [500,500,500][scene]:
 	timestep = timestep + 1
 	s.print('\n### Frame %i - Timestep %i ###\n' % (s.frame,timestep))
 	
@@ -143,7 +155,7 @@ while s.frame < [500,500][scene]:
 	if (s.cfl < 1000): s.adaptTimestep( maxVel )
 
 	# velocities are extrapolated at the end of each step
-	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=(scene in [0]) ) 
+	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=(scene in [0,2]) ) 
 	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1)
 	flags.updateFromLevelset(phi)
 	if simtype == "nbflip1":
@@ -181,7 +193,7 @@ while s.frame < [500,500][scene]:
 		mapWeights2.copyFrom(mapWeights)
 		extrapolateMACFromWeight( vel=velParts , distance=2, weight=mapWeights2 ) 
 		velDiff.copyFrom(vel); velDiff.multConst(vec3(-1)) 
-		combineGridVel(vel=velParts, weight=mapWeights , combineVel=vel, thresh=[1,1E-4][scene])
+		combineGridVel(vel=velParts, weight=mapWeights , combineVel=vel, thresh=[1,1E-4,1][scene])
 		velDiff.add(vel)
 		velOld.copyFrom(vel)
 	elif simtype == "flip":
@@ -189,6 +201,8 @@ while s.frame < [500,500][scene]:
 		mapPartsToMAC(vel=vel, flags=flags, velOld=velOld, parts=pp, partVel=pVel, weight=mapWeights, kernelType=kernelType  );
 		extrapolateMACFromWeight( vel=vel , distance=2, weight=mapWeights ) 
 		velDiff.add(vel)
+		setAirToZero(flags, velDiff)
+		
 		
 	# forces & pressure solve
 	addGravity(flags=flags, vel=vel, gravity=gravity)
@@ -245,40 +259,17 @@ while s.frame < [500,500][scene]:
 		
 	# optionally particle data , or screenshot, or stats
 	saveInterval = 1
-	if 0 and s.frame!=lastframe and (saveInterval==1 or s.frame%saveInterval==1):
-		timings.disable()
+	if 1 and s.frame!=lastframe and (saveInterval==1 or s.frame%saveInterval==1):
 		fileind = (s.frame-1) / saveInterval
-		mesh.save( outdir + 'mesh/fluidsurface_final_%04d.bobj.gz' % fileind )
-				
-		if simtype in ["nbflip", "nbflipd", "nbflip1"]: 
-			pp.createSphereMesh(meshspheres, radius=0.2, sphereQual=1, inc=10)
-			meshspheres.save( outdir + 'meshspheres/fluidsurface_preview_%04d.bobj.gz' % fileind )
-			pp.createSphereMesh(meshspheres, radius=0.2, sphereQual=1)
-			meshspheres.save( outdir + 'meshspheres/fluidsurface_final_%04d.bobj.gz' % fileind )
-		else:
-			pp.createSphereMesh(meshspheres, radius=0.2, sphereQual=1, phi=phiMesh, minPhi=-1.5, inc=10)
-			meshspheres.save( outdir + 'meshspheres/fluidsurface_preview_%04d.bobj.gz' % fileind )
-			pp.createSphereMesh(meshspheres, radius=0.2, sphereQual=1, phi=phiMesh, minPhi=-1.5)
-			meshspheres.save( outdir + 'meshspheres/fluidsurface_final_%04d.bobj.gz' % fileind )
 
-		#phiMesh.copyFrom(phiParts)
-		#phiMesh.difference(phiObs)
-		#phiMesh.createMesh(meshparts)
-		#meshparts.save( outdir + 'meshparts/fluidsurface_final_%04d.bobj.gz' % fileind )
-		timings.enable()
+		vel.getMagnitude(velMag)
+		velDiff.getMagnitude(velDiffMag)
 
-	if 0 and GUI and s.frame!=lastframe:
-		gui.screenshot( '../vid/frames/%s_%04d.png' % (simtype,s.frame-1) )
+		#velMag.setConst(2.4)
+		velMag.save    (outdir + 'velMag/velMag%04d.raw' % fileind)
+		velDiffMag.save(outdir + 'velDiffMag/velDiffMag%04d.raw' % fileind)
+		flags.save     (outdir + 'flags/flags%04d.raw' % fileind)
+		phi.save       (outdir + 'phi/phi%04d.raw' % fileind)
 
-	if 0 and s.frame!=lastframe:
-		timings.disable()
-		if fstats == None: 
-			fstats = open(outdir + simtype + '_stats.txt', 'w')
-			fstats.write('timestep totalenergy kineticenergy volume\n')
-		fstats.write('%i %f %f %f\n' % (s.frame-1, nrg, kin, vol))
-		timings.enable()
 	
 	lastframe = s.frame
-		
-if fstats != None: fstats.close()
-timings.saveMean(outdir + 'meantimings.txt')
