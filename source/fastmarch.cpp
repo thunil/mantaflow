@@ -336,7 +336,7 @@ void knUnprojectNormalComp (FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Re
 // (note, less accurate than fast marching extrapolation!)
 // into obstacle is a special mode for second order obstable boundaries (extrapolating
 // only fluid velocities, not those at obstacles)
-PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4, 
+PYTHON() void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4, 
 		LevelsetGrid* phiObs=NULL , bool intoObs = false ) 
 {
 	Grid<int> tmp( flags.getParent() );
@@ -408,7 +408,7 @@ void knExtrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance
 // note - the weight grid values are destroyed! the function is necessary due to discrepancies
 // between velocity mapping on surface-levelset / fluid-flag creation. With this
 // extrapolation we make sure the fluid region is covered by initial velocities
-PYTHON void extrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance = 2) 
+PYTHON() void extrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance = 2) 
 {
 	const int dim = (vel.is3D() ? 3:2);
 
@@ -473,7 +473,7 @@ void knSetRemaining (Grid<S>& phi, Grid<int>& tmp, S distance )
 	phi(i,j,k) = distance;
 }
 
-PYTHON void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=false )
+PYTHON() void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=false )
 {
 	Grid<int> tmp( phi.getParent() );
 	tmp.clear();
@@ -513,7 +513,7 @@ PYTHON void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=
 }
 
 // extrapolate centered vec3 values from marked fluid cells
-PYTHON void extrapolateVec3Simple (Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4)
+PYTHON() void extrapolateVec3Simple (Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4)
 {
 	Grid<int> tmp( vel.getParent() );
 	tmp.clear();

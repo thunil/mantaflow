@@ -186,7 +186,7 @@ int CountEmptyCells(FlagGrid& flags) {
 // Main pressure solve
 
 //! Perform pressure projection of the velocity grid
-PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
+PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0,
                      MACGrid* fractions = 0,

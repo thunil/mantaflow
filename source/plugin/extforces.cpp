@@ -49,7 +49,7 @@ KERNEL(bnd=1) void KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
 }
 
 //! add gravity forces to all fluid cells
-PYTHON void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {    
+PYTHON() void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {    
 	Vec3 f = gravity * flags.getParent()->getDt() / flags.getDx();
 	KnAddForce(flags, vel, f);
 }
@@ -66,7 +66,7 @@ KERNEL(bnd=1) void KnAddBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& 
 }
 
 //! add Buoyancy force based on smoke density
-PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravity) {
+PYTHON() void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravity) {
 	Vec3 f = - gravity * flags.getParent()->getDt() / flags.getParent()->getDx();
 	KnAddBuoyancy(flags,density, vel, f);
 }
@@ -87,7 +87,7 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 }
 
 //! add empty and outflow flag to cells of open boundaries 
-PYTHON void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type = FlagGrid::TypeOutflow | FlagGrid::TypeEmpty){
+PYTHON() void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type = FlagGrid::TypeOutflow | FlagGrid::TypeEmpty){
 	if (openBound == "") return;
 	Vector3D<bool> lo, up;
 	convertDescToVec(openBound, lo, up);
@@ -116,7 +116,7 @@ PYTHON void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int
 }
 
 //! delete fluid and ensure empty flag in outflow cells, delete particles and density and set phi to 0.5
-PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* parts = 0, Grid<Real>* real = 0, Grid<int>* index = 0, ParticleIndexSystem* indexSys = 0){
+PYTHON() void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* parts = 0, Grid<Real>* real = 0, Grid<int>* index = 0, ParticleIndexSystem* indexSys = 0){
 	// check if phi and parts -> pindex and gpi already created -> access particles from cell index, avoid extra looping over particles
 	if (parts && (!index || !indexSys)){
 		if (phi) debMsg("resetOpenBound for phi and particles, but missing index and indexSys for enhanced particle access!",1);
@@ -146,14 +146,14 @@ PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSyst
 }
 
 //! enforce a constant inflow/outflow at the grid boundaries
-KERNEL void KnSetInflow(MACGrid& vel, int dim, int p0, const Vec3& val) {
+KERNEL() void KnSetInflow(MACGrid& vel, int dim, int p0, const Vec3& val) {
 	Vec3i p(i,j,k);
 	if (p[dim] == p0 || p[dim] == p0+1)
 		vel(i,j,k) = val;
 }
 
 //! enforce a constant inflow/outflow at the grid boundaries
-PYTHON void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
+PYTHON() void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 	for(size_t i=0; i<dir.size(); i++) {
 		if (dir[i] >= 'x' && dir[i] <= 'z') { 
 			int dim = dir[i]-'x';
@@ -193,7 +193,7 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 	}
 
 }
-KERNEL void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
+KERNEL() void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
 							MACGrid* fractions, Grid<Real>* phiObs, const int &boundaryWidth=0) 
 {
 
@@ -319,7 +319,7 @@ KERNEL void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
 
 //! set zero normal velocity boundary condition on walls
 // (optionally with second order accuracy using the fill fraction grid)
-PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real>* phiObs = 0, int boundaryWidth=0) {
+PYTHON() void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real>* phiObs = 0, int boundaryWidth=0) {
 	if(!fractions || !phiObs) {
 		KnSetWallBcs(flags, vel);
 	} else {
@@ -334,14 +334,14 @@ NT_DEBUG
 
 whats this? cleanup...
 
-KERNEL void knApplyDensAtObstacle(Grid<Real>& phiObs, Grid<Real>& dens) {
+KERNEL() void knApplyDensAtObstacle(Grid<Real>& phiObs, Grid<Real>& dens) {
 	if( phiObs.get(i,j,k) > 0. && phiObs.get(i,j,k) < 1.0 ) {
 		dens(i,j,k) = 1.0;
 	}else if (phiObs.get(i,j,k) < 0.) {
 		dens(i,j,k) = 0.0;
 	}
 }
-PYTHON void applyDensAtObstacle(Grid<Real>& phiObs, Grid<Real>& dens) {
+PYTHON() void applyDensAtObstacle(Grid<Real>& phiObs, Grid<Real>& dens) {
 	knApplyDensAtObstacle(phiObs, dens);
 }
 */
@@ -357,7 +357,7 @@ KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const 
 	force(i,j,k) = str * cross(grad, curl(i,j,k));
 }
 
-PYTHON void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
+PYTHON() void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
 	Grid<Vec3> velCenter(flags.getParent()), curl(flags.getParent()), force(flags.getParent());
 	Grid<Real> norm(flags.getParent());
 	

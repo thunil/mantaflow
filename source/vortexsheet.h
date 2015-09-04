@@ -56,9 +56,9 @@ struct TurbulenceChannel : public SimpleNodeChannel<TurbulenceInfo> {
 };
 
 //! Typed Mesh with a vorticity and 2 texcoord3 channels
-PYTHON class VortexSheetMesh : public Mesh {
+PYTHON() class VortexSheetMesh : public Mesh {
 public:
-	PYTHON VortexSheetMesh(FluidSolver* parent);
+	PYTHON() VortexSheetMesh(FluidSolver* parent);
 	virtual Mesh* clone();
 	
 	virtual MeshType getType() { return TypeVortexSheet; }    
@@ -71,9 +71,9 @@ public:
 	void resetTex1();
 	void resetTex2();
 	
-	PYTHON void calcCirculation();
-	PYTHON void calcVorticity();
-	PYTHON void reinitTexCoords();
+	PYTHON() void calcCirculation();
+	PYTHON() void calcVorticity();
+	PYTHON() void reinitTexCoords();
 	
 protected:
 	Vec3 mTexOffset;

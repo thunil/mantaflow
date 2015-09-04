@@ -38,7 +38,7 @@ bool Shape::isInside(const Vec3& pos) const {
 }
 
 //! Kernel: Apply a shape to a grid, setting value inside
-KERNEL template<class T> 
+KERNEL() template<class T> 
 void ApplyShapeToGrid (Grid<T>* grid, Shape* shape, T value, FlagGrid* respectFlags) {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;
@@ -47,7 +47,7 @@ void ApplyShapeToGrid (Grid<T>* grid, Shape* shape, T value, FlagGrid* respectFl
 }
 
 //! Kernel: Apply a shape to a grid, setting value inside (scaling by SDF value)
-KERNEL template<class T> 
+KERNEL() template<class T> 
 void ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi, Real sigma, Real shift, T value, FlagGrid* respectFlags) {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;
@@ -59,7 +59,7 @@ void ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi, Real sigma, Real sh
 }
 
 //! Kernel: Apply a shape to a MAC grid, setting value inside
-KERNEL void ApplyShapeToMACGrid (MACGrid* grid, Shape* shape, Vec3 value, FlagGrid* respectFlags) 
+KERNEL() void ApplyShapeToMACGrid (MACGrid* grid, Shape* shape, Vec3 value, FlagGrid* respectFlags) 
 {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;    
@@ -167,7 +167,7 @@ void Box::generateMesh(Mesh* mesh) {
 }
 
 //! Kernel: Analytic SDF for box shape
-KERNEL void BoxSDF(Grid<Real>& phi, const Vec3& p1, const Vec3& p2) {
+KERNEL() void BoxSDF(Grid<Real>& phi, const Vec3& p1, const Vec3& p2) {
 	const Vec3 p(i+0.5, j+0.5, k+0.5);
 	if (p.x <= p2.x && p.x >= p1.x && p.y <= p2.y && p.y >= p1.y && p.z <= p2.z && p.z >= p1.z) {
 		// inside: minimal surface distance
@@ -298,7 +298,7 @@ void Sphere::generateMesh(Mesh* mesh) {
 	mesh->rebuildLookup(oldtri,-1);
 }
 	
-KERNEL void SphereSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 scale) {
+KERNEL() void SphereSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 scale) {
 	phi(i,j,k) = norm((Vec3(i+0.5,j+0.5,k+0.5)-center)/scale)-radius;
 }
 void Sphere::generateLevelset(Grid<Real>& phi) {
@@ -356,7 +356,7 @@ void Cylinder::generateMesh(Mesh* mesh) {
 	mesh->rebuildLookup(oldtri,-1);
 }
 	
-KERNEL void 
+KERNEL() void 
 CylinderSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 zaxis, Real maxz) {
 	Vec3 p=Vec3(i+0.5,j+0.5,k+0.5)-center;
 	Real z = fabs(dot(p, zaxis));
@@ -431,7 +431,7 @@ bool Slope::isInside(const Vec3& pos) const {
 
 }
 
-KERNEL void SlopeSDF(const Vec3 &n, Grid<Real> &phiObs, const Real &fac, const Real &origin) {
+KERNEL() void SlopeSDF(const Vec3 &n, Grid<Real> &phiObs, const Real &fac, const Real &origin) {
 
 	phiObs(i,j,k) = (n.x*(double)i + n.y*(double)j + n.z*(double)k - origin) * fac;
 

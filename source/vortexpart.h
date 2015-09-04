@@ -29,12 +29,12 @@ struct VortexParticleData {
 };
 
 //! Vortex particles
-PYTHON class VortexParticleSystem : public ParticleSystem<VortexParticleData> {
+PYTHON() class VortexParticleSystem : public ParticleSystem<VortexParticleData> {
 public:
-	PYTHON VortexParticleSystem(FluidSolver* parent);
+	PYTHON() VortexParticleSystem(FluidSolver* parent);
   
-	PYTHON void advectSelf(Real scale=1.0, int integrationMode=IntRK4);
-	PYTHON void applyToMesh(Mesh& mesh, Real scale=1.0, int integrationMode=IntRK4);
+	PYTHON() void advectSelf(Real scale=1.0, int integrationMode=IntRK4);
+	PYTHON() void applyToMesh(Mesh& mesh, Real scale=1.0, int integrationMode=IntRK4);
 	
 	virtual ParticleBase* clone();
 };

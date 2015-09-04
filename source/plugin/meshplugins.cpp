@@ -33,7 +33,7 @@ namespace Manta {
 
 //! Mesh smoothing 
 /*! see Desbrun 99 "Implicit fairing of of irregular meshes using diffusion and curvature flow"*/
-PYTHON void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLength=1e-5) {
+PYTHON() void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLength=1e-5) {
 	const Real dt = mesh.getParent()->getDt();
 	const Real str = min(dt * strength, (Real)1);
 	mesh.rebuildQuickCheck(); 
@@ -105,7 +105,7 @@ PYTHON void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLength=
 
 //! Subdivide and edgecollapse to guarantee mesh with edgelengths between
 //! min/maxLength and an angle below minAngle
-PYTHON void subdivideMesh(Mesh& mesh, Real minAngle, Real minLength, Real maxLength, bool cutTubes = false) {
+PYTHON() void subdivideMesh(Mesh& mesh, Real minAngle, Real minLength, Real maxLength, bool cutTubes = false) {
 	// gather some statistics
 	int edgeSubdivs = 0, edgeCollsAngle = 0, edgeCollsLen = 0, edgeKill = 0;
 	mesh.rebuildQuickCheck(); 
@@ -560,7 +560,7 @@ PYTHON void subdivideMesh(Mesh& mesh, Real minAngle, Real minLength, Real maxLen
 	
 }
 	
-PYTHON void killSmallComponents(Mesh& mesh, int elements = 10) {
+PYTHON() void killSmallComponents(Mesh& mesh, int elements = 10) {
 	const int num = mesh.numTris();
 	vector<int> comp(num);
 	vector<int> numEl;

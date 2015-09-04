@@ -244,7 +244,7 @@ template<> Real Grid<int>::getMaxAbs() {
 
 // compute maximal diference of two cells in the grid
 // used for testing system
-PYTHON Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2 )
+PYTHON() Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2 )
 {
 	double maxVal = 0.;
 	FOR_IJK(g1) {
@@ -252,7 +252,7 @@ PYTHON Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2 )
 	}
 	return maxVal; 
 }
-PYTHON Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2 )
+PYTHON() Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2 )
 {
 	double maxVal = 0.;
 	FOR_IJK(g1) {
@@ -260,7 +260,7 @@ PYTHON Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2 )
 	}
 	return maxVal; 
 }
-PYTHON Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
+PYTHON() Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
 {
 	double maxVal = 0.;
 	FOR_IJK(g1) {
@@ -278,21 +278,21 @@ PYTHON Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
 
 // simple helper functions to copy (convert) mac to vec3 , and levelset to real grids
 // (are assumed to be the same for running the test cases - in general they're not!)
-PYTHON void copyMacToVec3 (MACGrid &source, Grid<Vec3>& target)
+PYTHON() void copyMacToVec3 (MACGrid &source, Grid<Vec3>& target)
 {
 	FOR_IJK(target) {
 		target(i,j,k) = source(i,j,k);
 	}
 }
-PYTHON void convertMacToVec3 (MACGrid &source , Grid<Vec3> &target) { debMsg("Deprecated - do not use convertMacToVec3... use copyMacToVec3 instead",1); copyMacToVec3(source,target); }
+PYTHON() void convertMacToVec3 (MACGrid &source , Grid<Vec3> &target) { debMsg("Deprecated - do not use convertMacToVec3... use copyMacToVec3 instead",1); copyMacToVec3(source,target); }
 
-PYTHON void copyLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
+PYTHON() void copyLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
 {
 	FOR_IJK(target) {
 		target(i,j,k) = source(i,j,k);
 	}
 }
-PYTHON void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertLevelsetToReal... use copyLevelsetToReal instead",1); copyLevelsetToReal(source,target); }
+PYTHON() void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertLevelsetToReal... use copyLevelsetToReal instead",1); copyLevelsetToReal(source,target); }
 
 template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 	std::ostringstream out;
@@ -312,7 +312,7 @@ template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 }
 
 //! helper to swap components of a grid (eg for data import)
-PYTHON void swapComponents(Grid<Vec3>& vel, int c1=0, int c2=1, int c3=2) {
+PYTHON() void swapComponents(Grid<Vec3>& vel, int c1=0, int c2=1, int c3=2) {
 	FOR_IJK(vel) {
 		Vec3 v = vel(i,j,k);
 		vel(i,j,k)[0] = v[c1];
@@ -324,7 +324,7 @@ PYTHON void swapComponents(Grid<Vec3>& vel, int c1=0, int c2=1, int c3=2) {
 // helper functions for UV grid data (stored grid coordinates as Vec3 values, and uv weight in entry zero)
 
 // make uv weight accesible in python
-PYTHON Real getUvWeight (Grid<Vec3> &uv) { return uv[0][0]; }
+PYTHON() Real getUvWeight (Grid<Vec3> &uv) { return uv[0][0]; }
 
 // note - right now the UV grids have 0 values at the border after advection... could be fixed with an extrapolation step...
 
@@ -339,13 +339,13 @@ static inline Real computeUvRamp(Real t) {
 	return uvWeight;
 }
 
-KERNEL void knResetUvGrid (Grid<Vec3>& target) { target(i,j,k) = Vec3((Real)i,(Real)j,(Real)k); }
+KERNEL() void knResetUvGrid (Grid<Vec3>& target) { target(i,j,k) = Vec3((Real)i,(Real)j,(Real)k); }
 
-PYTHON void resetUvGrid (Grid<Vec3> &target)
+PYTHON() void resetUvGrid (Grid<Vec3> &target)
 {
 	knResetUvGrid reset(target); // note, llvm complains about anonymous declaration here... ?
 }
-PYTHON void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv , bool info=false)
+PYTHON() void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv , bool info=false)
 {
 	const Real t   = uv.getParent()->getTime();
 	Real  timeOff  = resetTime/(Real)numUvs;
@@ -373,7 +373,7 @@ PYTHON void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv
 	if(info) debMsg("Uv grid "<<index<<"/"<<numUvs<< " t="<<currt<<" w="<<uvWeight<<", reset:"<<(int)(currt<lastt) , 1);
 }
 
-KERNEL template<class T> void knSetBoundary (Grid<T>& grid, T value, int w) { 
+KERNEL() template<class T> void knSetBoundary (Grid<T>& grid, T value, int w) { 
 	bool bnd = (i<=w || i>=grid.getSizeX()-1-w || j<=w || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w || k>=grid.getSizeZ()-1-w)));
 	if (bnd) 
 		grid(i,j,k) = value;
@@ -384,7 +384,7 @@ template<class T> void Grid<T>::setBound(T value, int boundaryWidth) {
 }
 
 
-KERNEL template<class T> void knSetBoundaryNeumann (Grid<T>& grid, int w) { 
+KERNEL() template<class T> void knSetBoundaryNeumann (Grid<T>& grid, int w) { 
 	bool set = false;
 	int  si=i, sj=j, sk=k;
 	if( i<=w) {
@@ -426,7 +426,7 @@ KERNEL(idx, reduce=+) returns(int numEmpty=0)
 int knCountFluidCells(FlagGrid& flags) { if (flags.isFluid(idx) ) numEmpty++; }
 
 //! averaged value for all cells (if flags are given, only for fluid cells)
-PYTHON Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL) 
+PYTHON() Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL) 
 {
 	double sum = knGridTotalSum(source, flags);
 
@@ -444,12 +444,12 @@ PYTHON Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL)
 KERNEL(idx) void knGetComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { 
 	target[idx] = source[idx][component]; 
 }
-PYTHON void getComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { knGetComponent(source, target, component); }
+PYTHON() void getComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { knGetComponent(source, target, component); }
 
 KERNEL(idx) void knSetComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { 
 	target[idx][component] = source[idx]; 
 }
-PYTHON void setComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { knSetComponent(source, target, component); }
+PYTHON() void setComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { knSetComponent(source, target, component); }
 
 //******************************************************************************
 // Specialization classes
@@ -641,9 +641,9 @@ template<> Real Grid<nbVector>::getMin() { return 0.; }
 template<> Real Grid<nbVector>::getMax() { return 0.; }
 template<> Real Grid<nbVector>::getMaxAbs()      { return 0.; }
 
-KERNEL void knNbvecTestKernel (Grid<nbVector>& target) { target(i,j,k).push_back(i+j+k); }
+KERNEL() void knNbvecTestKernel (Grid<nbVector>& target) { target(i,j,k).push_back(i+j+k); }
 
-PYTHON void nbvecTestOp (Grid<nbVector> &target) {
+PYTHON() void nbvecTestOp (Grid<nbVector> &target) {
 	knNbvecTestKernel nbvecTest(target); 
 }
 
