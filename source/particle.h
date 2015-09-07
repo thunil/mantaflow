@@ -405,7 +405,7 @@ std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const
 		u[idx] =_0; return;
 	} 
 	// special handling
-	/*NT_DEBUG if(deleteInObstacle || stopInObstacle) {
+	if(deleteInObstacle || stopInObstacle) {
 		if (!flags.isInBounds(p[idx].pos, 1) || flags.isObstacle(p[idx].pos) ) {
 			if(stopInObstacle)
 				u[idx] = _0; 
@@ -415,7 +415,7 @@ std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const
 				p[idx].flag |= ParticleBase::PDELETE; 
 			return;
 		} 
-	}*/
+	}
 	u[idx] = vel.getInterpolated(p[idx].pos) * dt;
 };
 
