@@ -635,7 +635,7 @@ template class Grid<Vec3>;
 // enable in grid.h
 
 #if ENABLE_GRID_TEST_DATATYPE==1
-// NT_DEBUG ?  template<> const char* Namify<nbVector>::S = "TestDatatype";
+// todo fix, missing:  template<> const char* Namify<nbVector>::S = "TestDatatype";
 
 template<> Real Grid<nbVector>::getMin() { return 0.; }
 template<> Real Grid<nbVector>::getMax() { return 0.; }

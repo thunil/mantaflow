@@ -40,7 +40,7 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 		if(vel.is3D()) set+=(*fractions)(i,j,k).z * vel(i,j,k).z - (*fractions)(i,j,k+1).z * vel(i,j,k+1).z;
 	}
 	
-	// per cell divergence correction
+	// per cell divergence correction (optional)
 	if(perCellCorr) 
 		set += perCellCorr->get(i,j,k);
 	

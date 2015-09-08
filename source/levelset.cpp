@@ -113,14 +113,13 @@ void LevelsetGrid::subtract(const LevelsetGrid& o) { KnSubtract(*this, o); }
 //  note - uses flags to identify border (could also be done based on ls values)
 void LevelsetGrid::reinitMarching(
 		FlagGrid& flags, Real maxTime, MACGrid* velTransport,
-		bool ignoreWalls, bool correctOuterLayer, int obstacleType
-		, Grid<Real>* normSpeed )
+		bool ignoreWalls, bool correctOuterLayer, int obstacleType )
 {
 	const int dim = (is3D() ? 3 : 2);
 	
 	Grid<int> fmFlags(mParent);
 	LevelsetGrid& phi = *this;
-	FastMarch<FmHeapEntryIn,  -1> marchIn (flags, fmFlags, phi, maxTime, NULL, NULL);
+	FastMarch<FmHeapEntryIn,  -1> marchIn (flags, fmFlags, phi, maxTime, NULL);
 	
 	// march inside
 	InitFmIn (flags, fmFlags, phi, ignoreWalls, obstacleType);
@@ -156,17 +155,8 @@ void LevelsetGrid::reinitMarching(
 
 	InitFmOut (flags, fmFlags, phi, ignoreWalls, obstacleType);
 	
-	FastMarch<FmHeapEntryOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport, normSpeed);
+	FastMarch<FmHeapEntryOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport );
 
-	// NT_DEBUG , finalize - still experimental
-	if(normSpeed && velTransport) {
-		FOR_IJK_BND(flags, 1) {
-			Vec3 vel  = velTransport->getCentered(i,j,k);
-			Vec3 norm = getGradient(phi, i,j,k);  normalize(norm);
-			(*normSpeed)(i,j,k) = dot( norm , vel );
-		}
-	}
-	
 	// by default, correctOuterLayer is on
 	if (correctOuterLayer) {
 		// normal version, inwards march is done, now add all outside values (0..2] to list

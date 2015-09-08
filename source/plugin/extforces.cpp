@@ -195,8 +195,7 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 }
 KERNEL() void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
 							MACGrid* fractions, Grid<Real>* phiObs, const int &boundaryWidth=0) 
-{
-
+{ 
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
 	Vec3& v = velTarget(i,j,k);
@@ -240,7 +239,6 @@ KERNEL() void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget
 
 		dphi.x = phi1-phi2;
 		dphi.y = phiObs->get(i,j,k)-phiObs->get(i,j-1,k);
-
 		if(phiObs->is3D()) {
 			tmp2 = (phiObs->get(i,j,k+1)+phiObs->get(i,j-1,k+1))*.5;
 			phi1 = (tmp1+tmp2)*.5;
@@ -248,7 +246,7 @@ KERNEL() void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget
 			phi2 = (tmp1+tmp2)*.5;
 			dphi.z = phi1-phi2;
 		}
-		
+
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACY(i,j,k);
 		velTarget(i,j,k).y = velMAC.y - dot(dphi, velMAC) * dphi.y; 
@@ -258,17 +256,18 @@ KERNEL() void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget
 		Vec3 dphi(0.,0.,0.); 
 		const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i,j,k-1))*.5;
 
-		Real tmp2 = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j,k-1))*.5;
+		Real tmp2;
+		tmp2      = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j,k-1))*.5;
 		Real phi1 = (tmp1+tmp2)*.5;
-		tmp2 = (phiObs->get(i-1,j,k)+phiObs->get(i-1,j,k-1))*.5;
+		tmp2      = (phiObs->get(i-1,j,k)+phiObs->get(i-1,j,k-1))*.5;
 		Real phi2 = (tmp1+tmp2)*.5; 
-		dphi.x = phi1-phi2;
+		dphi.x    = phi1-phi2;
 
-		tmp2 = (phiObs->get(i,j+1,k)+phiObs->get(i,j+1,k-1))*.5;
-		phi1 = (tmp1+tmp2)*.5;
-		tmp2 = (phiObs->get(i,j-1,k)+phiObs->get(i,j-1,k-1))*.5;
-		phi2 = (tmp1+tmp2)*.5; 
-		dphi.y = phi1-phi2;
+		tmp2      = (phiObs->get(i,j+1,k)+phiObs->get(i,j+1,k-1))*.5;
+		phi1      = (tmp1+tmp2)*.5;
+		tmp2      = (phiObs->get(i,j-1,k)+phiObs->get(i,j-1,k-1))*.5;
+		phi2      = (tmp1+tmp2)*.5; 
+		dphi.y    = phi1-phi2;
 
 		dphi.z = phiObs->get(i,j,k) - phiObs->get(i,j,k-1);
 
