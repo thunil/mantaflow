@@ -277,43 +277,6 @@ KERNEL() void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget
 	}
 	} // not at boundary
 
-	// domain sides
-	const int w = boundaryWidth;
-
-	// x-direction boundaries
-	if ( phiObs->get(i,j,k) <= 0.) 
-	{
-		if (i <= w ) {
-			v.x = 0.;
-			v.y = vel(w+1,j,k).y; if(vel.is3D()) {v.z = vel(w+1,j,k).z;}
-		}
-		if (i >= vel.getSizeX()-w) {
-			v.x = 0.;
-			v.y = vel(vel.getSizeX()-w-2,j,k).y; if(vel.is3D()) {v.z = vel(vel.getSizeX()-w-2,j,k).z;}
-		}
-
-		if (j <= w ) {
-			v.y = 0.;
-			v.x = vel(w+1,j,k).x; if(vel.is3D()) {v.z = vel(w+1,j,k).z;}
-		}
-		if (j >= vel.getSizeY()-w) {
-			v.y = 0.;
-			v.x = vel(i,vel.getSizeY()-w-2,k).x; if(vel.is3D()) {v.z = vel(i,vel.getSizeY()-w-2,k).z;}
-		}
-
-		if( vel.is3D() ) { 
-		if (k <= w ) {
-			v.z = 0.;
-			v.x = vel(w+1,j,k).x; v.y = vel(w+1,j,k).y;
-		}
-		if (k >= vel.getSizeZ()-w) {
-			v.z = 0.;
-			v.x = vel(i,j,vel.getSizeZ()-w-2).x; v.y = vel(i,j,vel.getSizeZ()-w-2).y; 
-		}
-		} // 3d
-
-	}
-
 }
 
 //! set zero normal velocity boundary condition on walls
