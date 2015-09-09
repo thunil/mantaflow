@@ -49,7 +49,7 @@ KERNEL(bnd=1) void KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
 }
 
 //! add gravity forces to all fluid cells
-PYTHON void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {    
+PYTHON() void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {    
 	Vec3 f = gravity * flags.getParent()->getDt() / flags.getDx();
 	KnAddForce(flags, vel, f);
 }
@@ -66,7 +66,7 @@ KERNEL(bnd=1) void KnAddBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& 
 }
 
 //! add Buoyancy force based on smoke density
-PYTHON void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravity) {
+PYTHON() void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravity) {
 	Vec3 f = - gravity * flags.getParent()->getDt() / flags.getParent()->getDx();
 	KnAddBuoyancy(flags,density, vel, f);
 }
@@ -87,7 +87,7 @@ inline void convertDescToVec(const string& desc, Vector3D<bool>& lo, Vector3D<bo
 }
 
 //! add empty and outflow flag to cells of open boundaries 
-PYTHON void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type = FlagGrid::TypeOutflow | FlagGrid::TypeEmpty){
+PYTHON() void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int type = FlagGrid::TypeOutflow | FlagGrid::TypeEmpty){
 	if (openBound == "") return;
 	Vector3D<bool> lo, up;
 	convertDescToVec(openBound, lo, up);
@@ -116,7 +116,7 @@ PYTHON void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", int
 }
 
 //! delete fluid and ensure empty flag in outflow cells, delete particles and density and set phi to 0.5
-PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* parts = 0, Grid<Real>* real = 0, Grid<int>* index = 0, ParticleIndexSystem* indexSys = 0){
+PYTHON() void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSystem* parts = 0, Grid<Real>* real = 0, Grid<int>* index = 0, ParticleIndexSystem* indexSys = 0){
 	// check if phi and parts -> pindex and gpi already created -> access particles from cell index, avoid extra looping over particles
 	if (parts && (!index || !indexSys)){
 		if (phi) debMsg("resetOpenBound for phi and particles, but missing index and indexSys for enhanced particle access!",1);
@@ -146,14 +146,14 @@ PYTHON void resetOutflow(FlagGrid& flags, Grid<Real>* phi = 0, BasicParticleSyst
 }
 
 //! enforce a constant inflow/outflow at the grid boundaries
-KERNEL void KnSetInflow(MACGrid& vel, int dim, int p0, const Vec3& val) {
+KERNEL() void KnSetInflow(MACGrid& vel, int dim, int p0, const Vec3& val) {
 	Vec3i p(i,j,k);
 	if (p[dim] == p0 || p[dim] == p0+1)
 		vel(i,j,k) = val;
 }
 
 //! enforce a constant inflow/outflow at the grid boundaries
-PYTHON void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
+PYTHON() void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 	for(size_t i=0; i<dir.size(); i++) {
 		if (dir[i] >= 'x' && dir[i] <= 'z') { 
 			int dim = dir[i]-'x';
@@ -193,10 +193,9 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 	}
 
 }
-KERNEL void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
+KERNEL() void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
 							MACGrid* fractions, Grid<Real>* phiObs, const int &boundaryWidth=0) 
-{
-
+{ 
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
 	Vec3& v = velTarget(i,j,k);
@@ -240,7 +239,6 @@ KERNEL void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
 
 		dphi.x = phi1-phi2;
 		dphi.y = phiObs->get(i,j,k)-phiObs->get(i,j-1,k);
-
 		if(phiObs->is3D()) {
 			tmp2 = (phiObs->get(i,j,k+1)+phiObs->get(i,j-1,k+1))*.5;
 			phi1 = (tmp1+tmp2)*.5;
@@ -248,7 +246,7 @@ KERNEL void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
 			phi2 = (tmp1+tmp2)*.5;
 			dphi.z = phi1-phi2;
 		}
-		
+
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACY(i,j,k);
 		velTarget(i,j,k).y = velMAC.y - dot(dphi, velMAC) * dphi.y; 
@@ -258,17 +256,18 @@ KERNEL void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
 		Vec3 dphi(0.,0.,0.); 
 		const Real tmp1 = (phiObs->get(i,j,k)+phiObs->get(i,j,k-1))*.5;
 
-		Real tmp2 = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j,k-1))*.5;
+		Real tmp2;
+		tmp2      = (phiObs->get(i+1,j,k)+phiObs->get(i+1,j,k-1))*.5;
 		Real phi1 = (tmp1+tmp2)*.5;
-		tmp2 = (phiObs->get(i-1,j,k)+phiObs->get(i-1,j,k-1))*.5;
+		tmp2      = (phiObs->get(i-1,j,k)+phiObs->get(i-1,j,k-1))*.5;
 		Real phi2 = (tmp1+tmp2)*.5; 
-		dphi.x = phi1-phi2;
+		dphi.x    = phi1-phi2;
 
-		tmp2 = (phiObs->get(i,j+1,k)+phiObs->get(i,j+1,k-1))*.5;
-		phi1 = (tmp1+tmp2)*.5;
-		tmp2 = (phiObs->get(i,j-1,k)+phiObs->get(i,j-1,k-1))*.5;
-		phi2 = (tmp1+tmp2)*.5; 
-		dphi.y = phi1-phi2;
+		tmp2      = (phiObs->get(i,j+1,k)+phiObs->get(i,j+1,k-1))*.5;
+		phi1      = (tmp1+tmp2)*.5;
+		tmp2      = (phiObs->get(i,j-1,k)+phiObs->get(i,j-1,k-1))*.5;
+		phi2      = (tmp1+tmp2)*.5; 
+		dphi.y    = phi1-phi2;
 
 		dphi.z = phiObs->get(i,j,k) - phiObs->get(i,j,k-1);
 
@@ -278,48 +277,11 @@ KERNEL void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
 	}
 	} // not at boundary
 
-	// domain sides
-	const int w = boundaryWidth;
-
-	// x-direction boundaries
-	if ( phiObs->get(i,j,k) <= 0.) 
-	{
-		if (i <= w ) {
-			v.x = 0.;
-			v.y = vel(w+1,j,k).y; if(vel.is3D()) {v.z = vel(w+1,j,k).z;}
-		}
-		if (i >= vel.getSizeX()-w) {
-			v.x = 0.;
-			v.y = vel(vel.getSizeX()-w-2,j,k).y; if(vel.is3D()) {v.z = vel(vel.getSizeX()-w-2,j,k).z;}
-		}
-
-		if (j <= w ) {
-			v.y = 0.;
-			v.x = vel(w+1,j,k).x; if(vel.is3D()) {v.z = vel(w+1,j,k).z;}
-		}
-		if (j >= vel.getSizeY()-w) {
-			v.y = 0.;
-			v.x = vel(i,vel.getSizeY()-w-2,k).x; if(vel.is3D()) {v.z = vel(i,vel.getSizeY()-w-2,k).z;}
-		}
-
-		if( vel.is3D() ) { 
-		if (k <= w ) {
-			v.z = 0.;
-			v.x = vel(w+1,j,k).x; v.y = vel(w+1,j,k).y;
-		}
-		if (k >= vel.getSizeZ()-w) {
-			v.z = 0.;
-			v.x = vel(i,j,vel.getSizeZ()-w-2).x; v.y = vel(i,j,vel.getSizeZ()-w-2).y; 
-		}
-		} // 3d
-
-	}
-
 }
 
 //! set zero normal velocity boundary condition on walls
 // (optionally with second order accuracy using the fill fraction grid)
-PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real>* phiObs = 0, int boundaryWidth=0) {
+PYTHON() void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real>* phiObs = 0, int boundaryWidth=0) {
 	if(!fractions || !phiObs) {
 		KnSetWallBcs(flags, vel);
 	} else {
@@ -329,24 +291,6 @@ PYTHON void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Gr
 	}
 }
 
-/*
-NT_DEBUG
-
-whats this? cleanup...
-
-KERNEL void knApplyDensAtObstacle(Grid<Real>& phiObs, Grid<Real>& dens) {
-	if( phiObs.get(i,j,k) > 0. && phiObs.get(i,j,k) < 1.0 ) {
-		dens(i,j,k) = 1.0;
-	}else if (phiObs.get(i,j,k) < 0.) {
-		dens(i,j,k) = 0.0;
-	}
-}
-PYTHON void applyDensAtObstacle(Grid<Real>& phiObs, Grid<Real>& dens) {
-	knApplyDensAtObstacle(phiObs, dens);
-}
-*/
-
-// vorticity confinement
 
 //! Kernel: gradient norm operator
 KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
@@ -357,7 +301,7 @@ KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const 
 	force(i,j,k) = str * cross(grad, curl(i,j,k));
 }
 
-PYTHON void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
+PYTHON() void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
 	Grid<Vec3> velCenter(flags.getParent()), curl(flags.getParent()), force(flags.getParent());
 	Grid<Real> norm(flags.getParent());
 	

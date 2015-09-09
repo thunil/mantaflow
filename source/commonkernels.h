@@ -115,7 +115,7 @@ KERNEL(bnd=1) void GetMAC(MACGrid& vel, const Grid<Vec3>& center) {
 };
 
 //! Fill in the domain boundary cells (i,j,k=0/size-1) from the neighboring cells
-KERNEL void FillInBoundary(Grid<Vec3>& grid, int g) {
+KERNEL() void FillInBoundary(Grid<Vec3>& grid, int g) {
 	if (i==0) grid(i,j,k) = grid(i+1,j,k);
 	if (j==0) grid(i,j,k) = grid(i,j+1,k);
 	if (k==0) grid(i,j,k) = grid(i,j,k+1);

@@ -2,7 +2,7 @@
 #
 # MantaFlow fluid solver framework
 #
-# Copyright 2011-2014 Tobias Pfaff, Nils Thuerey
+# Copyright 2011-2015 Tobias Pfaff, Nils Thuerey
 #
 # This program is free software, distributed under the terms of the
 # GNU General Public License (GPL)
@@ -27,8 +27,6 @@ SET(MANTAVERSION "0.6")
 IF(WIN32)
 	#set(WIN_QT_PATH "C:/Qt/5.3/msvc2013_64_opengl")
 	set(WIN_QT_PATH "C:/Qt/5.3/msvc2012_opengl") # qt5/win64
-	#set(WIN_QT_PATH "C:/Qt/Qt5.2.1/5.2.1/msvc2012_64_opengl") # qt5/win64
-	# set(WIN_QT_PATH "C:/Qt/4.8.6") # qt4/win32
 	set(WIN_PYTHON_PATH "C:/Python34")
 	set(WIN_PYTHON_VERSION "34")
 	set(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
@@ -37,7 +35,8 @@ ENDIF()
 
 IF(APPLE)
 	IF(NOT CMAKE_PREFIX_PATH)
-		SET(CMAKE_PREFIX_PATH "/usr/local/Cellar/qt5/5.2.1/") #  mac/homebrew
+		SET(CMAKE_PREFIX_PATH "/usr/local/Cellar/qt5/5.5/") #  mac/homebrew
+		#SET(CMAKE_PREFIX_PATH "/home/myname/qt/5.5/clang_64") #  other...
 	ENDIF()
 ENDIF()
 
@@ -55,9 +54,10 @@ OPTION(DEBUG "Enable debug compilation" OFF)
 OPTION(GUI "Compile with GUI (requires QT)" OFF)
 OPTION(TBB "Use multi-thread kernels using Intels TBB" OFF)
 OPTION(OPENMP "Use multi-thread kernels using OpenMP" OFF)
-OPTION(CUDA "Compile with CUDA plugins" OFF)
 OPTION(PREPDEBUG "Debug generated files" OFF) # This will beautify generated files, and link to them for compiler errors instead of the original sources
 OPTION(DOUBLEPRECISION "Compile with double floating point precision" OFF)
+# CUDA is deprecated, and not tested - enable at own risk...
+#OPTION(CUDA "Compile with CUDA plugins" OFF)
 
 #check consistency of MT options
 set(MT OFF)
@@ -92,9 +92,9 @@ MESSAGE(STATUS "Options - "
 	" -DTBB='${TBB}' "
 	" -DOPENMP='${OPENMP}' "
 	" -DPREPDEBUG='${PREPDEBUG}' "
-	" -DCUDA='${CUDA}' "
 	" -DDOUBLEPRECISION='${DOUBLEPRECISION}' "
 	)
+# " -DCUDA='${CUDA}' "
 MESSAGE(STATUS "Multithreading type : ${MT_TYPE}")
 MESSAGE(STATUS "")
 
@@ -381,9 +381,8 @@ endif()
 
 
 #******************************************************************************
-# generate repository info
+# generate repository info (note, names are for mercurial, but works for git)
 
-# TEST! NT_DEBUG
 set(HGINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/hginfo.h")
 MESSAGE(STATUS "Hg info target header ${HGINFO}")
 add_custom_command(OUTPUT ${HGINFO}
@@ -544,12 +543,12 @@ else()
 	target_link_libraries( ${EXECCMD} ${F_LIBS} )
 endif()
 
-if(WIN32)
-	# add no-build target to create nice MSVC folder
-	add_custom_target(SourceFiles SOURCES ${PP_SOURCES} ${PP_HEADERS} ${QT_SOURCES} ${QT_HEADERS} ${NOPP_HEADERS} ${NOPP_SOURCES})
-	source_group(Headers FILES ${PP_HEADERS} ${NOPP_HEADERS} ${QT_HEADERS})
-	source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES} ${QT_SOURCES})
-endif()
+# old - add no-build target to create nice MSVC folder
+#if(WIN32)
+#	add_custom_target(SourceFiles SOURCES ${PP_SOURCES} ${PP_HEADERS} ${QT_SOURCES} ${QT_HEADERS} ${NOPP_HEADERS} ${NOPP_SOURCES})
+#	source_group(Headers FILES ${PP_HEADERS} ${NOPP_HEADERS} ${QT_HEADERS})
+#	source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES} ${QT_SOURCES})
+#endif()
 
 # debug
 MESSAGE(STATUS "DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")

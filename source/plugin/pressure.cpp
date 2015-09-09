@@ -40,7 +40,7 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 		if(vel.is3D()) set+=(*fractions)(i,j,k).z * vel(i,j,k).z - (*fractions)(i,j,k+1).z * vel(i,j,k+1).z;
 	}
 	
-	// per cell divergence correction
+	// per cell divergence correction (optional)
 	if(perCellCorr) 
 		set += perCellCorr->get(i,j,k);
 	
@@ -186,7 +186,7 @@ int CountEmptyCells(FlagGrid& flags) {
 // Main pressure solve
 
 //! Perform pressure projection of the velocity grid
-PYTHON void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
+PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
                      Grid<Real>* phi = 0, 
                      Grid<Real>* perCellCorr = 0,
                      MACGrid* fractions = 0,

@@ -25,7 +25,7 @@ namespace Manta {
 PYTHON(name=NoiseField) 
 class WaveletNoiseField : public PbClass {
 	public:     
-		PYTHON WaveletNoiseField( FluidSolver* parent, int fixedSeed=-1 , int loadFromFile=false );
+		PYTHON() WaveletNoiseField( FluidSolver* parent, int fixedSeed=-1 , int loadFromFile=false );
 		~WaveletNoiseField() {
 			if(mNoiseTile) { delete mNoiseTile; mNoiseTile=NULL; }
 		};

@@ -62,7 +62,7 @@ void MacCormackCorrect(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd
 }
 
 //! Kernel: Correct based on forward and backward SL steps (for both centered & mac grids)
-KERNEL template<class T> 
+KERNEL() template<class T> 
 void MacCormackCorrectMAC(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd,  Grid<T>& bwd, 
 					   Real strength, bool isLevelSet, bool isMAC=false )
 {
@@ -276,7 +276,7 @@ Vec3 getBulkVel(FlagGrid& flags, MACGrid& vel, int i, int j, int k){
 }
 
 //! extrapolate normal velocity components into outflow cell
-KERNEL void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid& velDst, MACGrid& velPrev, Real timeStep, int depth){
+KERNEL() void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid& velDst, MACGrid& velPrev, Real timeStep, int depth){
 	if (flags.isOutflow(i,j,k)){
 		Vec3 bulkVel = getBulkVel(flags,vel,i,j,k);
 		bool done=false;
@@ -311,7 +311,7 @@ KERNEL void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid& v
 }
 
 //! copy extrapolated velocity components
-KERNEL void copyChangedVels(FlagGrid& flags, MACGrid& velDst, MACGrid& vel){ if (flags.isOutflow(i,j,k)) vel(i, j, k) = velDst(i, j, k); }
+KERNEL() void copyChangedVels(FlagGrid& flags, MACGrid& velDst, MACGrid& vel){ if (flags.isOutflow(i,j,k)) vel(i, j, k) = velDst(i, j, k); }
 
 //! extrapolate normal velocity components into open boundary cells (marked as outflow cells)
 void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double timeStep, int depth=2) {
@@ -323,12 +323,12 @@ void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double time
 // advection helpers
 
 //! prevent parts of the surface getting "stuck" in obstacle regions
-KERNEL void knResetPhiInObs (FlagGrid& flags, Grid<Real>& sdf) {
+KERNEL() void knResetPhiInObs (FlagGrid& flags, Grid<Real>& sdf) {
 	if( flags.isObstacle(i,j,k) && (sdf(i,j,k)<0.) ) {
 		sdf(i,j,k) = 0.1;
 	}
 }
-PYTHON void resetPhiInObs (FlagGrid& flags, Grid<Real>& sdf) { knResetPhiInObs(flags, sdf); }
+PYTHON() void resetPhiInObs (FlagGrid& flags, Grid<Real>& sdf) { knResetPhiInObs(flags, sdf); }
 
 // advection main calls
 
@@ -366,7 +366,7 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 }
 
 //! Perform semi-lagrangian advection of target Real- or Vec3 grid
-PYTHON void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid,
+PYTHON() void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid,
 						   int order = 1, Real strength = 1.0, int orderSpace = 1, bool openBounds = false, int depth = 2)
 {    
 	assertMsg(order==1 || order==2, "AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");

@@ -38,7 +38,7 @@ void knCalcSecDeriv2d(const Grid<Real>& v, Grid<Real>& ret) {
 };
 
 
-PYTHON void calcSecDeriv2d(const Grid<Real>& v, Grid<Real>& curv) {
+PYTHON() void calcSecDeriv2d(const Grid<Real>& v, Grid<Real>& curv) {
 	knCalcSecDeriv2d(v,curv);
 }
 
@@ -48,12 +48,12 @@ PYTHON void calcSecDeriv2d(const Grid<Real>& v, Grid<Real>& curv) {
 KERNEL(bnd=1, reduce=+) returns(double sum=0)
 void knTotalSum(Grid<Real>& h) { sum += h(i,j,k); }
 
-PYTHON Real totalSum(Grid<Real>& height) {
+PYTHON() Real totalSum(Grid<Real>& height) {
 	knTotalSum ts(height);
 	return ts.sum;
 }
 
-PYTHON void normalizeSumTo(Grid<Real>& height, Real target) {
+PYTHON() void normalizeSumTo(Grid<Real>& height, Real target) {
 	knTotalSum ts(height);
 	Real factor = target / ts.sum;
 	height.multConst(factor);
@@ -84,7 +84,7 @@ void MakeRhsWE(FlagGrid& flags, Grid<Real>& rhs, Grid<Real>& ut, Grid<Real>& utm
 
 
 //! do a CG solve (note, out grid only there for debugging... could be removed)
-PYTHON void cgSolveWE(FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<Real>& out,
+PYTHON() void cgSolveWE(FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<Real>& out,
 						bool crankNic     = false,
 						Real cSqr         = 0.25,
 						Real cgMaxIterFac = 1.5,

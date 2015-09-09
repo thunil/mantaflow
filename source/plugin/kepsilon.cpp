@@ -83,7 +83,7 @@ void KnComputeProduction(const MACGrid& vel, const Grid<Vec3>& velCenter, const 
 }
 	
 //! Compute k-epsilon production term P = 2*nu_T*sum_ij(Sij^2) and the turbulent viscosity nu_T=C_mu*k^2/eps
-PYTHON void KEpsilonComputeProduction(MACGrid& vel, Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod, Grid<Real>& nuT, Grid<Real>* strain=0, Real pscale = 1.0f) 
+PYTHON() void KEpsilonComputeProduction(MACGrid& vel, Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod, Grid<Real>& nuT, Grid<Real>* strain=0, Real pscale = 1.0f) 
 {
 	// get centered velocity grid
 	Grid<Vec3> vcenter(k.getParent());
@@ -114,7 +114,7 @@ void KnAddTurbulenceSource(Grid<Real>& kgrid, Grid<Real>& egrid, const Grid<Real
 
 
 //! Integrate source terms of k-epsilon equation
-PYTHON void KEpsilonSources(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod) {
+PYTHON() void KEpsilonSources(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod) {
 	Real dt = k.getParent()->getDt();
 		
 	KnAddTurbulenceSource(k, eps, prod, dt);
@@ -126,7 +126,7 @@ PYTHON void KEpsilonSources(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& prod) {
 }
 
 //! Initialize the domain or boundary conditions
-PYTHON void KEpsilonBcs(FlagGrid& flags, Grid<Real>& k, Grid<Real>& eps, Real intensity, Real nu, bool fillArea) {
+PYTHON() void KEpsilonBcs(FlagGrid& flags, Grid<Real>& k, Grid<Real>& eps, Real intensity, Real nu, bool fillArea) {
 	// compute limits
 	const Real vk = 1.5*square(keU0)*square(intensity);
 	const Real ve = keCmu*square(vk) / nu;
@@ -154,7 +154,7 @@ void ApplyGradDiff(const Grid<Real>& grid, Grid<Real>& res, const Grid<Real>& nu
 }
 
 //! Compute k-epsilon turbulent viscosity
-PYTHON void KEpsilonGradientDiffusion(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& nuT, Real sigmaU=4.0, MACGrid* vel=0) {
+PYTHON() void KEpsilonGradientDiffusion(Grid<Real>& k, Grid<Real>& eps, Grid<Real>& nuT, Real sigmaU=4.0, MACGrid* vel=0) {
 	Real dt = k.getParent()->getDt();
 	Grid<Real> res(k.getParent());
 	

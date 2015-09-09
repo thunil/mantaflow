@@ -124,6 +124,7 @@ while s.frame < frames:
 	gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )
 	unionParticleLevelset( pp, pindex, flags, gpi, phi , radiusFactor ) 
 	extrapolateLsSimple(phi=phi, distance=4, inside=True); 
+	# note - outside levelset doesnt matter...
 
 	# forces & pressure solve
 	addGravity(flags=flags, vel=vel, gravity=(0,-0.003,0))
@@ -150,7 +151,7 @@ while s.frame < frames:
 
 	# optionally save particle data , or screenshot
 	#pp.save( 'flipParts_%04d.uni' % s.frame ); 
-	if 1 and (GUI) and (lastFrame!=s.frame) and (s.frame%2==0):
+	if 0 and (GUI) and (lastFrame!=s.frame) and (s.frame%2==0):
 		gui.screenshot( 'flip04_%04d.png' % s.frame );
 	lastFrame = s.frame;
 

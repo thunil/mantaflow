@@ -1,6 +1,6 @@
 from manta import *
 
-secOrderBc = False
+secOrderBc = True
 dim        = 2
 #res        = 124
 res        = 64
@@ -12,6 +12,7 @@ s.timestep = 1.
 flags     = s.create(FlagGrid)
 density   = s.create(RealGrid)
 vel       = s.create(MACGrid)
+density   = s.create(RealGrid)
 pressure  = s.create(RealGrid)
 fractions = s.create(MACGrid)
 phiWalls  = s.create(LevelsetGrid)
@@ -60,9 +61,7 @@ if (GUI):
 #main loop
 for t in range(25000):
 
-	#applyDensAtObstacle(phiObs=phiObs, dens=density)
-	#densityInflow(flags=flags, density=density, shape=densInflow, scale=1, sigma=0.5)
-	densInflow.applyToGrid( grid=density, value=1. )
+	densInflow.applyToGrid( grid=density, value=2. )
 
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2, orderSpace=1)  
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2, strength=1.0)

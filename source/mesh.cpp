@@ -658,7 +658,7 @@ static inline int _cIndex(const Vec3& pos, const Vec3i& s) {
 }
 
 //! Kernel: Apply a shape to a grid, setting value inside
-KERNEL template<class T> 
+KERNEL() template<class T> 
 void ApplyMeshToGrid (Grid<T>* grid, Grid<Real> sdf, T value, FlagGrid* respectFlags) {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;

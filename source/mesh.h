@@ -121,9 +121,9 @@ struct OneRing {
 //! Triangle mesh class
 /*! note: this is only a temporary solution, details are bound to change
           long term goal is integration with Split&Merge code by Wojtan et al.*/
-PYTHON class Mesh : public PbClass {
+PYTHON() class Mesh : public PbClass {
 public:
-    PYTHON Mesh(FluidSolver* parent);
+    PYTHON() Mesh(FluidSolver* parent);
     virtual ~Mesh();
     virtual Mesh* clone();
     
@@ -138,16 +138,16 @@ public:
     void computeVertexNormals();
     
     // plugins
-    PYTHON void load (std::string name, bool append = false);
-    PYTHON void fromShape (Shape& shape, bool append = false);
-    PYTHON void save (std::string name);
-    PYTHON void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
-    PYTHON void scale(Vec3 s);
-    PYTHON void offset(Vec3 o);
+    PYTHON() void load (std::string name, bool append = false);
+    PYTHON() void fromShape (Shape& shape, bool append = false);
+    PYTHON() void save (std::string name);
+    PYTHON() void advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode);
+    PYTHON() void scale(Vec3 s);
+    PYTHON() void offset(Vec3 o);
 
-	PYTHON void computeLevelset(LevelsetGrid& levelset, Real sigma, Real cutoff=-1.);
+	PYTHON() void computeLevelset(LevelsetGrid& levelset, Real sigma, Real cutoff=-1.);
 	//! map mesh to grid with sdf
-	PYTHON void applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags=0, Real cutoff=-1.);
+	PYTHON() void applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags=0, Real cutoff=-1.);
     
     // ops
     Mesh& operator=(const Mesh& o);

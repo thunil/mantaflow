@@ -6,9 +6,8 @@ from manta import *
 # solver params
 secOrderBc = True
 dim    = 3
-res    = 124
 res    = 64
-#res    = 20
+#res    = 124
 gs     = vec3(res,res,res)
 if (dim==2):
 	gs.z=1
@@ -137,6 +136,6 @@ for t in range(2500):
 	#pp.save( 'flipParts_%04d.uni' % t );
 
 	if 0 and (GUI):
-		gui.screenshot( 'wbflip0x_%04d.png' % t );
+		gui.screenshot( 'flip06_%04d.png' % t );
 
 
