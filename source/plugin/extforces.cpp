@@ -101,14 +101,13 @@ PYTHON() void setOpenBound(FlagGrid& flags, int bWidth, string openBound = "", i
 		bool innerJ = j>bWidth && j<flags.getSizeY() - bWidth - 1; 
 
 		// when setting boundaries to open: don't set shared part of wall to empty if neighboring wall is not open
-		if (flags.is2D() && (loX||upX||loY||upY)){
+		if ( (!flags.is3D()) && (loX||upX||loY||upY)){
 			if ((loX || upX || innerI) && (loY || upY || innerJ) && flags.isObstacle(i, j, k)) flags(i, j, k) = type;
-		}
-		else{
+		} else {
 			bool loZ = lo.z && k <= bWidth; // a cell which belongs to the lower z open bound
 			bool upZ = up.z && k >= flags.getSizeZ() - bWidth - 1; // a cell which belongs to the upper z open bound
 			bool innerK = k>bWidth && k<flags.getSizeZ() - bWidth - 1; // a cell which does not belong to the lower or upper z bound
-			if (loX || upX || loY || upY || loZ || upZ){
+			if (loX || upX || loY || upY || loZ || upZ) {
 				if ((loX || upX || innerI) && (loY || upY || innerJ) && (loZ || upZ || innerK) && flags.isObstacle(i, j, k)) flags(i, j, k) = type;
 			}
 		}
@@ -169,7 +168,7 @@ PYTHON() void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 // set obstacle boundary conditions
 
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
-KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
+KERNEL() void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
@@ -180,8 +179,10 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 	if (i>0 && curObs && flags.isFluid(i-1,j,k))				 vel(i,j,k).x = 0;
 	if (j>0 && flags.isObstacle(i,j-1,k))						 vel(i,j,k).y = 0;
 	if (j>0 && curObs && flags.isFluid(i,j-1,k))				 vel(i,j,k).y = 0;
-	if (vel.is2D() || (k>0 && flags.isObstacle(i,j,k-1)))		 vel(i,j,k).z = 0;
-	if (vel.is2D() || (k>0 && curObs && flags.isFluid(i,j,k-1))) vel(i,j,k).z = 0;
+
+	if(!vel.is3D()) {                            				vel(i,j,k).z = 0; } else {
+	if (k>0 && flags.isObstacle(i,j,k-1))		 				vel(i,j,k).z = 0;
+	if (k>0 && curObs && flags.isFluid(i,j,k-1)) 				vel(i,j,k).z = 0; }
 	
 	if (curFluid) {
 		if ((i>0 && flags.isStick(i-1,j,k)) || (i<flags.getSizeX()-1 && flags.isStick(i+1,j,k)))
@@ -191,8 +192,8 @@ KERNEL (bnd=1) void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 		if (vel.is3D() && ((k>0 && flags.isStick(i,j,k-1)) || (k<flags.getSizeZ()-1 && flags.isStick(i,j,k+1))))
 			vel(i,j,k).x = vel(i,j,k).y = 0;
 	}
-
 }
+
 KERNEL() void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
 							MACGrid* fractions, Grid<Real>* phiObs, const int &boundaryWidth=0) 
 { 
