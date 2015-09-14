@@ -25,7 +25,11 @@ def dataDirectory( file ):
 	basedir  = os.path.dirname (file)
 	if len(basedir)==0:
 		basedir = "."
-	return basedir +"/"+ "../testdata"
+	# different data sets for single/double
+	dataDir = "testdata"
+	if getFloatSetting()==2:
+		dataDir = "testdataDouble"
+	return basedir +"/"+ "../" + dataDir
 
 
 def getGenRefFileSetting( ):
@@ -50,6 +54,15 @@ def getVisualSetting( ):
 	if(ret>0):
 		return ret
 	return 0
+
+
+# visual mode on? returns multiplier
+def getFloatSetting( ):
+	ret = int(os.getenv('MANTA_FPACCURACY', 0)) 
+	if(ret==2): # check for double prec compile
+		return 2 
+	# default is single precision
+	return 1
 
 
 

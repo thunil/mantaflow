@@ -381,7 +381,7 @@ endif()
 
 
 #******************************************************************************
-# generate repository info (note, names are for mercurial, but works for git)
+# generate repository info (note, names are for hg/mercurial, but works for git)
 
 set(HGINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/hginfo.h")
 MESSAGE(STATUS "Hg info target header ${HGINFO}")
