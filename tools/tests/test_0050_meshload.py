@@ -41,5 +41,5 @@ mesh.computeLevelset(phi, 2., -1.);
 
 s.step()
 	
-doTestGrid( sys.argv[0], "phi" , s, phi  , threshold=1e-08 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "phi" , s, phi  , threshold=1e-05 , thresholdStrict=1e-14  )
 

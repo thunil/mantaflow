@@ -16,7 +16,7 @@ upres = 3
 res = 50
 
 # small
-smgs = vec3(res/upres,res/upres,res/upres)
+smgs = vec3( int(res/upres), int(res/upres), int(res/upres) )
 if (dim==2): smgs.z = 1  # 2D
 smSolv = Solver(name='smallSolver', gridSize = smgs, dim=dim)
 sm_flags    = smSolv.create(FlagGrid)

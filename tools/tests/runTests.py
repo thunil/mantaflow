@@ -171,7 +171,7 @@ for file in files:
 		print("Full output: " + result);
 		print(" ");
 
-	if (len(fails)>0): exit(1) # NT_DEBUG , stop after first err
+	#if (len(fails)>0): exit(1) # NT_DEBUG , stop after first err
 
 	# store benchmarking results (if theres any output) , and generate plot
 	timefile = "%s/runtimes/%s_v%d" % (basedir, os.path.basename(file), getVisualSetting()) 
