@@ -45,7 +45,6 @@ else:
  
 
 # debugging, print outputs from all manta calls
-# NT_DEBUG
 printAllOutpus = 1
 filePrefix = "test_"
 
@@ -172,6 +171,8 @@ for file in files:
 		print("Full output: " + result);
 		print(" ");
 
+	if (len(fails)>0): exit(1) # NT_DEBUG , stop after first err
+
 	# store benchmarking results (if theres any output) , and generate plot
 	timefile = "%s/runtimes/%s_v%d" % (basedir, os.path.basename(file), getVisualSetting()) 
 	if getVisualSetting() and ( os.path.isfile( "%s_0001.ppm"%(file) ) or os.path.isfile(timefile+".time") ):
@@ -206,8 +207,6 @@ for file in files:
 		log_file = open(logfilename, "w");
 		log_file.write(result); log_file.close();
 
-	# NT_DEBUG exit
-	exit(1)
 
 if getGenRefFileSetting():
 	print("Test data generated");

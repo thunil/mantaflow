@@ -69,6 +69,6 @@ for t in range(frames):
 		projectPpmFull( density, '%s_%04d.ppm' % (sys.argv[0],t/getVisualSetting()) , 0, 4.0 );
 
 # check final state (note - threshold are pretty large)
-doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.001 , thresholdStrict=1e-08 )
-doTestGrid( sys.argv[0],"vel"  , s, vel     , threshold=0.005 , thresholdStrict=1e-08 )
+doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.001 , thresholdStrict=1e-10 )
+doTestGrid( sys.argv[0],"vel"  , s, vel     , threshold=0.005 , thresholdStrict=1e-10 )
 

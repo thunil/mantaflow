@@ -109,7 +109,7 @@ for t in range(frames):
 		projectPpmFull( k, '%s_%04d.ppm' % (sys.argv[0],t/getVisualSetting()) , 0, 20.0 );
    
 # check final state
-doTestGrid( sys.argv[0],"k"    , s, k    , threshold=0.00001 , thresholdStrict=1e-08 )
-doTestGrid( sys.argv[0],"eps"  , s, eps  , threshold=0.00001 , thresholdStrict=1e-08 )
-doTestGrid( sys.argv[0],"vel"  , s, vel  , threshold=0.0001  , thresholdStrict=1e-08 )
+doTestGrid( sys.argv[0],"k"    , s, k    , threshold=0.00001 , thresholdStrict=1e-10 )
+doTestGrid( sys.argv[0],"eps"  , s, eps  , threshold=0.00001 , thresholdStrict=1e-10 )
+doTestGrid( sys.argv[0],"vel"  , s, vel  , threshold=0.0001  , thresholdStrict=1e-10 )
 

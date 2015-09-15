@@ -9,14 +9,16 @@ from helperGeneric import *
 
 def checkResult( name, result, resultRel , thresh, threshStrict, invertResult=False ):
 	curr_thresh = thresh
-	if(getStrictSetting()==1):
+
+	# enable strict thresholds for double prec tests
+	if(getFloatSetting()==2):
 		curr_thresh = threshStrict
 	print ("Checking '%s', result=%f , thresh=%f" % ( name , result , curr_thresh) )
 
 	if   ( ( result > 0.) and (result < 1e-04) ):
-		print ("Debug, small difference: %f (output scaled by 1e5)" % ( result * 1e05 ) ) # debugging...
+		print ("Note: small difference: %f (output scaled by 1e5)" % ( result * 1e05 ) ) # debugging...
 	elif ( ( result > 0.) and (result < 1e-08) ):
-		print ("Debug, small difference: %f (output scaled by 1e9)" % ( result * 1e09 ) ) # debugging...
+		print ("Note: small difference: %f (output scaled by 1e9)" % ( result * 1e09 ) ) # debugging...
 	#elif ( result == 0.0):
 		#print ("Result is really zero...")
 
@@ -30,6 +32,9 @@ def checkResult( name, result, resultRel , thresh, threshStrict, invertResult=Fa
 			allGood = 1
 		else:
 			allGood = 0
+
+	#print("NT_DEBUG info: "+name+" threshold "+str(curr_thresh)+", results differ by "+str(result) +" (abs) , and by "+str(resultRel)+" (rel)" )
+	print("NT_DEBUG info: "+name+"   fac "+ str(result/(curr_thresh+1e-30))  +"   , threshold "+str(curr_thresh)+", results differ by "+str(result) +" (abs) , and by "+str(resultRel)+" (rel)" )
 
 	# now react on outcome...
 	if ( allGood == 1 ):
@@ -47,10 +52,9 @@ def checkResult( name, result, resultRel , thresh, threshStrict, invertResult=Fa
 # the allowed thresholds
 #
 # note, there are two thresholds:
+# 	- the "normal" one is intended for comparing single precision calculations across different compilers
+#	- the "strict" one for double precision compiles (detected automatically)
 #   - the "grid" object can be either a Grid<T>, or a ParticleDataImpl<T> ; parent is either FluidSolver or ParticleSystem
-# 	- the "normal" one is intended for less strict comparisons of versions from different compilers
-#	- the "strict" one (enbable with "export MANTA_TEST_STRICT=1") is for comparing different version 
-#		generated with the same compiler
 #
 def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, invertResult=False ):
 	# both always have to given together (if not default)

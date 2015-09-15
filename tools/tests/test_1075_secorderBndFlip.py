@@ -116,6 +116,6 @@ for t in range(40):
 	
 	s.step()
 
-doTestGrid( sys.argv[0],"phi" , s, phi  , threshold=0.00001 , thresholdStrict=1e-08 )
-doTestGrid( sys.argv[0],"vel" , s, vel  , threshold=0.0001  , thresholdStrict=1e-08 )
+doTestGrid( sys.argv[0],"phi" , s, phi  , threshold=0.00001 , thresholdStrict=1e-10 )
+doTestGrid( sys.argv[0],"vel" , s, vel  , threshold=0.0001  , thresholdStrict=1e-10 )
 

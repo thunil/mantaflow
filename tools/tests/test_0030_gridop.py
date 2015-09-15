@@ -23,6 +23,7 @@ vcg3  = s.create(MACGrid)
 int1  = s.create(IntGrid)
 int2  = s.create(IntGrid)
 int3  = s.create(IntGrid)
+vcgTmp= s.create(MACGrid)
 
 genRefFiles = getGenRefFileSetting() 
 if (genRefFiles==1):
@@ -31,7 +32,11 @@ if (genRefFiles==1):
 	rlg2.setConst( 1.2 )
 	rlg3.setConst( 2.9 )
 
-	vcg1.setConst( vec3(1.2, 1.2, 1.2) )
+	#vcg1.setConst( vec3(1.2, 1.2, 1.2) )
+	#vcg2.setConst( vec3(0.5, 0.5, 0.5) )
+	#vcg3.setConst( vec3(1.95, 1.95, 1.95) )
+
+	vcg1.setConst( vec3(1.25, 1.25, 1.25) )
 	vcg2.setConst( vec3(0.5, 0.5, 0.5) )
 	vcg3.setConst( vec3(1.95, 1.95, 1.95) )
 
@@ -54,9 +59,13 @@ else:
 	vcg1.setConst( vec3(1.0, 1.0, 1.0) )
 	vcg2.setConst( vec3(1.0, 1.0, 1.0) )
 	vcg3.setConst( vec3(9.0, 9.0, 9.0) )
-	vcg1.addConst ( vec3(0.2,0.2,0.2) ) # 1.2
+
+	vcg1.addConst ( vec3(0.25,0.25,0.25) ) # 1.25
+
 	vcg2.multConst( vec3(0.5,0.5,0.5) ) # 0.5
-	vcg3.copyFrom( vcg1 )  # 1.2
+
+	vcgTmp.setConst( vec3(1.2, 1.2, 1.2) )
+	vcg3.copyFrom( vcgTmp )  # 1.2
 	vcg3.add(vcg2) # 1.7
 	vcg3.addScaled(vcg2, vec3(0.5, 0.5, 0.5) ) # 1.95
 	#print "v1 %s , v2 %s , v3 %s " % ( vcg1.getMaxAbsValue() , vcg2.getMaxAbsValue(), vcg3.getMaxAbsValue() )

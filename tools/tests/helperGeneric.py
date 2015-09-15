@@ -17,7 +17,10 @@ def referenceFilename_old( file, gridname ):
 def referenceFilename( file, gridname ):
 	(name,ext) = os.path.splitext( os.path.basename(file) )
 	ddir = dataDirectory(file)
-	return ddir+"/"+ name +"_"+ gridname + ".uni" 
+	suffix = "uni" 
+	if getFloatSetting()==2: # double prec mode uses raw files, uni is always single prec float!
+		suffix = "raw"
+	return ddir+"/"+ name +"_"+ gridname + "." + suffix
 
 def dataDirectory( file ):
 	# extract path from script call
@@ -41,6 +44,7 @@ def getGenRefFileSetting( ):
 	return 0
 
 def getStrictSetting( ):
+	print("Warning - deprecated, do not use! Strict thresholds are used automatically for double precision versions. ")
 	# check env var whether strict mode enabled
 	ret = int(os.getenv('MANTA_TEST_STRICT', 0))
 	#print("Strict-test-setting: " + str(ret))

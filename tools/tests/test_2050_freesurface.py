@@ -75,6 +75,6 @@ for t in range(frames):
 
 
 # check final state
-doTestGrid( sys.argv[0],"phi"  , s, phi    )
-doTestGrid( sys.argv[0],"vel"  , s, vel    )
+doTestGrid( sys.argv[0],"phi"  , s, phi  , threshold=1e-07 , thresholdStrict=1e-14   )
+doTestGrid( sys.argv[0],"vel"  , s, vel  , threshold=1e-07 , thresholdStrict=1e-14   )
 

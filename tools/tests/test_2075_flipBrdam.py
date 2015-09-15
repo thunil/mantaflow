@@ -120,8 +120,8 @@ for t in range(frames):
 	
 	s.step()
 
-doTestGrid( sys.argv[0],"dens" , s, dens   )
-doTestGrid( sys.argv[0],"dens2", s, dens2  )
-doTestGrid( sys.argv[0],"vel"  , s, vel    )
+doTestGrid( sys.argv[0],"dens" , s, dens  , threshold=1e-07 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0],"dens2", s, dens2 , threshold=1e-07 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0],"vel"  , s, vel   , threshold=1e-07 , thresholdStrict=1e-14  )
 
 

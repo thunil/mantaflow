@@ -65,6 +65,6 @@ for t in range(18):
     s.step()
 
 # only check velocity here...
-doTestGrid( sys.argv[0],"vel"  , s, vel  , threshold=1e-05 , thresholdStrict=1e-08 )
+doTestGrid( sys.argv[0],"vel"  , s, vel  , threshold=1e-05 , thresholdStrict=1e-10 )
 
 

@@ -63,7 +63,7 @@ for t in range(20):
 	#gui.screenshot( 'out_%04d.png' % t );
 	sm.step()
 
-doTestGrid( sys.argv[0],"uv0" , sm, uv[0] , threshold=0.006 , thresholdStrict=1e-08 )
-doTestGrid( sys.argv[0],"uv1" , sm, uv[1] , threshold=0.006 , thresholdStrict=1e-08 )
-doTestGrid( sys.argv[0],"uv2" , sm, uv[2] , threshold=0.006 , thresholdStrict=1e-08 )
+doTestGrid( sys.argv[0],"uv0" , sm, uv[0] , threshold=0.006 , thresholdStrict=1e-10 )
+doTestGrid( sys.argv[0],"uv1" , sm, uv[1] , threshold=0.006 , thresholdStrict=1e-10 )
+doTestGrid( sys.argv[0],"uv2" , sm, uv[2] , threshold=0.006 , thresholdStrict=1e-10 )
 
