@@ -463,7 +463,7 @@ void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrat
 	if(!deleteInObstacle) {
 		posOld = new ParticleDataImpl<Vec3>(this->getParent());
 		posOld->resize(mData.size());
-		for(int i=0; i<mData.size();++i) (*posOld)[i] = mData[i].pos;
+		for(int i=0; i<(int)mData.size();++i) (*posOld)[i] = mData[i].pos;
 	}
 
 	// update positions
