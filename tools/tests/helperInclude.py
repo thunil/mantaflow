@@ -33,9 +33,6 @@ def checkResult( name, result, resultRel , thresh, threshStrict, invertResult=Fa
 		else:
 			allGood = 0
 
-	#print("NT_DEBUG info: "+name+" threshold "+str(curr_thresh)+", results differ by "+str(result) +" (abs) , and by "+str(resultRel)+" (rel)" )
-	print("NT_DEBUG info: "+name+"   fac "+ str(result/(curr_thresh+1e-30))  +"   , threshold "+str(curr_thresh)+", results differ by "+str(result) +" (abs) , and by "+str(resultRel)+" (rel)" )
-
 	# now react on outcome...
 	if ( allGood == 1 ):
 		print("OK! Results for "+name+" match...")

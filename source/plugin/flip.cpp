@@ -554,6 +554,16 @@ PYTHON() void flipVelocityUpdate(FlagGrid& flags, MACGrid& vel , MACGrid& velOld
 	knMapLinearMACGridToVec3_FLIP( parts, flags, vel, velOld, partVel, flipRatio );
 }
 
+// NT_DEBUG
+PYTHON() void floatify( BasicParticleSystem& parts )
+{
+	for (int idx=0; idx<(int)parts.size(); idx++) {
+		float f = parts.getPos(idx).x;
+		float g = parts.getPos(idx).y;
+		float h = parts.getPos(idx).z;
+		parts.setPos(idx, Vec3(f,g,h) );
+	}
+}
 
 } // namespace
 

@@ -15,6 +15,10 @@ s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.8
 minParticles = pow(2,dim)
 
+accuracy = 1e-05
+if getFloatSetting()==2:
+	accuracy = 1e-10
+
 # prepare grids and particles
 flags     = s.create(FlagGrid)
 phi       = s.create(LevelsetGrid)
@@ -103,7 +107,7 @@ for t in range(40):
 	extrapolateMACSimple( flags=flags, vel=vel , distance=2, intoObs=True )
 	setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)	
 
-	solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi, fractions=fractions )
+	solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi, fractions=fractions, cgAccuracy=accuracy )
 
 	extrapolateMACSimple( flags=flags, vel=vel , distance=4, intoObs=True )
 	setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)
@@ -116,6 +120,6 @@ for t in range(40):
 	
 	s.step()
 
-doTestGrid( sys.argv[0],"phi" , s, phi  , threshold=0.00001 , thresholdStrict=1e-10 )
-doTestGrid( sys.argv[0],"vel" , s, vel  , threshold=0.0001  , thresholdStrict=1e-10 )
+doTestGrid( sys.argv[0],"phi" , s, phi  , threshold=0.00001 , thresholdStrict=1e-08 )
+doTestGrid( sys.argv[0],"vel" , s, vel  , threshold=0.00001 , thresholdStrict=1e-08 )
 

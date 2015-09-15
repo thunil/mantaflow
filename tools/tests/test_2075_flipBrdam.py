@@ -23,6 +23,10 @@ s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.75
 minParticles = pow(2,dim)
 
+accuracy = 1e-3
+if getFloatSetting()==2:
+	accuracy = 1e-08
+
 if getVisualSetting():
 	s.timestep = 0.77 / getVisualSetting()
 
@@ -102,7 +106,7 @@ for t in range(frames):
 	# forces & pressure solve
 	addGravity(flags=flags, vel=vel, gravity=(0,-0.01,0))
 	setWallBcs(flags=flags, vel=vel)    
-	solvePressure(flags=flags, vel=vel, pressure=pressure)
+	solvePressure(flags=flags, vel=vel, pressure=pressure, cgAccuracy=accuracy)
 	setWallBcs(flags=flags, vel=vel)
 
 	# make sure we have proper velocities
@@ -120,8 +124,8 @@ for t in range(frames):
 	
 	s.step()
 
-doTestGrid( sys.argv[0],"dens" , s, dens  , threshold=1e-07 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0],"dens2", s, dens2 , threshold=1e-07 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0],"vel"  , s, vel   , threshold=1e-07 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0],"dens" , s, dens  , threshold=1e-07 , thresholdStrict=1e-10  )
+doTestGrid( sys.argv[0],"dens2", s, dens2 , threshold=1e-07 , thresholdStrict=1e-10  )
+doTestGrid( sys.argv[0],"vel"  , s, vel   , threshold=1e-07 , thresholdStrict=1e-10  )
 
 

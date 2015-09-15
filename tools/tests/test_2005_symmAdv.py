@@ -212,9 +212,9 @@ for dim in range(2,4):
 			s.step()
 
 		# check result
-		doTestGrid( sys.argv[0], ("errv1-%d-%d"%(dim,symms)) , s, errV1 , threshold=errThresh , thresholdStrict=1e-14 )
+		doTestGrid( sys.argv[0], ("errv1-%d-%d"%(dim,symms)) , s, errV1 , threshold=errThresh , thresholdStrict=1e-12 )
 		if(dim==3):
-			doTestGrid( sys.argv[0], ("errv2-%d-%d"%(dim,symms)) , s, errV2 , threshold=errThresh , thresholdStrict=1e-14 )
+			doTestGrid( sys.argv[0], ("errv2-%d-%d"%(dim,symms)) , s, errV2 , threshold=errThresh , thresholdStrict=1e-12 )
 
 	# prevent UI crash
 	if showGui:

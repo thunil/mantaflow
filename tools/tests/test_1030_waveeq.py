@@ -68,6 +68,6 @@ for t in range(40):
 	s.step()
 
     
-doTestGrid( sys.argv[0], "height" , s, h  , threshold=1e-08 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "vel"    , s, vel, threshold=1e-08 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "height" , s, h  , threshold=1e-08 , thresholdStrict=1e-10  )
+doTestGrid( sys.argv[0], "vel"    , s, vel, threshold=1e-08 , thresholdStrict=1e-10  )
 
