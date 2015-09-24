@@ -62,11 +62,16 @@ def getVisualSetting( ):
 
 # visual mode on? returns multiplier
 def getFloatSetting( ):
+	fp = 0
 	ret = int(os.getenv('MANTA_FPACCURACY', 0)) 
 	if(ret==2): # check for double prec compile
-		return 2 
-	# default is single precision
-	return 1
+		fp = 2 
+	else:
+		# default is single precision
+		fp = 1 
+
+	# note - manta scenes can use the DOUBLEPRECISION variable, but it's not available in the runTests script
+	return fp
 
 
 
