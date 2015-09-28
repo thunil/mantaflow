@@ -81,6 +81,8 @@ if 1:
 # extract path from script call
 basedir  = os.path.dirname (sys.argv[0])
 #os.path.splitext(base)
+if len(basedir)==0:
+	basedir = "."
 
 # store test data in separate directory
 datadir = dataDirectory(sys.argv[0])
