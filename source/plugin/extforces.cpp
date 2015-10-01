@@ -199,8 +199,7 @@ KERNEL() void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget
 { 
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
-	Vec3& v = velTarget(i,j,k);
-	v = vel(i,j,k);
+	velTarget(i,j,k) = vel(i,j,k);
 	if (!curFluid && !curObs) return; 
 
 	// zero normal component in all obstacle regions
