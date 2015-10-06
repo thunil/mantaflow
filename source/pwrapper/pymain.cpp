@@ -94,18 +94,29 @@ void runScript(vector<string>& args) {
 int main(int argc,char* argv[]) {
 	debMsg("Version: "<< buildInfoString() , 1);
 
-#ifdef GUI
-	guiMain(argc, argv);    
-#else
-	if (argc<=1) {
-		cerr << "Usage : Syntax is 'manta <config.py>'" << endl;  
-		return 1;
-	}
+	bool doScript = true;
+	bool doGui    = true;
 
-	vector<string> args;
-	for (int i=1; i<argc; i++) args.push_back(argv[i]);
-	runScript(args);
+#ifdef GUI
+	// optionally, disable UI
+	if( getenv("MANTA_DISABLE_UI") && atoi( getenv("MANTA_DISABLE_UI") )) doGui = false;
+
+	if(doGui) {
+		guiMain(argc, argv);    
+		doScript = false;
+	}
 #endif        		
+
+	if(doScript) {
+		if (argc<=1) {
+			cerr << "Usage : Syntax is 'manta <config.py>'" << endl;  
+			return 1;
+		}
+
+		vector<string> args;
+		for (int i=1; i<argc; i++) args.push_back(argv[i]);
+		runScript(args);
+	}
 
 	return 0;
 }

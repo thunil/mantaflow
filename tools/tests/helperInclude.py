@@ -43,6 +43,9 @@ def checkResult( name, result, resultRel , thresh, threshStrict, invertResult=Fa
 
 
 
+# global var to print manta version once per test
+printVersion = 1
+
 # compare a grid, in generation mode (MANTA_GEN_TEST_DATA=1) it
 # creates the data on disk, otherwise it loads the disk data,
 # computes the largest per cell error, and checks whether it matches
@@ -54,6 +57,8 @@ def checkResult( name, result, resultRel , thresh, threshStrict, invertResult=Fa
 #   - the "grid" object can be either a Grid<T>, or a ParticleDataImpl<T> ; parent is either FluidSolver or ParticleSystem
 #
 def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, invertResult=False ):
+	global printVersion
+
 	# both always have to given together (if not default)
 	if ( threshold!=0 and thresholdStrict==0 ):
 		print( "Error doTestGrid - give both thresholds at the same time...")
@@ -104,21 +109,30 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 		return 1
 
 	genRefFiles = getGenRefFileSetting()
+	fname = referenceFilename( file, name )
 
 	if (genRefFiles==1):
-		# grid.save( outputFilename( file, name ) )
-		# shutil.copyfile( outputFilename( file, name ) , referenceFilename( file, name ) )
-		grid.save( referenceFilename( file, name ) )
-		print( "OK! Generated reference file '" + referenceFilename( file, name ) + "'")
+		grid.save( fname )
+		print( "OK! Generated reference file '" + fname + "'")
+
+		# test data generation log
+		if 1:
+			infofilename = dataDirectory(file)+"/test_data_info.txt"
+			text_file = open(dataDirectory(file)+"/test_data_info.txt", "a");
+			if printVersion:
+				printVersion = 0
+				text_file.write( "\n%s, %s\n" % (file, str(printBuildInfo())) );
+			text_file.write( "    %s\n" % ( fname ) );
+			text_file.close();
 		return 0
 	else:
 		# give error if file doesnt exist
-		if( not os.path.isfile(referenceFilename( file, name )) ):
+		if( not os.path.isfile( fname ) ):
 			print( "Error - unable to load test file %s" % referenceFilename( file, name ) )
 			print("FAIL! Reference data missing..." );
 			return 1
 
-		compareTmpGrid.load( referenceFilename( file, name ) )
+		compareTmpGrid.load( fname )
 
 		errVal = 1e10
 		if ( grid._class == "Grid" and grid._T == "Real" ):
@@ -156,11 +170,11 @@ def doTestDataLoad( file , name, solver , grid ):
 		print( "Loading %s" % referenceFilename( file, name ) )
 		grid.load( referenceFilename( file, name ) )
 
-# generate info file with version string when in data gen mode
-def doGenerateInfo( file ):
+# reset and generate info file with version string when in data gen mode
+def doResetInfoFile( file ):
 	if(getGenRefFileSetting()==1):
 		infofilename = dataDirectory(file)+"/test_data_info.txt"
-		print( "Generating test data info file "+infofilename )
+		print( "Resetting test data info file "+infofilename )
 		text_file = open(dataDirectory(file)+"/test_data_info.txt", "w");
 		text_file.write( "\n%s\n\n" % (str(printBuildInfo())) );
 		text_file.close();
