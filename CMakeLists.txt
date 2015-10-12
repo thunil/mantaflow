@@ -516,6 +516,9 @@ ELSE()
 	add_definitions( /wd4244 /wd4305 )
 	# disable warnings for unsecure functions
 	add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )
+
+	# enable when using Qt creator:
+	#add_definitions(/FS)
 ENDIF()
 
 SET(EXECCMD manta)

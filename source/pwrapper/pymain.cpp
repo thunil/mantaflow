@@ -95,10 +95,10 @@ int main(int argc,char* argv[]) {
 	debMsg("Version: "<< buildInfoString() , 1);
 
 	bool doScript = true;
-	bool doGui    = true;
 
 #ifdef GUI
 	// optionally, disable UI
+	bool doGui = true;
 	if( getenv("MANTA_DISABLE_UI") && atoi( getenv("MANTA_DISABLE_UI") )) doGui = false;
 
 	if(doGui) {

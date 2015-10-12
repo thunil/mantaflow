@@ -701,7 +701,7 @@ void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
 	std::vector<Vec3> normals;
 	short bigEdges(0);
 	std::vector<Vec3> samplePoints;
-	for(size_t i=0; i<mesh.numTris(); i++){	
+	for(int i=0; i<mesh.numTris(); i++){	
 		center.push_back(Vec3(mesh.getFaceCenter(i) * mult));
 		normals.push_back(mesh.getFaceNormal(i));
 		//count big, stretched edges
