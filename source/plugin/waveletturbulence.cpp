@@ -173,7 +173,7 @@ void KnApplyComputeEnergy( FlagGrid& flags, MACGrid& vel, Grid<Real>& energy )
 	Real e = 0.f;
 	if ( flags.isFluid(i,j,k) ) {
 		Vec3 v = vel.getCentered(i,j,k);
-		e = 0.5 * v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+		e = 0.5 * (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
 	}
 	energy(i,j,k) = e;
 }
