@@ -20,7 +20,7 @@ pressure = s.create(RealGrid)
 flags.initDomain() 
 flags.fillGrid()
 
-setOpenBound(flags,0,'yY',FlagOutflow|FlagEmpty) 
+setOpenBound(flags, 1,'yY',FlagOutflow|FlagEmpty) 
 
 if (GUI):
 	gui = Gui()
@@ -34,9 +34,9 @@ for t in range(400):
 	if t<300:
 		source.applyToGrid(grid=density, value=1)
 		
-	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
+	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2) 
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=1)
 	resetOutflow(flags=flags,real=density) 
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, depth=1)
 
 	setWallBcs(flags=flags, vel=vel)    
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-4e-3,0), flags=flags)

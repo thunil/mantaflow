@@ -106,7 +106,7 @@ for t in range(200):
 	#sys.stdout.write( "Current time t: " + str(curt) +" \n" )
 		
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, depth=bWidth+1 )
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=bWidth )
 	
 	applyInflow=False
 	if (curt>=0 and curt<75):

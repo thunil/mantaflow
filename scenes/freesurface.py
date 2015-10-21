@@ -1,5 +1,6 @@
 #
-# Simple example for free-surface simulation 
+# Simple example of a free-surface simulation with level-set
+# (Optionally, demos outflow boundaries)
 #
 
 from manta import *
@@ -30,8 +31,8 @@ mesh = s.create(Mesh)
 phiBackup = s.create(LevelsetGrid)
 
 # scene setup
-bndWidth=1
-flags.initDomain(boundaryWidth=bndWidth)
+bWidth=1
+flags.initDomain(boundaryWidth=bWidth)
 basin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1,0.2,1))
 drop  = s.create(Sphere, center=gs*vec3(0.5,0.5,0.5), radius=res*0.125)
 phi = basin.computeLevelset()
@@ -40,7 +41,7 @@ flags.updateFromLevelset(phi)
 
 # optionally, enable open boundaries here and below...
 if doOpen:
-	setOpenBound(flags,bndWidth,'xXzZ',FlagOutflow|FlagEmpty) 
+	setOpenBound(flags,bWidth,'xXzZ',FlagOutflow|FlagEmpty) 
 		
 if (GUI):
 	gui = Gui()
@@ -60,13 +61,13 @@ for t in range(2000):
 		extrapolateMACSimple( flags=flags, vel=vel, distance=5 )
 
 	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=lsOrder) 
-	phi.setBoundNeumann(bndWidth)
+	phi.setBoundNeumann(bWidth)
 	if doOpen:
 		resetOutflow(flags=flags,phi=phi) # open boundaries
 	flags.updateFromLevelset(phi)
 	
 	# velocity self-advection
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2 )
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, openBounds=doOpen, boundaryWidth=bWidth )
 	addGravity(flags=flags, vel=vel, gravity=vec3(0,-0.025,0))
 	
 	# pressure solve

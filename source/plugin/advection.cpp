@@ -289,7 +289,7 @@ KERNEL() void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid&
 			low[c] = flLow[c] = cur[c]-1;
 			up[c] = flUp[c] = cur[c]+1;
 			// iterate over bWidth to allow for extrapolation into more distant outflow cells
-			for (int d = 0; d<bWidth; d++){
+			for (int d = 0; d<bWidth+1; d++){
 				if (cur[c]>d && flags.isFluid(flLow)) {	
 					velDst(i,j,k)[c] = ((vel(i,j,k)[c] - velPrev(i,j,k)[c]) / factor) + vel(low)[c];
 					done=true;
@@ -314,7 +314,7 @@ KERNEL() void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid&
 KERNEL() void copyChangedVels(FlagGrid& flags, MACGrid& velDst, MACGrid& vel){ if (flags.isOutflow(i,j,k)) vel(i, j, k) = velDst(i, j, k); }
 
 //! extrapolate normal velocity components into open boundary cells (marked as outflow cells)
-void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double timeStep, int bWidth=2) {
+void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double timeStep, int bWidth=1) {
 	MACGrid velDst(vel.getParent()); // do not overwrite vel while it is read
 	extrapolateVelConvectiveBC(flags, vel, velDst, velPrev, max(1.0,timeStep*4), bWidth);
 	copyChangedVels(flags,velDst,vel);
@@ -369,7 +369,7 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 //! Perform semi-lagrangian advection of target Real- or Vec3 grid
 //! Open boundary handling needs information about width of border
 PYTHON() void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid,
-						   int order = 1, Real strength = 1.0, int orderSpace = 1, bool openBounds = false, int boundaryWidth = 2)
+						   int order = 1, Real strength = 1.0, int orderSpace = 1, bool openBounds = false, int boundaryWidth = 1)
 {    
 	assertMsg(order==1 || order==2, "AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");
 	
