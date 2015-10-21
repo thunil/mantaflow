@@ -2,8 +2,8 @@ from manta import *
 
 secOrderBc = True
 dim        = 2
-#res        = 124
 res        = 64
+#res        = 124
 gs         = vec3(2*res,res,res)
 if (dim==2): gs.z = 1
 s          = FluidSolver(name='main', gridSize = gs, dim=dim)

@@ -7,7 +7,7 @@
 from manta import *
 import os, shutil, math, sys
 
-# dimension two/three d
+# dimension two/three 
 dim = 2
 
 printBuildInfo()
@@ -84,9 +84,11 @@ if(upres>0):
 
 
 # init lower res solver & grids
+bWidth=1
 flags = sm.create(FlagGrid)
-flags.initDomain()
+flags.initDomain(boundaryWidth=bWidth)
 flags.fillGrid()
+setOpenBound(flags, bWidth,'yY', FlagOutflow|FlagEmpty) 
 obs.applyToGrid(grid=flags, value=FlagObstacle)
 
 # create the array of uv grids
@@ -130,7 +132,7 @@ for t in range(200):
 		wltStrength = sliderStr.get()
 	
 	advectSemiLagrange(flags=flags, vel=vel, grid=density,  order=2)	
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,      order=2)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,      order=2, openBounds=True, depth=bWidth+1 )
 
 	for i in range(uvs):
 		advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=2) 
@@ -151,8 +153,7 @@ for t in range(200):
 
 	vorticityConfinement( vel=vel, flags=flags, strength=0.4 )
 	
-	solvePressure(flags=flags, vel=vel, pressure=pressure , openBound='Y', \
-		cgMaxIterFac=1.0, cgAccuracy=0.01 )
+	solvePressure(flags=flags, vel=vel, pressure=pressure , cgMaxIterFac=1.0, cgAccuracy=0.01 )
 	setWallBcs(flags=flags, vel=vel)
 	
 	# determine weighting
