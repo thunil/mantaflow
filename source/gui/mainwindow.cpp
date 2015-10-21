@@ -32,7 +32,7 @@ MainWnd::MainWnd() : QMainWindow(0), mPaused(true), mRequestPause(false), mReque
 {
 	// Frame info label
 	mInfo = new QLabel;
-	setStep(0);
+	setStep(0,0.);
 	
 	// register GL widget
 	mGlWidget = new GLWidget();
@@ -135,9 +135,9 @@ void MainWnd::addControl(void* ctrl) {
 	control->init(mPainterLayout);
 }
 
-void MainWnd::setStep(int f) {
+void MainWnd::setStep(int f, float time) {
 	std::stringstream s;
-	s << "Simulation step " << f;
+	s << "Simulation frame " << f <<", time "<<time; 
 	mInfo->setText(s.str().c_str());
 }
 

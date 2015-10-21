@@ -41,7 +41,7 @@ public:
 	void setPauseStatus(bool v);
 	void stepReset(bool fullUpdate) { if (mStep == 1 || (mStep == 2 && fullUpdate)) {mRequestPause = true; mStep = 0;} }
 	void requestClose() { mRequestClose =true; }
-	void setStep(int f);
+	void setStep(int f, float time);
 	void setBackground(Mesh *m) { emit setBackgroundMesh(m); }
 
 public slots:

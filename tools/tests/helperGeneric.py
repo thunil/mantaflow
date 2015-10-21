@@ -17,7 +17,10 @@ def referenceFilename_old( file, gridname ):
 def referenceFilename( file, gridname ):
 	(name,ext) = os.path.splitext( os.path.basename(file) )
 	ddir = dataDirectory(file)
-	return ddir+"/"+ name +"_"+ gridname + ".uni" 
+	suffix = "uni" 
+	if getFloatSetting()==2: # double prec mode uses raw files, uni is always single prec float!
+		suffix = "raw"
+	return ddir+"/"+ name +"_"+ gridname + "." + suffix
 
 def dataDirectory( file ):
 	# extract path from script call
@@ -25,7 +28,11 @@ def dataDirectory( file ):
 	basedir  = os.path.dirname (file)
 	if len(basedir)==0:
 		basedir = "."
-	return basedir +"/"+ "../testdata"
+	# different data sets for single/double
+	dataDir = "testdata"
+	if getFloatSetting()==2:
+		dataDir = "testdataDouble"
+	return basedir +"/"+ "../" + dataDir
 
 
 def getGenRefFileSetting( ):
@@ -37,6 +44,7 @@ def getGenRefFileSetting( ):
 	return 0
 
 def getStrictSetting( ):
+	print("Warning - deprecated, do not use! Strict thresholds are used automatically for double precision versions. ")
 	# check env var whether strict mode enabled
 	ret = int(os.getenv('MANTA_TEST_STRICT', 0))
 	#print("Strict-test-setting: " + str(ret))
@@ -50,6 +58,20 @@ def getVisualSetting( ):
 	if(ret>0):
 		return ret
 	return 0
+
+
+# visual mode on? returns multiplier
+def getFloatSetting( ):
+	fp = 0
+	ret = int(os.getenv('MANTA_FPACCURACY', 0)) 
+	if(ret==2): # check for double prec compile
+		fp = 2 
+	else:
+		# default is single precision
+		fp = 1 
+
+	# note - manta scenes can use the DOUBLEPRECISION variable, but it's not available in the runTests script
+	return fp
 
 
 

@@ -7,7 +7,7 @@
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Main
+ * Include pwrapper headers
  *
  ******************************************************************************/
 
@@ -15,13 +15,10 @@
 #define _MANTA_H
 
 // Remove preprocessor keywords, so there won't infere with autocompletion etc.
-#define KERNEL
-#define PYTHON
-
-// Define plugin documentation group
-// all plugin functions and classes will automatically be added to this group
-//! @defgroup Plugins Plugins
-//! @defgroup PyClasses Classes exposed to Python
+#define KERNEL(...) extern int i,j,k,idx,X,Y,Z;
+#define PYTHON(...)
+#define returns(X) extern X;
+#define alias typedef
 
 #include "general.h"
 #include "vectorbase.h"

@@ -23,6 +23,7 @@ extern void runScript(vector<string>& args);
 
 namespace Manta {
 	
+// main pointers, might be uninitialized if gui is disabled with env var
 GuiThread* gGuiThread = NULL;    
 MainThread* gMainThread = NULL;    
 	
@@ -109,28 +110,21 @@ void guiMain(int argc, char* argv[]) {
 }
 
 void guiWaitFinish() {
+	if (!gGuiThread || !gMainThread) return;
 	gMainThread->setFinished();    
 	gMainThread->send((int)MainWnd::EventInstantKill);
-	/*
-	if (gGuiThread->getWindow()->closeRequest())
-		return;
-	
-	gMainThread->sendAndWait((int)MainWnd::EventFinalUpdate);
-	gGuiThread->getWindow()->pause();
-	while (gGuiThread->getWindow()->pauseRequest())
-		gMainThread->threadSleep(10);    */
 }
 
 //******************************************************************************
 // Python adapter class
 
-
 // external callback functions 
-void updateQtGui(bool full, int frame, const string& curPlugin) {    
+void updateQtGui(bool full, int frame, float time, const string& curPlugin) {    
+	if (!gGuiThread || !gMainThread) return;
 	if (!gGuiThread->getWindow()->isVisible()) return;
 	if (gGuiThread->getWindow()->closeRequest()) throw Error("User interrupt");    
 	
-	if (full && frame >= 0) gGuiThread->getWindow()->setStep(frame);
+	if (full && frame >= 0) gGuiThread->getWindow()->setStep(frame, time);
 	gMainThread->sendAndWait(full ? (int)MainWnd::EventFullUpdate : (int)MainWnd::EventStepUpdate);
 	
 	if (gGuiThread->getWindow()->pauseRequest()) {

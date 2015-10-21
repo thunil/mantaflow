@@ -26,7 +26,7 @@ pp       = s.create(BasicParticleSystem)
 pVel     = pp.create(PdataVec3) 
 
 # scene setup
-flags.initDomain(boundaryWidth=0)
+flags.initDomain(boundaryWidth=0) 
 # enable one of the following
 fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1)) # breaking dam
 #fluidbox = s.create(Box, p0=gs*vec3(0.4,0.72,0.4), p1=gs*vec3(0.6,0.92,0.6)) # centered falling block

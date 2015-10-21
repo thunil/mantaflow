@@ -23,12 +23,6 @@ namespace Manta {
 //******************************************************************************
 // Free functions
 
-#ifdef GUI
-	extern void updateQtGui(bool full, int frame, const std::string& curPlugin);
-#else
-	inline void updateQtGui(bool full, int frame, const std::string& curPlugin) {}
-#endif
-
 void pbPreparePlugin(FluidSolver* parent, const string& name) {
     TimingData::instance().start(parent, name);
 }
@@ -43,7 +37,7 @@ void pbFinalizePlugin(FluidSolver *parent, const string& name) {
 		if(parent && (parent->getNumInstances()>0) )  msg << parent->getName() << string(".");
 		msg << name;
 	}
-	updateQtGui(false, 0, msg.str() );
+	updateQtGui(false, 0,0., msg.str() );
 	
 	debMsg(name<<" done", 2);
 	// name unnamed PbClass Objects from var name

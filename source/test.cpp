@@ -34,7 +34,7 @@ double minReduction(const Grid<Real>& v)
 }
 
 
-PYTHON void getCurl(MACGrid& vel, Grid<Real>& vort, int comp) {
+PYTHON() void getCurl(MACGrid& vel, Grid<Real>& vort, int comp) {
 	Grid<Vec3> velCenter(vel.getParent()), curl(vel.getParent());
 	
 	GetCentered(velCenter, vel);
@@ -42,7 +42,7 @@ PYTHON void getCurl(MACGrid& vel, Grid<Real>& vort, int comp) {
 	GetComponent(curl, vort, comp);
 }
 
-PYTHON void setinflow(FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Real h) {
+PYTHON() void setinflow(FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Real h) {
 	FOR_IJK(vel) {
 		if (i<=2) {
 			if (j < h*flags.getSizeY()) {
@@ -65,7 +65,7 @@ PYTHON void setinflow(FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Real h) 
 	}
 }
 	
-PYTHON void testDiscardNth (BasicParticleSystem& parts,  int skip=1) { 
+PYTHON() void testDiscardNth (BasicParticleSystem& parts,  int skip=1) { 
 	//knSetPdataConst<Real>(pd,value); 
 	for(int i=0; i<parts.size(); ++i) {
 		if(i%(skip+1) == skip) { // keep 

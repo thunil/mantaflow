@@ -30,6 +30,12 @@ platform=platform.system()
 if   platform == 'Linux' or platform == 'Darwin':
 	platform = 0; # unix
 elif platform == 'Windows' and os.name=='nt':
+	# windows specifics:
+	#    - some commands depend on the operating system - check platform
+	#    - cygwin under windows doesn't behave like linux nor like windows at my computer and cannot be distinguished
+	#      from the normal windows console -> set platform manually to 2 if needed
+	#      cygwin should be detected by os.name==posix but it doesn't work at my computer
+	#    - some print messages needed to set default codepage of the console to UTF-8 with the command "chcp 65001"
 	platform = 1; # windows
 elif platform == 'Windows' and os.name == 'posix':
 	platform = 2; # probably cygwin
@@ -49,22 +55,48 @@ if(len(sys.argv)<2):
 manta = sys.argv[1]
 print ("Using mantaflow executable '" + manta + "' " )
 
+# try to get build info (and floating point accuracy) to adapt test data directory
+floatPrecision = 0
+if 1:
+	bifile = "helperBuildInfo.py"
+	if   platform == 0:
+		result = os.popen(manta + " " + bifile).read() 
+	else:
+		result = os.popen('"'+ manta + '" '+ bifile).read() 
+	fp1 = re.findall(r" fp1 ", result)
+	fp2 = re.findall(r" fp2 ", result)
+	#print( "FP strings: " + str(len(fp1)) + " " + str(len(fp2)) ) # debug
+	if len(fp1) >= 2:
+		floatPrecision = 1
+	elif len(fp2) >= 2:
+		print("Double precision build detected")
+		floatPrecision = 2
+	else:
+		print("Unable to determine floating point accuracy with executable '"+manta+"'; Output: \n"+result +"\n")
+		exit(1);
+
+	# export to following manta calls
+	os.environ["MANTA_FPACCURACY"] = str(floatPrecision)
 
 # extract path from script call
 basedir  = os.path.dirname (sys.argv[0])
 #os.path.splitext(base)
+if len(basedir)==0:
+	basedir = "."
 
 # store test data in separate directory
 datadir = dataDirectory(sys.argv[0])
-if not os.path.exists( datadir ):
-	os.makedirs( datadir )	
-
-if getGenRefFileSetting():
-	print("\nNote - generating test data for all tests!");
-	print("Tests results will not be evaluated...\n");
 
 #unix only: currdate = os.popen("date \"+%y%m%d%H%M\"").read() 
-currdate = '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now())
+if getGenRefFileSetting():
+	print ("\nNote - generating test data for all tests!")
+	print ("Tests results will not be evaluated...\n")
+
+	# create directory if necessary
+	if not os.path.exists( datadir ):
+		os.makedirs( datadir )    
+
+currdate = '{:%Y%m%d_%H%M%S}'.format(datetime.datetime.now())
 currdate = str(currdate)[:-1]
 
 # in visual mode, also track runtimes
@@ -73,11 +105,11 @@ outpngdir       = basedir+"/result_%s"%(currdate)
 if getVisualSetting():
 	dirname = basedir+"/runtimes"
 	if not os.path.exists( dirname ):
-		os.makedirs( dirname )	
+		os.makedirs( dirname )    
 	# make sure no previous files are left
-	if not os.path.exists( visModeTrashDir ):
-		os.makedirs( visModeTrashDir )	
-	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
+   	if not os.path.exists( visModeTrashDir ):
+		os.makedirs( visModeTrashDir )    
+   	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
 
 	if not os.path.exists( outpngdir ):
 		os.makedirs( outpngdir )	
@@ -86,12 +118,16 @@ if getVisualSetting():
 # limit the runs for debugging
 visModeDebugCount = 0
 
-files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
-#print("Debug - using test scene files: "+files);
-
+# old: files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
+if   platform==0:
+	files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
+elif platform==1:
+	files = os.popen("dir /a-d /b "+basedir+"\\"+str(filePrefix)+"????_*.py").read() 
+elif platform==2:
+	files = os.popen("ls "+basedir+str(filePrefix)+"????_*.py").read() # some cygwin under windows
+#print ("Debug - using test scene files: "+files)
 
 # ready to go...
-
 currdate = os.popen("date \"+%y%m%d%H%M\"").read() 
 currdate = str(currdate)[:-1]
 
@@ -135,12 +171,12 @@ for file in files:
 	num += 1
 	print("Running '" + file + "' ");
 	# result = os.popen(manta + " " + file + " 2>&1 ").read() 
-	if   platform == 1:
-		result = os.popen('"'+ manta + '" '+ file).read() 
-	elif platform == 0:
+	if   platform == 0:
 		result = os.popen(manta + " " + file + " 2>&1 ").read() 
-	elif platform == 2:
+	elif platform == 1:
 		result = os.popen('"'+ manta + '" '+ file).read() 
+	elif platform == 2:
+		result = os.popen('"'+ manta + '" '+ file + " 2>&1 ").read() 
 
 	(utime2, stime2, cutime2, cstime2, elapsed_time2) = os.times() 
 
@@ -201,6 +237,7 @@ for file in files:
 		log_file = open(logfilename, "w");
 		log_file.write(result); log_file.close();
 
+
 if getGenRefFileSetting():
 	print("Test data generated");
 	exit(0)
@@ -225,5 +262,4 @@ elif (numFail==0) and (numOks>0):
 else:
 	print("Oh no :( the following tests failed: %s \n" % failedTests);
 	exit(2)
-
 

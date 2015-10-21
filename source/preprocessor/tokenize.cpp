@@ -78,13 +78,14 @@ void TokenPointer::errorMsg(const string& msg) {
 // Lexing functions
 
 // tokenize and parse until keyword section ends
-void tokenizeBlock(vector<Token>& tokens, const string& kw, const string& text, size_t& i, int& line) {
+void tokenizeBlock(vector<Token>& tokens, const string& kw, const string& text, size_t& i, int& line, bool& hasBrackets) {
 	tokens.push_back(Token(TkWhitespace, line));
 	BracketStack brackets;
 		
 	// tokenize loop
 	bool comment=false, slComment=false, define=false, extendLine=false;
 	bool isString=false;
+	bool foundChars=false;
 	int codeblockLevel = 0;
 	for (; i<text.size(); i++) {
 		char c = text[i];
@@ -166,6 +167,8 @@ void tokenizeBlock(vector<Token>& tokens, const string& kw, const string& text, 
 		else if (c=='(') {
 			tokens.push_back(Token(TkBracketL, line, c));
 			brackets.push_back(c);
+			// detect first parentheses are keyword
+			if(!foundChars) hasBrackets = true;
 		}
 		else if (c==')') {
 			if (brackets.pop() != '(') 
@@ -216,6 +219,7 @@ void tokenizeBlock(vector<Token>& tokens, const string& kw, const string& text, 
 		
 		// track descriptors
 		else if (isNameChar(c)) {
+			foundChars=true;
 			if (tokens.back().type != TkDescriptor)
 				tokens.push_back(Token(TkDescriptor, line, c));
 			else
@@ -341,7 +345,12 @@ void processText(const string& text, int baseline, Sink& sink, const Class* pare
 			else {
 				if (word == "KERNEL" || word == "PYTHON") {
 					vector<Token> tokens;
-					tokenizeBlock(tokens, word, text, i, line);
+					bool brackets = false;
+					tokenizeBlock(tokens, word, text, i, line, brackets);
+					if(!brackets) {
+						std::cout<<" debug "<<word <<" "<< i <<" "<< line <<"\n\n"; // NT_DEBUG
+						errMsg(line, "KERNEL and PYTHON keywords must have \"()\" ");
+					}
 					convertKeywords(tokens);
 					parseBlock(word, tokens, parent, sink, inst); 
 				} else {

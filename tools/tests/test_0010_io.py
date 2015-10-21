@@ -25,10 +25,10 @@ flags.setConst( 7193 )
 
 #density.printGrid( zSlice=15 ) # debug info
 
-# verify
-doTestGrid( sys.argv[0], "dens" , s, density  , threshold=1e-08 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "vel"  , s, vel      , threshold=1e-08 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "flag" , s, flags    , threshold=1e-14 , thresholdStrict=1e-14  )
+doResetInfoFile( sys.argv[0] )
 
-doGenerateInfo( sys.argv[0] )
+# verify
+doTestGrid( sys.argv[0], "dens" , s, density  , threshold=0. , thresholdStrict=0.  )
+doTestGrid( sys.argv[0], "vel"  , s, vel      , threshold=0. , thresholdStrict=0.  )
+doTestGrid( sys.argv[0], "flag" , s, flags    , threshold=0. , thresholdStrict=0.  )
 

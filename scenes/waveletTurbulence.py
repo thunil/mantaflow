@@ -1,6 +1,7 @@
 #
-# Simple example scene (hello world)
-# Simulation of a buoyant smoke density plume
+# Smoke simulation with wavelet turbulence
+# (This is a simpler example, a more generic and automated example can be found in waveletTurbObs.py)
+# 
 
 from manta import *
 import os, shutil, math, sys
@@ -22,13 +23,6 @@ timings = Timings()
 # note - world space velocity, convert to grid space later
 velInflow = vec3(0.025, 0, 0)
 
-# prepare grids
-flags    = sm.create(FlagGrid)
-vel      = sm.create(MACGrid)
-density  = sm.create(RealGrid)
-pressure = sm.create(RealGrid)
-energy   = sm.create(RealGrid)
-
 # inflow noise field
 noise = sm.create(NoiseField, fixedSeed=265, loadFromFile=True)
 noise.posScale = vec3(20)
@@ -38,9 +32,6 @@ noise.clampPos = 2
 noise.valScale = 1
 noise.valOffset = 0.075
 noise.timeAnim = 0.3
-
-flags.initDomain()
-flags.fillGrid()
 
 source = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))
 sourceVel = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15, z=gs*vec3(0.15, 0, 0))
@@ -91,6 +82,18 @@ wltnoise3.timeAnim = 0.1
 wltStrength = 0.4
 
 
+# allocate low-res grids
+flags    = sm.create(FlagGrid)
+vel      = sm.create(MACGrid)
+density  = sm.create(RealGrid)
+pressure = sm.create(RealGrid)
+energy   = sm.create(RealGrid)
+
+bWidth=0
+flags.initDomain(boundaryWidth=bWidth)
+flags.fillGrid() 
+setOpenBound(flags,bWidth,'Y',FlagOutflow|FlagEmpty) 
+
 
 if (GUI):
 	gui = Gui()
@@ -103,7 +106,7 @@ for t in range(200):
 	#sys.stdout.write( "Current time t: " + str(curt) +" \n" )
 		
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=bWidth )
 	
 	applyInflow=False
 	if (curt>=0 and curt<75):
@@ -114,12 +117,11 @@ for t in range(200):
 	setWallBcs(flags=flags, vel=vel)    
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-1e-3,0), flags=flags)
 
-	vorticityConfinement( vel=vel, flags=flags, strength=0.4 )
+	vorticityConfinement( vel=vel, flags=flags, strength=0.3 )
 	
 	#applyNoiseVec3( flags=flags, target=vel, noise=noise, scale=1 ) # just to test, add everywhere...
 	
-	solvePressure(flags=flags, vel=vel, pressure=pressure , openBound='Y', \
-		cgMaxIterFac=1.0, cgAccuracy=0.01 )
+	solvePressure(flags=flags, vel=vel, pressure=pressure , cgMaxIterFac=1.0, cgAccuracy=0.01 )
 	setWallBcs(flags=flags, vel=vel)
 	
 	computeEnergy(flags=flags, vel=vel, energy=energy)
@@ -141,7 +143,7 @@ for t in range(200):
 	interpolateMACGrid( source=vel, target=xl_vel )
 	
 	applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=wltnoise, scale=wltStrength*1.0 , weight=xl_weight)
-	# manually apply further octaves
+	# manually weight and apply further octaves
 	applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=wltnoise2, scale=wltStrength*0.6 , weight=xl_weight)
 	applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=wltnoise3, scale=wltStrength*0.6*0.6 , weight=xl_weight)
 	

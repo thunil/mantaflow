@@ -16,6 +16,7 @@
 #include "painter.h"
 
 using namespace std;
+
 namespace Manta {
 	
 // *****************************************************************************
@@ -129,7 +130,6 @@ void TextCheckbox::set(bool v) {
 // **************************************************************************************
 // GUI class
 
-void updateQtGui(bool full, int frame, const std::string& curPlugin);
 extern MainThread* gMainThread;
 extern GuiThread* gGuiThread;
 
@@ -146,7 +146,7 @@ void Gui::show(bool twoD) {
 	mMainPtr->sendAndWait( (int)MainWnd::EventGuiShow );
 }
 void Gui::update() { 
-	updateQtGui(true,-1,"");
+	updateQtGui(true, -1,-1., "");
 }
 void Gui::pause() {
 	mMainPtr->sendAndWait((int)MainWnd::EventFullUpdate);         

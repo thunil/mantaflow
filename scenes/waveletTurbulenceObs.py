@@ -7,7 +7,7 @@
 from manta import *
 import os, shutil, math, sys
 
-# dimension two/three d
+# dimension two/three 
 dim = 2
 
 printBuildInfo()
@@ -17,7 +17,7 @@ printBuildInfo()
 upres = 4
  
 # overall wavelet noise strength
-wltStrength = 0.6
+wltStrength = 0.3
 
 # how many grids of uv coordinates to use (more than 2 usually dont pay off here)
 uvs = 1
@@ -38,7 +38,7 @@ sm.timestep = 1.5
 timings = Timings()
 
 # note - world space velocity, convert to grid space later
-velInflow = vec3(2, 0, 0)
+velInflow = vec3(0.015, 0, 0)
 
 # inflow noise field
 noise = sm.create(NoiseField, fixedSeed=265, loadFromFile=True)
@@ -84,9 +84,11 @@ if(upres>0):
 
 
 # init lower res solver & grids
+bWidth=1
 flags = sm.create(FlagGrid)
-flags.initDomain()
+flags.initDomain(boundaryWidth=bWidth)
 flags.fillGrid()
+setOpenBound(flags, bWidth,'yY', FlagOutflow|FlagEmpty) 
 obs.applyToGrid(grid=flags, value=FlagObstacle)
 
 # create the array of uv grids
@@ -130,7 +132,7 @@ for t in range(200):
 		wltStrength = sliderStr.get()
 	
 	advectSemiLagrange(flags=flags, vel=vel, grid=density,  order=2)	
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,      order=2)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,      order=2, openBounds=True, boundaryWidth=bWidth )
 
 	for i in range(uvs):
 		advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=2) 
@@ -151,8 +153,7 @@ for t in range(200):
 
 	vorticityConfinement( vel=vel, flags=flags, strength=0.4 )
 	
-	solvePressure(flags=flags, vel=vel, pressure=pressure , openBound='Y', \
-		cgMaxIterFac=1.0, cgAccuracy=0.01 )
+	solvePressure(flags=flags, vel=vel, pressure=pressure , cgMaxIterFac=1.0, cgAccuracy=0.01 )
 	setWallBcs(flags=flags, vel=vel)
 	
 	# determine weighting

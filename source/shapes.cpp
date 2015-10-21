@@ -38,7 +38,7 @@ bool Shape::isInside(const Vec3& pos) const {
 }
 
 //! Kernel: Apply a shape to a grid, setting value inside
-KERNEL template<class T> 
+KERNEL() template<class T> 
 void ApplyShapeToGrid (Grid<T>* grid, Shape* shape, T value, FlagGrid* respectFlags) {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;
@@ -47,7 +47,7 @@ void ApplyShapeToGrid (Grid<T>* grid, Shape* shape, T value, FlagGrid* respectFl
 }
 
 //! Kernel: Apply a shape to a grid, setting value inside (scaling by SDF value)
-KERNEL template<class T> 
+KERNEL() template<class T> 
 void ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi, Real sigma, Real shift, T value, FlagGrid* respectFlags) {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;
@@ -59,7 +59,7 @@ void ApplyShapeToGridSmooth (Grid<T>* grid, Grid<Real>& phi, Real sigma, Real sh
 }
 
 //! Kernel: Apply a shape to a MAC grid, setting value inside
-KERNEL void ApplyShapeToMACGrid (MACGrid* grid, Shape* shape, Vec3 value, FlagGrid* respectFlags) 
+KERNEL() void ApplyShapeToMACGrid (MACGrid* grid, Shape* shape, Vec3 value, FlagGrid* respectFlags) 
 {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;    
@@ -167,13 +167,14 @@ void Box::generateMesh(Mesh* mesh) {
 }
 
 //! Kernel: Analytic SDF for box shape
-KERNEL void BoxSDF(Grid<Real>& phi, const Vec3& p1, const Vec3& p2) {
+KERNEL() void BoxSDF(Grid<Real>& phi, const Vec3& p1, const Vec3& p2) {
 	const Vec3 p(i+0.5, j+0.5, k+0.5);
 	if (p.x <= p2.x && p.x >= p1.x && p.y <= p2.y && p.y >= p1.y && p.z <= p2.z && p.z >= p1.z) {
 		// inside: minimal surface distance
 		Real mx = max(p.x-p2.x, p1.x-p.x);
 		Real my = max(p.y-p2.y, p1.y-p.y);
 		Real mz = max(p.z-p2.z, p1.z-p.z);
+		if(!phi.is3D()) mz = mx; // skip for 2d...
 		phi(i,j,k) = max(mx,max(my,mz));
 	} else if (p.y <= p2.y && p.y >= p1.y && p.z <= p2.z && p.z >= p1.z) {
 		// outside plane X
@@ -297,7 +298,7 @@ void Sphere::generateMesh(Mesh* mesh) {
 	mesh->rebuildLookup(oldtri,-1);
 }
 	
-KERNEL void SphereSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 scale) {
+KERNEL() void SphereSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 scale) {
 	phi(i,j,k) = norm((Vec3(i+0.5,j+0.5,k+0.5)-center)/scale)-radius;
 }
 void Sphere::generateLevelset(Grid<Real>& phi) {
@@ -355,7 +356,7 @@ void Cylinder::generateMesh(Mesh* mesh) {
 	mesh->rebuildLookup(oldtri,-1);
 }
 	
-KERNEL void 
+KERNEL() void 
 CylinderSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 zaxis, Real maxz) {
 	Vec3 p=Vec3(i+0.5,j+0.5,k+0.5)-center;
 	Real z = fabs(dot(p, zaxis));
@@ -376,6 +377,83 @@ CylinderSDF(Grid<Real>& phi, Vec3 center, Real radius, Vec3 zaxis, Real maxz) {
 }
 void Cylinder::generateLevelset(Grid<Real>& phi) {
 	CylinderSDF(phi, mCenter, mRadius, mZDir, mZ);
+}
+
+Slope::Slope(FluidSolver* parent, Real anglexy, Real angleyz, Real origin, Vec3 gs)
+	: Shape(parent), mAnglexy(anglexy), mAngleyz(angleyz), mOrigin(origin), mGs(gs)
+{
+	mType = TypeSlope;
+}
+
+void Slope::generateMesh(Mesh* mesh) {
+
+	const int oldtri = mesh->numTris();
+
+	Vec3 v1(0.,mOrigin,0.);
+	mesh->addNode(Node(v1));
+
+	Real dy1 = mGs.z * std::tan(mAngleyz);
+	Vec3 v2(0., mOrigin - dy1, mGs.z);
+	mesh->addNode(Node(v2));
+
+	Real dy2 = mGs.x * std::tan(mAnglexy);
+	Vec3 v3(mGs.x, v2.y - dy2, mGs.z);
+	mesh->addNode(Node(v3));
+
+	Vec3 v4(mGs.x, mOrigin - dy2, 0.);
+	mesh->addNode(Node(v4));
+
+	mesh->addTri(Triangle(0, 1, 2));
+	mesh->addTri(Triangle(2, 3, 0));
+
+	mesh->rebuildCorners(oldtri, -1);
+	mesh->rebuildLookup(oldtri,-1);
+
+}
+
+bool Slope::isInside(const Vec3& pos) const {
+
+	const Real alpha = -mAnglexy * M_PI / 180.;
+	const Real beta  = -mAngleyz * M_PI / 180.;
+
+	Vec3 n(0,1,0);
+
+	n.x = std::sin(alpha)*std::cos(beta);
+	n.y = std::cos(alpha)*std::cos(beta);
+	n.z = std::sin(beta);
+
+	normalize(n);
+
+	const Real fac = std::sqrt(n.x*n.x + n.y*n.y + n.z*n.z);
+
+	return ((n.x*(double)pos.x + n.y*(double)pos.y + n.z*(double)pos.z - mOrigin) / fac) <= 0.;
+
+
+}
+
+KERNEL() void SlopeSDF(const Vec3 &n, Grid<Real> &phiObs, const Real &fac, const Real &origin) {
+
+	phiObs(i,j,k) = (n.x*(double)i + n.y*(double)j + n.z*(double)k - origin) * fac;
+
+}
+
+void Slope::generateLevelset(Grid<Real>& phi) {
+
+	const Real alpha = -mAnglexy * M_PI / 180.;
+	const Real beta  = -mAngleyz * M_PI / 180.;
+
+	Vec3 n(0,1,0);
+
+	n.x = std::sin(alpha)*std::cos(beta);
+	n.y = std::cos(alpha)*std::cos(beta);
+	n.z = std::sin(beta);
+
+	normalize(n);
+
+	const Real fac = 1. / std::sqrt(n.x*n.x + n.y*n.y + n.z*n.z);
+
+	SlopeSDF(n, phi, fac, mOrigin);
+
 }
 
 } //namespace

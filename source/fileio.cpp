@@ -470,7 +470,7 @@ typedef struct {
 } UniLegacyHeader2;
 
 //! for test run debugging
-PYTHON void printUniFileInfoString(const string& name) {
+PYTHON() void printUniFileInfoString(const string& name) {
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
 	if (gzf) { 
@@ -514,7 +514,7 @@ void getUniFileSize(const string& name, int& x, int& y, int& z, int* t=NULL) {
 	}
 #	endif
 }
-PYTHON Vec3 getUniFileSize(const string& name) {
+PYTHON() Vec3 getUniFileSize(const string& name) {
 	int x,y,z;
 	getUniFileSize(name, x,y,z);
 	return Vec3( Real(x), Real(y), Real(z) );
@@ -836,6 +836,7 @@ void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	debMsg( "file format not supported without zlib" ,1);
 #	endif
 }
+
 
 // explicit instantiation
 template void writeGridRaw<int> (const string& name, Grid<int>*  grid);

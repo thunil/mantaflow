@@ -244,7 +244,7 @@ template<> Real Grid<int>::getMaxAbs() {
 
 // compute maximal diference of two cells in the grid
 // used for testing system
-PYTHON Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2 )
+PYTHON() Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2 )
 {
 	double maxVal = 0.;
 	FOR_IJK(g1) {
@@ -252,7 +252,7 @@ PYTHON Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2 )
 	}
 	return maxVal; 
 }
-PYTHON Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2 )
+PYTHON() Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2 )
 {
 	double maxVal = 0.;
 	FOR_IJK(g1) {
@@ -260,7 +260,7 @@ PYTHON Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2 )
 	}
 	return maxVal; 
 }
-PYTHON Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
+PYTHON() Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
 {
 	double maxVal = 0.;
 	FOR_IJK(g1) {
@@ -278,21 +278,21 @@ PYTHON Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
 
 // simple helper functions to copy (convert) mac to vec3 , and levelset to real grids
 // (are assumed to be the same for running the test cases - in general they're not!)
-PYTHON void copyMacToVec3 (MACGrid &source, Grid<Vec3>& target)
+PYTHON() void copyMacToVec3 (MACGrid &source, Grid<Vec3>& target)
 {
 	FOR_IJK(target) {
 		target(i,j,k) = source(i,j,k);
 	}
 }
-PYTHON void convertMacToVec3 (MACGrid &source , Grid<Vec3> &target) { debMsg("Deprecated - do not use convertMacToVec3... use copyMacToVec3 instead",1); copyMacToVec3(source,target); }
+PYTHON() void convertMacToVec3 (MACGrid &source , Grid<Vec3> &target) { debMsg("Deprecated - do not use convertMacToVec3... use copyMacToVec3 instead",1); copyMacToVec3(source,target); }
 
-PYTHON void copyLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
+PYTHON() void copyLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
 {
 	FOR_IJK(target) {
 		target(i,j,k) = source(i,j,k);
 	}
 }
-PYTHON void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertLevelsetToReal... use copyLevelsetToReal instead",1); copyLevelsetToReal(source,target); }
+PYTHON() void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertLevelsetToReal... use copyLevelsetToReal instead",1); copyLevelsetToReal(source,target); }
 
 template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 	std::ostringstream out;
@@ -312,7 +312,7 @@ template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 }
 
 //! helper to swap components of a grid (eg for data import)
-PYTHON void swapComponents(Grid<Vec3>& vel, int c1=0, int c2=1, int c3=2) {
+PYTHON() void swapComponents(Grid<Vec3>& vel, int c1=0, int c2=1, int c3=2) {
 	FOR_IJK(vel) {
 		Vec3 v = vel(i,j,k);
 		vel(i,j,k)[0] = v[c1];
@@ -324,7 +324,7 @@ PYTHON void swapComponents(Grid<Vec3>& vel, int c1=0, int c2=1, int c3=2) {
 // helper functions for UV grid data (stored grid coordinates as Vec3 values, and uv weight in entry zero)
 
 // make uv weight accesible in python
-PYTHON Real getUvWeight (Grid<Vec3> &uv) { return uv[0][0]; }
+PYTHON() Real getUvWeight (Grid<Vec3> &uv) { return uv[0][0]; }
 
 // note - right now the UV grids have 0 values at the border after advection... could be fixed with an extrapolation step...
 
@@ -339,13 +339,13 @@ static inline Real computeUvRamp(Real t) {
 	return uvWeight;
 }
 
-KERNEL void knResetUvGrid (Grid<Vec3>& target) { target(i,j,k) = Vec3((Real)i,(Real)j,(Real)k); }
+KERNEL() void knResetUvGrid (Grid<Vec3>& target) { target(i,j,k) = Vec3((Real)i,(Real)j,(Real)k); }
 
-PYTHON void resetUvGrid (Grid<Vec3> &target)
+PYTHON() void resetUvGrid (Grid<Vec3> &target)
 {
 	knResetUvGrid reset(target); // note, llvm complains about anonymous declaration here... ?
 }
-PYTHON void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv , bool info=false)
+PYTHON() void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv , bool info=false)
 {
 	const Real t   = uv.getParent()->getTime();
 	Real  timeOff  = resetTime/(Real)numUvs;
@@ -373,7 +373,7 @@ PYTHON void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv
 	if(info) debMsg("Uv grid "<<index<<"/"<<numUvs<< " t="<<currt<<" w="<<uvWeight<<", reset:"<<(int)(currt<lastt) , 1);
 }
 
-KERNEL template<class T> void knSetBoundary (Grid<T>& grid, T value, int w) { 
+KERNEL() template<class T> void knSetBoundary (Grid<T>& grid, T value, int w) { 
 	bool bnd = (i<=w || i>=grid.getSizeX()-1-w || j<=w || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w || k>=grid.getSizeZ()-1-w)));
 	if (bnd) 
 		grid(i,j,k) = value;
@@ -384,7 +384,7 @@ template<class T> void Grid<T>::setBound(T value, int boundaryWidth) {
 }
 
 
-KERNEL template<class T> void knSetBoundaryNeumann (Grid<T>& grid, int w) { 
+KERNEL() template<class T> void knSetBoundaryNeumann (Grid<T>& grid, int w) { 
 	bool set = false;
 	int  si=i, sj=j, sk=k;
 	if( i<=w) {
@@ -426,7 +426,7 @@ KERNEL(idx, reduce=+) returns(int numEmpty=0)
 int knCountFluidCells(FlagGrid& flags) { if (flags.isFluid(idx) ) numEmpty++; }
 
 //! averaged value for all cells (if flags are given, only for fluid cells)
-PYTHON Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL) 
+PYTHON() Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL) 
 {
 	double sum = knGridTotalSum(source, flags);
 
@@ -439,23 +439,169 @@ PYTHON Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL)
 	return sum;
 }
 
+//! transfer data between real and vec3 grids
+
+KERNEL(idx) void knGetComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { 
+	target[idx] = source[idx][component]; 
+}
+PYTHON() void getComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { knGetComponent(source, target, component); }
+
+KERNEL(idx) void knSetComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { 
+	target[idx][component] = source[idx]; 
+}
+PYTHON() void setComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { knSetComponent(source, target, component); }
 
 //******************************************************************************
 // Specialization classes
 
-void FlagGrid::initDomain(int boundaryWidth) {
-	FOR_IDX(*this)
-		mData[idx] = TypeEmpty;
-	initBoundaries(boundaryWidth);
-	mBoundaryWidth = boundaryWidth;
+void FlagGrid::InitMinXWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
+	const int w = boundaryWidth;
+	FOR_IJK(phiWalls) {
+		phiWalls(i,j,k) = std::min(i - w - .5, (double)phiWalls(i,j,k));
+	}
 }
 
-void FlagGrid::initBoundaries(int boundaryWidth) {
+void FlagGrid::InitMaxXWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
+	const int w = boundaryWidth;
+	FOR_IJK(phiWalls) {
+		phiWalls(i,j,k) = std::min(mSize.x-i-1.5-w, (double)phiWalls(i,j,k));
+	}
+}
+
+void FlagGrid::InitMinYWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
+	const int w = boundaryWidth;
+	FOR_IJK(phiWalls) {
+		phiWalls(i,j,k) = std::min(j - w - .5, (double)phiWalls(i,j,k));
+	}
+}
+
+void FlagGrid::InitMaxYWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
+	const int w = boundaryWidth;
+	FOR_IJK(phiWalls) {
+		phiWalls(i,j,k) = std::min(mSize.y-j-1.5-w, (double)phiWalls(i,j,k));
+	}
+}
+
+void FlagGrid::InitMinZWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
+	const int w = boundaryWidth;
+	FOR_IJK(phiWalls) {
+		phiWalls(i,j,k) = std::min(k - w - .5, (double)phiWalls(i,j,k));
+	}
+}
+
+void FlagGrid::InitMaxZWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
+	const int w = boundaryWidth;
+	FOR_IJK(phiWalls) {
+		phiWalls(i,j,k) = std::min(mSize.z-k-1.5-w, (double)phiWalls(i,j,k));
+	}
+}
+
+void FlagGrid::initDomain( const int &boundaryWidth
+	                     , const string &wall    
+						 , const string &open    
+						 , const string &inflow  
+						 , const string &outflow
+						 , Grid<Real>* phiWalls ) {
+	
+	int  types[6] = {0};
+	bool set  [6] = {false};
+
+	if(phiWalls) phiWalls->setConst(1000000000);
+
+	for (char i = 0; i<6; ++i) {
+		//min x-direction
+		if(!set[0]) {
+			if(open[i]=='x')         {types[0] = TypeOpen;set[0] = true;}
+			else if(inflow[i]=='x')  {types[0] = TypeInflow;set[0] = true;}
+			else if(outflow[i]=='x') {types[0] = TypeOutflow;set[0] = true;}
+			else if(wall[i]=='x') {
+				types[0]    = TypeObstacle;
+				if(phiWalls) InitMinXWall(boundaryWidth, *phiWalls);
+				set[0] = true;
+			}			
+		}
+		//max x-direction
+		if(!set[1]) {
+			if(open[i]=='X')         {types[1] = TypeOpen;set[1] = true;}
+			else if(inflow[i]=='X')  {types[1] = TypeInflow;set[1] = true;}
+			else if(outflow[i]=='X') {types[1] = TypeOutflow;set[1] = true;}
+			else if(wall[i]=='X')  {
+				types[1]    = TypeObstacle;
+				if(phiWalls) InitMaxXWall(boundaryWidth, *phiWalls);
+				set[1] = true;
+			}			
+		}
+		//min y-direction
+		if(!set[2]) {
+			if(open[i]=='y')         {types[2] = TypeOpen;set[2] = true;}
+			else if(inflow[i]=='y')  {types[2] = TypeInflow;set[2] = true;}
+			else if(outflow[i]=='y') {types[2] = TypeOutflow;set[2] = true;}
+			else if(wall[i]=='y') {
+				types[2]    = TypeObstacle;
+				if(phiWalls) InitMinYWall(boundaryWidth, *phiWalls);
+				set[2] = true;
+			}			
+		}
+		//max y-direction
+		if(!set[3]) {
+			if(open[i]=='Y')         {types[3] = TypeOpen;set[3] = true;}
+			else if(inflow[i]=='Y')  {types[3] = TypeInflow;set[3] = true;}
+			else if(outflow[i]=='Y') {types[3] = TypeOutflow;set[3] = true;}
+			else if(wall[i]=='Y') {
+				types[3]    = TypeObstacle;
+				if(phiWalls) InitMaxYWall(boundaryWidth, *phiWalls);
+				set[3] = true;
+			}			
+		}
+		if(this->is3D()) {
+		//min z-direction
+			if(!set[4]) {
+				if(open[i]=='z')         {types[4] = TypeOpen;set[4] = true;}
+				else if(inflow[i]=='z')  {types[4] = TypeInflow;set[4] = true;}
+				else if(outflow[i]=='z') {types[4] = TypeOutflow;set[4] = true;}
+				else if(wall[i]=='z') {
+					types[4]    = TypeObstacle;
+					if(phiWalls) InitMinZWall(boundaryWidth, *phiWalls);
+					set[4] = true;
+				}				
+			}
+			//max z-direction
+			if(!set[5]) {
+				if(open[i]=='Z')         {types[5] = TypeOpen;set[5] = true;}
+				else if(inflow[i]=='Z')  {types[5] = TypeInflow;set[5] = true;}
+				else if(outflow[i]=='Z') {types[5] = TypeOutflow;set[5] = true;}
+				else if(wall[i]=='Z') {
+					types[5]    = TypeObstacle;
+					if(phiWalls) InitMaxZWall(boundaryWidth, *phiWalls);
+					set[5] = true;
+				}				
+			}
+		}
+	}
+
+	FOR_IDX(*this)
+		mData[idx] = TypeEmpty;
+		initBoundaries(boundaryWidth, types);
+	
+}
+
+void FlagGrid::initBoundaries(const int &boundaryWidth, const int *types) {
 	const int w = boundaryWidth;
 	FOR_IJK(*this) {
-		bool bnd = (i<=w || i>=mSize.x-1-w || j<=w || j>=mSize.y-1-w || (is3D() && (k<=w || k>=mSize.z-1-w)));
-		if (bnd) 
-			mData[index(i,j,k)] = TypeObstacle;
+		bool bnd = (i <= w);
+		if (bnd) mData[index(i,j,k)] = types[0];
+		bnd = (i >= mSize.x-1-w);
+		if (bnd) mData[index(i,j,k)] = types[1];
+		bnd = (j <= w);
+		if (bnd) mData[index(i,j,k)] = types[2];
+		bnd = (j >= mSize.y-1-w);
+		if (bnd) mData[index(i,j,k)] = types[3];
+		if(is3D()) {
+			bnd = (k <= w);
+			if (bnd) mData[index(i,j,k)] = types[4];
+			bnd = (k >= mSize.z-1-w);
+			if (bnd) mData[index(i,j,k)] = types[5];
+		}
 	}
 }
 
@@ -473,7 +619,7 @@ void FlagGrid::updateFromLevelset(LevelsetGrid& levelset) {
 
 void FlagGrid::fillGrid(int type) {
 	FOR_IDX(*this) {
-		if ((mData[idx] & TypeObstacle)==0)
+		if ((mData[idx] & TypeObstacle)==0 && (mData[idx] & TypeInflow)==0&& (mData[idx] & TypeOutflow)==0&& (mData[idx] & TypeOpen)==0)
 			mData[idx] = (mData[idx] & ~(TypeEmpty | TypeFluid)) | type;
 	}
 }
@@ -489,15 +635,15 @@ template class Grid<Vec3>;
 // enable in grid.h
 
 #if ENABLE_GRID_TEST_DATATYPE==1
-// NT_DEBUG ?  template<> const char* Namify<nbVector>::S = "TestDatatype";
+// todo fix, missing:  template<> const char* Namify<nbVector>::S = "TestDatatype";
 
 template<> Real Grid<nbVector>::getMin() { return 0.; }
 template<> Real Grid<nbVector>::getMax() { return 0.; }
 template<> Real Grid<nbVector>::getMaxAbs()      { return 0.; }
 
-KERNEL void knNbvecTestKernel (Grid<nbVector>& target) { target(i,j,k).push_back(i+j+k); }
+KERNEL() void knNbvecTestKernel (Grid<nbVector>& target) { target(i,j,k).push_back(i+j+k); }
 
-PYTHON void nbvecTestOp (Grid<nbVector> &target) {
+PYTHON() void nbvecTestOp (Grid<nbVector> &target) {
 	knNbvecTestKernel nbvecTest(target); 
 }
 

@@ -658,7 +658,7 @@ static inline int _cIndex(const Vec3& pos, const Vec3i& s) {
 }
 
 //! Kernel: Apply a shape to a grid, setting value inside
-KERNEL template<class T> 
+KERNEL() template<class T> 
 void ApplyMeshToGrid (Grid<T>* grid, Grid<Real> sdf, T value, FlagGrid* respectFlags) {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;
@@ -701,7 +701,7 @@ void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
 	std::vector<Vec3> normals;
 	short bigEdges(0);
 	std::vector<Vec3> samplePoints;
-	for(size_t i=0; i<mesh.numTris(); i++){	
+	for(int i=0; i<mesh.numTris(); i++){	
 		center.push_back(Vec3(mesh.getFaceCenter(i) * mult));
 		normals.push_back(mesh.getFaceNormal(i));
 		//count big, stretched edges

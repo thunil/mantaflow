@@ -47,12 +47,12 @@ protected:
 };
 
 // Python interface
-PYTHON class Timings : public PbClass {
+PYTHON() class Timings : public PbClass {
 public:
-	PYTHON Timings() : PbClass(0) {}
+	PYTHON() Timings() : PbClass(0) {}
 	
-	PYTHON void display() { TimingData::instance().print(); }
-	PYTHON void saveMean(std::string file) { TimingData::instance().saveMean(file); }
+	PYTHON() void display() { TimingData::instance().print(); }
+	PYTHON() void saveMean(std::string file) { TimingData::instance().saveMean(file); }
 };
 
 }

@@ -25,9 +25,8 @@ dirsVel  = [ vec3(0,2,0), vec3(0,-2,0),
 steps = 5
 outputScale = 1e05
 errThresh   = 1e-05
-if (DOUBLEPRECISION) and (getStrictSetting()==1):
+if (DOUBLEPRECISION):
 	outputScale = 1e14
-	errThresh   = 1e-12
 
 # loop over both 2d and 3d
 for dim in range(2,4):
@@ -175,9 +174,9 @@ for dim in range(2,4):
 			s.step()
 
 		# check result
-		doTestGrid( sys.argv[0], ("errr1-%d-%d"%(dim,symms)) , s, errR1 , threshold=errThresh , thresholdStrict=1e-08 )
+		doTestGrid( sys.argv[0], ("errr1-%d-%d"%(dim,symms)) , s, errR1 , threshold=errThresh , thresholdStrict=1e-13 )
 		if(dim==3):
-			doTestGrid( sys.argv[0], ("errr2-%d-%d"%(dim,symms)) , s, errR2 , threshold=errThresh , thresholdStrict=1e-08 )
+			doTestGrid( sys.argv[0], ("errr2-%d-%d"%(dim,symms)) , s, errR2 , threshold=errThresh , thresholdStrict=1e-13 )
 
 
 		# part2 
@@ -212,9 +211,9 @@ for dim in range(2,4):
 			s.step()
 
 		# check result
-		doTestGrid( sys.argv[0], ("errv1-%d-%d"%(dim,symms)) , s, errV1 , threshold=errThresh , thresholdStrict=1e-08 )
+		doTestGrid( sys.argv[0], ("errv1-%d-%d"%(dim,symms)) , s, errV1 , threshold=errThresh , thresholdStrict=1e-12 )
 		if(dim==3):
-			doTestGrid( sys.argv[0], ("errv2-%d-%d"%(dim,symms)) , s, errV2 , threshold=errThresh , thresholdStrict=1e-08 )
+			doTestGrid( sys.argv[0], ("errv2-%d-%d"%(dim,symms)) , s, errV2 , threshold=errThresh , thresholdStrict=1e-12 )
 
 	# prevent UI crash
 	if showGui:

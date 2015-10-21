@@ -28,9 +28,9 @@ class GuiThread;
 class MainThread;
 	
 //! Interface for python declared controls
-PYTHON class CustomControl : public PbClass {
+PYTHON() class CustomControl : public PbClass {
 public:
-	PYTHON CustomControl();
+	PYTHON() CustomControl();
 	
 	virtual void init(QBoxLayout* layout) {};
 
@@ -77,11 +77,11 @@ protected:
 PYTHON(name=Slider)
 class CustomSlider : public CustomControl  {
 public:
-	PYTHON CustomSlider(std::string text, float val, float min, float max);
+	PYTHON() CustomSlider(std::string text, float val, float min, float max);
 	virtual void init(QBoxLayout* layout);
 	
-	PYTHON float get();
-	PYTHON void set(float v);
+	PYTHON() float get();
+	PYTHON() void set(float v);
 	
 protected:
 	float mMin, mMax, mVal;
@@ -93,11 +93,11 @@ protected:
 PYTHON(name=Checkbox)
 class CustomCheckbox : public CustomControl  {
 public:
-	PYTHON CustomCheckbox(std::string text, bool val);
+	PYTHON() CustomCheckbox(std::string text, bool val);
 	virtual void init(QBoxLayout* layout);
 	
-	PYTHON bool get();
-	PYTHON void set(bool v);
+	PYTHON() bool get();
+	PYTHON() void set(bool v);
 	
 protected:
 	bool mVal;
@@ -107,30 +107,30 @@ protected:
 	
 
 //! GUI adapter class to call from Python
-PYTHON class Gui : public PbClass {
+PYTHON() class Gui : public PbClass {
 public:
-	PYTHON Gui();
+	PYTHON() Gui();
 	
-	PYTHON void setBackgroundMesh(Mesh* m);
-	PYTHON void show(bool twoD=false);
-	PYTHON void update();
-	PYTHON void pause();
-	PYTHON PbClass* addControl(PbType t);
-	PYTHON void screenshot(std::string filename);
+	PYTHON() void setBackgroundMesh(Mesh* m);
+	PYTHON() void show(bool twoD=false);
+	PYTHON() void update();
+	PYTHON() void pause();
+	PYTHON() PbClass* addControl(PbType t);
+	PYTHON() void screenshot(std::string filename);
 
 	// control display upon startup
-	PYTHON void nextRealGrid();
-	PYTHON void nextVec3Grid();
-	PYTHON void nextParts();
-	PYTHON void nextPdata();
-	PYTHON void nextMesh();
-	PYTHON void nextVec3Display();
-	PYTHON void nextMeshDisplay();
-	PYTHON void nextPartDisplay(); 
-	PYTHON void toggleHideGrids();
-	PYTHON void setCamPos(float x, float y, float z);
-	PYTHON void setCamRot(float x, float y, float z);  
-	PYTHON void windowSize(int w, int h);
+	PYTHON() void nextRealGrid();
+	PYTHON() void nextVec3Grid();
+	PYTHON() void nextParts();
+	PYTHON() void nextPdata();
+	PYTHON() void nextMesh();
+	PYTHON() void nextVec3Display();
+	PYTHON() void nextMeshDisplay();
+	PYTHON() void nextPartDisplay(); 
+	PYTHON() void toggleHideGrids();
+	PYTHON() void setCamPos(float x, float y, float z);
+	PYTHON() void setCamRot(float x, float y, float z);  
+	PYTHON() void windowSize(int w, int h);
 	
 protected:
 	GuiThread* mGuiPtr;

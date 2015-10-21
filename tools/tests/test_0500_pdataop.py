@@ -83,13 +83,14 @@ else:
 
 # verify
 
-doTestGrid( sys.argv[0], "rlg1", pp, rlg1 , threshold=1e-07 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "rlg2", pp, rlg2 , threshold=1e-07 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "rlg3", pp, rlg3 , threshold=1e-07 , thresholdStrict=1e-14  )
+# note the strict/double prec threshold is ridiculously un-strict - problem is the float rounding in the uni/raw files, which makes this test pretty meaningless for doubles...
+doTestGrid( sys.argv[0], "rlg1", pp, rlg1 , threshold=1e-07 , thresholdStrict=1e-06  )
+doTestGrid( sys.argv[0], "rlg2", pp, rlg2 , threshold=1e-07 , thresholdStrict=1e-06  )
+doTestGrid( sys.argv[0], "rlg3", pp, rlg3 , threshold=1e-07 , thresholdStrict=1e-06  )
 
-doTestGrid( sys.argv[0], "vcg1", pp, vcg1 , threshold=5e-07 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "vcg2", pp, vcg2 , threshold=5e-07 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "vcg3", pp, vcg3 , threshold=5e-07 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "vcg1", pp, vcg1 , threshold=5e-07 , thresholdStrict=1e-06  )
+doTestGrid( sys.argv[0], "vcg2", pp, vcg2 , threshold=5e-07 , thresholdStrict=1e-06  )
+doTestGrid( sys.argv[0], "vcg3", pp, vcg3 , threshold=5e-07 , thresholdStrict=1e-06  )
 
 doTestGrid( sys.argv[0], "int1", pp, int1 , threshold=1e-14 , thresholdStrict=1e-14  )
 doTestGrid( sys.argv[0], "int2", pp, int2 , threshold=1e-14 , thresholdStrict=1e-14  )

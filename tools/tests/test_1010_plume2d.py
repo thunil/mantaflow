@@ -10,6 +10,9 @@ res      = 64
 frames   = 30
 accuracy = 1e-05
 
+if getFloatSetting()==2:
+	accuracy = 1e-10
+
 if getVisualSetting():
 	# in visual mode
 	res    = 128 * getVisualSetting()
@@ -48,8 +51,7 @@ for t in range(frames):
 	setWallBcs(flags=flags, vel=vel)	
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-9e-3,0), flags=flags)
 	
-	solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='Y', cgAccuracy=accuracy, cgMaxIterFac=5. )
-	setWallBcs(flags=flags, vel=vel)
+	solvePressure(flags=flags, vel=vel, pressure=pressure, cgAccuracy=accuracy, cgMaxIterFac=5. )
 	
 	s.step()
 

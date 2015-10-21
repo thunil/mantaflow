@@ -18,6 +18,7 @@ Real = float
 FlagFluid = 1
 FlagObstacle = 2
 FlagEmpty = 4
+FlagOutflow = 16
 FlagStick = 128
 FlagReserved = 256
 

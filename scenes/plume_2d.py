@@ -1,6 +1,6 @@
 #
 # Simple example scene for a 2D simulation
-# Simulation of a buoyant smoke density plume
+# Simulation of a buoyant smoke density plume with open boundaries at top & bottom
 #
 from manta import *
 
@@ -17,8 +17,10 @@ vel = s.create(MACGrid)
 density = s.create(RealGrid)
 pressure = s.create(RealGrid)
 
-flags.initDomain()
+flags.initDomain() 
 flags.fillGrid()
+
+setOpenBound(flags, 1,'yY',FlagOutflow|FlagEmpty) 
 
 if (GUI):
 	gui = Gui()
@@ -32,14 +34,14 @@ for t in range(400):
 	if t<300:
 		source.applyToGrid(grid=density, value=1)
 		
-	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2)
-	
+	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2) 
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=1)
+	resetOutflow(flags=flags,real=density) 
+
 	setWallBcs(flags=flags, vel=vel)    
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-4e-3,0), flags=flags)
-	
-	solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='YxX')
-	setWallBcs(flags=flags, vel=vel)
+
+	solvePressure(flags=flags, vel=vel, pressure=pressure)
 	
 	timings.display()    
 	s.step()

@@ -19,13 +19,6 @@
 using namespace std;
 namespace Manta {
 
-#ifdef GUI
-	// defined in qtmain.cpp
-	extern void updateQtGui(bool full, int frame, const std::string& curPlugin);
-#else
-	inline void updateQtGui(bool full, int frame, const std::string& curPlugin) {}
-#endif
-
 //******************************************************************************
 // Gridstorage-related members
 
@@ -98,7 +91,6 @@ PbClass* FluidSolver::create(PbType t, PbTypeVec T, const string& name) {
 		errMsg("Need to specify object type. Use e.g. Solver.create(FlagGrid, ...) or Solver.create(type=FlagGrid, ...)");
 	
 	PbClass* ret = PbClass::createPyObject(t.str() + T.str(), name, _args, this);
-	//_args.check(); // NT_DEBUG , todo add here ...
 	return ret;
 }
 
@@ -120,7 +112,7 @@ void FluidSolver::step() {
 		}
 	}
 
-	updateQtGui(true, mFrame, "FluidSolver::step");
+	updateQtGui(true, mFrame,mTimeTotal, "FluidSolver::step");
 }
 
 void FluidSolver::printMemInfo() {
@@ -131,13 +123,13 @@ void FluidSolver::printMemInfo() {
 	printf("%s\n", msg.str().c_str() );
 }
 
-PYTHON std::string printBuildInfo() {
+PYTHON() std::string printBuildInfo() {
 	string infoString = buildInfoString();
 	debMsg( "Build info: "<<infoString.c_str()<<" ",1);
 	return infoString;
 }
 
-PYTHON void setDebugLevel(int level=1) {
+PYTHON() void setDebugLevel(int level=1) {
 	gDebugLevel = level; 
 }
 

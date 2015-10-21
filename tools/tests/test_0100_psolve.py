@@ -33,11 +33,12 @@ velSource = s.create(Box, p0=gs*vec3(0.3,0.4,0.3), p1=gs*vec3(0.7,0.8,0.7) )
 # a simple solve
 vel.setConst( vec3(0,0,0) )
 velSource.applyToGrid(grid=vel, value=vec3(0.15, 0.3, 0.21) )    
-solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-04)
+solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-04, zeroPressureFixing=False)
 s.step()
 
 # check - note, unfortunately low threshold here necessary for float<>double comparisons...
 doTestGrid( sys.argv[0], "pressure0" , s, pressure , threshold=1e-04, thresholdStrict=1e-10)
+doTestGrid( sys.argv[0], "vel0"      , s, vel      , threshold=1e-04, thresholdStrict=1e-10)
 
 # ============================
     
@@ -46,10 +47,10 @@ vel.setConst( vec3(0,0,0) )
 velSource.applyToGrid(grid=vel, value=vec3(1.5, 3, 2.1) )
 
 setWallBcs(flags=flags, vel=vel) 
-solvePressure(flags=flags, vel=vel, pressure=pressure, openBound='Y', cgMaxIterFac=99, cgAccuracy=1e-04)
-setWallBcs(flags=flags, vel=vel)
+solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-04, zeroPressureFixing=False)
 s.step()
 
 # check final state
 doTestGrid( sys.argv[0], "pressure" , s, pressure , threshold=1e-04, thresholdStrict=1e-10)
+doTestGrid( sys.argv[0], "vel"      , s, vel      , threshold=1e-04, thresholdStrict=1e-10)
 

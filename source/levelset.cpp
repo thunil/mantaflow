@@ -83,18 +83,6 @@ inline bool isAtInterface(Grid<int>& fmFlags, LevelsetGrid& phi, const Vec3i& p)
 	return false;
 }
 
-// helper function to compute gradient of a scalar grid
-/*inline Vec3 getGradient(const Grid<Real>& data, int i, int j, int k) {
-	if (i > data.getSizeX()-2) i= data.getSizeX()-2;
-	if (j > data.getSizeY()-2) j= data.getSizeY()-2;
-	if (k > data.getSizeZ()-2) k= data.getSizeZ()-2;
-	if (i < 1) i = 1;
-	if (j < 1) j = 1;
-	if (k < 1) k = 1;
-	return Vec3( data(i+1,j  ,k  ) - data(i-1,j  ,k  ) ,
-				 data(i  ,j+1,k  ) - data(i  ,j-1,k  ) ,
-				 data(i  ,j  ,k+1) - data(i  ,j  ,k-1) );
-}*/
 
 //************************************************************************
 // Levelset class def
@@ -112,24 +100,26 @@ Real LevelsetGrid::invalidTimeValue() {
 //! Kernel: perform levelset union
 KERNEL(idx) void KnJoin(Grid<Real>& a, const Grid<Real>& b) {
 	a[idx] = min(a[idx], b[idx]);
-}
+} 
+void LevelsetGrid::join(const LevelsetGrid& o) { KnJoin(*this, o); }
 
-void LevelsetGrid::join(const LevelsetGrid& o) {
-	KnJoin(*this, o);
-}
+//! subtract b, note does not preserve SDF!
+KERNEL(idx) void KnSubtract(Grid<Real>& a, const Grid<Real>& b) {
+	if(b[idx]<0.) a[idx] = b[idx] * -1.;
+} 
+void LevelsetGrid::subtract(const LevelsetGrid& o) { KnSubtract(*this, o); }
 
 //! re-init levelset and extrapolate velocities (in & out)
 //  note - uses flags to identify border (could also be done based on ls values)
 void LevelsetGrid::reinitMarching(
 		FlagGrid& flags, Real maxTime, MACGrid* velTransport,
-		bool ignoreWalls, bool correctOuterLayer, int obstacleType
-		, Grid<Real>* normSpeed )
+		bool ignoreWalls, bool correctOuterLayer, int obstacleType )
 {
 	const int dim = (is3D() ? 3 : 2);
 	
 	Grid<int> fmFlags(mParent);
 	LevelsetGrid& phi = *this;
-	FastMarch<FmHeapEntryIn,  -1> marchIn (flags, fmFlags, phi, maxTime, NULL, NULL);
+	FastMarch<FmHeapEntryIn,  -1> marchIn (flags, fmFlags, phi, maxTime, NULL);
 	
 	// march inside
 	InitFmIn (flags, fmFlags, phi, ignoreWalls, obstacleType);
@@ -165,17 +155,8 @@ void LevelsetGrid::reinitMarching(
 
 	InitFmOut (flags, fmFlags, phi, ignoreWalls, obstacleType);
 	
-	FastMarch<FmHeapEntryOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport, normSpeed);
+	FastMarch<FmHeapEntryOut, +1> marchOut(flags, fmFlags, phi, maxTime, velTransport );
 
-	// NT_DEBUG , finalize - still experimental
-	if(normSpeed && velTransport) {
-		FOR_IJK_BND(flags, 1) {
-			Vec3 vel  = velTransport->getCentered(i,j,k);
-			Vec3 norm = getGradient(phi, i,j,k);  normalize(norm);
-			(*normSpeed)(i,j,k) = dot( norm , vel );
-		}
-	}
-	
 	// by default, correctOuterLayer is on
 	if (correctOuterLayer) {
 		// normal version, inwards march is done, now add all outside values (0..2] to list

@@ -22,6 +22,8 @@ if (dim==2):
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.25
 accuracy = 5e-5
+if getFloatSetting()==2:
+	accuracy = 1e-10
 
 if getVisualSetting():
 	s.timestep = 0.28 / getVisualSetting()
@@ -75,6 +77,6 @@ for t in range(frames):
 
 
 # check final state
-doTestGrid( sys.argv[0],"phi"  , s, phi    )
-doTestGrid( sys.argv[0],"vel"  , s, vel    )
+doTestGrid( sys.argv[0],"phi"  , s, phi  , threshold=1e-07 , thresholdStrict=1e-10   )
+doTestGrid( sys.argv[0],"vel"  , s, vel  , threshold=1e-07 , thresholdStrict=1e-10   )
 

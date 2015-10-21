@@ -21,14 +21,11 @@ using namespace std;
 namespace Manta {
 	
 template<class COMP, int TDIR>
-FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, 
-		MACGrid* velTransport, Grid<Real>* velMag )
+FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, MACGrid* velTransport )
 	: mLevelset(levelset), mFlags(flags), mFmFlags(fmFlags)
 {
 	if (velTransport)
 		mVelTransport.initMarching(velTransport, &flags);
-	if (velMag)
-		mMagTransport.initMarching(velMag, &flags);
 	
 	mMaxTime = maxTime * TDIR;
 }
@@ -163,8 +160,6 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
 	
 	if (mVelTransport.isInitialized())
 		mVelTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
-	if (mMagTransport.isInitialized())
-		mMagTransport.transpTouch(p.x, p.y, p.z, mWeights, ttime);
 
 	// the following adds entries to the heap of active cells
 	// current: (!found) , previous: always add, might lead to duplicate
@@ -334,7 +329,10 @@ void knUnprojectNormalComp (FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Re
 }
 // a simple extrapolation step , used for cases where there's no levelset
 // (note, less accurate than fast marching extrapolation!)
-PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4, LevelsetGrid* phiObs=NULL ) 
+// into obstacle is a special mode for second order obstable boundaries (extrapolating
+// only fluid velocities, not those at obstacles)
+PYTHON() void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4, 
+		LevelsetGrid* phiObs=NULL , bool intoObs = false ) 
 {
 	Grid<int> tmp( flags.getParent() );
 	int dim = (flags.is3D() ? 3:2);
@@ -344,16 +342,19 @@ PYTHON void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 
 		dir[c] = 1;
 		tmp.clear();
 
-		// remove all fluid cells
+		// remove all fluid cells (not touching obstacles)
 		FOR_IJK_BND(flags,1) {
 			Vec3i p(i,j,k);
-			if (flags.isFluid(p) || flags.isFluid(p-dir) ) {
-				tmp(p) = 1;
+			bool mark = false;
+			if(!intoObs) {
+				if( flags.isFluid(p) || flags.isFluid(p-dir) ) mark = true;
+			} else {
+				if( (flags.isFluid(p) || flags.isFluid(p-dir) ) && 
+					(!flags.isObstacle(p)) && (!flags.isObstacle(p-dir)) ) mark = true;
 			}
-		}
 
-		// debug init! , enable for testing only - set varying velocities inside
-		//FOR_IJK_BND(flags,1) { if (tmp(i,j,k) == 0) continue; vel(i,j,k)[c] = (i+j+k+c+1.)*0.1; }
+			if(mark) tmp(p) = 1;
+		}
 		
 		// extrapolate for distance
 		for(int d=1; d<1+distance; ++d) {
@@ -402,7 +403,7 @@ void knExtrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance
 // note - the weight grid values are destroyed! the function is necessary due to discrepancies
 // between velocity mapping on surface-levelset / fluid-flag creation. With this
 // extrapolation we make sure the fluid region is covered by initial velocities
-PYTHON void extrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance = 2) 
+PYTHON() void extrapolateMACFromWeight ( MACGrid& vel, Grid<Vec3>& weight, int distance = 2) 
 {
 	const int dim = (vel.is3D() ? 3:2);
 
@@ -467,7 +468,7 @@ void knSetRemaining (Grid<S>& phi, Grid<int>& tmp, S distance )
 	phi(i,j,k) = distance;
 }
 
-PYTHON void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=false )
+PYTHON() void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=false )
 {
 	Grid<int> tmp( phi.getParent() );
 	tmp.clear();
@@ -507,7 +508,7 @@ PYTHON void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool inside=
 }
 
 // extrapolate centered vec3 values from marked fluid cells
-PYTHON void extrapolateVec3Simple (Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4)
+PYTHON() void extrapolateVec3Simple (Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4)
 {
 	Grid<int> tmp( vel.getParent() );
 	tmp.clear();
