@@ -256,7 +256,8 @@ void knExtrapolateMACSimple (MACGrid& vel, int distance , Grid<int>& tmp , const
 		vel(p)[c] = avgVel / nbs;
 	}
 }
-KERNEL(bnd=0)
+// TODO, make parallel by only modifying ijk (ie, turn push into pull)
+KERNEL(bnd=0, single)
 void knExtrapolateIntoBnd (FlagGrid& flags, MACGrid& vel)
 {
 	int c=0;
