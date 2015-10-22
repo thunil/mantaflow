@@ -95,6 +95,8 @@ void Grid<T>::load(string name) {
 		readGridRaw(name, this);
 	else if (ext == ".uni")
 		readGridUni(name, this);
+	else if (ext == ".vol")
+		readGridVol(name, this);
 	else
 		errMsg("file '" + name +"' filetype not supported");
 }
