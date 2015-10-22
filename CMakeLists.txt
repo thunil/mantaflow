@@ -11,13 +11,13 @@
 #******************************************************************************
 
 project (MantaFlow)
-cmake_minimum_required(VERSION 2.8) # 2.8 needed for CUDA
+cmake_minimum_required(VERSION 2.8)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/source/cmake/")
 SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 SET(VERBOSE 1)
 
-SET(MANTAVERSION "0.6")
+SET(MANTAVERSION "0.8")
 
 #******************************************************************************
 # Default paths
@@ -56,7 +56,7 @@ OPTION(TBB "Use multi-thread kernels using Intels TBB" OFF)
 OPTION(OPENMP "Use multi-thread kernels using OpenMP" OFF)
 OPTION(PREPDEBUG "Debug generated files" OFF) # This will beautify generated files, and link to them for compiler errors instead of the original sources
 OPTION(DOUBLEPRECISION "Compile with double floating point precision" OFF)
-# CUDA is deprecated, and not tested - enable at own risk...
+# CUDA is deprecated, and not tested - enable at own risk... (needs cmake version >2.8)
 #OPTION(CUDA "Compile with CUDA plugins" OFF)
 
 #check consistency of MT options
@@ -546,12 +546,17 @@ else()
 	target_link_libraries( ${EXECCMD} ${F_LIBS} )
 endif()
 
-# old - add no-build target to create nice MSVC folder
-#if(WIN32)
-#	add_custom_target(SourceFiles SOURCES ${PP_SOURCES} ${PP_HEADERS} ${QT_SOURCES} ${QT_HEADERS} ${NOPP_HEADERS} ${NOPP_SOURCES})
-#	source_group(Headers FILES ${PP_HEADERS} ${NOPP_HEADERS} ${QT_HEADERS})
-#	source_group(Sources FILES ${PP_SOURCES} ${NOPP_SOURCES} ${QT_SOURCES})
-#endif()
+# fix for "el capitan" TBB and changed dynamic library env vars, lookup of TBB can cause problems without @rpath
+IF(APPLE)
+	EXEC_PROGRAM(uname ARGS -v  OUTPUT_VARIABLE OSX_VERSION)
+	STRING(REGEX MATCH "[0-9]+" OSX_VERSION ${OSX_VERSION})
+	#MESSAGE(STATUS "OSX_VERSION=${OSX_VERSION}")
+	IF (OSX_VERSION GREATER 14)
+		ADD_CUSTOM_COMMAND(TARGET manta   POST_BUILD COMMAND 
+			${CMAKE_INSTALL_NAME_TOOL} -change libtbb.dylib @rpath/libtbb.dylib ${EXECCMD} )
+	ENDIF()
+ENDIF()
 
 # debug
-MESSAGE(STATUS "DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")
+# MESSAGE(STATUS "DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")
+

@@ -37,6 +37,7 @@ template<class T> void writeGridTxt(const std::string& name, Grid<T>* grid);
 
 template<class T> void readGridUni(const std::string& name, Grid<T>* grid);
 template<class T> void readGridRaw(const std::string& name, Grid<T>* grid);
+template<class T> void readGridVol(const std::string& name, Grid<T>* grid);
 
 void writeParticlesUni(const std::string& name, BasicParticleSystem* parts );
 void readParticlesUni (const std::string& name, BasicParticleSystem* parts );
