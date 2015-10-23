@@ -107,9 +107,9 @@ if getVisualSetting():
 	if not os.path.exists( dirname ):
 		os.makedirs( dirname )    
 	# make sure no previous files are left
-   	if not os.path.exists( visModeTrashDir ):
+	if not os.path.exists( visModeTrashDir ):
 		os.makedirs( visModeTrashDir )    
-   	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
+	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
 
 	if not os.path.exists( outpngdir ):
 		os.makedirs( outpngdir )	
