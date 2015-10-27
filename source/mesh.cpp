@@ -49,7 +49,7 @@ Real Mesh::computeCenterOfMass(Vec3& cm) const {
 		Vector3D<double> p3(toVec3d(getNode(tri,2)));
 		
 		double cvol = dot(cross(p1,p2),p3) / 6.0;        
-		cmd += (p1+p2+p3) * (cvol/3.0);
+		cmd += (p1+p2+p3) * (cvol/4.0);
 		vol += cvol;
 	}
 	if (vol != 0.0) cmd /= vol;    
