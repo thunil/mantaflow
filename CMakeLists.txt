@@ -56,6 +56,7 @@ OPTION(TBB "Use multi-thread kernels using Intels TBB" OFF)
 OPTION(OPENMP "Use multi-thread kernels using OpenMP" OFF)
 OPTION(PREPDEBUG "Debug generated files" OFF) # This will beautify generated files, and link to them for compiler errors instead of the original sources
 OPTION(DOUBLEPRECISION "Compile with double floating point precision" OFF)
+OPTION(NOPYTHON "Compile without python support (limited functionality!)" OFF)
 # CUDA is deprecated, and not tested - enable at own risk... (needs cmake version >2.8)
 #OPTION(CUDA "Compile with CUDA plugins" OFF)
 
@@ -230,6 +231,78 @@ if (GUI)
 	)
 	list(APPEND PP_SOURCES ${QT_SOURCES})
 	list(APPEND PP_HEADERS ${QT_HEADERS})
+endif()
+
+if (NOPYTHON)
+	# replace sources
+	SET(PP_SOURCES
+		source/general.cpp
+		source/fluidsolver.cpp
+	#	source/conjugategrad.cpp
+	#	source/grid.cpp
+	#	source/levelset.cpp
+	#	source/fastmarch.cpp
+	#	source/shapes.cpp
+	#	source/mesh.cpp
+	#	source/particle.cpp
+	#	source/movingobs.cpp
+	#	source/fileio.cpp
+	#	source/noisefield.cpp
+		source/kernel.cpp
+	#	source/vortexsheet.cpp
+	#	source/vortexpart.cpp
+	#	source/turbulencepart.cpp
+		source/timing.cpp
+	#	source/edgecollapse.cpp
+	#	source/plugin/advection.cpp
+	#	source/plugin/extforces.cpp
+	#	source/plugin/flip.cpp
+	#	source/plugin/kepsilon.cpp
+	#	source/plugin/initplugins.cpp
+	#	source/plugin/meshplugins.cpp
+	#	source/plugin/pressure.cpp
+	#	source/plugin/vortexplugins.cpp
+	#	source/plugin/waveletturbulence.cpp
+	#	source/plugin/waves.cpp
+	#	source/python/defines.py
+	#	source/test.cpp
+	)
+
+	SET(PP_HEADERS
+		source/nopython/general.h
+		source/commonkernels.h
+		# source/conjugategrad.h
+		# source/fastmarch.h
+		source/fluidsolver.h
+		source/grid.h
+		# source/mesh.h
+		# source/particle.h
+		# source/levelset.h
+		# source/shapes.h
+		# source/noisefield.h
+		# source/vortexsheet.h
+		source/general.h
+		source/kernel.h
+		source/timing.h
+		# source/movingobs.h
+		source/fileio.h
+		# source/edgecollapse.h
+		# source/vortexpart.h
+		# source/turbulencepart.h
+	)
+
+	set(NOPP_SOURCES
+		source/nopython/pclass.cpp
+	#	source/pwrapper/pymain.cpp
+	#	source/pwrapper/pclass.cpp
+	#	source/pwrapper/pvec3.cpp
+	#	source/pwrapper/pconvert.cpp
+	#	source/pwrapper/registry.cpp
+		source/util/vectorbase.cpp
+		source/util/simpleimage.cpp
+	)
+
+	add_definitions( -DNOPYTHON=1 )
 endif()
 
 # CUDA sources

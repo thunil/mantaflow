@@ -14,6 +14,9 @@
 #ifndef _GENERAL_H
 #define _GENERAL_H
 
+#if NOPYTHON!=1
+// regular header
+
 #include <iostream>
 #include <sstream>
 #include <cmath>
@@ -149,5 +152,9 @@ inline bool c_isnan(float c) {
 }
 
 } // namespace
+
+#else // NOPYTHON!=1
+#	include <nopython/general.h>
+#endif
 
 #endif
