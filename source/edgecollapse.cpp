@@ -429,7 +429,7 @@ void CollapseEdge(Mesh& m, const int trinum, const int which, const Vec3 &edgeve
 			do {
 				// rotate around vertex P1 counter-clockwise
 				int op = m.corners(m.corners(current).next).opposite;
-				if (op < 0) throw Error("tube cutting failed, no opposite");
+				if (op < 0) errMsg("tube cutting failed, no opposite");
 				current = m.corners(op).next;
 				
 				if(m.corners(m.corners(current).prev).node==commonVert)
@@ -443,7 +443,7 @@ void CollapseEdge(Mesh& m, const int trinum, const int which, const Vec3 &edgeve
 			do {
 				// rotate around vertex P0 clockwise
 				int op = m.corners(m.corners(current).prev).opposite;
-				if (op < 0) throw Error("tube cutting failed, no opposite");
+				if (op < 0) errMsg("tube cutting failed, no opposite");
 				
 				current = m.corners(op).prev;
 				if(m.corners(m.corners(current).next).node==commonVert)
@@ -451,7 +451,7 @@ void CollapseEdge(Mesh& m, const int trinum, const int which, const Vec3 &edgeve
 			} while(current != end);
 
 			if (P1P2 < 0 || P2P0 < 0) 
-				throw Error("tube cutting failed, ill geometry");
+				errMsg("tube cutting failed, ill geometry");
 			
 			P2P1 = m.corners(P1P2).opposite;
 			P0P2 = m.corners(P2P0).opposite;

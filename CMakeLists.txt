@@ -129,6 +129,7 @@ SET(SILENT_SOURCES)
 
 # need pre-processing
 SET(PP_SOURCES
+	source/general.cpp
 	source/fluidsolver.cpp
 	source/conjugategrad.cpp
 	source/grid.cpp
@@ -136,7 +137,6 @@ SET(PP_SOURCES
 	source/fastmarch.cpp
 	source/shapes.cpp
 	source/mesh.cpp
-	source/general.cpp
 	source/particle.cpp
 	source/movingobs.cpp
 	source/fileio.cpp
@@ -162,6 +162,7 @@ SET(PP_SOURCES
 )
 
 SET(PP_HEADERS
+	source/general.h
 	source/commonkernels.h
 	source/conjugategrad.h
 	source/fastmarch.h
@@ -173,7 +174,6 @@ SET(PP_HEADERS
 	source/shapes.h
 	source/noisefield.h
 	source/vortexsheet.h
-	source/general.h
 	source/kernel.h
 	source/timing.h
 	source/movingobs.h
@@ -250,75 +250,18 @@ SET(INCLUDE_PATHS
 	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
 )
 
+# reduced version without python
 if (NOPYTHON)
-	# replace sources
-	SET(PP_SOURCES
-		source/general.cpp
-		source/fluidsolver.cpp
-	#	source/conjugategrad.cpp
-	#	source/grid.cpp
-	#	source/levelset.cpp
-	#	source/fastmarch.cpp
-	#	source/shapes.cpp
-	#	source/mesh.cpp
-	#	source/particle.cpp
-	#	source/movingobs.cpp
-	#	source/fileio.cpp
-	#	source/noisefield.cpp
-		source/kernel.cpp
-	#	source/vortexsheet.cpp
-	#	source/vortexpart.cpp
-	#	source/turbulencepart.cpp
-		source/timing.cpp
-	#	source/edgecollapse.cpp
-	#	source/plugin/advection.cpp
-	#	source/plugin/extforces.cpp
-	#	source/plugin/flip.cpp
-	#	source/plugin/kepsilon.cpp
-	#	source/plugin/initplugins.cpp
-	#	source/plugin/meshplugins.cpp
-	#	source/plugin/pressure.cpp
-	#	source/plugin/vortexplugins.cpp
-	#	source/plugin/waveletturbulence.cpp
-	#	source/plugin/waves.cpp
-	#	source/python/defines.py
-	#	source/test.cpp
-	)
+	# replace some of the headers...
+	LIST( REMOVE_ITEM PP_HEADERS 	source/general.h)
+	LIST( APPEND PP_HEADERS 	source/nopython/general.h)
 
-	SET(PP_HEADERS
-		source/nopython/general.h
-		source/commonkernels.h
-		# source/conjugategrad.h
-		# source/fastmarch.h
-		source/fluidsolver.h
-		source/grid.h
-		# source/mesh.h
-		source/particle.h
-		# source/levelset.h
-		# source/shapes.h
-		# source/noisefield.h
-		# source/vortexsheet.h
-		source/general.h
-		source/kernel.h
-		source/timing.h
-		# source/movingobs.h
-		source/fileio.h
-		# source/edgecollapse.h
-		# source/vortexpart.h
-		# source/turbulencepart.h
-	)
-
+	# fully replace other source lists
 	set(NOPP_SOURCES
 		source/nopython/pclass.cpp
-	#	source/pwrapper/pymain.cpp
-	#	source/pwrapper/pclass.cpp
-	#	source/pwrapper/pvec3.cpp
-	#	source/pwrapper/pconvert.cpp
-	#	source/pwrapper/registry.cpp
 		source/util/vectorbase.cpp
 		source/util/simpleimage.cpp
-	)
-
+	) 
 	SET(INCLUDE_PATHS
 		source/nopython
 		source/cuda

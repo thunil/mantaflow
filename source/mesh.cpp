@@ -673,6 +673,7 @@ void Mesh::applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags, Real cutoff) 
 	LevelsetGrid mesh_sdf(&dummy, false);
 	meshSDF(*this, mesh_sdf, 2., cutoff);
 	
+#	if NOPYTHON!=1
 	if (grid->getType() & GridBase::TypeInt)
 		ApplyMeshToGrid<int> ((Grid<int>*)grid, mesh_sdf, _args.get<int>("value"), respectFlags);
 	else if (grid->getType() & GridBase::TypeReal)
@@ -681,6 +682,9 @@ void Mesh::applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags, Real cutoff) 
 		ApplyMeshToGrid<Vec3> ((Grid<Vec3>*)grid, mesh_sdf, _args.get<Vec3>("value"), respectFlags);
 	else
 		errMsg("Shape::applyToGrid(): unknown grid type");
+#	else
+	errMsg("Not yet supported...");
+#	endif
 }
 
 void Mesh::computeLevelset(LevelsetGrid& levelset, Real sigma, Real cutoff) {
