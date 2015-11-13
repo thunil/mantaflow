@@ -274,6 +274,9 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 		return;
 	}
 	sink.inplace << block.linebreaks() << func.signature() << block.initList << code;
+#if NOPYTHON==1
+	return; 
+#endif
 
 	// generate variable loader
 	string loader = "";
@@ -352,6 +355,9 @@ void processPythonVariable(const Block& block, Sink& sink) {
 
 	// output function and accessors
 	sink.inplace << block.linebreaks() << var.minimal << ";";
+#if NOPYTHON==1
+	return;
+#endif
 	sink.inplace << replaceSet(TmpGetSet, table);
 
 	// register accessors
@@ -387,6 +393,9 @@ void processPythonClass(const Block& block, const string& code, Sink& sink, vect
 							 "CTPL", cls.isTemplated() ? "CT" : "",
 							 "" };
 
+#if NOPYTHON==1
+	sink.inplace << "\n";
+#else 
 	// register class
 	string reg = replaceSet(TmpRegisterClass, table);
 	sink.link << '+' << cls.name << '^' << reg << '\n';
@@ -397,6 +406,7 @@ void processPythonClass(const Block& block, const string& code, Sink& sink, vect
 	if (cls.baseClass.isTemplated())
 		sink.link << '@' << cls.name << '^' << cls.templateTypes.names() << '^' 
 				  << cls.baseClass.name << '^' << cls.baseClass.templateTypes.names() << '\n';
+#endif 
 
 	// write signature
 	sink.inplace << block.linebreaks() << cls.minimal << "{";
@@ -410,12 +420,16 @@ void processPythonClass(const Block& block, const string& code, Sink& sink, vect
 	processText(ncode.substr(1), block.line0, sink, &cls, inst);
 	if (!gFoundConstructor)
 		errMsg(block.line0, "no PYTHON constructor found in class '" + cls.name + "'");
-	
+
+#if NOPYTHON==1
+	sink.inplace << "}\n";
+#else 
 	// add secret bonus members to class and close
 	sink.inplace << "public: PbArgs _args;";
 	sink.inplace << "}\n";
 	// add a define to make commenting out classes, and #ifdefs work correctly
 	sink.inplace << "#define _C_" << cls.name << '\n';
+#endif
 }
 
 void processPythonInstantiation(const Block& block, const Type& aliasType, Sink& sink, vector<Instantiation>& inst) {
@@ -436,9 +450,13 @@ void processPythonInstantiation(const Block& block, const Type& aliasType, Sink&
 }
 
 void processPythonAlias(const Block& block, const Type& aliasType, const string& aliasName, Sink& sink) {
+#if NOPYTHON==1
+	sink.link << "\n";
+#else 
 	const string table[] = {"CLASS", strip(aliasType.build()), "PYNAME", aliasName, ""};
 	if (!aliasName.empty())
 		sink.link << '&' << replaceSet(TmpAlias,table) << '\n';
+#endif 
 }
 
 // build the template argument checker needed for template deduction in the wrapper

@@ -31,6 +31,10 @@ struct PyObject {
 	int dummy;
 };
 
+struct PbArgs {
+	int dummy;
+};
+
 struct PbType {
 	std::string S;
 	std::string str() const;

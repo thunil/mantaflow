@@ -233,6 +233,23 @@ if (GUI)
 	list(APPEND PP_HEADERS ${QT_HEADERS})
 endif()
 
+# CUDA sources
+if (CUDA)
+	list(APPEND PP_SOURCES
+		source/cuda/meshtools.cu
+		source/cuda/buoyancy.cu
+		source/cuda/particle.cu
+	)
+endif()
+
+# include dirs
+SET(INCLUDE_PATHS
+	source/pwrapper
+	source/cuda
+	source/util
+	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
+)
+
 if (NOPYTHON)
 	# replace sources
 	SET(PP_SOURCES
@@ -276,7 +293,7 @@ if (NOPYTHON)
 		source/fluidsolver.h
 		source/grid.h
 		# source/mesh.h
-		# source/particle.h
+		source/particle.h
 		# source/levelset.h
 		# source/shapes.h
 		# source/noisefield.h
@@ -302,25 +319,15 @@ if (NOPYTHON)
 		source/util/simpleimage.cpp
 	)
 
+	SET(INCLUDE_PATHS
+		source/nopython
+		source/cuda
+		source/util
+		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
+	)
+
 	add_definitions( -DNOPYTHON=1 )
 endif()
-
-# CUDA sources
-if (CUDA)
-	list(APPEND PP_SOURCES
-		source/cuda/meshtools.cu
-		source/cuda/buoyancy.cu
-		source/cuda/particle.cu
-	)
-endif()
-
-# include dirs
-SET(INCLUDE_PATHS
-	source/pwrapper
-	source/cuda
-	source/util
-	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
-)
 
 # Multithreading
 if(MT)

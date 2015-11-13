@@ -62,7 +62,8 @@ extern int gDebugLevel;
 //#define MLOGI(...) __android_log_print(ANDROID_LOG_INFO,  MLOG_TAG, __VA_ARGS__)
 
 #define MSGSTREAM std::ostringstream msg; msg.precision(7); msg.width(9);
-#define debMsg(mStr, level)     if (_chklevel(level)) { MSGSTREAM; msg << mStr << std::endl; std::string __str = msg.str(); MLOGD("%s",__str.c_str()); }
+#define debMsg(mStr, level)     if (_chklevel(level)) { MSGSTREAM; msg << mStr; std::cout << msg.str()  << std::endl; }
+//#define debMsg(mStr, level)     if (_chklevel(level)) { MSGSTREAM; msg << mStr << std::endl; std::string __str = msg.str(); MLOGD("%s",__str.c_str()); }
 inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 
 // error and assertation macros
@@ -145,6 +146,9 @@ inline bool c_isnan(float c) {
 	volatile float d=c;
 	return d != d;
 }
+
+// dummy function if GUI is not enabled
+inline void updateQtGui(bool full, int frame, float time, const std::string& curPlugin) {}
 
 } // namespace
 

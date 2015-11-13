@@ -86,11 +86,15 @@ FluidSolver::~FluidSolver() {
 }
 
 PbClass* FluidSolver::create(PbType t, PbTypeVec T, const string& name) {        
+#if NOPYTHON!=1
 	_args.add("nocheck",true);
 	if (t.str() == "")
 		errMsg("Need to specify object type. Use e.g. Solver.create(FlagGrid, ...) or Solver.create(type=FlagGrid, ...)");
 	
 	PbClass* ret = PbClass::createPyObject(t.str() + T.str(), name, _args, this);
+#else
+	PbClass* ret = NULL;
+#endif
 	return ret;
 }
 
