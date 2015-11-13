@@ -487,7 +487,7 @@ set(PP_PREPD "0")
 if (PREPDEBUG)
 	set(PP_PREPD "1")
 endif()
-foreach(it ${PP_SOURCES} ${PP_HEADERS})
+FOREACH(it ${PP_SOURCES} ${PP_HEADERS})
 	get_filename_component(CURPATH ${it} PATH)
 	get_filename_component(CUREXT ${it} EXT)
 	file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${CURPATH}")
@@ -496,11 +496,13 @@ foreach(it ${PP_SOURCES} ${PP_HEADERS})
 
 	set(OUTFILES "${CURPP}")
 	if ("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
-		list(APPEND PP_REGS "${CURPP}.reg")
-		list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
+		IF(NOT NOPYTHON)
+			list(APPEND PP_REGS "${CURPP}.reg")
+			list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
+		ENDIF()
 		set_source_files_properties("${CURPP}.reg.cpp" OBJECT_DEPENDS "${CURPP}")
 		list(APPEND OUTFILES "${CURPP}.reg")
-	endif()
+	ENDIF()
 
 	# preprocessor
 	add_custom_command(OUTPUT ${OUTFILES}
@@ -511,16 +513,18 @@ foreach(it ${PP_SOURCES} ${PP_HEADERS})
 
 	set_source_files_properties(${OUTFILES} PROPERTIES GENERATED 1)
 	list(APPEND SOURCES ${CURPP})
-endforeach(it)
+ENDFOREACH(it)
 
 # link reg files
-add_custom_command(OUTPUT ${PP_REGCPP}
-				COMMAND prep link ${PP_REGS}
-				DEPENDS prep ${PP_REGS}
-				WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-				COMMENT "Linking reg files")
-set_source_files_properties(${PP_REGCPP} PROPERTIES GENERATED 1)
-list(APPEND SOURCES ${PP_REGCPP})
+IF(NOT NOPYTHON)
+	add_custom_command(OUTPUT ${PP_REGCPP}
+					COMMAND prep link ${PP_REGS}
+					DEPENDS prep ${PP_REGS}
+					WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+					COMMENT "Linking reg files")
+	set_source_files_properties(${PP_REGCPP} PROPERTIES GENERATED 1)
+	list(APPEND SOURCES ${PP_REGCPP})
+ENDIF()
 
 #******************************************************************************
 # QT for GUI
@@ -615,34 +619,43 @@ SET(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${F_LINKAD
 include_directories( ${INCLUDE_PATHS})
 link_directories( ${F_LIB_PATHS} )
 
-if(CUDA)
-	#cuda_include_directories(pp/source/cuda)
-	cuda_add_executable( ${EXECCMD} ${SOURCES} ${PP_REGISTRY})
-	target_link_libraries( ${EXECCMD} ${F_LIBS} )
-	cuda_build_clean_target()
-else()
-	if (WIN32)
-		# make nice folders for Visual Studio
-		set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} ${NOPP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
-		add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${PP_SOURCES} ${PP_HEADERS})
-		source_group(Generated FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})
-	else()
-		add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${HGINFO})
-	endif()
-	target_link_libraries( ${EXECCMD} ${F_LIBS} )
-endif()
+IF(NOT NOPYTHON)
+	# build regular executable
 
-# fix for "el capitan" TBB and changed dynamic library env vars, lookup of TBB can cause problems without @rpath
-IF(APPLE)
-	EXEC_PROGRAM(uname ARGS -v  OUTPUT_VARIABLE OSX_VERSION)
-	STRING(REGEX MATCH "[0-9]+" OSX_VERSION ${OSX_VERSION})
-	#MESSAGE(STATUS "OSX_VERSION=${OSX_VERSION}")
-	IF (OSX_VERSION GREATER 14)
-		ADD_CUSTOM_COMMAND(TARGET manta   POST_BUILD COMMAND 
-			${CMAKE_INSTALL_NAME_TOOL} -change libtbb.dylib @rpath/libtbb.dylib ${EXECCMD} )
+	if(CUDA)
+		#cuda_include_directories(pp/source/cuda)
+		cuda_add_executable( ${EXECCMD} ${SOURCES} ${PP_REGISTRY})
+		target_link_libraries( ${EXECCMD} ${F_LIBS} )
+		cuda_build_clean_target()
+	else()
+		if (WIN32)
+			# make nice folders for Visual Studio
+			set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} ${NOPP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
+			add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${PP_SOURCES} ${PP_HEADERS})
+			source_group(Generated FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})
+		else()
+			add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${HGINFO})
+		endif()
+		target_link_libraries( ${EXECCMD} ${F_LIBS} )
+	endif()
+
+	# fix for "el capitan" TBB and changed dynamic library env vars, lookup of TBB can cause problems without @rpath
+	IF(APPLE)
+		EXEC_PROGRAM(uname ARGS -v  OUTPUT_VARIABLE OSX_VERSION)
+		STRING(REGEX MATCH "[0-9]+" OSX_VERSION ${OSX_VERSION})
+		#MESSAGE(STATUS "OSX_VERSION=${OSX_VERSION}")
+		IF (OSX_VERSION GREATER 14)
+			ADD_CUSTOM_COMMAND(TARGET manta   POST_BUILD COMMAND 
+				${CMAKE_INSTALL_NAME_TOOL} -change libtbb.dylib @rpath/libtbb.dylib ${EXECCMD} )
+		ENDIF()
 	ENDIF()
+
+ELSE()
+	# only build static library in nopython mode
+	ADD_LIBRARY (core OBJECT ${SOURCES})
+	ADD_LIBRARY (${EXECCMD} STATIC $<TARGET_OBJECTS:core>)
 ENDIF()
 
-# debug
+# debug summary
 # MESSAGE(STATUS "DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")
 
