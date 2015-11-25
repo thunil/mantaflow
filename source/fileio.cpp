@@ -558,10 +558,12 @@ void writeGridUni(const string& name, Grid<T>* grid) {
 	Grid<T> temp(grid->getParent());
 	// "misuse" temp grid as storage for floating point values (we have double, so it will always fit)
 	gridConvertWrite( gzf, *grid, &(temp[0]), head);
-#	endif
+#	else
 	gzwrite(gzf, &head, sizeof(UniHeader));
 	gzwrite(gzf, ptr, sizeof(T)*head.dimX*head.dimY*head.dimZ);
+#	endif
 	gzclose(gzf);
+
 #	else
 	debMsg( "file format not supported without zlib" ,1);
 #	endif
@@ -705,20 +707,6 @@ void readGridVol<Real>(const string& name, Grid<Real>* grid) {
 	fread( &((*grid)[0]), 1, sizeof(float)*header.dimX*header.dimY*header.dimZ , fp);
 #	endif
 
-/*
-	fwrite( &header, sizeof(volHeader), 1, fp );
-
-#	if FLOATINGPOINT_PRECISION==1
-	// for float, write one big chunk
-	fwrite( &(*grid)[0], sizeof(float), grid->getSizeX()*grid->getSizeY()*grid->getSizeZ(), fp );
-#	else
-	// explicitly convert each entry to float - we might have double precision in mantaflow
-	FOR_IDX(*grid) {
-		float value = (*grid)[idx];
-		fwrite( &value, sizeof(float), 1, fp );
-	}
-#	endif
-*/
 	fclose(fp);
 };
 
@@ -843,6 +831,7 @@ void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	gzwrite(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
 #	endif
 	gzclose(gzf);
+
 #	else
 	debMsg( "file format not supported without zlib" ,1);
 #	endif
