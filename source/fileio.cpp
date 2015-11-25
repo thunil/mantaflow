@@ -327,8 +327,6 @@ void pdataConvertWrite( gzFile& gzf, ParticleDataImpl<Vec3>& pdata, void* ptr, U
 	gzwrite(gzf, ptr, sizeof(Vector3D<float>) *head.dim);
 }
 
-#endif // NO_ZLIB!=1
-
 template <class T>
 void gridReadConvert(gzFile& gzf, Grid<T>& grid, void* ptr, int bytesPerElement) {
 	errMsg("unknown type, not yet supported");
@@ -409,6 +407,8 @@ static int unifyGridType(int type) {
 	if(type & GridBase::TypeMAC)      type |= GridBase::TypeVec3;
 	return type;
 }
+
+#endif // NO_ZLIB!=1
 
 //*****************************************************************************
 // grid data

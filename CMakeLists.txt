@@ -25,11 +25,11 @@ SET(MANTAVERSION "0.8")
 # - allow override from command line on OsX, eg use "cmake ..  -DCMAKE_PREFIX_PATH=/Users/someone/qt5.2.1/5.2.1/clang_64/
 
 IF(WIN32)
-	#set(WIN_QT_PATH "C:/Qt/5.3/msvc2013_64_opengl")
-	set(WIN_QT_PATH "C:/Qt/5.3/msvc2012_opengl") # qt5/win64
-	set(WIN_PYTHON_PATH "C:/Python34")
-	set(WIN_PYTHON_VERSION "34")
-	set(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
+	SET(WIN_QT_PATH "C:/Qt/5.5/msvc2013_64_opengl") # qt5/win64
+	#SET(WIN_QT_PATH "C:/Qt/5.3/msvc2012_opengl") 
+	SET(WIN_PYTHON_PATH "C:/Python34")
+	SET(WIN_PYTHON_VERSION "34")
+	SET(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
 	SET(CMAKE_PREFIX_PATH ${WIN_QT_PATH})
 ENDIF()
 
@@ -60,15 +60,15 @@ OPTION(DOUBLEPRECISION "Compile with double floating point precision" OFF)
 #OPTION(CUDA "Compile with CUDA plugins" OFF)
 
 #check consistency of MT options
-set(MT OFF)
-set(MT_TYPE "NONE")
+SET(MT OFF)
+SET(MT_TYPE "NONE")
 if (TBB)
-	set (MT_TYPE "TBB")
-	set (MT ON)
+	SET (MT_TYPE "TBB")
+	SET (MT ON)
 endif()
 if (OPENMP)
-	set (MT_TYPE "OPENMP")
-	set (MT ON)
+	SET (MT_TYPE "OPENMP")
+	SET (MT ON)
 endif()
 if (TBB AND OPENMP)
 	message(FATAL_ERROR "Cannot activate both OPENMP and TBB")
@@ -331,7 +331,7 @@ list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 
 # Z compression
 if (1)
-	# default: build from source
+	# default: build from own sources
 	set(ZLIB_SRC adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c
 				 inflate.c infback.c inftrees.c inffast.c trees.c uncompr.c zutil.c)
 	foreach(it ${ZLIB_SRC})
@@ -345,10 +345,16 @@ if (1)
 	set_source_files_properties(${SILENT_SOURCES} PROPERTIES COMPILE_FLAGS "${ZLIB_ADDFLAGS}")
 
 	list(APPEND INCLUDE_PATHS dependencies/zlib-1.2.8)
-else()
+endif()
+if (0)
+	# try to locate and use system libs
 	include(FindZLIB)
 	list(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
 	list(APPEND F_LIBS ${ZLIB_LIBRARIES})
+endif()
+if (0)
+	# disable 
+	add_definitions(-DNO_ZLIB=1)
 endif()
 
 # CUDA
