@@ -17,10 +17,11 @@ vel = s.create(MACGrid)
 density = s.create(RealGrid)
 pressure = s.create(RealGrid)
 
-flags.initDomain() 
+bWidth=1
+flags.initDomain(boundaryWidth=bWidth) 
 flags.fillGrid()
 
-setOpenBound(flags, 1,'yY',FlagOutflow|FlagEmpty) 
+setOpenBound(flags, bWidth,'yY',FlagOutflow|FlagEmpty) 
 
 if (GUI):
 	gui = Gui()
@@ -35,7 +36,7 @@ for t in range(400):
 		source.applyToGrid(grid=density, value=1)
 		
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2) 
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=1)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=bWidth+1)
 	resetOutflow(flags=flags,real=density) 
 
 	setWallBcs(flags=flags, vel=vel)    
