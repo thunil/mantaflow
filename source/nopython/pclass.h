@@ -7,14 +7,9 @@
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Base class for all Python-exposed classes
+ * Dummy header for all Python-exposed classes, when python linking is disabled
  *
  ******************************************************************************/
-
-// -----------------------------------------------------------------
-// NOTE:
-// Do not include this file in user code, include "manta.h" instead
-// -----------------------------------------------------------------
 
 #ifdef _MANTA_H
 #ifndef _PTYPE_H
@@ -46,21 +41,18 @@ struct PbTypeVec {
 };
 
 
-//! Base class for all classes
 class PbClass {
 public:
 	PbClass(FluidSolver* parent, const std::string& name="");
 	PbClass(const PbClass& a);
 	virtual ~PbClass();
 
-	// basic property setter/getters
 	void setName(const std::string& name) { mName = name; }
 	std::string getName() const { return mName; }
 	FluidSolver* getParent() const { return mParent; }
 	void setParent(FluidSolver* v) { mParent = v; }
 	void checkParent();
 
-	// hidden flag for GUI, debug output
 	inline bool isHidden() { return mHidden; }
 	inline void setHidden(bool v) { mHidden = v; }
 

@@ -7,7 +7,7 @@
  * GNU General Public License (GPL)
  * http://www.gnu.org/licenses
  *
- * Main
+ * No python main include
  *
  ******************************************************************************/
 
@@ -23,9 +23,6 @@
 #include "general.h"
 #include "vectorbase.h"
 #include "pclass.h"
-//#include "registry.h"
-//#include "pconvert.h"
 #include "fluidsolver.h"
-
 
 #endif

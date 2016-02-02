@@ -14,16 +14,10 @@
 #ifndef _GENERAL_H
 #define _GENERAL_H
 
-#if NOPYTHON!=1
-// regular header
-
 #include <iostream>
 #include <sstream>
 #include <cmath>
-
-#if (defined(WIN32) || defined(_WIN32))
 #include <algorithm>
-#endif
 
 namespace Manta {
 
@@ -152,9 +146,5 @@ inline bool c_isnan(float c) {
 }
 
 } // namespace
-
-#else // NOPYTHON!=1
-#	include <nopython/general.h>
-#endif
 
 #endif

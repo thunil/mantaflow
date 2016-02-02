@@ -7,7 +7,7 @@
  * GNU General Public License (GPL)
  * http://www.gnu.org/licenses
  *
- * Functions for property setting/getting via python
+ * No-python dummy functions
  *
  ******************************************************************************/
 
@@ -38,7 +38,7 @@ string PbType::str() const {
 //******************************************************************************
 // PbClass
 
-PbClass::PbClass(FluidSolver* parent, const string& name/*, PyObject* obj*/)
+PbClass::PbClass(FluidSolver* parent, const string& name)
 	:  mParent(parent), mName(name), mHidden(false)
 {
 }
@@ -47,50 +47,10 @@ PbClass::PbClass(const PbClass& a) : mParent(a.mParent), mName("_unnamed"), mHid
 {
 }
 
-PbClass::~PbClass() {
-}
-/*
-void PbClass::lock() {
-	mMutex.lock();
-}
-void PbClass::unlock() {
-	mMutex.unlock();
-}
-bool PbClass::tryLock() {
-	return mMutex.tryLock();
+PbClass::~PbClass() 
+{
 }
 
-PbClass* PbClass::getInstance(int idx) {
-	if (idx<0 || idx > (int)mInstances.size())
-		errMsg("PbClass::getInstance(): invalid index");
-	return mInstances[idx];
-}
-
-int PbClass::getNumInstances() {
-	return mInstances.size();
-}*/
-/*
-bool PbClass::isNullRef(PyObject* obj) {
-	return PyLong_Check(obj) && PyLong_AsDouble(obj)==0;
-}
-
-void PbClass::registerObject(PyObject* obj, PbArgs* args) {
-	// cross link
-	Pb::setReference(this, obj);
-	mPyObject = obj;
-
-	mInstances.push_back(this);
-
-	if (args) {
-		string _name = args->getOpt<std::string>("name",-1,"");
-		if (!_name.empty()) setName(_name);
-	}
-}
-
-PbClass* PbClass::createPyObject(const string& classname, const string& name, PbArgs& args, PbClass* parent) {
-	return Pb::createPy(classname,name,args,parent);
-}
-*/
 void PbClass::checkParent() {
 	if (getParent() == NULL) {
 		errMsg("New class " + mName + ": no parent given -- specify using parent=xxx !");

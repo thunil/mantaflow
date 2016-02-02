@@ -343,24 +343,11 @@ void processText(const string& text, int baseline, Sink& sink, const Class* pare
 			if (isNameChar(c))
 				word += c;
 			else {
-				/* NT_DEBUG
-#				if NOPYTHON==1
-				if (word == "PYTHON") {
-					// remove keyword
-					vector<Token> tokens;
-					bool brackets = false;
-					tokenizeBlock(tokens, word, text, i, line, brackets);
-					convertKeywords(tokens);
-	continue, remove python() kw, output rest...
-				} else
-#				endif
-*/
 				if (word == "KERNEL" || word == "PYTHON") {
 					vector<Token> tokens;
 					bool brackets = false;
 					tokenizeBlock(tokens, word, text, i, line, brackets);
 					if(!brackets) {
-						std::cout<<" debug "<<word <<" "<< i <<" "<< line <<"\n\n"; // NT_DEBUG
 						errMsg(line, "KERNEL and PYTHON keywords must have \"()\" ");
 					}
 					convertKeywords(tokens);

@@ -233,7 +233,7 @@ if (GUI)
 	list(APPEND PP_HEADERS ${QT_HEADERS})
 endif()
 
-# CUDA sources
+# CUDA sources , deprectated
 if (CUDA)
 	list(APPEND PP_SOURCES
 		source/cuda/meshtools.cu
@@ -252,16 +252,13 @@ SET(INCLUDE_PATHS
 
 # reduced version without python
 if (NOPYTHON)
-	# replace some of the headers...
-	LIST( REMOVE_ITEM PP_HEADERS 	source/general.h)
-	LIST( APPEND PP_HEADERS 	source/nopython/general.h)
-
-	# fully replace other source lists
+	# replace some of the source lists
 	set(NOPP_SOURCES
 		source/nopython/pclass.cpp
 		source/util/vectorbase.cpp
 		source/util/simpleimage.cpp
 	) 
+	# update paths to use nopython versions
 	SET(INCLUDE_PATHS
 		source/nopython
 		source/cuda
@@ -458,7 +455,7 @@ FOREACH(it ${PP_SOURCES} ${PP_HEADERS})
 	list(APPEND SOURCES ${CURPP})
 ENDFOREACH(it)
 
-# link reg files
+# link reg files , for python glue code
 IF(NOT NOPYTHON)
 	add_custom_command(OUTPUT ${PP_REGCPP}
 					COMMAND prep link ${PP_REGS}
