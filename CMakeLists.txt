@@ -56,9 +56,11 @@ OPTION(TBB "Use multi-thread kernels using Intels TBB" OFF)
 OPTION(OPENMP "Use multi-thread kernels using OpenMP" OFF)
 OPTION(PREPDEBUG "Debug generated files" OFF) # This will beautify generated files, and link to them for compiler errors instead of the original sources
 OPTION(DOUBLEPRECISION "Compile with double floating point precision" OFF)
-OPTION(NOPYTHON "Compile without python support (limited functionality!)" OFF)
 # CUDA is deprecated, and not tested - enable at own risk... (needs cmake version >2.8)
 #OPTION(CUDA "Compile with CUDA plugins" OFF)
+
+# special option to compile manta as library, disables python glue code (while trying to keep as much of the rest as possible)
+OPTION(NOPYTHON "Compile without python support (limited functionality!)" OFF)
 
 #check consistency of MT options
 SET(MT OFF)
