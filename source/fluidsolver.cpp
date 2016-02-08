@@ -152,7 +152,7 @@ void FluidSolver::adaptTimestep(Real maxVel)
 			mLockDt = true;
 		}
 	}
-	debMsg( "Frame "<<mFrame<<" current max vel: "<<maxVel<<" , dt: "<<mDt<<", "<<mTimePerFrame<<"/"<<mFrameLength<<" lock:"<<mLockDt , 1);
+	debMsg( "Frame "<<mFrame<<" current max vel: "<<maxVel<<" , dt: "<<mDt<<", "<<mTimePerFrame<<"/"<<mFrameLength<<" lock:"<<mLockDt , 2);
 	mAdaptDt = true;
 
 	// sanity check
