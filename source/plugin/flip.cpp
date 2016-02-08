@@ -158,7 +158,8 @@ PYTHON() void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& 
 			}
 
 			Real phiv = phi.getInterpolated( parts.getPos(idx) );
-			if( narrowBand>0. && phiv < -narrowBand ) { parts.kill(idx); continue; }
+			if( phiv > 0 ) { parts.kill(idx); continue; }
+			if( narrowBand>0. && phiv < -narrowBand) { parts.kill(idx); continue; }
 
 			bool atSurface = false;
 			if (phiv > SURFACE_LS) atSurface = true;
@@ -472,16 +473,6 @@ PYTHON() void mapPartsToMAC( FlagGrid& flags, MACGrid& vel , MACGrid& velOld ,
 	if(freeTmp) delete weight;
 }
 
-KERNEL(idx)
-void knCombineVels(MACGrid& vel, Grid<Vec3>& w, MACGrid& combineVel ) {
-	for(int c=0; c<3; ++c)
-		if(w[idx][c]>0.1) combineVel[idx][c] = vel[idx][c];
-}
-
-PYTHON() void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel ) {
-	knCombineVels(vel, weight, combineVel);
-}
-
 KERNEL(pts, single) template<class T>
 void knMapLinear( BasicParticleSystem& p, FlagGrid& flags, Grid<T>& target, Grid<Real>& gtmp, 
 	ParticleDataImpl<T>& psource ) 
@@ -554,16 +545,41 @@ PYTHON() void flipVelocityUpdate(FlagGrid& flags, MACGrid& vel , MACGrid& velOld
 	knMapLinearMACGridToVec3_FLIP( parts, flags, vel, velOld, partVel, flipRatio );
 }
 
-// NT_DEBUG
-PYTHON() void floatify( BasicParticleSystem& parts )
-{
-	for (int idx=0; idx<(int)parts.size(); idx++) {
-		float f = parts.getPos(idx).x;
-		float g = parts.getPos(idx).y;
-		float h = parts.getPos(idx).z;
-		parts.setPos(idx, Vec3(f,g,h) );
+
+//******************************************************************************
+// narrow band 
+
+KERNEL()
+void knCombineVels(MACGrid& vel, Grid<Vec3>& w, MACGrid& combineVel, LevelsetGrid* phi, Real narrowBand, Real thresh ) {
+	int idx = vel.index(i,j,k);
+
+	for(int c=0; c<3; ++c)
+	{
+			// Correct narrow-band FLIP
+			Vec3 pos(i,j,k);
+			pos[(c+1)%3] += Real(0.5);
+			pos[(c+2)%3] += Real(0.5);
+			Real p = phi->getInterpolated(pos);
+
+			if (p < -narrowBand) { vel[idx][c] = 0; continue; }
+
+			if (w[idx][c] > thresh) {
+				combineVel[idx][c] = vel[idx][c];
+				vel[idx][c] = -1;
+			}
+			else
+			{
+				vel[idx][c] = 0;
+			}
 	}
 }
+
+//! narrow band velocity combination
+PYTHON() void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel, LevelsetGrid* phi=NULL,
+    Real narrowBand=0.0, Real thresh=0.0) {
+	knCombineVels(vel, weight, combineVel, phi, narrowBand, thresh);
+}
+
 
 } // namespace
 
