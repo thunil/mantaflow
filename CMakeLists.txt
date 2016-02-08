@@ -409,12 +409,12 @@ endif()
 
 
 #******************************************************************************
-# generate repository info (note, names are for hg/mercurial, but works for git)
+# generate repository info (note, some names still are for hg/mercurial, but works for git)
 
-set(HGINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/hginfo.h")
-MESSAGE(STATUS "Hg info target header ${HGINFO}")
-add_custom_command(OUTPUT ${HGINFO}
-				   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tools/makeHgVersion.py" "${HGINFO}"
+set(GITINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/hginfo.h")
+MESSAGE(STATUS "Hg info target header ${GITINFO}")
+add_custom_command(OUTPUT ${GITINFO}
+				   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py" "${GITINFO}"
 				   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS}
 				   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} )
 
@@ -576,7 +576,7 @@ IF(NOT NOPYTHON)
 			add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${PP_SOURCES} ${PP_HEADERS})
 			source_group(Generated FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})
 		else()
-			add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${HGINFO})
+			add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${GITINFO})
 		endif()
 		target_link_libraries( ${EXECCMD} ${F_LIBS} )
 	endif()
