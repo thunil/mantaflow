@@ -14,6 +14,9 @@ s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.8
 minParticles = pow(2,dim)
 
+# save particles for separate surface generation pass?
+saveParts = True
+
 # size of particles 
 radiusFactor = 1.0
 
@@ -74,6 +77,10 @@ if fluidVel!=0:
 testInitGridWithPos(tstGrid)
 pTest.setConst( 0.1 )
 
+# save reference any grid, to automatically determine grid size
+if saveParts:
+	pressure.save( 'ref_flipParts_0000.uni' );
+
 if 1 and (GUI):
 	gui = Gui()
 	gui.show()
@@ -121,7 +128,8 @@ for t in range(250):
 	s.step()
 
 	# generate data for flip03_gen.py surface generation scene
-	#pp.save( 'flipParts_%04d.uni' % t );
+	if saveParts:
+		pp.save( 'flipParts_%04d.uni' % t );
 
 	if 0 and (GUI):
 		gui.screenshot( 'flip02_%04d.png' % t );
