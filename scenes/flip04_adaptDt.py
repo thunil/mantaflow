@@ -98,7 +98,7 @@ lastFrame = -1
 if 1 and (GUI):
 	gui = Gui()
 	gui.show( dim==2 )
-	gui.pause()
+	#gui.pause()
 	  
 	# show all particles shaded by velocity
 	gui.nextPdata()

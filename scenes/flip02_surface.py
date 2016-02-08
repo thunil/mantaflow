@@ -77,7 +77,7 @@ pTest.setConst( 0.1 )
 if 1 and (GUI):
 	gui = Gui()
 	gui.show()
-	gui.pause()
+	#gui.pause()
    
 
 #main loop

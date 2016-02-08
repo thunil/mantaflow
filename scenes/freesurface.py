@@ -46,7 +46,7 @@ if doOpen:
 if (GUI):
 	gui = Gui()
 	gui.show()
-	gui.pause()
+	#gui.pause()
 	
 
 #main loop

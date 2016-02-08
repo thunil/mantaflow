@@ -451,7 +451,7 @@ void readGridRaw(const string& name, Grid<T>* grid) {
 	
 	int bytes = sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ();
 	int readBytes = gzread(gzf, &((*grid)[0]), bytes);
-	assertMsg(bytes==readBytes, "can't read raw file, stream length does not match"<<bytes<<" vs "<<readBytes);
+	assertMsg(bytes==readBytes, "can't read raw file, stream length does not match, "<<bytes<<" vs "<<readBytes);
 	gzclose(gzf);
 #	else
 	debMsg( "file format not supported without zlib" ,1);

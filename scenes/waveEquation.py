@@ -30,7 +30,7 @@ flags.fillGrid()
 if (GUI):
     gui = Gui()
     gui.show( True )
-    gui.pause()
+    #gui.pause()
 
 source = s.create(Box, p0=gs*vec3(0.3,0.3,0.3), p1=gs*vec3(0.5,0.5,0.5))
 source.applyToGrid(grid=h,     value=1)

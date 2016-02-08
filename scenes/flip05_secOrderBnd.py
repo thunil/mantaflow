@@ -21,7 +21,6 @@ radiusFactor = 1.0
 # prepare grids and particles
 flags     = s.create(FlagGrid)
 phi       = s.create(LevelsetGrid)
-phiOrg    = s.create(LevelsetGrid)
 phiObs    = s.create(LevelsetGrid)
 
 vel       = s.create(MACGrid)
@@ -68,9 +67,6 @@ flags.updateFromLevelset(phi)
 phi.subtract( phiObs );
 sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.05 )
 
-# testing
-phiOrg.copyFrom(phi)
-
 if fluidVel!=0:
 	# set initial velocity
 	fluidVel.applyToGrid( grid=vel , value=fluidSetVel )
@@ -83,7 +79,7 @@ setObstacleFlags(flags=flags, phiObs=phiObs, fractions=fractions)
 if 1 and (GUI):
 	gui = Gui()
 	gui.show()
-	gui.pause()
+	#gui.pause()
 
 #main loop
 for t in range(2500):

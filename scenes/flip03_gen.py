@@ -44,7 +44,7 @@ flags.initDomain(boundaryWidth=0)
 if 1 and (GUI):
 	gui = Gui()
 	gui.show()
-	gui.pause()
+	#gui.pause()
 
 # for debugging:
 #setDebugLevel(10) # full output
