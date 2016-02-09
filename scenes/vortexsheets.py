@@ -51,7 +51,7 @@ mesh.fromShape(source)
 subdivideMesh(mesh=mesh, minAngle=0.01, minLength=scale, maxLength=2*scale)
 
 # fix the nodes at the bottom of mesh
-fixedRegion = s.create(Box, center=gs*vec3(0.5,0.09,0.5), size=gs*vec3(0.4,0.03,0.4))
+fixedRegion = Box( parent=s, center=gs*vec3(0.5,0.09,0.5), size=gs*vec3(0.4,0.03,0.4))
 	
 #main loop
 for t in range(180):

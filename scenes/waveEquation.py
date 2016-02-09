@@ -32,7 +32,7 @@ if (GUI):
     gui.show( True )
     #gui.pause()
 
-source = s.create(Box, p0=gs*vec3(0.3,0.3,0.3), p1=gs*vec3(0.5,0.5,0.5))
+source = Box( parent=s, p0=gs*vec3(0.3,0.3,0.3), p1=gs*vec3(0.5,0.5,0.5))
 source.applyToGrid(grid=h,     value=1)
 hprev.copyFrom(h)
     

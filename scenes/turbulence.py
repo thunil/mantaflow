@@ -40,7 +40,7 @@ flags.fillGrid()
 # obstacle grid
 for i in range(4):
 	for j in range(4):
-		obs = s.create(Sphere, center=gs*vec3(0.2,(i+1)/5.0,(j+1)/5.0), radius=res*0.025)
+		obs = Sphere( parent=s , center=gs*vec3(0.2,(i+1)/5.0,(j+1)/5.0), radius=res*0.025)
 		obs.applyToGrid(grid=flags,value=FlagObstacle)
 
 sdfgrad = obstacleGradient(flags)
@@ -49,7 +49,7 @@ bgr = s.create(Mesh)
 sdf.createMesh(bgr)
 
 # particle inflow
-box = s.create(Box, center = gs*vec3(0.05,0.43,0.6), size=gs*vec3(0.02,0.005,0.07))
+box = Box( parent=s, center = gs*vec3(0.05,0.43,0.6), size=gs*vec3(0.02,0.005,0.07))
 
 # turbulence parameters
 L0 = 0.01

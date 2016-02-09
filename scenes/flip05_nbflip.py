@@ -64,10 +64,10 @@ flags.initDomain(boundaryWidth=0)
 phi.initFromFlags(flags)
 
 # A simple breaking dam
-fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.15,1.0))
+fluidBasin = Box( parent=s, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.15,1.0))
 phi.join( fluidBasin.computeLevelset() )
 
-fluidDam = s.create(Box, p0=gs*vec3(0,0.15,0), p1=gs*vec3(0.4,0.5,0.8))
+fluidDam = Box( parent=s, p0=gs*vec3(0,0.15,0), p1=gs*vec3(0.4,0.5,0.8))
 phi.join( fluidDam.computeLevelset() )
 	
 flags.updateFromLevelset(phi)

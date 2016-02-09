@@ -55,16 +55,16 @@ fluidSetVel = 0
 phi.setConst(999.)
 
 # standing dam
-fluidbox1 = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.3,1)) 
+fluidbox1 = Box( parent=s, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.3,1)) 
 phi.join( fluidbox1.computeLevelset() )
-fluidbox2 = s.create(Box, p0=gs*vec3(0.1,0,0), p1=gs*vec3(0.2,0.75,1)) 
+fluidbox2 = Box( parent=s, p0=gs*vec3(0.1,0,0), p1=gs*vec3(0.2,0.75,1)) 
 phi.join( fluidbox2.computeLevelset() )
 
 if 1:
-	sphere = s.create(Sphere, center=gs*vec3(0.66,0.3,0.5), radius=res*0.2)
+	sphere = Sphere( parent=s , center=gs*vec3(0.66,0.3,0.5), radius=res*0.2)
 	phiObs.join( sphere.computeLevelset() )
-	#obsbox = s.create(Box, p0=gs*vec3(0.4,0.2,0), p1=gs*vec3(0.7,0.4,1))
-	#obsbox = s.create(Box, p0=gs*vec3(0.3,0.2,0), p1=gs*vec3(0.7,0.6,1))
+	#obsbox = Box( parent=s, p0=gs*vec3(0.4,0.2,0), p1=gs*vec3(0.7,0.4,1))
+	#obsbox = Box( parent=s, p0=gs*vec3(0.3,0.2,0), p1=gs*vec3(0.7,0.6,1))
 	#phiObs.join( obsbox.computeLevelset() )
 
 

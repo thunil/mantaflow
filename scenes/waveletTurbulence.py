@@ -24,7 +24,7 @@ timings = Timings()
 velInflow = vec3(0.025, 0, 0)
 
 # inflow noise field
-noise = sm.create(NoiseField, fixedSeed=265, loadFromFile=True)
+noise = NoiseField( parent=sm, fixedSeed=265, loadFromFile=True)
 noise.posScale = vec3(20)
 noise.clamp = True
 noise.clampNeg = 0
@@ -33,8 +33,8 @@ noise.valScale = 1
 noise.valOffset = 0.075
 noise.timeAnim = 0.3
 
-source = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))
-sourceVel = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15, z=gs*vec3(0.15, 0, 0))
+source    = Cylinder( parent=sm, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))
+sourceVel = Cylinder( parent=sm, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15, z=gs*vec3(0.15, 0, 0))
 
 
 # larger solver, recompute sizes...
@@ -52,9 +52,9 @@ xl_weight  = xl.create(RealGrid)
 xl_flags.initDomain()
 xl_flags.fillGrid()
 
-xl_source = xl.create(Cylinder, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0))
+xl_source = Cylinder( parent=xl, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0))
 
-xl_noise = xl.create(NoiseField, fixedSeed=265, loadFromFile=True)
+xl_noise = NoiseField( parent=xl, fixedSeed=265, loadFromFile=True)
 xl_noise.posScale = noise.posScale
 xl_noise.clamp    = noise.clamp
 xl_noise.clampNeg = noise.clampNeg
@@ -66,20 +66,20 @@ xl_noise.timeAnim  = noise.timeAnim * upres
 
 # wavelet turbulence octaves
 
-wltnoise = sm.create(NoiseField, loadFromFile=True)
+wltnoise = NoiseField( parent=xl, loadFromFile=True)
 # scale according to lowres sim , smaller numbers mean larger vortices
-wltnoise.posScale = vec3( int(0.5*gs.x) ) * 0.5
+wltnoise.posScale = vec3( int(1.0*gs.x) ) * 0.5
 wltnoise.timeAnim = 0.1
 
-wltnoise2 = sm.create(NoiseField, loadFromFile=True)
+wltnoise2 = NoiseField( parent=xl, loadFromFile=True)
 wltnoise2.posScale = wltnoise.posScale * 2.0
 wltnoise2.timeAnim = 0.1
 
-wltnoise3 = sm.create(NoiseField, loadFromFile=True)
+wltnoise3 = NoiseField( parent=xl, loadFromFile=True)
 wltnoise3.posScale = wltnoise2.posScale * 2.0
 wltnoise3.timeAnim = 0.1
 
-wltStrength = 0.4
+wltStrength = 1.4
 
 
 # allocate low-res grids
