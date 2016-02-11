@@ -119,6 +119,11 @@ void FluidSolver::step() {
 	updateQtGui(true, mFrame,mTimeTotal, "FluidSolver::step");
 }
 
+//! helper to unify printing from python scripts and printing internal messages (optionally pass debug level to control amount of output)
+PYTHON() void mantaMsg(const std::string& out, int level=1) {
+	debMsg( out, level );
+}
+
 void FluidSolver::printMemInfo() {
 	std::ostringstream msg;
 	msg << "Allocated grids: int " << mGridsInt.used  <<"/"<< mGridsInt.grids.size()  <<", ";

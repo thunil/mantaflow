@@ -25,8 +25,8 @@ gs = vec3(res,res,res)
 if dim==2: gs.z = 1;
 
 s = Solver(name='main', gridSize = gs, dim=dim)
-print("Narrow band: %i" % narrowBand)
-print('Solver grid resolution: %i x %i x %i' % (gs.x, gs.y, gs.z))
+mantaMsg("Narrow band: %i" % narrowBand)
+mantaMsg('Solver grid resolution: %i x %i x %i' % (gs.x, gs.y, gs.z))
 
 # Adaptive time stepping
 s.frameLength = 1.0   # length of one frame (in "world time")
@@ -88,7 +88,7 @@ while s.frame < 200:
 	
 	maxVel = vel.getMaxValue()
 	s.adaptTimestep( maxVel )
-	print('\nFrame %i, step %i, time-step size %f' % (s.frame, step, s.timestep))
+	mantaMsg( '\nFrame %i, step %i, time-step size %f' % (s.frame, step, s.timestep) )
 
 	# Advect particles and grid phi
 	# Note: Grid velocities are extrapolated at the end of each step

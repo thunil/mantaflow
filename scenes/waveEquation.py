@@ -39,7 +39,7 @@ hprev.copyFrom(h)
 for t in range(1500):
 
 	mass = totalSum( height=h )
-	#print "Current mass %f " % mass
+	#mantaMsg( "Current mass %f " % mass )
 
 	if implicit:
 		# implicit solve , cf. 07IntroToPDEs.pdf, page 19
@@ -70,7 +70,7 @@ for t in range(1500):
 	if normalizeMass:
 		normalizeSumTo(h, mass)
 	#massAfter = totalSum( height=h )
-	#print "Current mass after normalization %f " % massAfter
+	#mantaMsg( "Current mass after normalization %f " % massAfter )
 
 	#gui.screenshot( 'out_%04d.png' % t );
 	s.step()

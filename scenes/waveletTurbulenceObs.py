@@ -9,8 +9,7 @@ import os, shutil, math, sys
 
 # dimension two/three 
 dim = 2
-
-printBuildInfo()
+#printBuildInfo()
 
 # how much to upres the XL sim?
 # set to zero to disable the second one completely
@@ -178,7 +177,7 @@ for t in range(200):
 				uvWeight = getUvWeight(uv[i]) 
 				applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , 
 					weight=energy, uv=uv[i] )
-			#print "Octave "+str(o)+", ss="+str(sStr)+" sp="+str(sPos)+" uvs="+str(uvs) # debug output
+			#mantaMsg( "Octave "+str(o)+", ss="+str(sStr)+" sp="+str(sPos)+" uvs="+str(uvs) ) # debug output 
 
 			# update octave parameters for next iteration
 			sStr *= 0.06 # magic kolmogorov factor

@@ -95,7 +95,7 @@ if saveParts:
 while s.frame < frames:
 	maxVel = vel.getMaxValue()
 	s.adaptTimestep( maxVel )
-	print('\nFrame %i, time-step size %f' % (s.frame, s.timestep))
+	mantaMsg('\nFrame %i, time-step size %f' % (s.frame, s.timestep))
 	
 	# FLIP 
 	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False, stopInObstacle=False )
