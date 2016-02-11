@@ -86,7 +86,7 @@ if(doDebug):
 	print( "Got git info: '" + gitVersion +"' " )
 
 # matches old?
-newContent = "\n\n#define MANTA_HG_VERSION \"" + gitVersion + "\" \n\n" 
+newContent = "\n\n#define MANTA_GIT_VERSION \"" + gitVersion + "\" \n\n" 
 
 if(newContent == oldContent):
 	if(doDebug):

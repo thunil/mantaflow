@@ -409,14 +409,16 @@ endif()
 
 
 #******************************************************************************
-# generate repository info (note, some names still are for hg/mercurial, but works for git)
+# generate git repository info , currently only for unix systems
 
-set(GITINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/hginfo.h")
-MESSAGE(STATUS "Hg info target header ${GITINFO}")
-add_custom_command(OUTPUT ${GITINFO}
-				   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py" "${GITINFO}"
-				   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS}
-				   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} )
+IF(NOT WIN32)
+	set(GITINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/gitinfo.h")
+	MESSAGE(STATUS "Hg info target header ${GITINFO}")
+	add_custom_command(OUTPUT ${GITINFO}
+					   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py" "${GITINFO}"
+					   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS}
+					   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} )
+ENDIF()
 
 #******************************************************************************
 # apply preprocessor

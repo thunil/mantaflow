@@ -151,7 +151,7 @@ while s.frame < frames:
 		if saveParts:
 			pp.save( 'flipParts_%04d.uni' % s.frame ); 
 		if 0 and (GUI):
-			gui.screenshot( 'flip07_%04d.png' % s.frame );
+			gui.screenshot( 'flip06_%04d.png' % s.frame );
 
 	#s.printMemInfo()
 	lastFrame = s.frame;
