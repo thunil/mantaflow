@@ -115,8 +115,8 @@ void GridPainter<T>::update() {
 		if (src->getType() & GridBase::TypeInt)
 			emit setViewport(src->getSize());
 	}
-	// reallocate if dimensions changed
-	if (mLocalGrid->getSize() != src->getSize()) {
+	// reallocate if dimensions changed (or solver)
+	if ( (mLocalGrid->getSize() != src->getSize()) || (mLocalGrid->getParent() != src->getParent()) ) { 
 		delete mLocalGrid;
 		mLocalGrid = new Grid<T>(src->getParent());
 		// int grid is base for resolution
