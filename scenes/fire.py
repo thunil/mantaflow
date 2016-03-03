@@ -5,11 +5,15 @@ from manta import *
 
 # solver params
 dim = 3
-res = 32
+res = 52
 gs = vec3(res, res, res)
 if dim==2:
 	gs.z=1
 s = Solver(name='main', gridSize = gs, dim=dim)
+
+# buoyancy parameters
+smokeDensity = -0.001 # alpha
+smokeTempDiff = 0.1   # beta
 
 # set time step range
 s.frameLength = 1.2   # length of one frame (in "world time")
@@ -26,13 +30,8 @@ density = s.create(RealGrid)
 react = s.create(RealGrid)
 fuel = s.create(RealGrid)
 heat = s.create(RealGrid)
-red = s.create(RealGrid)
-green = s.create(RealGrid)
-blue = s.create(RealGrid)
 flame = s.create(RealGrid)
 pressure = s.create(RealGrid)
-
-# toggle open domain
 doOpen = True
 
 # how many frames to calculate 
@@ -49,7 +48,7 @@ noise.valOffset = 0.75
 noise.timeAnim = 0.2
 
 # needs positive gravity because of addHeatBuoyancy2()
-gravity = vec3(0,0.0981,0)
+gravity = vec3(0,-0.0981,0)
 
 # initialize domain with boundary
 bWidth=1
@@ -61,16 +60,12 @@ if doOpen:
 if (GUI):
 	gui = Gui()
 	gui.show(True)
-	gui.pause()
+	#gui.pause()
 
 # source: cube in center of domain (x, y), standing on bottom of the domain
-boxSize = vec3(res/8, res/8, res/8)
-boxCenter = gs*vec3(0.5, 0.1, 0.5)
+boxSize = vec3(res/8, 0.05*res, res/8)
+boxCenter = gs*vec3(0.5, 0.15, 0.5)
 sourceBox = s.create( Box, center=boxCenter, size=boxSize )
-
-# buoyancy parameters
-smokeDensity = -0.001 # alpha
-smokeTempDiff = 0.1 # beta
 
 # main loop
 while s.frame < frames:
@@ -82,28 +77,22 @@ while s.frame < frames:
 		densityInflow( flags=flags, density=heat, noise=noise, shape=sourceBox, scale=1, sigma=0.5 )
 		densityInflow( flags=flags, density=fuel, noise=noise, shape=sourceBox, scale=1, sigma=0.5 )
 		densityInflow( flags=flags, density=react, noise=noise, shape=sourceBox, scale=1, sigma=0.5 )
-		densityInflow( flags=flags, density=red, noise=noise, shape=sourceBox, scale=1, sigma=0.5 )
-		densityInflow( flags=flags, density=green, noise=noise, shape=sourceBox, scale=1, sigma=0.5 )
-		densityInflow( flags=flags, density=blue, noise=noise, shape=sourceBox, scale=1, sigma=0.5 )
 
-	processBurn( fuel=fuel, density=density, react=react, red=red, green=green, blue=blue, heat=heat )
+	processBurn( fuel=fuel, density=density, react=react, heat=heat )
 
 	advectSemiLagrange( flags=flags, vel=vel, grid=density, order=2 )
-	advectSemiLagrange( flags=flags, vel=vel, grid=heat, order=2 )
-	advectSemiLagrange( flags=flags, vel=vel, grid=fuel, order=2 )
+	advectSemiLagrange( flags=flags, vel=vel, grid=heat,   order=2 )
+	advectSemiLagrange( flags=flags, vel=vel, grid=fuel,   order=2 )
 	advectSemiLagrange( flags=flags, vel=vel, grid=react, order=2 )
-	advectSemiLagrange( flags=flags, vel=vel, grid=red, order=2 )
-	advectSemiLagrange( flags=flags, vel=vel, grid=green, order=2 )
-	advectSemiLagrange( flags=flags, vel=vel, grid=blue, order=2 )
-	advectSemiLagrange( flags=flags, vel=vel, grid=vel, order=2, openBounds=doOpen, boundaryWidth=bWidth )
+	advectSemiLagrange( flags=flags, vel=vel, grid=vel,   order=2, openBounds=doOpen, boundaryWidth=bWidth )
 
 	if doOpen:
 		resetOutflow( flags=flags, real=density )
 
 	vorticityConfinement( vel=vel, flags=flags, strength=0.1 )
 
-	addBuoyancy2( flags=flags, grid=density, vel=vel, gravity=gravity, coefficient=smokeDensity )
-	addBuoyancy2( flags=flags, grid=heat, vel=vel, gravity=gravity, coefficient=smokeTempDiff )
+	addBuoyancy( flags=flags, density=density, vel=vel, gravity=(gravity*smokeDensity ) )
+	addBuoyancy( flags=flags, density=heat,    vel=vel, gravity=(gravity*smokeTempDiff) )
 
 	setWallBcs( flags=flags, vel=vel )
 	solvePressure( flags=flags, vel=vel, pressure=pressure )

@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2011 Tobias Pfaff, Nils Thuerey
+ * Copyright 2016 Sebastian Barschkis, Nils Thuerey
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL)
@@ -48,28 +48,19 @@ void KnProcessBurn(Grid<Real>& fuel, Grid<Real>& density, Grid<Real>& react,
 	smokeEmit = (origFuel < 1.0f) ? (1.0 - origFuel) * 0.5f : 0.0f;
 	smokeEmit = (smokeEmit + 0.5f) * (origFuel - fuel(i,j,k)) * 0.1f * flameSmoke;
 	density(i,j,k) += smokeEmit;
-	clamp(density(i,j,k), 0.0f, 1.0f);
+	clamp( density(i,j,k), (Real)0.0f, (Real)1.0f);
 	
 	// Set fluid temperature from the flame temperature profile
 	if (heat && flame)
 		(*heat)(i,j,k) = (1.0f - flame) * ignitionTemp + flame * maxTemp;
 	
 	// Mix new color
-	if (red && smokeEmit > VECTOR_EPSILON) {
+	if (smokeEmit > VECTOR_EPSILON) {
 		float smokeFactor = density(i,j,k) / (origSmoke + smokeEmit);
-		(*red)(i,j,k) = ((*red)(i,j,k) + flameSmokeColor.x * smokeEmit) * smokeFactor;
-		(*green)(i,j,k) = ((*green)(i,j,k) + flameSmokeColor.y * smokeEmit) * smokeFactor;
-		(*blue)(i,j,k) = ((*blue)(i,j,k) + flameSmokeColor.z * smokeEmit) * smokeFactor;
+		if(red)   (*red)(i,j,k)   = ((*red)(i,j,k)   + flameSmokeColor.x * smokeEmit) * smokeFactor;
+		if(green) (*green)(i,j,k) = ((*green)(i,j,k) + flameSmokeColor.y * smokeEmit) * smokeFactor;
+		if(blue)  (*blue)(i,j,k)  = ((*blue)(i,j,k)  + flameSmokeColor.z * smokeEmit) * smokeFactor;
 	}
-}
-
-KERNEL (bnd=1)
-void KnUpdateFlame(Grid<Real>& react, Grid<Real>& flame)
-{
-	if (react(i,j,k) > 0.0f)
-		flame(i,j,k) = pow(react(i,j,k), 0.5f);
-	else
-		flame(i,j,k) = 0.0f;
 }
 
 PYTHON() void processBurn(Grid<Real>& fuel, Grid<Real>& density, Grid<Real>& react,
@@ -81,6 +72,16 @@ PYTHON() void processBurn(Grid<Real>& fuel, Grid<Real>& density, Grid<Real>& rea
 {
 	KnProcessBurn(fuel, density, react, red, green, blue, heat, burningRate,
 				  flameSmoke, ignitionTemp, maxTemp, dt, flameSmokeColor);
+}
+
+
+KERNEL (bnd=1)
+void KnUpdateFlame(Grid<Real>& react, Grid<Real>& flame)
+{
+	if (react(i,j,k) > 0.0f)
+		flame(i,j,k) = pow(react(i,j,k), 0.5f);
+	else
+		flame(i,j,k) = 0.0f;
 }
 
 PYTHON() void updateFlame(Grid<Real>& react, Grid<Real>& flame)
