@@ -152,6 +152,7 @@ SET(PP_SOURCES
 	source/plugin/advection.cpp
 	source/plugin/extforces.cpp
 	source/plugin/flip.cpp
+	source/plugin/fire.cpp
 	source/plugin/kepsilon.cpp
 	source/plugin/initplugins.cpp
 	source/plugin/meshplugins.cpp
