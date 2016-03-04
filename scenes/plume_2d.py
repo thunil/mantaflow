@@ -32,6 +32,8 @@ source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*v
 	
 #main loop
 for t in range(400):
+	mantaMsg('\nFrame %i' % (s.frame))
+
 	if t<300:
 		source.applyToGrid(grid=density, value=1)
 		
@@ -44,6 +46,6 @@ for t in range(400):
 
 	solvePressure(flags=flags, vel=vel, pressure=pressure)
 	
-	timings.display()    
+	#timings.display()    
 	s.step()
 

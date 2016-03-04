@@ -89,6 +89,7 @@ if 1 and (GUI):
 
 #main loop
 for t in range(250):
+	mantaMsg('\nFrame %i, simulation time %f' % (s.frame, s.timeTotal))
 	
 	# FLIP 
 	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False )

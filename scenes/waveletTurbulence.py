@@ -6,14 +6,15 @@
 from manta import *
 import os, shutil, math, sys
 
-# dimension two/three d
-dim = 2
 # how much to upres the XL sim?
 upres = 2
+# turbulence strength 
+wltStrength = 0.4
 
 # solver params
+dim = 2
 res = 80
-gs = vec3(res,int(1.5*res),res)
+gs  = vec3(res,int(1.5*res),res)
 if (dim==2): gs.z = 1  # 2D
 
 sm = Solver(name='main', gridSize = gs, dim=dim)
@@ -79,8 +80,6 @@ wltnoise3 = NoiseField( parent=xl, loadFromFile=True)
 wltnoise3.posScale = wltnoise2.posScale * 2.0
 wltnoise3.timeAnim = 0.1
 
-wltStrength = 1.4
-
 
 # allocate low-res grids
 flags    = sm.create(FlagGrid)
@@ -101,15 +100,13 @@ if (GUI):
 
 # main loop
 for t in range(200):
-	
-	curt = t * sm.timestep
-	#sys.stdout.write( "Current time t: " + str(curt) +" \n" )
+	mantaMsg('\nFrame %i, simulation time %f' % (sm.frame, sm.timeTotal))
 		
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=bWidth )
 	
 	applyInflow=False
-	if (curt>=0 and curt<75):
+	if (sm.timeTotal>=0 and sm.timeTotal<50.):
 		densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )
 		sourceVel.applyToGrid( grid=vel , value=(velInflow*float(res)) )
 		applyInflow=True
@@ -132,11 +129,9 @@ for t in range(200):
 	#computeVorticity( vel=vel, vorticity=vort, norm=energy);
 	#computeStrainRateMag( vel=vel, vorticity=vort, mag=energy);
 	
-	#density.save('densitySm_%04d.vol' % t)
-	
 	sm.step()
 	
-	# xl ...
+	# xl solver, update up-res'ed grids ...
 	# same inflow
 	
 	interpolateGrid( target=xl_weight, source=energy )
@@ -152,12 +147,11 @@ for t in range(200):
 	
 	if (applyInflow):
 		 densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 )
-		 # source.applyToGrid( grid=xl_vel , value=velInflow )
 	
 	#xl_density.save('densityXl08_%04d.vol' % t)
+	#gui.screenshot( 'waveletTurb_%04d.png' % t );
 	
-	timings.display()
+	#timings.display()
 	xl.step()    
 
-	#gui.screenshot( 'waveletTurb_%04d.png' % t );
 

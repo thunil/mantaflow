@@ -69,7 +69,6 @@ protected:
 	const int mDim;
 	Real      mTimePerFrame;
 	bool      mLockDt;
-	bool      mAdaptDt;
 		
 	//! subclass for managing grid memory
 	//! stored as a stack to allow fast allocation

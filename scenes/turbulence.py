@@ -72,6 +72,7 @@ KEpsilonBcs(flags=flags,k=k,eps=eps,intensity=intensity,nu=nu,fillArea=True)
 
 #main loop
 for t in range(10000):
+	mantaMsg('\nFrame %i, simulation time %f' % (s.frame, s.timeTotal))
 	if (GUI):
 		mult = sliderMult.get()
 		# unused: K0 = sliderL0.get()

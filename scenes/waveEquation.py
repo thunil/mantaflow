@@ -37,6 +37,7 @@ source.applyToGrid(grid=h,     value=1)
 hprev.copyFrom(h)
     
 for t in range(1500):
+	mantaMsg('\nFrame %i' % (s.frame))
 
 	mass = totalSum( height=h )
 	#mantaMsg( "Current mass %f " % mass )

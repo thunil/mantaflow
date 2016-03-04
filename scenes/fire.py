@@ -71,6 +71,7 @@ sourceBox = s.create( Box, center=boxCenter, size=boxSize )
 while s.frame < frames:
 	maxvel = vel.getMaxValue()
 	s.adaptTimestep( maxvel )
+	mantaMsg('\nFrame %i, time-step size %f' % (s.frame, s.timestep))
 	
 	if s.timeTotal<200:
 		densityInflow( flags=flags, density=density, noise=noise, shape=sourceBox, scale=1, sigma=0.5 )
@@ -99,6 +100,6 @@ while s.frame < frames:
 
 	updateFlame( react=react, flame=flame )
 
-	timings.display()
+	#timings.display()
 	s.step()
 

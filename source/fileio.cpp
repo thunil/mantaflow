@@ -552,13 +552,13 @@ void writeGridUni(const string& name, Grid<T>* grid) {
 	if (!gzf) errMsg("can't open file " << name);
 	
 	gzwrite(gzf, ID, 4);
-	void* ptr = &((*grid)[0]);
 #	if FLOATINGPOINT_PRECISION!=1
 	// always write float values, even if compiled with double precision...
 	Grid<T> temp(grid->getParent());
 	// "misuse" temp grid as storage for floating point values (we have double, so it will always fit)
 	gridConvertWrite( gzf, *grid, &(temp[0]), head);
 #	else
+	void* ptr = &((*grid)[0]);
 	gzwrite(gzf, &head, sizeof(UniHeader));
 	gzwrite(gzf, ptr, sizeof(T)*head.dimX*head.dimY*head.dimZ);
 #	endif

@@ -7,10 +7,6 @@
 from manta import *
 import os, shutil, math, sys
 
-# dimension two/three 
-dim = 2
-#printBuildInfo()
-
 # how much to upres the XL sim?
 # set to zero to disable the second one completely
 upres = 4
@@ -26,14 +22,17 @@ octaves = 0
 if(upres>0):
 	octaves = int( math.log(upres)/ math.log(2.0) + 0.5 )
 
-# simulation resolution
+# simulation resolution 
+dim = 2
 res = 80
 gs = vec3(res,int(1.5*res),res)
-if (dim==2): gs.z = 1  # 2D
+if (dim==2): gs.z = 1 
 
 # setup low-res sim
 sm = Solver(name='main', gridSize = gs, dim=dim)
 sm.timestep = 1.5
+# to do larger timesteps, without adaptive time steps, we need to set the length of a frame (1 is default)
+sm.frameLength = sm.timestep 
 timings = Timings()
 
 # note - world space velocity, convert to grid space later
@@ -117,10 +116,11 @@ if (GUI):
 	gui.show()
 	#gui.pause()
 
+#printBuildInfo() 
+
 # main loop
 for t in range(200):
-	curt = t * sm.timestep
-	#sys.stdout.write( "Current sim time " + str(curt) +" \n" )
+	mantaMsg('\nFrame %i, simulation time %f' % (sm.frame, sm.timeTotal))
 
 	if (GUI):
 		wltStrength = sliderStr.get()
@@ -137,7 +137,7 @@ for t in range(200):
 		# as it is stored at uv[i](0,0,0) , the advection overwrites this...
 		
 	applyInflow=False
-	if (curt>=0 and curt<75):
+	if (sm.timeTotal>=0 and sm.timeTotal<50.):
 		densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )
 		sourceVel.applyToGrid( grid=vel , value=(velInflow*float(res)) )
 		applyInflow=True
@@ -194,7 +194,7 @@ for t in range(200):
 		#xl_density.save('densityXl_%04d.vol' % t) 
 		xl.step()    
 
-	timings.display()
+	#timings.display()
 	# small and xl grid update done
 	#gui.screenshot( 'wltObs_%04d.png' % t );
 

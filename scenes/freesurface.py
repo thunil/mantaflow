@@ -51,6 +51,7 @@ if (GUI):
 
 #main loop
 for t in range(2000):
+	mantaMsg('\nFrame %i, simulation time %f' % (s.frame, s.timeTotal))
 	
 	# update and advect levelset
 	if useMarching:

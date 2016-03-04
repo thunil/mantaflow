@@ -55,6 +55,8 @@ while s.frame < frames:
 	
 	maxvel = vel.getMaxValue()
 	s.adaptTimestep(maxvel)
+	mantaMsg('\nFrame %i, time-step size %f' % (s.frame, s.timestep))
+
 	
 	if s.timeTotal<50.:
 		densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)

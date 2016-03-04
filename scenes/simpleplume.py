@@ -1,6 +1,6 @@
 #
 # Simple example scene (hello world)
-# Simulation of a buoyant smoke density plume (with noise texture smoke source)
+# Simulation of a buoyant smoke density plume (with noise texture as smoke source)
 #
 
 #import pdb; pdb.set_trace()
@@ -9,9 +9,8 @@ from manta import *
 
 # solver params
 res = 64
-gs = vec3(res,1.5*res,res)
-s = FluidSolver(name='main', gridSize = gs)
-s.timestep = 1.0
+gs  = vec3(res, int(1.5*res), res)
+s   = FluidSolver(name='main', gridSize = gs)
 
 # prepare grids
 flags    = s.create(FlagGrid)
@@ -19,13 +18,12 @@ vel      = s.create(MACGrid)
 density  = s.create(RealGrid)
 pressure = s.create(RealGrid)
 
-# noise field
+# noise field, tweak a bit for smoke source
 noise = s.create(NoiseField, loadFromFile=True)
 noise.posScale = vec3(45)
 noise.clamp = True
 noise.clampNeg = 0
 noise.clampPos = 1
-noise.valScale = 1
 noise.valOffset = 0.75
 noise.timeAnim = 0.2
 
@@ -40,6 +38,7 @@ if (GUI):
 	
 #main loop
 for t in range(250):
+	mantaMsg('\nFrame %i' % (s.frame))
 	if t<100:
 		densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
 		
@@ -53,8 +52,5 @@ for t in range(250):
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-6e-4,0), flags=flags)
 	
 	solvePressure( flags=flags, vel=vel, pressure=pressure )
-
-	#density.save('den%04d.uni' % t) 
 	s.step()
-
 
