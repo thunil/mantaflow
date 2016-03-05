@@ -103,6 +103,7 @@ void FluidSolver::step() {
 	// (use eps value to prevent roundoff errors)
 	mTimePerFrame += mDt;
 	mTimeTotal    += mDt;
+
 	if( (mTimePerFrame+VECTOR_EPSILON) >mFrameLength) {
 		mFrame++;
 
