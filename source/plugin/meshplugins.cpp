@@ -57,7 +57,7 @@ PYTHON() void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLengt
 			if (visited[node]) continue;
 			
 			const Vec3 pos = mesh.nodes(node).pos;
-			Vec3 dx(_0);
+			Vec3 dx(0.0);
 			Real totalLen = 0;
 				
 			// rotate around vertex
@@ -67,10 +67,10 @@ PYTHON() void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLengt
 				Real len = norm(edge);
 
 				if (len > minLength) {
-					dx += edge * (_1/len);
+					dx += edge * (1.0/len);
 					totalLen += len;
 				} else {
-					totalLen = _0;
+					totalLen = 0.0;
 					break;
 				}                
 			}

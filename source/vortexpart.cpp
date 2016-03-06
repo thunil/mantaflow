@@ -21,7 +21,7 @@ namespace Manta {
 // vortex particle effect: (cyl coord around wp)
 // u = -|wp|*rho*exp( (-rho^2-z^2)/(2sigma^2) ) e_phi
 inline Vec3 VortexKernel(const Vec3& p, const vector<VortexParticleData>& vp, Real scale) {
-	Vec3 u(_0);
+	Vec3 u(0.0);
 	for (size_t i=0; i<vp.size(); i++) {
 		if (vp[i].flag & ParticleBase::PDELETE) continue;
 		
@@ -54,7 +54,7 @@ inline Vec3 VortexKernel(const Vec3& p, const vector<VortexParticleData>& vp, Re
 KERNEL(pts) returns(vector<Vec3> u(size))
 vector<Vec3> KnVpAdvectMesh(vector<Node>& nodes, const vector<VortexParticleData>& vp, Real scale) {
 	if (nodes[idx].flags & Mesh::NfFixed)
-		u[idx] = _0;
+		u[idx] = 0.0;
 	else
 		u[idx] = VortexKernel(nodes[idx].pos, vp, scale);
 }
@@ -62,7 +62,7 @@ vector<Vec3> KnVpAdvectMesh(vector<Node>& nodes, const vector<VortexParticleData
 KERNEL(pts) returns(vector<Vec3> u(size))
 vector<Vec3> KnVpAdvectSelf(vector<VortexParticleData>& vp, Real scale) {
 	if (vp[idx].flag & ParticleBase::PDELETE) 
-		u[idx] = _0;
+		u[idx] = 0.0;
 	else
 		u[idx] = VortexKernel(vp[idx].pos, vp, scale);
 }

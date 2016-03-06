@@ -211,9 +211,9 @@ void Mesh::rebuildChannels() {
 KERNEL(pts) returns(vector<Vec3> u(size))
 vector<Vec3> KnAdvectMeshInGrid(vector<Node>& nodes, const FlagGrid& flags, const MACGrid& vel, const Real dt) {
 	if (nodes[idx].flags & Mesh::NfFixed) 
-		u[idx] = _0;
+		u[idx] = 0.0;
 	else if (!flags.isInBounds(nodes[idx].pos,1)) 
-		u[idx] = _0;
+		u[idx] = 0.0;
 	else 
 		u[idx] = vel.getInterpolated(nodes[idx].pos) * dt;
 }

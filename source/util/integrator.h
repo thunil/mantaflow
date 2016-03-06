@@ -60,7 +60,7 @@ void integratePointSet(VelKernel& k, int mode) {
         }
         
         k.run();
-        for(int i=0; i<N; i++) x[i].pos = x0[i].pos + (_1/6) * (uTotal[i] + u[i]);
+        for(int i=0; i<N; i++) x[i].pos = x0[i].pos + (Real)(1./6.) * (uTotal[i] + u[i]);
     }
     else 
         errMsg("unknown integration type");
