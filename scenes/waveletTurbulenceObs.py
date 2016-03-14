@@ -58,7 +58,8 @@ if(upres>0):
 	xl_gs = vec3(upres*gs.x,upres*gs.y,upres*gs.z)
 	if (dim==2): xl_gs.z = 1  # 2D
 	xl = Solver(name='larger', gridSize = xl_gs, dim=dim)
-	xl.timestep = sm.timestep 
+	xl.timestep    = sm.timestep 
+	xl.frameLength = xl.timestep 
 
 	xl_flags   = xl.create(FlagGrid)
 	xl_vel     = xl.create(MACGrid)
