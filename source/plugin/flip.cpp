@@ -94,19 +94,19 @@ KERNEL() void knClearFluidFLags(FlagGrid& flags, int dummy=0) {
 	}
 }
 KERNEL(bnd=1) 
-void knSetNbObstacle(FlagGrid& flags, Grid<Real>* phiObs) {
-	if ( (*phiObs)(i,j,k)>0. ) return;
+void knSetNbObstacle(FlagGrid& nflags, const FlagGrid& flags, const Grid<Real>& phiObs) {
+	if ( phiObs(i,j,k)>0. ) return;
 	if (flags.isEmpty(i,j,k)) {
 		bool set=false;
-		if( (flags.isFluid(i-1,j,k)) && (flags.isObstacle(i+1,j,k)) ) set=true;
-		if( (flags.isFluid(i+1,j,k)) && (flags.isObstacle(i-1,j,k)) ) set=true;
-		if( (flags.isFluid(i,j-1,k)) && (flags.isObstacle(i,j+1,k)) ) set=true;
-		if( (flags.isFluid(i,j+1,k)) && (flags.isObstacle(i,j-1,k)) ) set=true;
+		if( (flags.isFluid(i-1,j,k)) && (phiObs(i+1,j,k)<=0.) ) set=true;
+		if( (flags.isFluid(i+1,j,k)) && (phiObs(i-1,j,k)<=0.) ) set=true;
+		if( (flags.isFluid(i,j-1,k)) && (phiObs(i,j+1,k)<=0.) ) set=true;
+		if( (flags.isFluid(i,j+1,k)) && (phiObs(i,j-1,k)<=0.) ) set=true;
 		if(flags.is3D()) {
-		if( (flags.isFluid(i,j,k-1)) && (flags.isObstacle(i,j,k+1)) ) set=true;
-		if( (flags.isFluid(i,j,k+1)) && (flags.isObstacle(i,j,k-1)) ) set=true;
+		if( (flags.isFluid(i,j,k-1)) && (phiObs(i,j,k+1)<=0.) ) set=true;
+		if( (flags.isFluid(i,j,k+1)) && (phiObs(i,j,k-1)<=0.) ) set=true;
 		}
-		if(set) flags(i,j,k) = (flags(i,j,k) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
+		if(set) nflags(i,j,k) = (flags(i,j,k) | FlagGrid::TypeFluid) & ~FlagGrid::TypeEmpty;
 	}
 }
 PYTHON() void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags, Grid<Real>* phiObs = NULL) {
@@ -122,7 +122,11 @@ PYTHON() void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags, Grid<R
 	}
 
 	// special for second order obstacle BCs, check empty cells in boundary region
-	if(phiObs) knSetNbObstacle( flags, phiObs );
+	if(phiObs) {
+		FlagGrid tmp(flags);
+		knSetNbObstacle(tmp, flags, *phiObs);
+		flags.swap(tmp);
+	}
 }
 
 // for testing purposes only...
