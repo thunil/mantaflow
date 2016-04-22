@@ -313,4 +313,8 @@ PYTHON() void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength)
 	KnAddForceField(flags, vel, force);
 }
 
+PYTHON() void addForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
+	KnAddForceField(flags, vel, force);
+}
+
 } // namespace
