@@ -219,8 +219,8 @@ vector<Vec3> KnAdvectMeshInGrid(vector<Node>& nodes, const FlagGrid& flags, cons
 }
 
 // advection plugin
-void Mesh::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode) {
-	KnAdvectMeshInGrid kernel(mNodes, flaggrid, vel, getParent()->getDt());
+void Mesh::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode) {
+	KnAdvectMeshInGrid kernel(mNodes, flags, vel, getParent()->getDt());
 	integratePointSet( kernel, integrationMode);    
 }
 
