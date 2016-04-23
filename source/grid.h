@@ -187,6 +187,9 @@ public:
 	PYTHON() Real getMaxValue()    { return getMax(); }
 	PYTHON() Real getMinValue()    { return getMin(); }
 
+	//! get data pointer of grid
+	PYTHON() std::string getDataPointer();
+	
 	//! debugging helper, print grid from python
 	PYTHON() void printGrid(int zSlice=-1,  bool printIndex=false); 
 

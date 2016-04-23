@@ -243,6 +243,11 @@ template<> Real Grid<int>::getMaxAbs() {
 	int amax = CompMaxInt (*this);
 	return max( fabs((Real)amin), fabs((Real)amax));
 }
+template<class T> std::string Grid<T>::getDataPointer() {
+	std::ostringstream out;
+	out << mData ;
+	return out.str();
+}
 
 // compute maximal diference of two cells in the grid
 // used for testing system
