@@ -168,6 +168,12 @@ PyMODINIT_FUNC PyInit_Main(void) {
 #endif
 }
 
+#ifdef BLENDER
+PyObject *PyInit_Main_Obj(void) {
+	return PyInit_Main();	
+}
+#endif
+
 //******************************************************
 // WrapperRegistry
 
