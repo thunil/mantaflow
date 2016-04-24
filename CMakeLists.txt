@@ -57,6 +57,7 @@ OPTION(PREPDEBUG "Debug generated files" OFF) # This will beautify generated fil
 OPTION(DOUBLEPRECISION "Compile with double floating point precision" OFF)
 # CUDA is deprecated, and not tested - enable at own risk... (needs cmake version >2.8)
 #OPTION(CUDA "Compile with CUDA plugins" OFF)
+OPTION(BLENDER "Compile for Blender integration" OFF)
 
 # special option to compile manta as library, disables python glue code (while trying to keep as much of the rest as possible)
 OPTION(NOPYTHON "Compile without python support (limited functionality!)" OFF)
