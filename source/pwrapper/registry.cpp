@@ -131,9 +131,14 @@ PyObject* cbGetCName(PbObject* self, void* cl) {
 void cbDealloc(PbObject* self) {
 	//cout << "dealloc " << self->instance->getName() << " " << self->classdef->cName << endl;
 	if (self->instance) {
+	#ifndef BLENDER
 		// don't delete top-level objects
 		if (self->instance->getParent() != self->instance)
 			delete self->instance;
+	#else
+		// in Blender we *have* to delete all objects
+		delete self->instance;
+	#endif
 	}
 	Py_TYPE(self)->tp_free((PyObject*)self);
 }
