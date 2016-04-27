@@ -26,7 +26,6 @@ SET(MANTAVERSION "0.8")
 
 IF(WIN32)
 	SET(WIN_QT_PATH "C:/Qt/5.5/msvc2013_64_opengl") # qt5/win64
-	#SET(WIN_QT_PATH "C:/Qt/5.3/msvc2012_opengl") 
 	SET(WIN_PYTHON_PATH "C:/Python34")
 	SET(WIN_PYTHON_VERSION "34")
 	SET(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
@@ -341,14 +340,18 @@ endif(DOXYGEN_FOUND)
 #******************************************************************************
 # Link libraries
 
-# Python
+# enforce certain python version, if necessary
+set(PYTHON_FORCE_VERSION) # use any...
+#set(PYTHON_FORCE_VERSION 3.5) # uncomment to force specific one
+
+# Python 
 set(Python_ADDITIONAL_VERSIONS 3.4)
-find_package(PythonLibs QUIET)
+find_package(PythonLibs ${PYTHON_FORCE_VERSION} QUIET)
 if((NOT PYTHONLIBS_FOUND) AND WIN32)
 	set(PYTHON_INCLUDE_DIR "${WIN_PYTHON_PATH}/include")
 	set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${WIN_PYTHON_VERSION}.lib")
 endif()
-find_package(PythonLibs REQUIRED)
+find_package(PythonLibs ${PYTHON_FORCE_VERSION} REQUIRED)
 list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
 list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 
