@@ -74,9 +74,13 @@ void MovingObstacle::moveLinear(Real t, Real t0, Real t1, Vec3 p0, Vec3 p1, Flag
 		}
 		// apply new flags
 		for (size_t i=0; i<mShapes.size(); i++) {
+#			if NOPYTHON!=1
 			mShapes[i]->_args.clear();
 			mShapes[i]->_args.add("value", FlagGrid::TypeObstacle | mID);
 			mShapes[i]->applyToGrid(&flags, 0);
+#			else
+			errMsg("Not yet supported...");
+#			endif
 		}
 		// apply velocities
 		FOR_IJK_BND(flags,1) {

@@ -347,13 +347,13 @@ PYTHON() void resetUvGrid (Grid<Vec3> &target)
 {
 	knResetUvGrid reset(target); // note, llvm complains about anonymous declaration here... ?
 }
-PYTHON() void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv , bool info=false)
+PYTHON() void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv)
 {
 	const Real t   = uv.getParent()->getTime();
 	Real  timeOff  = resetTime/(Real)numUvs;
 
 	Real lastt = computeUvGridTime(t +(Real)index*timeOff - uv.getParent()->getDt(), resetTime);
-	Real currt = computeUvGridTime(t +(Real)index*timeOff                  , resetTime);
+	Real currt = computeUvGridTime(t +(Real)index*timeOff                          , resetTime);
 	Real uvWeight = computeUvRamp(currt);
 
 	// normalize the uvw weights , note: this is a bit wasteful...
@@ -372,7 +372,7 @@ PYTHON() void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &
 	uv[0] = Vec3( uvWeight, 0.,0.);
 
 	// print info about uv weights?
-	if(info) debMsg("Uv grid "<<index<<"/"<<numUvs<< " t="<<currt<<" w="<<uvWeight<<", reset:"<<(int)(currt<lastt) , 1);
+	debMsg("Uv grid "<<index<<"/"<<numUvs<< " t="<<currt<<" w="<<uvWeight<<", reset:"<<(int)(currt<lastt) , 2);
 }
 
 KERNEL() template<class T> void knSetBoundary (Grid<T>& grid, T value, int w) { 

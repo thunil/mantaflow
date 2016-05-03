@@ -73,7 +73,7 @@ template<> void FluidSolver::freeGridPointer<Vec3>(Vec3* ptr) {
 FluidSolver::FluidSolver(Vec3i gridsize, int dim)
 	: PbClass(this), mDt(1.0), mTimeTotal(0.), mFrame(0), 
 	  mCflCond(1000), mDtMin(1.), mDtMax(1.), mFrameLength(1.),
-	  mGridSize(gridsize), mDim(dim) , mTimePerFrame(0.), mLockDt(false), mAdaptDt(true)
+	  mGridSize(gridsize), mDim(dim) , mTimePerFrame(0.), mLockDt(false)
 {    
 	assertMsg(dim==2 || dim==3, "Can only create 2D and 3D solvers");
 	assertMsg(dim!=2 || gridsize.z == 1, "Trying to create 2D solver with size.z != 1");
@@ -86,33 +86,39 @@ FluidSolver::~FluidSolver() {
 }
 
 PbClass* FluidSolver::create(PbType t, PbTypeVec T, const string& name) {        
+#	if NOPYTHON!=1
 	_args.add("nocheck",true);
 	if (t.str() == "")
 		errMsg("Need to specify object type. Use e.g. Solver.create(FlagGrid, ...) or Solver.create(type=FlagGrid, ...)");
 	
 	PbClass* ret = PbClass::createPyObject(t.str() + T.str(), name, _args, this);
+#	else
+	PbClass* ret = NULL;
+#	endif
 	return ret;
 }
 
 void FluidSolver::step() {
-	// update simulation time
-	if(!mAdaptDt) {
-		mTimeTotal += mDt;
-		mFrame++;
-	} else {
-		// adaptive time stepping on (use eps to prevent roundoff errors)
-		mTimePerFrame += mDt;
-		if( (mTimePerFrame+VECTOR_EPSILON) >mFrameLength) {
-			mFrame++;
+	// update simulation time with adaptive time stepping 
+	// (use eps value to prevent roundoff errors)
+	mTimePerFrame += mDt;
+	mTimeTotal    += mDt;
 
-			// re-calc total time, prevent drift...
-			mTimeTotal = (double)mFrame * mFrameLength;
-			mTimePerFrame = 0.;
-			mLockDt = false;
-		}
+	if( (mTimePerFrame+VECTOR_EPSILON) >mFrameLength) {
+		mFrame++;
+
+		// re-calc total time, prevent drift...
+		mTimeTotal    = (double)mFrame * mFrameLength;
+		mTimePerFrame = 0.;
+		mLockDt = false;
 	}
 
 	updateQtGui(true, mFrame,mTimeTotal, "FluidSolver::step");
+}
+
+//! helper to unify printing from python scripts and printing internal messages (optionally pass debug level to control amount of output)
+PYTHON() void mantaMsg(const std::string& out, int level=1) {
+	debMsg( out, level );
 }
 
 void FluidSolver::printMemInfo() {
@@ -148,8 +154,7 @@ void FluidSolver::adaptTimestep(Real maxVel)
 			mLockDt = true;
 		}
 	}
-	debMsg( "Frame "<<mFrame<<" current max vel: "<<maxVel<<" , dt: "<<mDt<<", "<<mTimePerFrame<<"/"<<mFrameLength<<" lock:"<<mLockDt , 1);
-	mAdaptDt = true;
+	debMsg( "Frame "<<mFrame<<" current max vel: "<<maxVel<<" , dt: "<<mDt<<", "<<mTimePerFrame<<"/"<<mFrameLength<<" lock:"<<mLockDt , 2);
 
 	// sanity check
 	assertMsg( (mDt > (mDtMin/2.) ) , "Invalid dt encountered! Shouldnt happen..." );

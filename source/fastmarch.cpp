@@ -123,7 +123,7 @@ inline Real FastMarch<COMP,TDIR>::calculateDistance(const Vec3i& idx) {
 		ret = v[0]+ (Real)(TDIR) ; // direction = +- 1
 		} break; 
 	default:
-		throw Error("FastMarch :: Invalid invcnt");
+		errMsg("FastMarch :: Invalid invcnt");
 		break;
 	}
 	return ret;

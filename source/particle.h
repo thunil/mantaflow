@@ -402,13 +402,13 @@ std::vector<Vec3> GridAdvectKernel (std::vector<S>& p, const MACGrid& vel, const
 		bool deleteInObstacle, bool stopInObstacle )
 {
 	if (p[idx].flag & ParticleBase::PDELETE) {
-		u[idx] =_0; return;
+		u[idx] = 0.; return;
 	} 
 	// special handling
 	if(deleteInObstacle || stopInObstacle) {
 		if (!flags.isInBounds(p[idx].pos, 1) || flags.isObstacle(p[idx].pos) ) {
 			if(stopInObstacle)
-				u[idx] = _0; 
+				u[idx] = 0.; 
 			// for simple tracer particles, its convenient to delete particles right away
 			// for other sim types, eg flip, we can try to fix positions later on
 			if(deleteInObstacle) 

@@ -33,8 +33,8 @@ phiBackup = s.create(LevelsetGrid)
 # scene setup
 bWidth=1
 flags.initDomain(boundaryWidth=bWidth)
-basin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1,0.2,1))
-drop  = s.create(Sphere, center=gs*vec3(0.5,0.5,0.5), radius=res*0.125)
+basin = Box( parent=s, p0=gs*vec3(0,0,0), p1=gs*vec3(1,0.2,1))
+drop  = Sphere( parent=s , center=gs*vec3(0.5,0.5,0.5), radius=res*0.125)
 phi = basin.computeLevelset()
 phi.join(drop.computeLevelset())
 flags.updateFromLevelset(phi)
@@ -46,11 +46,12 @@ if doOpen:
 if (GUI):
 	gui = Gui()
 	gui.show()
-	gui.pause()
+	#gui.pause()
 	
 
 #main loop
 for t in range(2000):
+	mantaMsg('\nFrame %i, simulation time %f' % (s.frame, s.timeTotal))
 	
 	# update and advect levelset
 	if useMarching:

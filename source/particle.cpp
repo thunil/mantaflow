@@ -72,6 +72,7 @@ void ParticleBase::deregister(ParticleDataBase* pdata) {
 
 // create and attach a new pdata field to this particle system
 PbClass* ParticleBase::create(PbType t, PbTypeVec T, const string& name) {        
+#	if NOPYTHON!=1
 	_args.add("nocheck",true);
 	if (t.str() == "")
 		errMsg("Specify particle data type to create");
@@ -90,6 +91,9 @@ PbClass* ParticleBase::create(PbType t, PbTypeVec T, const string& name) {
 
 	// directly init size of new pdata field:
 	pdata->resize( this->getSizeSlow() );
+#	else
+	PbClass* pyObj = NULL;
+#	endif
 	return pyObj;
 }
 

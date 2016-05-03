@@ -7,17 +7,12 @@
 from manta import *
 import os, shutil, math, sys
 
-# dimension two/three 
-dim = 2
-
-printBuildInfo()
-
 # how much to upres the XL sim?
 # set to zero to disable the second one completely
 upres = 4
  
 # overall wavelet noise strength
-wltStrength = 0.3
+wltStrength = 0.3 
 
 # how many grids of uv coordinates to use (more than 2 usually dont pay off here)
 uvs = 1
@@ -27,21 +22,24 @@ octaves = 0
 if(upres>0):
 	octaves = int( math.log(upres)/ math.log(2.0) + 0.5 )
 
-# simulation resolution
+# simulation resolution 
+dim = 2
 res = 80
 gs = vec3(res,int(1.5*res),res)
-if (dim==2): gs.z = 1  # 2D
+if (dim==2): gs.z = 1 
 
 # setup low-res sim
 sm = Solver(name='main', gridSize = gs, dim=dim)
 sm.timestep = 1.5
+# to do larger timesteps, without adaptive time steps, we need to set the length of a frame (1 is default)
+sm.frameLength = sm.timestep 
 timings = Timings()
 
 # note - world space velocity, convert to grid space later
 velInflow = vec3(0.015, 0, 0)
 
 # inflow noise field
-noise = sm.create(NoiseField, fixedSeed=265, loadFromFile=True)
+noise = NoiseField( parent=sm, fixedSeed=265, loadFromFile=True)
 noise.posScale = vec3(20) # note, this is normalized to the grid size...
 noise.clamp = True
 noise.clampNeg = 0
@@ -51,16 +49,17 @@ noise.valOffset = 0.075
 noise.timeAnim = 0.3
 
 # helper objects: inflow region, and obstacle
-source    = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))
-sourceVel = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15 , z=gs*vec3(0.15 , 0, 0))
-obs       = sm.create(Sphere,   center=gs*vec3(0.5,0.5,0.5), radius=res*0.15)
+source    = Cylinder( parent=sm, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))
+sourceVel = Cylinder( parent=sm, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15 , z=gs*vec3(0.15 , 0, 0))
+obs       = Sphere( parent=sm,   center=gs*vec3(0.5,0.5,0.5), radius=res*0.15)
 
 # larger solver, recompute sizes...
 if(upres>0):
 	xl_gs = vec3(upres*gs.x,upres*gs.y,upres*gs.z)
 	if (dim==2): xl_gs.z = 1  # 2D
 	xl = Solver(name='larger', gridSize = xl_gs, dim=dim)
-	xl.timestep = sm.timestep 
+	xl.timestep    = sm.timestep 
+	xl.frameLength = xl.timestep 
 
 	xl_flags   = xl.create(FlagGrid)
 	xl_vel     = xl.create(MACGrid)
@@ -69,11 +68,11 @@ if(upres>0):
 	xl_flags.initDomain()
 	xl_flags.fillGrid()
 
-	xl_source = xl.create(Cylinder, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0))
-	xl_obs    = xl.create(Sphere,   center=xl_gs*vec3(0.5,0.5,0.5), radius=xl_gs.x*0.15)
+	xl_source = Cylinder( parent=xl, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0))
+	xl_obs    = Sphere(   parent=xl, center=xl_gs*vec3(0.5,0.5,0.5), radius=xl_gs.x*0.15)
 	xl_obs.applyToGrid(grid=xl_flags, value=FlagObstacle)
 
-	xl_noise = xl.create(NoiseField, fixedSeed=265, loadFromFile=True)
+	xl_noise = NoiseField( parent=xl, fixedSeed=265, loadFromFile=True)
 	xl_noise.posScale = noise.posScale
 	xl_noise.clamp    = noise.clamp
 	xl_noise.clampNeg = noise.clampNeg
@@ -105,16 +104,11 @@ energy    = sm.create(RealGrid)
 tempFlag  = sm.create(FlagGrid)
 
 # wavelet turbulence noise field
-xl_wltnoise = sm.create(NoiseField, loadFromFile=True)
+xl_wltnoise = NoiseField( parent=xl, loadFromFile=True)
 # scale according to lowres sim , smaller numbers mean larger vortices
+# note - this noise is parented to xl solver, thus will automatically rescale
 xl_wltnoise.posScale = vec3( int(1.0*gs.x) ) * 0.5
 xl_wltnoise.timeAnim = 0.1
-if(upres>0):
-	# the noise will be used on the up'resed grid, so due to the local coordinates 
-	# we need to adapt its scaling, to make sure it connects to the original grid
-	# ie, octave 0 should be on the order of the low-res grid irrespective of the xl resolution
-	xl_wltnoise.posScale = xl_wltnoise.posScale * (1./upres)
-
 
 # setup user interface
 if (GUI):
@@ -123,10 +117,11 @@ if (GUI):
 	gui.show()
 	#gui.pause()
 
+#printBuildInfo() 
+
 # main loop
 for t in range(200):
-	curt = t * sm.timestep
-	#sys.stdout.write( "Current sim time " + str(curt) +" \n" )
+	mantaMsg('\nFrame %i, simulation time %f' % (sm.frame, sm.timeTotal))
 
 	if (GUI):
 		wltStrength = sliderStr.get()
@@ -143,7 +138,7 @@ for t in range(200):
 		# as it is stored at uv[i](0,0,0) , the advection overwrites this...
 		
 	applyInflow=False
-	if (curt>=0 and curt<75):
+	if (sm.timeTotal>=0 and sm.timeTotal<50.):
 		densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )
 		sourceVel.applyToGrid( grid=vel , value=(velInflow*float(res)) )
 		applyInflow=True
@@ -183,7 +178,7 @@ for t in range(200):
 				uvWeight = getUvWeight(uv[i]) 
 				applyNoiseVec3( flags=xl_flags, target=xl_vel, noise=xl_wltnoise, scale=sStr * uvWeight, scaleSpatial=sPos , 
 					weight=energy, uv=uv[i] )
-			#print "Octave "+str(o)+", ss="+str(sStr)+" sp="+str(sPos)+" uvs="+str(uvs) # debug output
+			#mantaMsg( "Octave "+str(o)+", ss="+str(sStr)+" sp="+str(sPos)+" uvs="+str(uvs) ) # debug output 
 
 			# update octave parameters for next iteration
 			sStr *= 0.06 # magic kolmogorov factor
@@ -200,7 +195,7 @@ for t in range(200):
 		#xl_density.save('densityXl_%04d.vol' % t) 
 		xl.step()    
 
-	timings.display()
+	#timings.display()
 	# small and xl grid update done
 	#gui.screenshot( 'wltObs_%04d.png' % t );
 

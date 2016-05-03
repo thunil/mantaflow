@@ -57,18 +57,18 @@ fluidSetVel = 0
 
 if setup==0:
 	# breaking dam
-	fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1)) # breaking dam
+	fluidbox = Box( parent=s, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1)) # breaking dam
 	phi = fluidbox.computeLevelset()
-	#fluidbox2 = s.create(Box, p0=gs*vec3(0.2,0.7,0.3), p1=gs*vec3(0.5,0.8,0.6)) # breaking dam
+	#fluidbox2 = Box( parent=s, p0=gs*vec3(0.2,0.7,0.3), p1=gs*vec3(0.5,0.8,0.6)) # breaking dam
 	#phi.join( fluidbox2.computeLevelset() )
 elif setup==1:
 	# falling drop
-	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.2,1.0)) # basin
+	fluidBasin = Box( parent=s, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.2,1.0)) # basin
 	dropCenter = vec3(0.5,0.5,0.5)
 	dropRadius = 0.15
 	fluidSetVel= vec3(0,-0.03,0)
-	fluidDrop  = s.create(Sphere, center=gs*dropCenter, radius=res*dropRadius)
-	fluidVel   = s.create(Sphere, center=gs*dropCenter, radius=res*(dropRadius+0.05) )
+	fluidDrop  = Sphere( parent=s , center=gs*dropCenter, radius=res*dropRadius)
+	fluidVel   = Sphere( parent=s , center=gs*dropCenter, radius=res*(dropRadius+0.05) )
 	phi = fluidBasin.computeLevelset()
 	phi.join( fluidDrop.computeLevelset() )
 	flags.updateFromLevelset(phi)
@@ -77,7 +77,7 @@ flags.updateFromLevelset(phi)
 
 if dim==3:
 	# obstacle init needs to go after updateFromLs
-	obsBox = s.create(Box, p0=gs*vec3(0.7,0.0,0.5), p1=gs*vec3(0.8,1.0,0.8)) 
+	obsBox = Box( parent=s, p0=gs*vec3(0.7,0.0,0.5), p1=gs*vec3(0.8,1.0,0.8)) 
 	obsBox.applyToGrid(grid=flags, value=(FlagObstacle) )
 	#obsBox.applyToGrid(grid=flags, value=(FlagObstacle|FlagStick) )
 
@@ -98,7 +98,7 @@ lastFrame = -1
 if 1 and (GUI):
 	gui = Gui()
 	gui.show( dim==2 )
-	gui.pause()
+	#gui.pause()
 	  
 	# show all particles shaded by velocity
 	gui.nextPdata()
@@ -109,9 +109,10 @@ if 1 and (GUI):
 
 #main loop
 while s.frame < frames:
-	
 	maxVel = vel.getMaxValue()
 	s.adaptTimestep( maxVel )
+	mantaMsg('\nFrame %i, time-step size %f' % (s.frame, s.timestep))
+
 	
 	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False )
 
@@ -150,9 +151,11 @@ while s.frame < frames:
 	s.step()
 
 	# optionally save particle data , or screenshot
-	#pp.save( 'flipParts_%04d.uni' % s.frame ); 
-	if 0 and (GUI) and (lastFrame!=s.frame) and (s.frame%2==0):
+	if 0 and (lastFrame!=s.frame):
+		pp.save( 'flipParts_%04d.uni' % s.frame ); 
+	if 0 and (GUI) and (lastFrame!=s.frame):
 		gui.screenshot( 'flip04_%04d.png' % s.frame );
+
 	lastFrame = s.frame;
 
 

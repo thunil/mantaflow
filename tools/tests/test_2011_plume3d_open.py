@@ -59,6 +59,7 @@ for t in range(frames):
 	#source.applyToGrid(grid=vel, value=velInflow)
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)	
 	resetOutflow(flags=flags,real=density) 
+	# note - this scene uses bWidth+1 , this is unnecessary, but doesnt make a big difference for this test
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, openBounds=True, boundaryWidth=bWidth+1)
 	
 	setWallBcs(flags=flags, vel=vel)	

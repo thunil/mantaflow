@@ -69,6 +69,7 @@ KERNEL() void ApplyShapeToMACGrid (MACGrid* grid, Shape* shape, Vec3 value, Flag
 }
 
 void Shape::applyToGrid(GridBase* grid, FlagGrid* respectFlags) {
+#	if NOPYTHON!=1
 	if (grid->getType() & GridBase::TypeInt)
 		ApplyShapeToGrid<int> ((Grid<int>*)grid, this, _args.get<int>("value"), respectFlags);
 	else if (grid->getType() & GridBase::TypeReal)
@@ -79,12 +80,16 @@ void Shape::applyToGrid(GridBase* grid, FlagGrid* respectFlags) {
 		ApplyShapeToGrid<Vec3> ((Grid<Vec3>*)grid, this, _args.get<Vec3>("value"), respectFlags);
 	else
 		errMsg("Shape::applyToGrid(): unknown grid type");
+#	else
+	errMsg("Not yet supported...");
+#	endif
 }
 
 void Shape::applyToGridSmooth(GridBase* grid, Real sigma, Real shift, FlagGrid* respectFlags) {
 	Grid<Real> phi(grid->getParent());
 	generateLevelset(phi);
 
+#	if NOPYTHON!=1
 	if (grid->getType() & GridBase::TypeInt)
 		ApplyShapeToGridSmooth<int> ((Grid<int>*)grid, phi, sigma, shift, _args.get<int>("value"), respectFlags);
 	else if (grid->getType() & GridBase::TypeReal)
@@ -93,6 +98,9 @@ void Shape::applyToGridSmooth(GridBase* grid, Real sigma, Real shift, FlagGrid* 
 		ApplyShapeToGridSmooth<Vec3> ((Grid<Vec3>*)grid, phi, sigma, shift, _args.get<Vec3>("value"), respectFlags);
 	else
 		errMsg("Shape::applyToGridSmooth(): unknown grid type");
+#	else
+	errMsg("Not yet supported...");
+#	endif
 }
 
 void Shape::collideMesh(Mesh& mesh) {

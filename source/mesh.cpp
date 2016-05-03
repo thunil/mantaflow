@@ -211,9 +211,9 @@ void Mesh::rebuildChannels() {
 KERNEL(pts) returns(vector<Vec3> u(size))
 vector<Vec3> KnAdvectMeshInGrid(vector<Node>& nodes, const FlagGrid& flags, const MACGrid& vel, const Real dt) {
 	if (nodes[idx].flags & Mesh::NfFixed) 
-		u[idx] = _0;
+		u[idx] = 0.0;
 	else if (!flags.isInBounds(nodes[idx].pos,1)) 
-		u[idx] = _0;
+		u[idx] = 0.0;
 	else 
 		u[idx] = vel.getInterpolated(nodes[idx].pos) * dt;
 }
@@ -673,6 +673,7 @@ void Mesh::applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags, Real cutoff) 
 	LevelsetGrid mesh_sdf(&dummy, false);
 	meshSDF(*this, mesh_sdf, 2., cutoff);
 	
+#	if NOPYTHON!=1
 	if (grid->getType() & GridBase::TypeInt)
 		ApplyMeshToGrid<int> ((Grid<int>*)grid, mesh_sdf, _args.get<int>("value"), respectFlags);
 	else if (grid->getType() & GridBase::TypeReal)
@@ -681,6 +682,9 @@ void Mesh::applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags, Real cutoff) 
 		ApplyMeshToGrid<Vec3> ((Grid<Vec3>*)grid, mesh_sdf, _args.get<Vec3>("value"), respectFlags);
 	else
 		errMsg("Shape::applyToGrid(): unknown grid type");
+#	else
+	errMsg("Not yet supported...");
+#	endif
 }
 
 void Mesh::computeLevelset(LevelsetGrid& levelset, Real sigma, Real cutoff) {

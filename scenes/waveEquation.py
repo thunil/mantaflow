@@ -30,16 +30,17 @@ flags.fillGrid()
 if (GUI):
     gui = Gui()
     gui.show( True )
-    gui.pause()
+    #gui.pause()
 
-source = s.create(Box, p0=gs*vec3(0.3,0.3,0.3), p1=gs*vec3(0.5,0.5,0.5))
+source = Box( parent=s, p0=gs*vec3(0.3,0.3,0.3), p1=gs*vec3(0.5,0.5,0.5))
 source.applyToGrid(grid=h,     value=1)
 hprev.copyFrom(h)
     
 for t in range(1500):
+	mantaMsg('\nFrame %i' % (s.frame))
 
 	mass = totalSum( height=h )
-	#print "Current mass %f " % mass
+	#mantaMsg( "Current mass %f " % mass )
 
 	if implicit:
 		# implicit solve , cf. 07IntroToPDEs.pdf, page 19
@@ -70,7 +71,7 @@ for t in range(1500):
 	if normalizeMass:
 		normalizeSumTo(h, mass)
 	#massAfter = totalSum( height=h )
-	#print "Current mass after normalization %f " % massAfter
+	#mantaMsg( "Current mass after normalization %f " % massAfter )
 
 	#gui.screenshot( 'out_%04d.png' % t );
 	s.step()

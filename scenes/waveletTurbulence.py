@@ -6,14 +6,15 @@
 from manta import *
 import os, shutil, math, sys
 
-# dimension two/three d
-dim = 2
 # how much to upres the XL sim?
 upres = 2
+# turbulence strength 
+wltStrength = 0.4
 
 # solver params
+dim = 2
 res = 80
-gs = vec3(res,int(1.5*res),res)
+gs  = vec3(res,int(1.5*res),res)
 if (dim==2): gs.z = 1  # 2D
 
 sm = Solver(name='main', gridSize = gs, dim=dim)
@@ -24,7 +25,7 @@ timings = Timings()
 velInflow = vec3(0.025, 0, 0)
 
 # inflow noise field
-noise = sm.create(NoiseField, fixedSeed=265, loadFromFile=True)
+noise = NoiseField( parent=sm, fixedSeed=265, loadFromFile=True)
 noise.posScale = vec3(20)
 noise.clamp = True
 noise.clampNeg = 0
@@ -33,8 +34,8 @@ noise.valScale = 1
 noise.valOffset = 0.075
 noise.timeAnim = 0.3
 
-source = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))
-sourceVel = sm.create(Cylinder, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15, z=gs*vec3(0.15, 0, 0))
+source    = Cylinder( parent=sm, center=gs*vec3(0.3,0.2,0.5), radius=res*0.081, z=gs*vec3(0.081, 0, 0))
+sourceVel = Cylinder( parent=sm, center=gs*vec3(0.3,0.2,0.5), radius=res*0.15, z=gs*vec3(0.15, 0, 0))
 
 
 # larger solver, recompute sizes...
@@ -52,9 +53,9 @@ xl_weight  = xl.create(RealGrid)
 xl_flags.initDomain()
 xl_flags.fillGrid()
 
-xl_source = xl.create(Cylinder, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0))
+xl_source = Cylinder( parent=xl, center=xl_gs*vec3(0.3,0.2,0.5), radius=xl_gs.x*0.081, z=xl_gs*vec3(0.081, 0, 0))
 
-xl_noise = xl.create(NoiseField, fixedSeed=265, loadFromFile=True)
+xl_noise = NoiseField( parent=xl, fixedSeed=265, loadFromFile=True)
 xl_noise.posScale = noise.posScale
 xl_noise.clamp    = noise.clamp
 xl_noise.clampNeg = noise.clampNeg
@@ -66,20 +67,18 @@ xl_noise.timeAnim  = noise.timeAnim * upres
 
 # wavelet turbulence octaves
 
-wltnoise = sm.create(NoiseField, loadFromFile=True)
+wltnoise = NoiseField( parent=xl, loadFromFile=True)
 # scale according to lowres sim , smaller numbers mean larger vortices
-wltnoise.posScale = vec3( int(0.5*gs.x) ) * 0.5
+wltnoise.posScale = vec3( int(1.0*gs.x) ) * 0.5
 wltnoise.timeAnim = 0.1
 
-wltnoise2 = sm.create(NoiseField, loadFromFile=True)
+wltnoise2 = NoiseField( parent=xl, loadFromFile=True)
 wltnoise2.posScale = wltnoise.posScale * 2.0
 wltnoise2.timeAnim = 0.1
 
-wltnoise3 = sm.create(NoiseField, loadFromFile=True)
+wltnoise3 = NoiseField( parent=xl, loadFromFile=True)
 wltnoise3.posScale = wltnoise2.posScale * 2.0
 wltnoise3.timeAnim = 0.1
-
-wltStrength = 0.4
 
 
 # allocate low-res grids
@@ -101,15 +100,13 @@ if (GUI):
 
 # main loop
 for t in range(200):
-	
-	curt = t * sm.timestep
-	#sys.stdout.write( "Current time t: " + str(curt) +" \n" )
+	mantaMsg('\nFrame %i, simulation time %f' % (sm.frame, sm.timeTotal))
 		
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=bWidth )
 	
 	applyInflow=False
-	if (curt>=0 and curt<75):
+	if (sm.timeTotal>=0 and sm.timeTotal<50.):
 		densityInflow( flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5 )
 		sourceVel.applyToGrid( grid=vel , value=(velInflow*float(res)) )
 		applyInflow=True
@@ -132,11 +129,9 @@ for t in range(200):
 	#computeVorticity( vel=vel, vorticity=vort, norm=energy);
 	#computeStrainRateMag( vel=vel, vorticity=vort, mag=energy);
 	
-	#density.save('densitySm_%04d.vol' % t)
-	
 	sm.step()
 	
-	# xl ...
+	# xl solver, update up-res'ed grids ...
 	# same inflow
 	
 	interpolateGrid( target=xl_weight, source=energy )
@@ -152,12 +147,11 @@ for t in range(200):
 	
 	if (applyInflow):
 		 densityInflow( flags=xl_flags, density=xl_density, noise=xl_noise, shape=xl_source, scale=1, sigma=0.5 )
-		 # source.applyToGrid( grid=xl_vel , value=velInflow )
 	
 	#xl_density.save('densityXl08_%04d.vol' % t)
+	#gui.screenshot( 'waveletTurb_%04d.png' % t );
 	
-	timings.display()
+	#timings.display()
 	xl.step()    
 
-	#gui.screenshot( 'waveletTurb_%04d.png' % t );
 

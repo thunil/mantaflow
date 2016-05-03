@@ -348,7 +348,6 @@ void processText(const string& text, int baseline, Sink& sink, const Class* pare
 					bool brackets = false;
 					tokenizeBlock(tokens, word, text, i, line, brackets);
 					if(!brackets) {
-						std::cout<<" debug "<<word <<" "<< i <<" "<< line <<"\n\n"; // NT_DEBUG
 						errMsg(line, "KERNEL and PYTHON keywords must have \"()\" ");
 					}
 					convertKeywords(tokens);

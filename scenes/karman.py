@@ -56,10 +56,11 @@ timings = Timings()
 if (GUI):
 	gui = Gui()
 	gui.show()
-	gui.pause()
+	#gui.pause()
 
 #main loop
 for t in range(25000):
+	mantaMsg('\nFrame %i, simulation time %f' % (s.frame, s.timeTotal))
 
 	densInflow.applyToGrid( grid=density, value=2. )
 

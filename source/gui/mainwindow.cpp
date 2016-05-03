@@ -138,6 +138,7 @@ void MainWnd::addControl(void* ctrl) {
 void MainWnd::setStep(int f, float time) {
 	std::stringstream s;
 	s << "Simulation frame " << f <<", time "<<time; 
+	s << "\n-----------------------------------------------";
 	mInfo->setText(s.str().c_str());
 }
 

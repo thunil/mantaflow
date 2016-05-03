@@ -17,10 +17,11 @@ vel = s.create(MACGrid)
 density = s.create(RealGrid)
 pressure = s.create(RealGrid)
 
-flags.initDomain() 
+bWidth=1
+flags.initDomain(boundaryWidth=bWidth) 
 flags.fillGrid()
 
-setOpenBound(flags, 1,'yY',FlagOutflow|FlagEmpty) 
+setOpenBound(flags, bWidth,'yY',FlagOutflow|FlagEmpty) 
 
 if (GUI):
 	gui = Gui()
@@ -31,11 +32,13 @@ source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*v
 	
 #main loop
 for t in range(400):
+	mantaMsg('\nFrame %i' % (s.frame))
+
 	if t<300:
 		source.applyToGrid(grid=density, value=1)
 		
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2) 
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=1)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=bWidth)
 	resetOutflow(flags=flags,real=density) 
 
 	setWallBcs(flags=flags, vel=vel)    
@@ -43,6 +46,6 @@ for t in range(400):
 
 	solvePressure(flags=flags, vel=vel, pressure=pressure)
 	
-	timings.display()    
+	#timings.display()    
 	s.step()
 

@@ -277,7 +277,7 @@ void LevelsetGrid::createMesh(Mesh& mesh) {
 
 					// init isolevel vertex
 					Node vertex;
-					vertex.pos = p1 + (p2-p1)*mu;
+					vertex.pos = p1 + (p2-p1)*mu + Vec3(Real(0.5));
 					vertex.normal = getNormalized( 
 										getGradient( *this, i+cubieOffsetX[e1], j+cubieOffsetY[e1], k+cubieOffsetZ[e1]) * (1.0-mu) +
 										getGradient( *this, i+cubieOffsetX[e2], j+cubieOffsetY[e2], k+cubieOffsetZ[e2]) * (    mu)) ;

@@ -39,7 +39,7 @@
 #  undef NOMINMAX
 #else
 #   include <sys/time.h>
-#	include "hginfo.h"
+#	include "gitinfo.h"
 #endif
 
 using namespace std;
@@ -135,10 +135,10 @@ std::string buildInfoString() {
 #	endif
 
 	// repository info (git commit id)
-#	ifndef MANTA_HG_VERSION
-#	define MANTA_HG_VERSION "<unknown-commit>"
+#	ifndef MANTA_GIT_VERSION
+#	define MANTA_GIT_VERSION "<unknown-commit>"
 #	endif
-	infoStr << " "<< MANTA_HG_VERSION;
+	infoStr << " "<< MANTA_GIT_VERSION;
 
 	infoStr << " from "<< __DATE__<<", "<<__TIME__;
 	return infoStr.str();

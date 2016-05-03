@@ -25,11 +25,10 @@ SET(MANTAVERSION "0.8")
 # - allow override from command line on OsX, eg use "cmake ..  -DCMAKE_PREFIX_PATH=/Users/someone/qt5.2.1/5.2.1/clang_64/
 
 IF(WIN32)
-	#set(WIN_QT_PATH "C:/Qt/5.3/msvc2013_64_opengl")
-	set(WIN_QT_PATH "C:/Qt/5.3/msvc2012_opengl") # qt5/win64
-	set(WIN_PYTHON_PATH "C:/Python34")
-	set(WIN_PYTHON_VERSION "34")
-	set(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
+	SET(WIN_QT_PATH "C:/Qt/5.5/msvc2013_64_opengl") # qt5/win64
+	SET(WIN_PYTHON_PATH "C:/Python34")
+	SET(WIN_PYTHON_VERSION "34")
+	SET(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
 	SET(CMAKE_PREFIX_PATH ${WIN_QT_PATH})
 ENDIF()
 
@@ -59,16 +58,19 @@ OPTION(DOUBLEPRECISION "Compile with double floating point precision" OFF)
 # CUDA is deprecated, and not tested - enable at own risk... (needs cmake version >2.8)
 #OPTION(CUDA "Compile with CUDA plugins" OFF)
 
+# special option to compile manta as library, disables python glue code (while trying to keep as much of the rest as possible)
+OPTION(NOPYTHON "Compile without python support (limited functionality!)" OFF)
+
 #check consistency of MT options
-set(MT OFF)
-set(MT_TYPE "NONE")
+SET(MT OFF)
+SET(MT_TYPE "NONE")
 if (TBB)
-	set (MT_TYPE "TBB")
-	set (MT ON)
+	SET (MT_TYPE "TBB")
+	SET (MT ON)
 endif()
 if (OPENMP)
-	set (MT_TYPE "OPENMP")
-	set (MT ON)
+	SET (MT_TYPE "OPENMP")
+	SET (MT ON)
 endif()
 if (TBB AND OPENMP)
 	message(FATAL_ERROR "Cannot activate both OPENMP and TBB")
@@ -128,6 +130,7 @@ SET(SILENT_SOURCES)
 
 # need pre-processing
 SET(PP_SOURCES
+	source/general.cpp
 	source/fluidsolver.cpp
 	source/conjugategrad.cpp
 	source/grid.cpp
@@ -135,7 +138,6 @@ SET(PP_SOURCES
 	source/fastmarch.cpp
 	source/shapes.cpp
 	source/mesh.cpp
-	source/general.cpp
 	source/particle.cpp
 	source/movingobs.cpp
 	source/fileio.cpp
@@ -149,6 +151,7 @@ SET(PP_SOURCES
 	source/plugin/advection.cpp
 	source/plugin/extforces.cpp
 	source/plugin/flip.cpp
+	source/plugin/fire.cpp
 	source/plugin/kepsilon.cpp
 	source/plugin/initplugins.cpp
 	source/plugin/meshplugins.cpp
@@ -161,6 +164,7 @@ SET(PP_SOURCES
 )
 
 SET(PP_HEADERS
+	source/general.h
 	source/commonkernels.h
 	source/conjugategrad.h
 	source/fastmarch.h
@@ -172,7 +176,6 @@ SET(PP_HEADERS
 	source/shapes.h
 	source/noisefield.h
 	source/vortexsheet.h
-	source/general.h
 	source/kernel.h
 	source/timing.h
 	source/movingobs.h
@@ -232,7 +235,7 @@ if (GUI)
 	list(APPEND PP_HEADERS ${QT_HEADERS})
 endif()
 
-# CUDA sources
+# CUDA sources , deprectated
 if (CUDA)
 	list(APPEND PP_SOURCES
 		source/cuda/meshtools.cu
@@ -248,6 +251,25 @@ SET(INCLUDE_PATHS
 	source/util
 	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
 )
+
+# reduced version without python
+if (NOPYTHON)
+	# replace some of the source lists
+	set(NOPP_SOURCES
+		source/nopython/pclass.cpp
+		source/util/vectorbase.cpp
+		source/util/simpleimage.cpp
+	) 
+	# update paths to use nopython versions
+	SET(INCLUDE_PATHS
+		source/nopython
+		source/cuda
+		source/util
+		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
+	)
+
+	add_definitions( -DNOPYTHON=1 )
+endif()
 
 # Multithreading
 if(MT)
@@ -318,20 +340,24 @@ endif(DOXYGEN_FOUND)
 #******************************************************************************
 # Link libraries
 
-# Python
+# enforce certain python version, if necessary
+set(PYTHON_FORCE_VERSION) # use any...
+#set(PYTHON_FORCE_VERSION 3.5) # uncomment to force specific one
+
+# Python 
 set(Python_ADDITIONAL_VERSIONS 3.4)
-find_package(PythonLibs QUIET)
+find_package(PythonLibs ${PYTHON_FORCE_VERSION} QUIET)
 if((NOT PYTHONLIBS_FOUND) AND WIN32)
 	set(PYTHON_INCLUDE_DIR "${WIN_PYTHON_PATH}/include")
 	set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${WIN_PYTHON_VERSION}.lib")
 endif()
-find_package(PythonLibs REQUIRED)
+find_package(PythonLibs ${PYTHON_FORCE_VERSION} REQUIRED)
 list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
 list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 
 # Z compression
 if (1)
-	# default: build from source
+	# default: build from own sources
 	set(ZLIB_SRC adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c
 				 inflate.c infback.c inftrees.c inffast.c trees.c uncompr.c zutil.c)
 	foreach(it ${ZLIB_SRC})
@@ -345,10 +371,16 @@ if (1)
 	set_source_files_properties(${SILENT_SOURCES} PROPERTIES COMPILE_FLAGS "${ZLIB_ADDFLAGS}")
 
 	list(APPEND INCLUDE_PATHS dependencies/zlib-1.2.8)
-else()
+endif()
+if (0)
+	# try to locate and use system libs
 	include(FindZLIB)
 	list(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
 	list(APPEND F_LIBS ${ZLIB_LIBRARIES})
+endif()
+if (0)
+	# disable 
+	add_definitions(-DNO_ZLIB=1)
 endif()
 
 # CUDA
@@ -381,14 +413,16 @@ endif()
 
 
 #******************************************************************************
-# generate repository info (note, names are for hg/mercurial, but works for git)
+# generate git repository info , currently only for unix systems
 
-set(HGINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/hginfo.h")
-MESSAGE(STATUS "Hg info target header ${HGINFO}")
-add_custom_command(OUTPUT ${HGINFO}
-				   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tools/makeHgVersion.py" "${HGINFO}"
-				   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS}
-				   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} )
+IF(NOT WIN32)
+	set(GITINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/gitinfo.h")
+	MESSAGE(STATUS "Hg info target header ${GITINFO}")
+	add_custom_command(OUTPUT ${GITINFO}
+					   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py" "${GITINFO}"
+					   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS}
+					   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} )
+ENDIF()
 
 #******************************************************************************
 # apply preprocessor
@@ -401,7 +435,7 @@ set(PP_PREPD "0")
 if (PREPDEBUG)
 	set(PP_PREPD "1")
 endif()
-foreach(it ${PP_SOURCES} ${PP_HEADERS})
+FOREACH(it ${PP_SOURCES} ${PP_HEADERS})
 	get_filename_component(CURPATH ${it} PATH)
 	get_filename_component(CUREXT ${it} EXT)
 	file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/${CURPATH}")
@@ -410,11 +444,13 @@ foreach(it ${PP_SOURCES} ${PP_HEADERS})
 
 	set(OUTFILES "${CURPP}")
 	if ("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
-		list(APPEND PP_REGS "${CURPP}.reg")
-		list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
+		IF(NOT NOPYTHON)
+			list(APPEND PP_REGS "${CURPP}.reg")
+			list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
+		ENDIF()
 		set_source_files_properties("${CURPP}.reg.cpp" OBJECT_DEPENDS "${CURPP}")
 		list(APPEND OUTFILES "${CURPP}.reg")
-	endif()
+	ENDIF()
 
 	# preprocessor
 	add_custom_command(OUTPUT ${OUTFILES}
@@ -425,16 +461,18 @@ foreach(it ${PP_SOURCES} ${PP_HEADERS})
 
 	set_source_files_properties(${OUTFILES} PROPERTIES GENERATED 1)
 	list(APPEND SOURCES ${CURPP})
-endforeach(it)
+ENDFOREACH(it)
 
-# link reg files
-add_custom_command(OUTPUT ${PP_REGCPP}
-				COMMAND prep link ${PP_REGS}
-				DEPENDS prep ${PP_REGS}
-				WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-				COMMENT "Linking reg files")
-set_source_files_properties(${PP_REGCPP} PROPERTIES GENERATED 1)
-list(APPEND SOURCES ${PP_REGCPP})
+# link reg files , for python glue code
+IF(NOT NOPYTHON)
+	add_custom_command(OUTPUT ${PP_REGCPP}
+					COMMAND prep link ${PP_REGS}
+					DEPENDS prep ${PP_REGS}
+					WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+					COMMENT "Linking reg files")
+	set_source_files_properties(${PP_REGCPP} PROPERTIES GENERATED 1)
+	list(APPEND SOURCES ${PP_REGCPP})
+ENDIF()
 
 #******************************************************************************
 # QT for GUI
@@ -492,16 +530,14 @@ endif()
 IF(NOT WIN32)
 	IF(DEBUG)
 		add_definitions( -DDEBUG )
-		add_definitions( -O0 -fno-inline )
-		# additional c++ warning
-		SET(CMAKE_CXX_FLAGS_DEBUG " -ggdb  -Wall")
-
 		# stricter: no optimizations and inlining, comment out if needed...
-		#SET(CMAKE_CXX_FLAGS_DEBUG " -O0 -fno-inline ${CMAKE_CXX_FLAGS_DEBUG}   ")
+		add_definitions( -O0 -fno-inline -Wall )
 	ELSE()
 		# non-debug, optimized version
-		add_definitions( -O3 -Wall)
+		add_definitions( -O3 -Wall )
 	ENDIF()
+	# c++11 required for all c++ sources
+	set_source_files_properties(${PP_SOURCES} PROPERTIES COMPILE_FLAGS "  -std=c++11  " )
 ELSE()
 	# get rid of some MSVC warnings
 	add_definitions( /wd4018 /wd4146 /wd4800 )
@@ -529,34 +565,42 @@ SET(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${F_LINKAD
 include_directories( ${INCLUDE_PATHS})
 link_directories( ${F_LIB_PATHS} )
 
-if(CUDA)
-	#cuda_include_directories(pp/source/cuda)
-	cuda_add_executable( ${EXECCMD} ${SOURCES} ${PP_REGISTRY})
-	target_link_libraries( ${EXECCMD} ${F_LIBS} )
-	cuda_build_clean_target()
-else()
-	if (WIN32)
-		# make nice folders for Visual Studio
-		set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} ${NOPP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
-		add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${PP_SOURCES} ${PP_HEADERS})
-		source_group(Generated FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})
-	else()
-		add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${HGINFO})
-	endif()
-	target_link_libraries( ${EXECCMD} ${F_LIBS} )
-endif()
+IF(NOT NOPYTHON)
+	# build regular executable
 
-# fix for "el capitan" TBB and changed dynamic library env vars, lookup of TBB can cause problems without @rpath
-IF(APPLE)
-	EXEC_PROGRAM(uname ARGS -v  OUTPUT_VARIABLE OSX_VERSION)
-	STRING(REGEX MATCH "[0-9]+" OSX_VERSION ${OSX_VERSION})
-	#MESSAGE(STATUS "OSX_VERSION=${OSX_VERSION}")
-	IF (OSX_VERSION GREATER 14)
-		ADD_CUSTOM_COMMAND(TARGET manta   POST_BUILD COMMAND 
-			${CMAKE_INSTALL_NAME_TOOL} -change libtbb.dylib @rpath/libtbb.dylib ${EXECCMD} )
+	if(CUDA)
+		#cuda_include_directories(pp/source/cuda)
+		cuda_add_executable( ${EXECCMD} ${SOURCES} ${PP_REGISTRY})
+		target_link_libraries( ${EXECCMD} ${F_LIBS} )
+		cuda_build_clean_target()
+	else()
+		if (WIN32)
+			# make nice folders for Visual Studio
+			set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} ${NOPP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
+			add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${PP_SOURCES} ${PP_HEADERS})
+			source_group(Generated FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})
+		else()
+			add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${GITINFO})
+		endif()
+		target_link_libraries( ${EXECCMD} ${F_LIBS} )
+	endif()
+
+	# fix for "el capitan" TBB and changed dynamic library env vars, lookup of TBB can cause problems without @rpath
+	IF(APPLE)
+		EXEC_PROGRAM(uname ARGS -v  OUTPUT_VARIABLE OSX_VERSION)
+		STRING(REGEX MATCH "[0-9]+" OSX_VERSION ${OSX_VERSION})
+		IF (OSX_VERSION GREATER 14)
+			ADD_CUSTOM_COMMAND(TARGET manta   POST_BUILD COMMAND 
+				${CMAKE_INSTALL_NAME_TOOL} -change libtbb.dylib @rpath/libtbb.dylib $<TARGET_FILE:manta> )
+		ENDIF()
 	ENDIF()
+
+ELSE()
+	# only build static library in nopython mode
+	ADD_LIBRARY (core OBJECT ${SOURCES})
+	ADD_LIBRARY (${EXECCMD} STATIC $<TARGET_OBJECTS:core>)
 ENDIF()
 
-# debug
+# debug summary
 # MESSAGE(STATUS "DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")
 

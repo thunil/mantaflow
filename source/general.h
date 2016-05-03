@@ -17,10 +17,7 @@
 #include <iostream>
 #include <sstream>
 #include <cmath>
-
-#if (defined(WIN32) || defined(_WIN32))
 #include <algorithm>
-#endif
 
 namespace Manta {
 

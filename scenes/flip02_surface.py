@@ -14,6 +14,9 @@ s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep = 0.8
 minParticles = pow(2,dim)
 
+# save particles for separate surface generation pass?
+saveParts = False
+
 # size of particles 
 radiusFactor = 1.0
 
@@ -46,16 +49,16 @@ fluidSetVel = 0
 
 if setup==0:
 	# breaking dam
-	fluidbox = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1)) # breaking dam
-	#fluidbox = s.create(Box, p0=gs*vec3(0.4,0.72,0.4), p1=gs*vec3(0.6,0.92,0.6)) # centered falling block
+	fluidbox = Box( parent=s, p0=gs*vec3(0,0,0), p1=gs*vec3(0.4,0.6,1)) # breaking dam
+	#fluidbox = Box( parent=s, p0=gs*vec3(0.4,0.72,0.4), p1=gs*vec3(0.6,0.92,0.6)) # centered falling block
 	phi = fluidbox.computeLevelset()
 elif setup==1:
 	# falling drop
-	fluidBasin = s.create(Box, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.1,1.0)) # basin
+	fluidBasin = Box( parent=s, p0=gs*vec3(0,0,0), p1=gs*vec3(1.0,0.1,1.0)) # basin
 	dropCenter = vec3(0.5,0.3,0.5)
 	dropRadius = 0.1
-	fluidDrop  = s.create(Sphere, center=gs*dropCenter, radius=res*dropRadius)
-	fluidVel   = s.create(Sphere, center=gs*dropCenter, radius=res*(dropRadius+0.05) )
+	fluidDrop  = Sphere( parent=s , center=gs*dropCenter, radius=res*dropRadius)
+	fluidVel   = Sphere( parent=s , center=gs*dropCenter, radius=res*(dropRadius+0.05) )
 	fluidSetVel= vec3(0,-1,0)
 	phi = fluidBasin.computeLevelset()
 	phi.join( fluidDrop.computeLevelset() )
@@ -74,14 +77,19 @@ if fluidVel!=0:
 testInitGridWithPos(tstGrid)
 pTest.setConst( 0.1 )
 
+# save reference any grid, to automatically determine grid size
+if saveParts:
+	pressure.save( 'ref_flipParts_0000.uni' );
+
 if 1 and (GUI):
 	gui = Gui()
 	gui.show()
-	gui.pause()
+	#gui.pause()
    
 
 #main loop
 for t in range(250):
+	mantaMsg('\nFrame %i, simulation time %f' % (s.frame, s.timeTotal))
 	
 	# FLIP 
 	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False )
@@ -121,7 +129,8 @@ for t in range(250):
 	s.step()
 
 	# generate data for flip03_gen.py surface generation scene
-	#pp.save( 'flipParts_%04d.uni' % t );
+	if saveParts:
+		pp.save( 'flipParts_%04d.uni' % t );
 
 	if 0 and (GUI):
 		gui.screenshot( 'flip02_%04d.png' % t );
