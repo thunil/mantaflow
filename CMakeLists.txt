@@ -530,16 +530,14 @@ endif()
 IF(NOT WIN32)
 	IF(DEBUG)
 		add_definitions( -DDEBUG )
-		add_definitions( -O0 -fno-inline )
-		# additional c++ warning
-		SET(CMAKE_CXX_FLAGS_DEBUG " -ggdb  -Wall")
-
 		# stricter: no optimizations and inlining, comment out if needed...
-		#SET(CMAKE_CXX_FLAGS_DEBUG " -O0 -fno-inline ${CMAKE_CXX_FLAGS_DEBUG}   ")
+		add_definitions( -O0 -fno-inline -Wall )
 	ELSE()
 		# non-debug, optimized version
-		add_definitions( -O3 -Wall)
+		add_definitions( -O3 -Wall )
 	ENDIF()
+	# c++11 required for all c++ sources
+	set_source_files_properties(${PP_SOURCES} PROPERTIES COMPILE_FLAGS "  -std=c++11  " )
 ELSE()
 	# get rid of some MSVC warnings
 	add_definitions( /wd4018 /wd4146 /wd4800 )
@@ -591,10 +589,9 @@ IF(NOT NOPYTHON)
 	IF(APPLE)
 		EXEC_PROGRAM(uname ARGS -v  OUTPUT_VARIABLE OSX_VERSION)
 		STRING(REGEX MATCH "[0-9]+" OSX_VERSION ${OSX_VERSION})
-		#MESSAGE(STATUS "OSX_VERSION=${OSX_VERSION}")
 		IF (OSX_VERSION GREATER 14)
 			ADD_CUSTOM_COMMAND(TARGET manta   POST_BUILD COMMAND 
-				${CMAKE_INSTALL_NAME_TOOL} -change libtbb.dylib @rpath/libtbb.dylib ${EXECCMD} )
+				${CMAKE_INSTALL_NAME_TOOL} -change libtbb.dylib @rpath/libtbb.dylib $<TARGET_FILE:manta> )
 		ENDIF()
 	ENDIF()
 
