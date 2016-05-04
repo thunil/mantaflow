@@ -16,6 +16,7 @@
 
 #include "manta.h"
 #include "vectorbase.h"
+#include "vector4d.h"
 #include <vector>
 #include <map>
 
@@ -25,7 +26,7 @@ namespace Manta {
 PYTHON(name=Solver) 
 class FluidSolver : public PbClass {
 public:
-	PYTHON() FluidSolver(Vec3i gridSize, int dim=3);
+	PYTHON() FluidSolver(Vec3i gridSize, int dim=3, int fourthDim=-1);
 	virtual ~FluidSolver();
 	
 	// accessors
@@ -36,7 +37,7 @@ public:
 
 	//! Check dimensionality
 	inline bool is2D() const { return mDim==2; }
-	//! Check dimensionality
+	//! Check dimensionality (3d or above)
 	inline bool is3D() const { return mDim==3; }
 	
 	PYTHON() void printMemInfo();
@@ -50,8 +51,8 @@ public:
 	//! create a object with the solver as its parent
 	PYTHON() PbClass* create(PbType type, PbTypeVec T=PbTypeVec(),const std::string& name = "");
 	
-	// temp grid and plugin stuff: you shouldn't call this manually
-	template<class T> T* getGridPointer();
+	// temp grid and plugin functions: you shouldn't call this manually
+	template<class T> T*   getGridPointer();
 	template<class T> void freeGridPointer(T* ptr);    
 
 	//! expose animation time to python
@@ -82,9 +83,34 @@ protected:
 		int used;
 	};
 	
-	GridStorage<int> mGridsInt;
+	//! memory for regular (3d) grids
+	GridStorage<int>  mGridsInt;
 	GridStorage<Real> mGridsReal;
 	GridStorage<Vec3> mGridsVec;
+
+
+	//! 4d data section, only required for simulations working with space-time data 
+
+public:
+	//! 4D enabled?
+	inline bool has4D() const        { return mFourthDim>0; }
+	//! fourth dimension size
+	inline int  getFourthDim() const { return mFourthDim; }
+	//! 4d data allocation
+	template<class T> T*   getGrid4dPointer();
+	template<class T> void freeGrid4dPointer(T* ptr);    
+
+protected:
+
+	//! 4d size (note - 4d is not treated like going from 2d to 3d! it's a separate data type)
+	int       mFourthDim;  
+
+	//! 4d grid storage
+	GridStorage<Vec4> mGridsVec4; 
+	GridStorage<int>  mGrids4dInt;
+	GridStorage<Real> mGrids4dReal;
+	GridStorage<Vec3> mGrids4dVec;
+	GridStorage<Vec4> mGrids4dVec4;
 };
 
 }

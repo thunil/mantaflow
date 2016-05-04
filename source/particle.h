@@ -49,7 +49,7 @@ public:
 	virtual ParticleBase* clone() { assertMsg( false , "Dont use, override..."); return NULL; } 
 
 	// slow virtual function to query size, do not use in kernels! use size() instead
-	virtual int getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; } 
+	virtual IndexInt getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; } 
 
 	//! add a position as potential candidate for new particle (todo, make usable from parallel threads)
 	inline void addBuffered(const Vec3& pos);
@@ -70,7 +70,7 @@ public:
 	// note - deletion of pdata is handled in compress function
 
 	//! how many are there?
-	int getNumPdata() const { return mPartData.size(); }
+	IndexInt getNumPdata() const { return mPartData.size(); }
 	//! access one of the fields
 	ParticleDataBase* getPdata(int i) { return mPartData[i]; }
 
@@ -102,20 +102,21 @@ public:
 	virtual SystemType getType() const { return S::getType(); };
 	
 	// accessors
-	inline S& operator[](int idx)             { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
-	inline const S& operator[](int idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
+	inline S& operator[](IndexInt idx)             { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
+	inline const S& operator[](IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 	// return size of container
-	PYTHON() inline int size() const { return mData.size(); }
+	// note , python binding disabled for now! cannot yet deal with long-long types
+	inline IndexInt size() const { return mData.size(); }
 	// slow virtual function of base class, also returns size
-	virtual int getSizeSlow() const { return size(); }
+	virtual IndexInt getSizeSlow() const { return size(); }
 
 	// query status
-	inline int  getStatus(int idx) { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].flag; }
-	inline bool isActive(int idx)  { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PDELETE) == 0; }
+	inline int  getStatus(IndexInt idx) { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].flag; }
+	inline bool isActive(IndexInt idx)  { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PDELETE) == 0; }
 	
 	//! safe accessor for python
-	PYTHON() void setPos(int idx, const Vec3& pos) { DEBUG_ONLY(checkPartIndex(idx)); mData[idx].pos = pos; }
-	PYTHON() Vec3 getPos(int idx)                  { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].pos; }
+	PYTHON() void setPos(IndexInt idx, const Vec3& pos) { DEBUG_ONLY(checkPartIndex(idx)); mData[idx].pos = pos; }
+	PYTHON() Vec3 getPos(IndexInt idx)                  { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].pos; }
 	//! copy all positions into pdata vec3 field
 	PYTHON() void getPosPdata(ParticleDataImpl<Vec3>& target);
 	PYTHON() void setPosPdata(ParticleDataImpl<Vec3>& source);
@@ -127,11 +128,11 @@ public:
 	//! insert buffered positions as new particles, update additional particle data
 	void insertBufferedParticles();
 	//! resize data vector, and all pdata fields
-	void resizeAll(int newsize);
+	void resizeAll(IndexInt newsize);
 	
 	// adding and deleting 
-	inline void kill(int idx);
-	int add(const S& data);
+	inline void kill(IndexInt idx);
+	IndexInt add(const S& data);
 	// remove all particles, init 0 length arrays (also pdata)
 	PYTHON() void clear();
 			
@@ -145,11 +146,11 @@ public:
 	virtual std::string infoString() const;
 
 	//! debugging
-	inline void checkPartIndex(int idx) const;
+	inline void checkPartIndex(IndexInt idx) const;
 	
 protected:  
 	//! deletion count , and interval for re-compressing 
-	int mDeletes, mDeleteChunk;    
+	IndexInt mDeletes, mDeleteChunk;    
 	//! the particle data
 	std::vector<S> mData;    
 
@@ -191,7 +192,7 @@ public:
 	// dangerous, get low level access - avoid usage, only used in vortex filament advection for now
 	std::vector<BasicParticleData>& getData() { return mData; }
 
-	PYTHON() void printParts(int start=-1, int stop=-1, bool printIndex=false); 
+	PYTHON() void printParts(IndexInt start=-1, IndexInt stop=-1, bool printIndex=false); 
 };
 
 
@@ -206,7 +207,7 @@ public:
 	ParticleIndexData() : sourceIndex(0) {}
 	static ParticleBase::SystemType getType() { return ParticleBase::INDEX; }
 
-	int  sourceIndex; // index of this particle in the original particle system
+	IndexInt  sourceIndex; // index of this particle in the original particle system
 	// note - the following two are needed for template instantiation, but not used
 	// for the particle index system (use values from original one!)
 	static Vec3 pos;  // do not use... 
@@ -219,7 +220,7 @@ public:
 	PYTHON() ParticleIndexSystem(FluidSolver* parent) : ParticleSystem<ParticleIndexData>(parent) {};
 	
 	//! we only need a resize function...
-	void resize(int size) { mData.resize(size); }
+	void resize(IndexInt size) { mData.resize(size); }
 };
 
 
@@ -257,18 +258,18 @@ public:
 	enum PdataType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4 };
 
 	// interface functions, using assert instead of pure virtual for python compatibility
-	virtual int  getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; } 
+	virtual IndexInt  getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; } 
 	virtual void addEntry()   { assertMsg( false , "Dont use, override..."); return;   }
 	virtual ParticleDataBase* clone() { assertMsg( false , "Dont use, override..."); return NULL; }
 	virtual PdataType getType() const { assertMsg( false , "Dont use, override..."); return TypeNone; } 
-	virtual void resize(int size)     { assertMsg( false , "Dont use, override..."); return;  }
-	virtual void copyValueSlow(int from, int to) { assertMsg( false , "Dont use, override..."); return;  }
+	virtual void resize(IndexInt size)     { assertMsg( false , "Dont use, override..."); return;  }
+	virtual void copyValueSlow(IndexInt from, IndexInt to) { assertMsg( false , "Dont use, override..."); return;  }
 
 	//! set base pointer
 	void setParticleSys(ParticleBase* set) { mpParticleSys = set; }
 
 	//! debugging
-	inline void checkPartIndex(int idx) const;
+	inline void checkPartIndex(IndexInt idx) const;
 
 protected:
 	ParticleBase* mpParticleSys;
@@ -284,10 +285,10 @@ public:
 	virtual ~ParticleDataImpl();
 
 	//! access data
-	inline T& get(int idx)            { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
-	inline const T get(int idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
-	inline T& operator[](int idx)            { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
-	inline const T operator[](int idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
+	inline T& get(IndexInt idx)            { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
+	inline const T get(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
+	inline T& operator[](IndexInt idx)            { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
+	inline const T operator[](IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 
 	// set all values to 0, note - different from particleSystem::clear! doesnt modify size of array (has to stay in sync with parent system)
 	PYTHON() void clear();
@@ -296,18 +297,18 @@ public:
 	PYTHON() void setSource(Grid<T>* grid, bool isMAC=false );
 
 	// particle data base interface
-	virtual int  getSizeSlow() const;
+	virtual IndexInt  getSizeSlow() const;
 	virtual void addEntry();
 	virtual ParticleDataBase* clone();
 	virtual PdataType getType() const;
-	virtual void resize(int s);
-	virtual void copyValueSlow(int from, int to);
+	virtual void resize(IndexInt s);
+	virtual void copyValueSlow(IndexInt from, IndexInt to);
 
-	int  size() const { return mData.size(); }
+	IndexInt  size() const { return mData.size(); }
 
 	// fast inlined functions for per particle operations
-	inline void copyValue(int from, int to) { get(to) = get(from); } 
-	void initNewValue(int idx, Vec3 pos);
+	inline void copyValue(IndexInt from, IndexInt to) { get(to) = get(from); } 
+	void initNewValue(IndexInt idx, Vec3 pos);
 
 	// python interface (similar to grid data)
 	PYTHON() void setConst(T s);
@@ -323,7 +324,7 @@ public:
 	PYTHON() Real getMaxValue();
 	PYTHON() Real getMinValue();    
 
-	PYTHON() void printPdata(int start=-1, int stop=-1, bool printIndex=false); 
+	PYTHON() void printPdata(IndexInt start=-1, IndexInt stop=-1, bool printIndex=false); 
 	
 	//! file io
 	PYTHON() void save(std::string name);
@@ -360,7 +361,7 @@ void ParticleSystem<S>::clear() {
 }
 
 template<class S>
-int ParticleSystem<S>::add(const S& data) {
+IndexInt ParticleSystem<S>::add(const S& data) {
 	mData.push_back(data); 
 	mDeleteChunk = mData.size() / DELETE_PART;
 	this->addAllPdata();
@@ -368,7 +369,7 @@ int ParticleSystem<S>::add(const S& data) {
 }
 
 template<class S>
-inline void ParticleSystem<S>::kill(int idx)     { 
+inline void ParticleSystem<S>::kill(IndexInt idx)     { 
 	assertMsg(idx>=0 && idx<size(), "Index out of bounds");
 	mData[idx].flag |= PDELETE; 
 	if ( (++mDeletes > mDeleteChunk) && (mAllowCompress) ) compress(); 
@@ -376,13 +377,13 @@ inline void ParticleSystem<S>::kill(int idx)     {
 
 template<class S>
 void ParticleSystem<S>::getPosPdata(ParticleDataImpl<Vec3>& target) {
-	for(int i=0; i<(int)this->size(); ++i) {
+	for(IndexInt i=0; i<(IndexInt)this->size(); ++i) {
 		target[i] = this->getPos(i);
 	}
 }
 template<class S>
 void ParticleSystem<S>::setPosPdata(ParticleDataImpl<Vec3>& target) {
-	for(int i=0; i<(int)this->size(); ++i) {
+	for(IndexInt i=0; i<(IndexInt)this->size(); ++i) {
 		this->getPos(i) = target[i];
 	}
 }
@@ -391,7 +392,7 @@ template<class S>
 void ParticleSystem<S>::transformPositions( Vec3i dimOld, Vec3i dimNew )
 {
 	Vec3 factor = calcGridSizeFactor( dimNew, dimOld );
-	for(int i=0; i<(int)this->size(); ++i) {
+	for(IndexInt i=0; i<(IndexInt)this->size(); ++i) {
 		this->setPos(i, this->getPos(i) * factor );
 	}
 }
@@ -463,7 +464,7 @@ void ParticleSystem<S>::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrat
 	if(!deleteInObstacle) {
 		posOld = new ParticleDataImpl<Vec3>(this->getParent());
 		posOld->resize(mData.size());
-		for(int i=0; i<(int)mData.size();++i) (*posOld)[i] = mData[i].pos;
+		for(IndexInt i=0; i<(IndexInt)mData.size();++i) (*posOld)[i] = mData[i].pos;
 	}
 
 	// update positions
@@ -506,28 +507,28 @@ void ParticleSystem<S>::projectOutside(Grid<Vec3>& gradient) {
 }
 
 template<class S>
-void ParticleSystem<S>::resizeAll(int size) {
+void ParticleSystem<S>::resizeAll(IndexInt size) {
 	// resize all buffers to target size in 1 go
 	mData.resize(size);
-	for(int i=0; i<(int)mPartData.size(); ++i)
+	for(IndexInt i=0; i<(IndexInt)mPartData.size(); ++i)
 		mPartData[i]->resize(size);
 }
 
 template<class S>
 void ParticleSystem<S>::compress() {
-	int nextRead = mData.size();
-	for (int i=0; i<(int)mData.size(); i++) {
+	IndexInt nextRead = mData.size();
+	for (IndexInt i=0; i<(IndexInt)mData.size(); i++) {
 		while ((mData[i].flag & PDELETE) != 0) {
 			nextRead--;
 			mData[i] = mData[nextRead];
 			// ugly, but prevent virtual function calls here:
-			for(int pd=0; pd<(int)mPdataReal.size(); ++pd) mPdataReal[pd]->copyValue(nextRead, i);
-			for(int pd=0; pd<(int)mPdataVec3.size(); ++pd) mPdataVec3[pd]->copyValue(nextRead, i);
-			for(int pd=0; pd<(int)mPdataInt .size(); ++pd) mPdataInt [pd]->copyValue(nextRead, i);
+			for(IndexInt pd=0; pd<(IndexInt)mPdataReal.size(); ++pd) mPdataReal[pd]->copyValue(nextRead, i);
+			for(IndexInt pd=0; pd<(IndexInt)mPdataVec3.size(); ++pd) mPdataVec3[pd]->copyValue(nextRead, i);
+			for(IndexInt pd=0; pd<(IndexInt)mPdataInt .size(); ++pd) mPdataInt [pd]->copyValue(nextRead, i);
 			mData[nextRead].flag = PINVALID;
 		}
 	}
-	if(nextRead<(int)mData.size()) debMsg("Deleted "<<((int)mData.size() - nextRead)<<" particles", 1); // debug info
+	if(nextRead<(IndexInt)mData.size()) debMsg("Deleted "<<((IndexInt)mData.size() - nextRead)<<" particles", 1); // debug info
 
 	resizeAll(nextRead);
 	mDeletes = 0;
@@ -538,42 +539,42 @@ void ParticleSystem<S>::compress() {
 template<class S>
 void ParticleSystem<S>::insertBufferedParticles() {
 	if(mNewBuffer.size()==0) return;
-	int newCnt = mData.size();
+	IndexInt newCnt = mData.size();
 	resizeAll(newCnt + mNewBuffer.size());
 
 	// clear new flag everywhere
-	for(int i=0; i<(int)mData.size(); ++i) mData[i].flag &= ~PNEW;
+	for(IndexInt i=0; i<(IndexInt)mData.size(); ++i) mData[i].flag &= ~PNEW;
 
-	for(int i=0; i<(int)mNewBuffer.size(); ++i) {
+	for(IndexInt i=0; i<(IndexInt)mNewBuffer.size(); ++i) {
 		// note, other fields are not initialized here...
 		mData[newCnt].pos  = mNewBuffer[i];
 		mData[newCnt].flag = PNEW;
 		// now init pdata fields from associated grids...
-		for(int pd=0; pd<(int)mPdataReal.size(); ++pd) 
+		for(IndexInt pd=0; pd<(IndexInt)mPdataReal.size(); ++pd) 
 			mPdataReal[pd]->initNewValue(newCnt, mNewBuffer[i] );
-		for(int pd=0; pd<(int)mPdataVec3.size(); ++pd) 
+		for(IndexInt pd=0; pd<(IndexInt)mPdataVec3.size(); ++pd) 
 			mPdataVec3[pd]->initNewValue(newCnt, mNewBuffer[i] );
-		for(int pd=0; pd<(int)mPdataInt.size(); ++pd) 
+		for(IndexInt pd=0; pd<(IndexInt)mPdataInt.size(); ++pd) 
 			mPdataInt[pd]->initNewValue(newCnt, mNewBuffer[i] );
 		newCnt++;
 	}
-	if(mNewBuffer.size()>0) debMsg("Added & initialized "<<(int)mNewBuffer.size()<<" particles", 1); // debug info
+	if(mNewBuffer.size()>0) debMsg("Added & initialized "<<(IndexInt)mNewBuffer.size()<<" particles", 1); // debug info
 	mNewBuffer.clear();
 }
 
 
 template<class DATA, class CON>
 void ConnectedParticleSystem<DATA,CON>::compress() {
-	const int sz = ParticleSystem<DATA>::size();
-	int *renumber_back = new int[sz];
-	int *renumber = new int[sz];
-	for (int i=0; i<sz; i++)
+	const IndexInt sz = ParticleSystem<DATA>::size();
+	IndexInt *renumber_back = new IndexInt[sz];
+	IndexInt *renumber = new IndexInt[sz];
+	for (IndexInt i=0; i<sz; i++)
 		renumber[i] = renumber_back[i] = -1;
 		
 	// reorder elements
 	std::vector<DATA>& data = ParticleSystem<DATA>::mData;
-	int nextRead = sz;
-	for (int i=0; i<nextRead; i++) {
+	IndexInt nextRead = sz;
+	for (IndexInt i=0; i<nextRead; i++) {
 		if ((data[i].flag & ParticleBase::PDELETE) != 0) {
 			nextRead--;
 			data[i] = data[nextRead];
@@ -584,11 +585,11 @@ void ConnectedParticleSystem<DATA,CON>::compress() {
 	}
 	
 	// acceleration structure
-	for (int i=0; i<nextRead; i++)
+	for (IndexInt i=0; i<nextRead; i++)
 		renumber[renumber_back[i]] = i;
 	
 	// rename indices in filaments
-	for (int i=0; i<(int)mSegments.size(); i++)
+	for (IndexInt i=0; i<(IndexInt)mSegments.size(); i++)
 		mSegments[i].renumber(renumber);
 		
 	ParticleSystem<DATA>::mData.resize(nextRead);
@@ -628,20 +629,20 @@ std::string ParticleSystem<S>::infoString() const {
 	s << "ParticleSys '" << getName() << "' [" << size() << " parts";
 	if(this->getNumPdata()>0) s<< " "<< this->getNumPdata()<<" pd";
 	s << "]";
-	//for(int i=0; i<(int)mPartData.size(); ++i) { sstr << i<<":" << mPartData[i]->size() <<" "; } 
+	//for(IndexInt i=0; i<(IndexInt)mPartData.size(); ++i) { sstr << i<<":" << mPartData[i]->size() <<" "; } 
 	return s.str();
 }
 	
 template<class S>  
-inline void ParticleSystem<S>::checkPartIndex(int idx) const {
-	int mySize = this->size();
+inline void ParticleSystem<S>::checkPartIndex(IndexInt idx) const {
+	IndexInt mySize = this->size();
 	if (idx<0 || idx > mySize ) {
 		errMsg( "ParticleBase " << " size " << mySize << " : index " << idx << " out of bound " );
 	}
 }
 	
-inline void ParticleDataBase::checkPartIndex(int idx) const {
-	int mySize = this->getSizeSlow();
+inline void ParticleDataBase::checkPartIndex(IndexInt idx) const {
+	IndexInt mySize = this->getSizeSlow();
 	if (idx<0 || idx > mySize ) {
 		errMsg( "ParticleData " << " size " << mySize << " : index " << idx << " out of bound " );
 	}
@@ -653,7 +654,7 @@ inline void ParticleDataBase::checkPartIndex(int idx) const {
 // set contents to zero, as for a grid
 template<class T>
 void ParticleDataImpl<T>::clear() {
-	for(int i=0; i<(int)mData.size(); ++i) mData[i] = 0.;
+	for(IndexInt i=0; i<(IndexInt)mData.size(); ++i) mData[i] = 0.;
 }
 
 

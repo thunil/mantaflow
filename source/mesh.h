@@ -133,11 +133,11 @@ public:
     
     virtual MeshType getType() { return TypeNormal; }
         
-    void clear();
     Real computeCenterOfMass(Vec3& cm) const;
     void computeVertexNormals();
     
     // plugins
+    PYTHON() void clear();
     PYTHON() void load (std::string name, bool append = false);
     PYTHON() void fromShape (Shape& shape, bool append = false);
     PYTHON() void save (std::string name);

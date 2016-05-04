@@ -250,10 +250,11 @@ endif()
 
 # include dirs
 SET(INCLUDE_PATHS
+	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
+	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/util
 	source/pwrapper
 	source/cuda
 	source/util
-	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
 )
 
 # reduced version without python

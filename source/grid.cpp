@@ -170,10 +170,10 @@ template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
 	gridSafeDiv<T> (*this, a);
 	return *this;
 }
-template<class T> Grid<T>& Grid<T>::copyFrom (const Grid<T>& a) {
+template<class T> Grid<T>& Grid<T>::copyFrom (const Grid<T>& a, bool copyType ) {
 	assertMsg (a.mSize.x == mSize.x && a.mSize.y == mSize.y && a.mSize.z == mSize.z, "different grid resolutions "<<a.mSize<<" vs "<<this->mSize );
 	memcpy(mData, a.mData, sizeof(T) * mSize.x * mSize.y * mSize.z);
-	mType = a.mType; // copy type marker
+	if(copyType) mType = a.mType; // copy type marker
 	return *this;
 }
 /*template<class T> Grid<T>& Grid<T>::operator= (const Grid<T>& a) {
@@ -246,36 +246,36 @@ template<> Real Grid<int>::getMaxAbs() {
 
 // compute maximal diference of two cells in the grid
 // used for testing system
-PYTHON() Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2 )
+PYTHON() Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2)
 {
 	double maxVal = 0.;
 	FOR_IJK(g1) {
-		maxVal = std::max(maxVal, (double)fabs( g1(i,j,k)-g2(i,j,k) ));
+		maxVal = std::max(maxVal, (double)fabs(g1(i, j, k) - g2(i, j, k)));
 	}
-	return maxVal; 
+	return maxVal;
 }
-PYTHON() Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2 )
+PYTHON() Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2)
 {
 	double maxVal = 0.;
 	FOR_IJK(g1) {
-		maxVal = std::max(maxVal, (double)fabs( (double)g1(i,j,k)-g2(i,j,k) ));
+		maxVal = std::max(maxVal, (double)fabs((double)g1(i, j, k) - g2(i, j, k)));
 	}
-	return maxVal; 
+	return maxVal;
 }
-PYTHON() Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
+PYTHON() Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2)
 {
 	double maxVal = 0.;
 	FOR_IJK(g1) {
 		// accumulate differences with double precision
 		// note - don't use norm here! should be as precise as possible...
 		double d = 0.;
-		for(int c=0; c<3; ++c) { 
-			d += fabs( (double)g1(i,j,k)[c] - (double)g2(i,j,k)[c] );
+		for (int c = 0; c<3; ++c) {
+			d += fabs((double)g1(i, j, k)[c] - (double)g2(i, j, k)[c]);
 		}
-		maxVal = std::max(maxVal, d );
+		maxVal = std::max(maxVal, d);
 		//maxVal = std::max(maxVal, (double)fabs( norm(g1(i,j,k)-g2(i,j,k)) ));
 	}
-	return maxVal; 
+	return maxVal;
 }
 
 // simple helper functions to copy (convert) mac to vec3 , and levelset to real grids
@@ -286,7 +286,24 @@ PYTHON() void copyMacToVec3 (MACGrid &source, Grid<Vec3>& target)
 		target(i,j,k) = source(i,j,k);
 	}
 }
+
 PYTHON() void convertMacToVec3 (MACGrid &source , Grid<Vec3> &target) { debMsg("Deprecated - do not use convertMacToVec3... use copyMacToVec3 instead",1); copyMacToVec3(source,target); }
+
+//! vec3->mac grid conversion , but with full resampling 
+PYTHON() void resampleVec3ToMac (Grid<Vec3>& source, MACGrid &target ) {
+	FOR_IJK_BND(target,1) {
+		target(i,j,k)[0] = 0.5*(source(i-1,j,k)[0]+source(i,j,k))[0];
+		target(i,j,k)[1] = 0.5*(source(i,j-1,k)[1]+source(i,j,k))[1];
+		if(target.is3D()) {
+		target(i,j,k)[2] = 0.5*(source(i,j,k-1)[2]+source(i,j,k))[2]; }
+	}
+}
+//! mac->vec3 grid conversion , with full resampling 
+PYTHON() void resampleMacToVec3 (MACGrid &source, Grid<Vec3>& target ) {
+	FOR_IJK_BND(target,1) {
+		target(i,j,k) = source.getCentered(i,j,k);
+	}
+}
 
 PYTHON() void copyLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
 {
@@ -301,7 +318,7 @@ template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 	out << std::endl;
 	const int bnd = 1;
 	FOR_IJK_BND(*this,bnd) {
-		int idx = (*this).index(i,j,k);
+		IndexInt idx = (*this).index(i,j,k);
 		if(zSlice>=0 && k==zSlice) { 
 			out << " ";
 			if(printIndex &&  this->is3D()) out << "  "<<i<<","<<j<<","<<k <<":";

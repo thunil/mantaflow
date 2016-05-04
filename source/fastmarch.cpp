@@ -21,7 +21,7 @@ using namespace std;
 namespace Manta {
 	
 template<class COMP, int TDIR>
-FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, MACGrid* velTransport )
+FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& levelset, Real maxTime, MACGrid* velTransport )
 	: mLevelset(levelset), mFlags(flags), mFmFlags(fmFlags)
 {
 	if (velTransport)
@@ -132,7 +132,7 @@ inline Real FastMarch<COMP,TDIR>::calculateDistance(const Vec3i& idx) {
 template<class COMP, int TDIR>
 void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
 	if (!mLevelset.isInBounds(p,1)) return;
-	const int idx = mLevelset.index(p);
+	const IndexInt idx = mLevelset.index(p);
 	
 	// already known value, value alreay set to valid value? skip cell...
 	if(mFmFlags[idx] == FlagInited) return;
@@ -179,7 +179,7 @@ void FastMarch<COMP,TDIR>::addToList(const Vec3i& p, const Vec3i& src) {
 
 //! Enforce delta_phi = 0 on boundaries
 KERNEL(single)
-void SetLevelsetBoundaries (LevelsetGrid& phi) {
+void SetLevelsetBoundaries (Grid<Real>& phi) {
 	if (i==0)      phi(i,j,k) = phi(1,j,k);
 	if (i==maxX-1) phi(i,j,k) = phi(i-1,j,k);
 
@@ -298,6 +298,7 @@ void knExtrapolateIntoBnd (FlagGrid& flags, MACGrid& vel)
 	}
 }
 
+// todo - use getGradient instead?
 inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
 	if (i > data.getSizeX()-2) i= data.getSizeX()-2;
 	if (i < 1) i = 1;
@@ -315,7 +316,7 @@ inline Vec3 getNormal(const Grid<Real>& data, int i, int j, int k) {
 				 data(i  ,j  ,k+kd) - data(i  ,j  ,k-kd) );
 }
 KERNEL(bnd=1)
-void knUnprojectNormalComp (FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Real maxDist)
+void knUnprojectNormalComp (FlagGrid& flags, MACGrid& vel, Grid<Real>& phi, Real maxDist)
 {
 	// apply inside, within range near obstacle surface
 	if(phi(i,j,k)>0. || phi(i,j,k)<-maxDist) return;
@@ -329,7 +330,7 @@ void knUnprojectNormalComp (FlagGrid& flags, MACGrid& vel, LevelsetGrid& phi, Re
 	}
 }
 // a simple extrapolation step , used for cases where there's no levelset
-// (note, less accurate than fast marching extrapolation!)
+// (note, less accurate than fast marching extrapolation.)
 // into obstacle is a special mode for second order obstable boundaries (extrapolating
 // only fluid velocities, not those at obstacles)
 PYTHON() void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance = 4, 
@@ -432,11 +433,6 @@ static const Vec3i nb[6] = {
 	Vec3i(1 ,0,0), Vec3i(-1,0,0),
 	Vec3i(0,1 ,0), Vec3i(0,-1,0),
 	Vec3i(0,0,1 ), Vec3i(0,0,-1) };
-
-// larger neighborhood (>1 dx away)
-static const Vec3i nbExt2d[4] = { 
-	Vec3i(1, 1,0), Vec3i(-1, 1,0),
-	Vec3i(1,-1,0), Vec3i(-1,-1,0) };
 
 KERNEL(bnd=1) template<class S>
 void knExtrapolateLsSimple (Grid<S>& val, int distance , Grid<int>& tmp , const int d , S direction )

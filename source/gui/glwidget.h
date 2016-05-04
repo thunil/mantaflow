@@ -43,6 +43,7 @@ public slots:
 	void setViewport(const Vec3i& gridsize);
 	void keyPressEvent(QKeyEvent* e);
 	void keyReleaseEvent(QKeyEvent* e);
+	void windowSize(int w, int h);
 	 
 signals:
 	void paintSub();
@@ -68,6 +69,7 @@ protected:
 	int   mPlaneDim, mPlane;
 	
 	int   mScreenshotNumber;
+	int   mWidth, mHeight;
 };
 
 } // namespace
