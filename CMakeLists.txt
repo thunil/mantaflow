@@ -159,6 +159,7 @@ SET(PP_SOURCES
 	source/plugin/vortexplugins.cpp
 	source/plugin/waveletturbulence.cpp
 	source/plugin/waves.cpp
+	source/util/grid4d.cpp
 	source/python/defines.py
 	source/test.cpp
 )
@@ -183,6 +184,7 @@ SET(PP_HEADERS
 	source/edgecollapse.h
 	source/vortexpart.h
 	source/turbulencepart.h
+	source/util/grid4d.h
 )
 
 # no pre-processing needed
@@ -193,6 +195,7 @@ set(NOPP_SOURCES
 	source/pwrapper/pconvert.cpp
 	source/pwrapper/registry.cpp
 	source/util/vectorbase.cpp
+	source/util/vector4d.cpp
 	source/util/simpleimage.cpp
 )
 
@@ -203,6 +206,7 @@ SET(NOPP_HEADERS
 	source/pwrapper/pconvert.h
 	source/util/integrator.h
 	source/util/vectorbase.h
+	source/util/vector4d.h
 	source/util/quaternion.h
 	source/util/interpol.h
 	source/util/mcubes.h
@@ -273,10 +277,10 @@ endif()
 
 # Multithreading
 if(MT)
-	add_definitions( -DMT)
+	add_definitions( -DMT=1 )
 	if(TBB)
 		# Intel TBB
-		add_definitions( -DTBB)
+		add_definitions( -DTBB=1 )
 
 		if (DEBUG)
 			add_definitions( -DTBB_USE_DEBUG=1 )
