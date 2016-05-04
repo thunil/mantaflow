@@ -296,4 +296,13 @@ PYTHON() void extrapolateSimpleFlags (FlagGrid& flags, GridBase* val, int distan
 		errMsg("extrapolateSimpleFlags: Grid Type is not supported (only int, Real, Vec3)");    
 }
 
+//! convert vel to a centered grid, the compute its curl
+PYTHON() void getCurl(MACGrid& vel, Grid<Real>& vort, int comp) {
+	Grid<Vec3> velCenter(vel.getParent()), curl(vel.getParent());
+	
+	GetCentered(velCenter, vel);
+	CurlOp(velCenter, curl);
+	GetComponent(curl, vort, comp);
+}
+
 } // namespace

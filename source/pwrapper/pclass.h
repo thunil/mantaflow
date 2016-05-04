@@ -94,8 +94,8 @@ protected:
 
 //!\cond Register
 
-void pbFinalizePlugin(FluidSolver* parent, const std::string& name);
-void pbPreparePlugin(FluidSolver* parent, const std::string& name);
+void pbFinalizePlugin(FluidSolver* parent, const std::string& name, bool doTime=true);
+void pbPreparePlugin(FluidSolver* parent, const std::string& name, bool doTime=true);
 void pbSetError(const std::string& fn, const std::string& ex);
 
 //!\endcond

@@ -77,6 +77,9 @@ inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 #define assertMsg(cond,msg)  if(!(cond)) throwError(msg)
 #define assertDeb(cond,msg)  DEBUG_ONLY( assertMsg(cond,msg) )
 
+// common type for indexing large grids
+typedef long long IndexInt;
+
 // template tricks
 template<typename T>
 struct remove_pointers {

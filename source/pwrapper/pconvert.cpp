@@ -25,9 +25,16 @@ using namespace std;
 namespace Manta {
 
 extern PyTypeObject PbVec3Type;
+extern PyTypeObject PbVec4Type;
+
 struct PbVec3 {
 	PyObject_HEAD
 	float data[3];
+};
+
+struct PbVec4 {
+	PyObject_HEAD
+	float data[4];
 };
 
 PyObject* getPyNone() {
@@ -68,6 +75,14 @@ template<> PyObject* toPy<Vec3i>(const Vec3i& v) {
 template<> PyObject* toPy<Vec3>(const Vec3& v) {
 	float x=(float)v.x, y=(float)v.y, z=(float)v.z;
 	return PyObject_CallFunction((PyObject*)&PbVec3Type, (char*)"fff", x, y, z);
+}
+template<> PyObject* toPy<Vec4i>(const Vec4i& v) {
+	float x=(float)v.x, y=(float)v.y, z=(float)v.z;
+	return PyObject_CallFunction((PyObject*)&PbVec4Type, (char*)"ffff", x, y, z);
+}
+template<> PyObject* toPy<Vec4>(const Vec4& v) {
+	float x=(float)v.x, y=(float)v.y, z=(float)v.z;
+	return PyObject_CallFunction((PyObject*)&PbVec4Type, (char*)"ffff", x, y, z);
 }
 template<> PyObject* toPy<PbClass*>(const PbClass_Ptr& obj) {
 	return obj->getPyObject();
@@ -150,6 +165,30 @@ template<> Vec3i fromPy<Vec3i>(PyObject* obj) {
 	}
 	errMsg("argument is not a Vec3i");
 }
+template<> Vec4 fromPy<Vec4>(PyObject* obj) {
+	if (PyObject_IsInstance(obj, (PyObject*)&PbVec4Type)) {
+		return Vec4(((PbVec4*)obj)->data);
+	} 
+	else if (PyTuple_Check(obj) && PyTuple_Size(obj) == 4) {
+		return Vec4(fromPy<Real>(PyTuple_GetItem(obj,0)),
+					fromPy<Real>(PyTuple_GetItem(obj,1)),
+					fromPy<Real>(PyTuple_GetItem(obj,2)),
+					fromPy<Real>(PyTuple_GetItem(obj,3)));
+	}
+	errMsg("argument is not a Vec4");
+}
+template<> Vec4i fromPy<Vec4i>(PyObject* obj) {
+	if (PyObject_IsInstance(obj, (PyObject*)&PbVec4Type)) {
+		return toVec4i(((PbVec4*)obj)->data);
+	}
+	else if (PyTuple_Check(obj) && PyTuple_Size(obj) == 4) {
+		return Vec4i(fromPy<int>(PyTuple_GetItem(obj,0)),
+					 fromPy<int>(PyTuple_GetItem(obj,1)),
+					 fromPy<int>(PyTuple_GetItem(obj,2)),
+					 fromPy<int>(PyTuple_GetItem(obj,3)));
+	}
+	errMsg("argument is not a Vec4i");
+}
 template<> PbType fromPy<PbType>(PyObject* obj) {
 	PbType pb = {""};
 	if (!PyType_Check(obj))
@@ -188,6 +227,8 @@ template<> std::string* fromPyPtr<std::string>(PyObject* obj, std::vector<void*>
 template<> bool* fromPyPtr<bool>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<bool>(obj,tmp); }
 template<> Vec3* fromPyPtr<Vec3>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<Vec3>(obj,tmp); }
 template<> Vec3i* fromPyPtr<Vec3i>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<Vec3i>(obj,tmp); }
+template<> Vec4* fromPyPtr<Vec4>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<Vec4>(obj,tmp); }
+template<> Vec4i* fromPyPtr<Vec4i>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<Vec4i>(obj,tmp); }
 
 template<> bool isPy<float>(PyObject* obj) {
 #if PY_MAJOR_VERSION <= 2
@@ -247,6 +288,26 @@ template<> bool isPy<Vec3i>(PyObject* obj) {
 		return isPy<int>(PyTuple_GetItem(obj,0)) &&
 			   isPy<int>(PyTuple_GetItem(obj,1)) &&
 			   isPy<int>(PyTuple_GetItem(obj,2));
+	}
+	return false;
+}
+template<> bool isPy<Vec4>(PyObject* obj) {
+	if (PyObject_IsInstance(obj, (PyObject*)&PbVec4Type)) return true;
+	if (PyTuple_Check(obj) && PyTuple_Size(obj) == 4) {
+		return isPy<Real>(PyTuple_GetItem(obj,0)) &&
+			   isPy<Real>(PyTuple_GetItem(obj,1)) &&
+			   isPy<Real>(PyTuple_GetItem(obj,2)) &&
+			   isPy<Real>(PyTuple_GetItem(obj,3));
+	}
+	return false;
+}
+template<> bool isPy<Vec4i>(PyObject* obj) {
+	if (PyObject_IsInstance(obj, (PyObject*)&PbVec4Type)) return true;
+	if (PyTuple_Check(obj) && PyTuple_Size(obj) == 4) {
+		return isPy<int>(PyTuple_GetItem(obj,0)) &&
+			   isPy<int>(PyTuple_GetItem(obj,1)) &&
+			   isPy<int>(PyTuple_GetItem(obj,2)) &&
+			   isPy<int>(PyTuple_GetItem(obj,3));
 	}
 	return false;
 }

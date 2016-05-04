@@ -212,6 +212,8 @@ string replaceSet(const string& templ, const string table[]) {
 			continue;
 		}
 		s << templ[i];
+		// format output slightly nicer
+		if ( gDebugMode && (c=='{' || c=='}')) { s << "\n"; } 
 	}
 	return s.str();
 }
