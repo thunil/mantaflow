@@ -57,7 +57,7 @@ bool SimpleImage::writePpm(std::string filename, int minx, int miny, int maxx, i
 		}
 
 	fclose(fp);
-	debMsg("WritePPM Wrote '"<<filename<<"', region="<<minx<<","<<miny<<" to "<<maxx<<","<<maxy<<"; "<<pixCnt, 1);
+	//debMsg("WritePPM Wrote '"<<filename<<"', region="<<minx<<","<<miny<<" to "<<maxx<<","<<maxy<<"; "<<pixCnt, 1);
 
 	return true;
 }
@@ -88,7 +88,7 @@ bool SimpleImage::initFromPpm (std::string filename) {
 
 	// 1st line: PPM or PGM 
 	if (fgets (line, MAXLINE, fp) == NULL) {
-		if(mAbortOnError) errMsg("SimpleImage::initFromPpm fgets failed");
+		if(mAbortOnError) debMsg("SimpleImage::initFromPpm fgets failed", 1);
 		return 0;
 	}
 	
@@ -194,6 +194,92 @@ bool SimpleImage::indexIsValid(int i, int j)
 	if(j>=mSize[1]) return false;
 	return true;
 }
+
+}; // manta
+
+//*****************************************************************************
+
+//! simple shaded output , note requires grid functionality!
+
+#include "grid.h"
+namespace Manta {
+
+static void gridPrecompLight(Grid<Real>& density, Grid<Real>& L, Vec3 light = Vec3(1,1,1) )
+{
+	FOR_IJK(density) {
+		Vec3 n = getGradient( density, i,j,k ) * -1.; 
+		normalize(n);
+
+		Real d = dot( light, n );
+		L(i,j,k) = d;
+	}
+}
+
+// simple shading with pre-computed gradient
+static inline void shadeCell(Vec3& dst, int shadeMode, Real src, Real light, int depthPos, Real depthInv) 
+{	
+	switch(shadeMode) {
+
+	case 1: {
+		// surfaces
+		Vec3 ambient = Vec3(0.1,0.1,0.1);
+		Vec3 diffuse = Vec3(0.9,0.9,0.9); 
+		Real alpha = src; 
+
+		// different color for depth?
+		diffuse[0] *= ((Real)depthPos * depthInv) * 0.7 + 0.3;
+		diffuse[1] *= ((Real)depthPos * depthInv) * 0.7 + 0.3;
+
+		Vec3 col = ambient + diffuse * light; 
+
+		//img( 0+i, j ) = (1.-alpha) * img( 0+i, j ) + alpha * col;
+		dst = (1.-alpha) * dst + alpha * col;
+		} break;
+
+	default: {
+		// volumetrics / smoke
+		dst += depthInv * Vec3(src,src,src);
+		} break;
+
+	}
+}
+
+void projectImg( SimpleImage& img, Grid<Real>& val, int shadeMode=0, Real scale=1.)
+{
+	Vec3i s  = val.getSize();
+	Vec3  si = Vec3( 1. / (Real)s[0], 1. / (Real)s[1], 1. / (Real)s[2] );
+
+	// init image size
+	int imgSx = s[0];
+	if(val.is3D()) imgSx += s[2]+s[0]; // mult views in 3D
+	img.init( imgSx, std::max(s[0], std::max( s[1],s[2])) );
+
+	// precompute lighting
+	Grid<Real> L(val);
+	gridPrecompLight( val, L , Vec3(1,1,1) );
+
+	FOR_IJK(val) { 
+		Vec3i idx(i,j,k);
+		shadeCell( img( 0+i, j ) , shadeMode, val(idx), L(idx), k, si[2]);
+	}
+
+	if( val.is3D() ) {
+
+	FOR_IJK(val) { 
+		Vec3i idx(i,j,k);
+		shadeCell( img( s[0]+k, j ) , shadeMode, val(idx), L(idx), i, si[0]);
+	}
+
+	FOR_IJK(val) { 
+		Vec3i idx(i,j,k);
+		shadeCell( img( s[0]+s[2]+i, k ) , shadeMode, val(idx), L(idx), j, si[1]);
+	}
+
+	} // 3d
+
+	img.mapRange( 1./scale );
+}
+
 
 }; // manta
 

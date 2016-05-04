@@ -230,7 +230,7 @@ void MeshPainter::paint() {
 			else if (mLocalMesh->tris(tri).flags & Mesh::FfMarked)
 				glColor3f(1,0,0);
 			else
-				glColor4f(0.5,0.5,0.5, isoAlpha);
+				glColor4f(0.5,0.7,1.0, isoAlpha); // blue-ish
 				
 			for (int c=0; c<3; c++) {
 				if (nodeColor) {

@@ -22,7 +22,8 @@
 
 namespace Manta {
 
-GLWidget::GLWidget(QWidget* p): QGLWidget(QGLFormat(QGL::SampleBuffers), p), mRotX(0), mRotY(0), mGridsize(0), mScreenshotNumber(0)
+GLWidget::GLWidget(QWidget* p): QGLWidget(QGLFormat(QGL::SampleBuffers), p), mRotX(0), mRotY(0), mGridsize(0), mScreenshotNumber(0),
+		mWidth(800), mHeight(600)
 {
 	mPlaneDim = 2; // Y plane
 	mPlane = -1;
@@ -48,7 +49,10 @@ QSize GLWidget::minimumSizeHint() const
 
 QSize GLWidget::sizeHint() const
 {
-	return QSize(800, 600);
+	return QSize(mWidth, mHeight);
+}
+void GLWidget::windowSize(int w, int h) {
+	mWidth = w; mHeight = h;
 }
 
 void GLWidget::initializeGL()
@@ -223,6 +227,10 @@ bool GLWidget::keyProcess(int key, int modifier, bool down)
 		// real
 		else if (key == Qt::Key_C && shift)         { emit painterEvent(Painter::EventNextRealDisplayMode); /* real display modes */ }
 		else if (key == Qt::Key_C)                  { emit painterEvent(Painter::EventNextReal); updatePlane(mPlane); } 
+		else if (shift && ((key == Qt::Key_Less) ||      
+			    (key == Qt::Key_Comma) ) )          { emit painterEvent(Painter::EventScaleRealDownSm); }
+		else if (shift && ((key == Qt::Key_Greater) ||
+			    (key == Qt::Key_Period) ) )         { emit painterEvent(Painter::EventScaleRealUpSm); }
 		else if ((key == Qt::Key_Less) ||      
 			    (key == Qt::Key_Comma) )            { emit painterEvent(Painter::EventScaleRealDown); }
 		else if ((key == Qt::Key_Greater) ||
