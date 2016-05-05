@@ -104,6 +104,14 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 		compareTmpGrid = parent.create(PdataVec3)
 	elif ( grid._class == "ParticleDataImpl" and grid._T == "int" ):
 		compareTmpGrid = parent.create(PdataInt)
+	elif ( grid._class == "Grid4d" and grid._T == "Real" ):
+		compareTmpGrid = parent.create(Grid4Real)
+	elif ( grid._class == "Grid4d" and grid._T == "int" ):
+		compareTmpGrid = parent.create(Grid4Int)
+	elif ( grid._class == "Grid4d" and grid._T == "Vec3" ):
+		compareTmpGrid = parent.create(Grid4Vec3)
+	elif ( grid._class == "Grid4d" and grid._T == "Vec4" ):
+		compareTmpGrid = parent.create(Grid4Vec4)
 	else:
 		print( "Error doTestGrid - unknown grid type " + type(grid).__name__+ " class:"+grid._class+ " T:"+grid._T  )
 		return 1
@@ -143,6 +151,14 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 			errVal = gridMaxDiffInt ( grid, compareTmpGrid )
 		elif ( grid._class == "ParticleDataImpl" ):
 			errVal = pdataMaxDiff ( grid, compareTmpGrid )
+		elif ( grid._class == "Grid4d" and grid._T == "Real" ):
+			errVal = grid4dMaxDiff    ( grid, compareTmpGrid )
+		elif ( grid._class == "Grid4d" and grid._T == "int" ):
+			errVal = grid4dMaxDiffInt ( grid, compareTmpGrid )
+		elif ( grid._class == "Grid4d" and grid._T == "Vec3" ):
+			errVal = grid4dMaxDiffVec3( grid, compareTmpGrid )
+		elif ( grid._class == "Grid4d" and grid._T == "Vec4" ):
+			errVal = grid4dMaxDiffVec4( grid, compareTmpGrid )
 		else:
 			print( "Error doTestGrid - error calculation missing" )
 			return 1

@@ -333,8 +333,10 @@ template<class T> void Grid4d<T>::setBoundNeumann(int boundaryWidth) {
 	knSetBnd4dNeumann<T>( *this, boundaryWidth );
 }
 
-// compute maximal diference of two cells in the grid
-// used for testing system
+//******************************************************************************
+// testing helpers
+
+//! compute maximal diference of two cells in the grid, needed for testing system
 PYTHON() Real grid4dMaxDiff(Grid4d<Real>& g1, Grid4d<Real>& g2 )
 {
 	double maxVal = 0.;
@@ -375,6 +377,83 @@ PYTHON() Real grid4dMaxDiffVec4(Grid4d<Vec4>& g1, Grid4d<Vec4>& g2 )
 	}
 	return maxVal; 
 }
+
+// set a region to some value
+KERNEL(fourd) template<class S>
+void knSetRegion4d (Grid4d<S>& dst, Vec4 start, Vec4 end, S value )
+{
+	Vec4 p(i,j,k,t);
+	for(int c=0; c<4; ++c) if(p[c]<start[c] || p[c]>end[c]) return;
+	dst(i,j,k,t) = value;
+}
+//! simple init functions in 4d
+PYTHON() void setRegion4d    (Grid4d<Real>& dst, Vec4 start, Vec4 end, Real value) { knSetRegion4d<Real>(dst,start,end,value); }
+//! simple init functions in 4d, vec4
+PYTHON() void setRegion4dVec4(Grid4d<Vec4>& dst, Vec4 start, Vec4 end, Vec4 value) { knSetRegion4d<Vec4>(dst,start,end,value); }
+
+//! slow helper to visualize tests, get a 3d slice of a 4d grid
+PYTHON() void getSliceFrom4d(Grid4d<Real>& src, int srct, Grid<Real>& dst) { 
+	const int bnd = 0;
+	if(! src.isInBounds(Vec4i(bnd,bnd,bnd,srct)) ) return;
+
+	for(int k=bnd; k<src.getSizeZ()-bnd; k++) 
+	for(int j=bnd; j<src.getSizeY()-bnd; j++) 
+	for(int i=bnd; i<src.getSizeX()-bnd; i++)
+	{
+		if(!dst.isInBounds(Vec3i(i,j,k))) continue;
+		dst(i,j,k) = src(i,j,k,srct);
+	}
+}
+//! slow helper to visualize tests, get a 3d slice of a 4d vec4 grid
+PYTHON() void getSliceFrom4dVec(Grid4d<Vec4>& src, int srct, Grid<Vec3>& dst, Grid<Real>* dstt=NULL) { 
+	const int bnd = 0;
+	if(! src.isInBounds(Vec4i(bnd,bnd,bnd,srct)) ) return;
+
+	for(int k=bnd; k<src.getSizeZ()-bnd; k++) 
+	for(int j=bnd; j<src.getSizeY()-bnd; j++) 
+	for(int i=bnd; i<src.getSizeX()-bnd; i++)
+	{
+		if(!dst.isInBounds(Vec3i(i,j,k))) continue;
+		for(int c=0; c<3; ++c) 
+			dst(i,j,k)[c] = src(i,j,k,srct)[c];
+		if(dstt) (*dstt)(i,j,k) = src(i,j,k,srct)[3];
+	}
+}
+
+
+//******************************************************************************
+// interpolation
+
+//! same as in grid.h , but takes an additional optional "desired" size
+static inline void gridFactor4d(Vec4 s1, Vec4 s2, Vec4 optSize, Vec4 scale, Vec4& srcFac, Vec4& retOff ) {
+	for(int c=0; c<4; c++) { if(optSize[c] > 0.){ s2[c] = optSize[c]; } }
+	srcFac = calcGridSizeFactor4d( s1, s2) / scale;
+	retOff       = -retOff * srcFac + srcFac*0.5;
+}
+
+//! interpolate 4d grid from one size to another size
+// real valued offsets & scale
+KERNEL(fourd) template<class S>
+void knInterpol4d(Grid4d<S>& target, Grid4d<S>& source, const Vec4& srcFac, const Vec4& offset)
+{
+	Vec4 pos = Vec4(i,j,k,t) * srcFac + offset;
+	target(i,j,k,t) = source.getInterpolated(pos);
+} 
+//! linearly interpolate data of a 4d grid
+PYTHON() void interpolateGrid4d( Grid4d<Real>& target, Grid4d<Real>& source , Vec4 offset=Vec4(0.), Vec4 scale=Vec4(1.), Vec4 size=Vec4(-1.) )
+{
+	Vec4 srcFac(1.), off2 = offset;
+	gridFactor4d( toVec4(source.getSize()), toVec4(target.getSize()), size,scale,   srcFac,off2   );
+	knInterpol4d<Real> (target, source, srcFac, off2 );
+}
+//! linearly interpolate vec4 data of a 4d grid
+PYTHON() void interpolateGrid4dVec( Grid4d<Vec4>& target, Grid4d<Vec4>& source, Vec4 offset=Vec4(0.), Vec4 scale=Vec4(1.), Vec4 size=Vec4(-1.) )
+{
+	Vec4 srcFac(1.), off2 = offset;
+	gridFactor4d( toVec4(source.getSize()), toVec4(target.getSize()), size,scale,   srcFac,off2   );
+	knInterpol4d<Vec4> (target, source, srcFac, off2 );
+}
+
 
 // explicit instantiation
 template class Grid4d<int>;

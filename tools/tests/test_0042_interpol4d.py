@@ -6,7 +6,7 @@ from manta import *
 import sys
 from helperInclude import *
 
-doGui = False;
+showGui = False
 
 # dimension two/three d
 dim = 3
@@ -68,14 +68,13 @@ sm_velDisp2   = smSolv.create(VecGrid)
 
 # sources
 
-#xsourceVel  = normSolv.create(Cylinder, center=xlgs*vec3(0.5,0.5,0.5), radius=xlgs.x*0.151, z=xlgs*vec3(0.151, 0, 0))
-#smsourceVel = normSolv.create(Cylinder, center=smgs*vec3(0.5,0.5,0.5), radius=smgs.x*0.251, z=smgs*vec3(0.151, 0, 0))
 rs = smgs.x*0.3;
 re = smgs.x*0.7;
 rstart = Vec4(rs,rs,rs,rs);
 rend   = Vec4(re,re,re,re);
+# we have to use the setRegion function here, as regular shapes dont work in 4d so far
 
-if doGui and (GUI):
+if showGui and (GUI):
 	gui = Gui()
 	gui.show()
 
@@ -121,7 +120,7 @@ for t in range(1):
 	smSolv.step()
 	normSolv.step()
 	xlSolv.step()    
-	if doGui:
+	if showGui:
 		gui.pause()
 
 	for i in range(10):
