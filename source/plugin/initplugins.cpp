@@ -232,104 +232,15 @@ PYTHON() void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symme
 }
 
 
-//! project data onto a plane, and write ppm
-PYTHON() void projectPpmOut( Grid<Real>& val, string name, int axis=2, Real scale=1.)
-{
-	const int c  = axis; 
-	const int o1 = (c+1)%3;
-	const int o2 = (c+2)%3;
-
-	SimpleImage img;
-	img.init( val.getSize()[o1],  val.getSize()[o2] );
-	Real s = 1. / (Real)val.getSize()[c];
-
-	FOR_IJK(val) { 
-		Vec3i idx(i,j,k); 
-		//if(idx[c]==val.getSize()[c]/2) img( idx[o1], idx[o2] ) = val(idx); 
-		img( idx[o1], idx[o2] ) += s * val(idx);
-	}
-	img.mapRange( 1./scale );
-	img.writePpm( name );
-}
-
-KERNEL() 
-void KnPrecompLight(Grid<Real>& density, Grid<Real>& L, Vec3 light = Vec3(1,1,1) )
-{
-	Vec3 n = getGradient( density, i,j,k ) * -1.; 
-	normalize(n);
-
-	Real d = dot( light, n );
-	L(i,j,k) = d;
-}
-
-// simple shading with pre-computed gradient
-static inline void shadeCell(Vec3& dst, int shadeMode, Real src, Real light, int depthPos, Real depthInv) 
-{	
-	switch(shadeMode) {
-
-	case 1: {
-		// surfaces
-		Vec3 ambient = Vec3(0.1,0.1,0.1);
-		Vec3 diffuse = Vec3(0.9,0.9,0.9); 
-		Real alpha = src; 
-
-		// different color for depth?
-		diffuse[0] *= ((Real)depthPos * depthInv) * 0.7 + 0.3;
-		diffuse[1] *= ((Real)depthPos * depthInv) * 0.7 + 0.3;
-
-		Vec3 col = ambient + diffuse * light; 
-
-		//img( 0+i, j ) = (1.-alpha) * img( 0+i, j ) + alpha * col;
-		dst = (1.-alpha) * dst + alpha * col;
-		} break;
-
-	default: {
-		// volumetrics / smoke
-		dst += depthInv * Vec3(src,src,src);
-		} break;
-
-	}
-}
+// from simpleimage.cpp
+void projectImg( SimpleImage& img, Grid<Real>& val, int shadeMode=0, Real scale=1.);
 
 //! output shaded (all 3 axes at once for 3D)
 //! shading modes: 0 smoke, 1 surfaces
 PYTHON() void projectPpmFull( Grid<Real>& val, string name, int shadeMode=0, Real scale=1.)
 {
-	Vec3i s  = val.getSize();
-	Vec3  si = Vec3( 1. / (Real)s[0], 1. / (Real)s[1], 1. / (Real)s[2] );
-
 	SimpleImage img;
-	int imgSx = s[0];
-	if(val.is3D()) imgSx += s[2]+s[0]; // mult views in 3D
-	img.init( imgSx, std::max(s[0], std::max( s[1],s[2])) );
-
-	// precompute lighting
-	Grid<Real> L(val);
-	KnPrecompLight( val, L , Vec3(1,1,1) );
-
-	FOR_IJK(val) { 
-		Vec3i idx(i,j,k);
-		// img( 0+i, j ) += si[2] * val(idx); // averaging
-		shadeCell( img( 0+i, j ) , shadeMode, val(idx), L(idx), k, si[2]);
-	}
-
-	if( val.is3D() ) {
-
-	FOR_IJK(val) { 
-		Vec3i idx(i,j,k);
-		//img( s[0]+k, j ) += si[0] * val(idx);
-		shadeCell( img( s[0]+k, j ) , shadeMode, val(idx), L(idx), i, si[0]);
-	}
-
-	FOR_IJK(val) { 
-		Vec3i idx(i,j,k);
-		//img( s[0]+s[2]+i, k ) += si[1] * val(idx);
-		shadeCell( img( s[0]+s[2]+i, k ) , shadeMode, val(idx), L(idx), j, si[1]);
-	}
-
-	} // 3d
-
-	img.mapRange( 1./scale );
+	projectImg( img, val, shadeMode, scale );
 	img.writePpm( name );
 }
 
@@ -385,7 +296,7 @@ PYTHON() Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
 }
 
 //*****************************************************************************
-// helper functions for volume fractions
+// helper functions for volume fractions (which are needed for second order obstacle boundaries)
 
 
 KERNEL() void kninitVortexVelocity(Grid<Real> &phiObs, MACGrid& vel, const Vec3 &center, const Real &radius) {

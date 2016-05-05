@@ -52,10 +52,10 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 }
 
 //! Kernel: Apply velocity update from poisson equation
-KERNEL(bnd=1) 
+KERNEL(bnd = 1)
 void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
 {
-	int idx = flags.index(i,j,k);
+	IndexInt idx = flags.index(i,j,k);
 	if (flags.isFluid(idx))
 	{
 		if (flags.isFluid(i-1,j,k)) vel[idx].x -= (pressure[idx] - pressure(i-1,j,k));
@@ -91,7 +91,7 @@ inline static Real thetaHelper(Real inside, Real outside)
 }
 
 // calculate ghost fluid factor, cell at idx should be a fluid cell
-inline static Real ghostFluidHelper(int idx, int offset, const Grid<Real> &phi, Real gfClamp)
+inline static Real ghostFluidHelper(IndexInt idx, int offset, const Grid<Real> &phi, Real gfClamp)
 {
 	Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
 	if (alpha < gfClamp) return alpha = gfClamp;
@@ -103,7 +103,7 @@ KERNEL(bnd=1)
 void ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<Real> &phi, Real gfClamp)
 {
 	const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
-	int idx = flags.index(i,j,k);
+	IndexInt idx = flags.index(i,j,k);
 	if (!flags.isFluid(idx)) return;
 
 	if (flags.isEmpty(i-1,j,k)) A0[idx] -= ghostFluidHelper(idx, -X, phi, gfClamp);
@@ -120,8 +120,8 @@ void ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<R
 KERNEL(bnd=1)
 void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp)
 {
-	const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
-	const int idx = flags.index(i,j,k);
+	const IndexInt X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
+	const IndexInt idx = flags.index(i,j,k);
 	if (flags.isFluid(idx))
 	{
 		if (flags.isEmpty(i-1,j,k)) vel[idx][0] += pressure[idx] * ghostFluidHelper(idx, -X, phi, gfClamp);
@@ -144,7 +144,7 @@ void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<R
 
 // improve behavior of clamping for large time steps:
 
-inline static Real ghostFluidWasClamped(int idx, int offset, const Grid<Real> &phi, Real gfClamp)
+inline static Real ghostFluidWasClamped(IndexInt idx, int offset, const Grid<Real> &phi, Real gfClamp)
 {
 	Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
 	if (alpha < gfClamp) return true;
@@ -155,8 +155,8 @@ KERNEL(bnd=1)
 void ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags, 
 		const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp )
 {
-	const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
-	const int idx = flags.index(i,j,k);
+	const IndexInt idx = flags.index(i,j,k);
+	const IndexInt X   = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
 	if (!flags.isEmpty(idx)) return;
 
 	if( (flags.isFluid(i-1,j,k)) && ( ghostFluidWasClamped(idx-X, +X, phi, gfClamp) ) )
@@ -185,23 +185,20 @@ int CountEmptyCells(FlagGrid& flags) {
 // *****************************************************************************
 // Main pressure solve
 
-//! Perform pressure projection of the velocity grid
-PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
-                     Grid<Real>* phi = 0, 
-                     Grid<Real>* perCellCorr = 0,
-                     MACGrid* fractions = 0,
-                     Real gfClamp = 1e-04,
-                     Real cgMaxIterFac = 1.5,
-                     Real cgAccuracy = 1e-3,
-                     bool precondition = true,
-                     bool enforceCompatibility = false,
-                     bool useL2Norm = false, 
-                     bool zeroPressureFixing = false, 
-					 Grid<Real>* retRhs = NULL )
+IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Real>& rhs, Real cgAccuracy = 1e-3,
+	Grid<Real>* phi = 0,
+	Grid<Real>* perCellCorr = 0,
+	MACGrid* fractions = 0,
+	Real gfClamp = 1e-04,
+	Real cgMaxIterFac = 1.5,
+	bool precondition = true,
+	bool enforceCompatibility = false,
+	bool useL2Norm = false,
+	bool zeroPressureFixing = false,
+	Grid<Real>* retRhs = NULL)
 {
 	// reserve temp grids
 	FluidSolver* parent = flags.getParent();
-	Grid<Real> rhs(parent);
 	Grid<Real> residual(parent);
 	Grid<Real> search(parent);
 	Grid<Real> A0(parent);
@@ -229,7 +226,7 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	
 	// check whether we need to fix some pressure value...
 	// (manually enable, or automatically for high accuracy, can cause asymmetries otherwise)
-	int fixPidx = -1;
+	IndexInt fixPidx = -1;
 	if(zeroPressureFixing || cgAccuracy<1e-07) 
 	{
 		if(FLOATINGPOINT_PRECISION==1) debMsg("Warning - high CG accuracy with single-precision floating point accuracy might not converge...", 2);
@@ -245,6 +242,9 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 			//debMsg("No empty cells! Fixing pressure of cell "<<fixPidx<<" to zero",1);
 		}
 		if(fixPidx>=0) {
+			// adjustment for approx. symmetric zeroPressureFixing cell (top center)
+			fixPidx = flags.index(flags.getSizeX() / 2, flags.getSizeY() - 2, flags.is3D() ? flags.getSizeZ() / 2 : 0);
+
 			flags[fixPidx] |= FlagGrid::TypeZeroPressure;
 			rhs[fixPidx] = 0.; 
 			debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 2);
@@ -269,8 +269,26 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	for (int iter=0; iter<maxIter; iter++) {
 		if (!gcg->iterate()) iter=maxIter;
 	} 
-	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
+	//debMsg("FluidSolver::solvePressureBase iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
 	delete gcg;
+	return fixPidx;
+}
+
+//! Perform pressure projection of the velocity grid
+PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgAccuracy = 1e-3,
+    Grid<Real>* phi = 0, 
+    Grid<Real>* perCellCorr = 0, 
+    MACGrid* fractions = 0,
+    Real gfClamp = 1e-04,
+    Real cgMaxIterFac = 1.5,
+    bool precondition = true,
+    bool enforceCompatibility = false,
+    bool useL2Norm = false, 
+	bool zeroPressureFixing = false,
+	Grid<Real>* retRhs = NULL )
+{
+	Grid<Real> rhs(vel.getParent());
+	IndexInt fixPidx = solvePressureBase(vel, pressure, flags, rhs, cgAccuracy, phi, perCellCorr, fractions, gfClamp, cgMaxIterFac, precondition, enforceCompatibility, useL2Norm, zeroPressureFixing, retRhs);
 	
 	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {

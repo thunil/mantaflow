@@ -51,6 +51,7 @@ static int PbVec3Init(PbVec3 *self, PyObject *args, PyObject *kwds) {
 			self->data[1] = x2;
 			self->data[2] = x3;
 		} else {
+			if (!c_isnan(x2) || !c_isnan(x3)) { errMsg("Invalid partial init of vec3"); }
 			self->data[1] = x1;
 			self->data[2] = x1;
 		}
@@ -275,11 +276,119 @@ inline PyObject* castPy(PyTypeObject* p) {
 	return reinterpret_cast<PyObject*>(static_cast<void*>(p)); 
 }
 
-void PbVecInitialize(PyObject* module) {
-	if (PyType_Ready(&PbVec3Type) < 0) errMsg("can't initialize Vec3 type");
+
+// 4d vector
+
+extern PyTypeObject PbVec4Type;
+
+struct PbVec4 {
+	PyObject_HEAD
+	float data[4];
+};
+
+static PyMethodDef PbVec4Methods[] = {
+	{NULL}  // Sentinel
+};
+
+static PyMemberDef PbVec4Members[] = {
+	{(char*)"x", T_FLOAT, offsetof(PbVec4, data), 0, (char*)"X"},
+	{(char*)"y", T_FLOAT, offsetof(PbVec4, data)+sizeof(float)*1, 0, (char*)"Y"},
+	{(char*)"z", T_FLOAT, offsetof(PbVec4, data)+sizeof(float)*2, 0, (char*)"Z"},
+	{(char*)"t", T_FLOAT, offsetof(PbVec4, data)+sizeof(float)*3, 0, (char*)"T"},
+	{NULL}  // Sentinel
+};
+
+
+static void PbVec4Dealloc(PbVec4* self) {
+	Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+static PyObject * PbVec4New(PyTypeObject *type, PyObject *args, PyObject *kwds) {    
+	return type->tp_alloc(type, 0);
+}
+
+static int PbVec4Init(PbVec4 *self, PyObject *args, PyObject *kwds) {
 	
+	float x1 = numeric_limits<float>::quiet_NaN(), x2=x1, x3=x1, x4=x1;
+	if (!PyArg_ParseTuple(args,"|ffff",&x1, &x2, &x3, &x4))
+		return -1;
+	
+	if (!c_isnan(x1)) {
+		self->data[0] = x1;
+		if (!c_isnan(x2) && !c_isnan(x3) && !c_isnan(x4)) {
+			self->data[1] = x2;
+			self->data[2] = x3;
+			self->data[3] = x4;
+		} else {
+			if (!c_isnan(x2) || !c_isnan(x3) || !c_isnan(x4)) { errMsg("Invalid partial init of vec4"); }
+			self->data[1] = self->data[2] = self->data[3] = x1;
+		}
+	} else {
+		self->data[0] = self->data[1] = self->data[2] = self->data[3] = 0;
+	}
+	return 0;
+}
+
+static PyObject* PbVec4Repr(PbVec4* self) {
+	Manta::Vec4 v(self->data[0], self->data[1], self->data[2], self->data[3]);
+	return PyUnicode_FromFormat(v.toString().c_str());
+}
+
+PyTypeObject PbVec4Type = {
+	PyVarObject_HEAD_INIT(NULL, 0)
+	"manta.vec4",             /* tp_name */
+	sizeof(PbVec4),             /* tp_basicsize */
+	0,                         /* tp_itemsize */
+	(destructor)PbVec4Dealloc, /* tp_dealloc */
+	0,                         /* tp_print */
+	0,                         /* tp_getattr */
+	0,                         /* tp_setattr */
+	0,                         /* tp_reserved */
+	(reprfunc)PbVec4Repr,      /* tp_repr */
+	NULL, // &PbVec4NumberMethods,      /* tp_as_number */
+	0,                         /* tp_as_sequence */
+	0,                         /* tp_as_mapping */
+	0,                         /* tp_hash  */
+	0,                         /* tp_call */
+	0,                         /* tp_str */
+	0,                         /* tp_getattro */
+	0,                         /* tp_setattro */
+	0,                         /* tp_as_buffer */
+#if PY_MAJOR_VERSION >= 3
+	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE ,   /* tp_flags */
+#else
+	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE |  Py_TPFLAGS_CHECKTYPES,   /* tp_flags */
+#endif
+	"float vector type",       /* tp_doc */
+	0,                     /* tp_traverse */
+	0,                     /* tp_clear */
+	0,                     /* tp_richcompare */
+	0,                     /* tp_weaklistoffset */
+	0,                     /* tp_iter */
+	0,                     /* tp_iternext */
+	PbVec4Methods,             /* tp_methods */
+	PbVec4Members,             /* tp_members */
+	0,                         /* tp_getset */
+	0,                         /* tp_base */
+	0,                         /* tp_dict */
+	0,                         /* tp_descr_get */
+	0,                         /* tp_descr_set */
+	0,                         /* tp_dictoffset */
+	(initproc)PbVec4Init,      /* tp_init */
+	0,                         /* tp_alloc */
+	PbVec4New,                 /* tp_new */
+};
+
+// register
+
+void PbVecInitialize(PyObject* module) {
+	if (PyType_Ready(&PbVec3Type) < 0) errMsg("can't initialize Vec3 type"); 
 	Py_INCREF(castPy(&PbVec3Type));
 	PyModule_AddObject(module, "vec3", (PyObject *)&PbVec3Type);
+
+	if (PyType_Ready(&PbVec4Type) < 0) errMsg("can't initialize Vec4 type"); 
+	Py_INCREF(castPy(&PbVec4Type));
+	PyModule_AddObject(module, "vec4", (PyObject *)&PbVec4Type);
 }
 const static Pb::Register _REG(PbVecInitialize);
 

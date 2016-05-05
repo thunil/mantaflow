@@ -51,7 +51,7 @@ public:
 	//! Check if indices are within bounds, otherwise error (should only be called when debugging)
 	inline void checkIndex(int i, int j, int k) const;
 	//! Check if indices are within bounds, otherwise error (should only be called when debugging)
-	inline void checkIndex(int idx) const;
+	inline void checkIndex(IndexInt idx) const;
 	//! Check if index is within given boundaries
 	inline bool isInBounds(const Vec3i& p, int bnd) const;
 	//! Check if index is within given boundaries
@@ -59,19 +59,25 @@ public:
 	//! Check if index is within given boundaries
 	inline bool isInBounds(const Vec3& p, int bnd = 0) const { return isInBounds(toVec3i(p), bnd); }
 	//! Check if linear index is in the range of the array
-	inline bool isInBounds(int idx) const;
+	inline bool isInBounds(IndexInt idx) const;
 	
 	//! Get the type of grid
 	inline GridType getType() const { return mType; }
 	//! Check dimensionality
-	inline bool is2D() const { return !m3D; }
-	//! Check dimensionality
 	inline bool is3D() const { return m3D; }
 	
 	//! Get index into the data
-	inline int index(int i, int j, int k) const { DEBUG_ONLY(checkIndex(i,j,k)); return i + mSize.x * j + mStrideZ * k; }
+	inline IndexInt index(int i, int j, int k) const { DEBUG_ONLY(checkIndex(i,j,k)); return (IndexInt)i + (IndexInt)mSize.x * j + (IndexInt)mStrideZ * k; }
 	//! Get index into the data
-	inline int index(const Vec3i& pos) const    { DEBUG_ONLY(checkIndex(pos.x,pos.y,pos.z)); return pos.x + mSize.x * pos.y + mStrideZ * pos.z; }
+	inline IndexInt index(const Vec3i& pos) const    { DEBUG_ONLY(checkIndex(pos.x,pos.y,pos.z)); return (IndexInt)pos.x + (IndexInt)mSize.x * pos.y + (IndexInt)mStrideZ * pos.z; }
+
+	//! grid4d compatibility functions 
+	inline bool is4D() const { return false; }
+	inline int getSizeT() const { return 1; }
+	inline int getStrideT() const { return 0; }
+	inline int index(int i, int j, int k, int unused) const { return index(i,j,k); }
+	inline bool isInBounds(int i,int j, int k, int t, int bnd) const { if(t!=0) return false; return isInBounds( Vec3i(i,j,k), bnd ); }
+
 protected:
 	
 	GridType mType;
@@ -79,7 +85,7 @@ protected:
 	Real mDx;
 	bool m3D;
 	// precomputed Z shift: to ensure 2D compatibility, always use this instead of sx*sy !
-	int mStrideZ; 
+	IndexInt mStrideZ; 
 };
 
 //! Grid class
@@ -94,6 +100,7 @@ public:
 	virtual ~Grid();
 	
 	typedef T BASETYPE;
+	typedef GridBase BASETYPE_GRID;
 	
 	PYTHON() void save(std::string name);
 	PYTHON() void load(std::string name);
@@ -107,7 +114,7 @@ public:
 	//! access data
 	inline T& get(int i,int j, int k)              { return mData[index(i,j,k)]; }
 	//! access data
-	inline T get(int idx) const                    { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+	inline T get(IndexInt idx) const               { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
 	//! access data
 	inline T get(const Vec3i& pos) const           { return mData[index(pos)]; }
 	//! access data
@@ -115,17 +122,17 @@ public:
 	//! access data
 	inline T operator()(int i, int j, int k) const { return mData[index(i, j, k)]; }
 	//! access data
-	inline T& operator()(int idx)                  { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+	inline T& operator()(IndexInt idx)             { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
 	//! access data
-	inline T operator()(int idx) const             { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+	inline T operator()(IndexInt idx) const        { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
 	//! access data
 	inline T& operator()(const Vec3i& pos)         { return mData[index(pos)]; }
 	//! access data
 	inline T operator()(const Vec3i& pos) const    { return mData[index(pos)]; }
 	//! access data
-	inline T& operator[](int idx)                  { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+	inline T& operator[](IndexInt idx)             { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
 	//! access data
-	inline const T operator[](int idx) const       { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
+	inline const T operator[](IndexInt idx) const  { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
 	
 	// interpolated access
 	inline T    getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
@@ -143,7 +150,7 @@ public:
 	//! warning - do not use "=" for grids in python, this copies the reference! not the grid content...
 	//Grid<T>& operator=(const Grid<T>& a);
 	//! copy content from other grid (use this one instead of operator= !)
-	PYTHON() Grid<T>& copyFrom(const Grid<T>& a); // { *this = a; }
+	PYTHON() Grid<T>& copyFrom(const Grid<T>& a, bool copyType=true ); // old: { *this = a; }
 
 	// helper functions to work with grids in scene files 
 
@@ -196,6 +203,10 @@ public:
 	
 	//! Swap data with another grid (no actual data is moved)
 	void swap(Grid<T>& other);
+
+	//! grid4d compatibility functions 
+	inline T& operator()(int i, int j, int k, int unused)       { return mData[index(i, j, k)]; }
+	inline T operator() (int i, int j, int k, int unused) const { return mData[index(i, j, k)]; }
 
 protected:
 	T* mData;
@@ -264,31 +275,31 @@ public:
 	inline int getAt(const Vec3& pos) const { return mData[index((int)pos.x, (int)pos.y, (int)pos.z)]; }
 			
 	//! check for different flag types
-	inline bool isObstacle(int idx) const { return get(idx) & TypeObstacle; }
+	inline bool isObstacle(IndexInt idx) const { return get(idx) & TypeObstacle; }
 	inline bool isObstacle(int i, int j, int k) const { return get(i,j,k) & TypeObstacle; }
 	inline bool isObstacle(const Vec3i& pos) const { return get(pos) & TypeObstacle; }
 	inline bool isObstacle(const Vec3& pos) const { return getAt(pos) & TypeObstacle; }
-	inline bool isFluid(int idx) const { return get(idx) & TypeFluid; }
+	inline bool isFluid(IndexInt idx) const { return get(idx) & TypeFluid; }
 	inline bool isFluid(int i, int j, int k) const { return get(i,j,k) & TypeFluid; }
 	inline bool isFluid(const Vec3i& pos) const { return get(pos) & TypeFluid; }
 	inline bool isFluid(const Vec3& pos) const { return getAt(pos) & TypeFluid; }
-	inline bool isInflow(int idx) const { return get(idx) & TypeInflow; }
+	inline bool isInflow(IndexInt idx) const { return get(idx) & TypeInflow; }
 	inline bool isInflow(int i, int j, int k) const { return get(i,j,k) & TypeInflow; }
 	inline bool isInflow(const Vec3i& pos) const { return get(pos) & TypeInflow; }
 	inline bool isInflow(const Vec3& pos) const { return getAt(pos) & TypeInflow; }
-	inline bool isEmpty(int idx) const { return get(idx) & TypeEmpty; }
+	inline bool isEmpty(IndexInt idx) const { return get(idx) & TypeEmpty; }
 	inline bool isEmpty(int i, int j, int k) const { return get(i,j,k) & TypeEmpty; }
 	inline bool isEmpty(const Vec3i& pos) const { return get(pos) & TypeEmpty; }
 	inline bool isEmpty(const Vec3& pos) const { return getAt(pos) & TypeEmpty; }
-	inline bool isOutflow(int idx) const { return get(idx) & TypeOutflow; }
+	inline bool isOutflow(IndexInt idx) const { return get(idx) & TypeOutflow; }
 	inline bool isOutflow(int i, int j, int k) const { return get(i, j, k) & TypeOutflow; }
 	inline bool isOutflow(const Vec3i& pos) const { return get(pos) & TypeOutflow; }
 	inline bool isOutflow(const Vec3& pos) const { return getAt(pos) & TypeOutflow; }
-	inline bool isOpen(int idx) const { return get(idx) & TypeOpen; }
+	inline bool isOpen(IndexInt idx) const { return get(idx) & TypeOpen; }
 	inline bool isOpen(int i, int j, int k) const { return get(i, j, k) & TypeOpen; }
 	inline bool isOpen(const Vec3i& pos) const { return get(pos) & TypeOpen; }
 	inline bool isOpen(const Vec3& pos) const { return getAt(pos) & TypeOpen; }
-	inline bool isStick(int idx) const { return get(idx) & TypeStick; }
+	inline bool isStick(IndexInt idx) const { return get(idx) & TypeStick; }
 	inline bool isStick(int i, int j, int k) const { return get(i,j,k) & TypeStick; }
 	inline bool isStick(const Vec3i& pos) const { return get(pos) & TypeStick; }
 	inline bool isStick(const Vec3& pos) const { return getAt(pos) & TypeStick; }
@@ -319,6 +330,13 @@ inline Vec3 calcGridSizeFactor(Vec3i s1, Vec3i s2) {
 	return Vec3( Real(s1[0])/s2[0], Real(s1[1])/s2[1], Real(s1[2])/s2[2] );
 }
 
+// prototypes for grid plugins
+void copyMacToVec3(MACGrid &source, Grid<Vec3>& target);
+void convertMacToVec3(MACGrid &source, Grid<Vec3>& target);
+void resampleVec3ToMac(Grid<Vec3>& source, MACGrid &target);
+void resampleMacToVec3 (MACGrid &source, Grid<Vec3>& target );
+void getComponent(const Grid<Vec3>& src, Grid<Real>& dst, int c);
+void setComponent(const Grid<Real>& src, Grid<Vec3>& dst, int c);
 
 //******************************************************************************
 // enable compilation of a more complicated test data type
@@ -406,7 +424,7 @@ inline void GridBase::checkIndex(int i, int j, int k) const {
 	}
 }
 
-inline void GridBase::checkIndex(int idx) const {
+inline void GridBase::checkIndex(IndexInt idx) const {
 	if (idx<0 || idx >= mSize.x * mSize.y * mSize.z) {
 		std::ostringstream s;
 		s << "Grid " << mName << " dim " << mSize << " : index " << idx << " out of bound ";
@@ -428,7 +446,7 @@ bool GridBase::isInBounds(const Vec3i& p, int bnd) const {
 	return ret;
 }
 //! Check if linear index is in the range of the array
-bool GridBase::isInBounds(int idx) const {
+bool GridBase::isInBounds(IndexInt idx) const {
 	if (idx<0 || idx >= mSize.x * mSize.y * mSize.z) {
 		return false;
 	}
@@ -437,7 +455,7 @@ bool GridBase::isInBounds(int idx) const {
 
 inline Vec3 MACGrid::getCentered(int i, int j, int k) const {
 	DEBUG_ONLY(checkIndex(i+1,j+1,k));
-	const int idx = index(i,j,k);
+	const IndexInt idx = index(i,j,k);
 	Vec3 v = Vec3(0.5* (mData[idx].x + mData[idx+1].x),
 				  0.5* (mData[idx].y + mData[idx+mSize.x].y),
 				  0.);
@@ -450,7 +468,7 @@ inline Vec3 MACGrid::getCentered(int i, int j, int k) const {
 
 inline Vec3 MACGrid::getAtMACX(int i, int j, int k) const {
 	DEBUG_ONLY(checkIndex(i-1,j+1,k));
-	const int idx = index(i,j,k);
+	const IndexInt idx = index(i,j,k);
 	Vec3 v =  Vec3(   (mData[idx].x),
 				0.25* (mData[idx].y + mData[idx-1].y + mData[idx+mSize.x].y + mData[idx+mSize.x-1].y),
 				0.);
@@ -463,7 +481,7 @@ inline Vec3 MACGrid::getAtMACX(int i, int j, int k) const {
 
 inline Vec3 MACGrid::getAtMACY(int i, int j, int k) const {
 	DEBUG_ONLY(checkIndex(i+1,j-1,k));
-	const int idx = index(i,j,k);
+	const IndexInt idx = index(i,j,k);
 	Vec3 v =  Vec3(0.25* (mData[idx].x + mData[idx-mSize.x].x + mData[idx+1].x + mData[idx+1-mSize.x].x),
 						 (mData[idx].y),   0. );
 	if( this->is3D() ) {
@@ -474,7 +492,7 @@ inline Vec3 MACGrid::getAtMACY(int i, int j, int k) const {
 }
 
 inline Vec3 MACGrid::getAtMACZ(int i, int j, int k) const {
-	const int idx = index(i,j,k);
+	const IndexInt idx = index(i,j,k);
 	DEBUG_ONLY(checkIndex(idx-mStrideZ));
 	DEBUG_ONLY(checkIndex(idx+mSize.x-mStrideZ));
 	Vec3 v =  Vec3(0.25* (mData[idx].x + mData[idx-mStrideZ].x + mData[idx+1].x + mData[idx+1-mStrideZ].x),
@@ -562,7 +580,7 @@ void knInterpolateGridTempl(Grid<S>& target, Grid<S>& source, const Vec3& source
 // template glue code - choose interpolation based on template arguments
 template<class GRID>
 void interpolGridTempl( GRID& target, GRID& source ) {
-		errMsg("interpolGridTempl - Only valid for specific instantiations");
+	errMsg("interpolGridTempl - Only valid for specific instantiations");
 }
 
 

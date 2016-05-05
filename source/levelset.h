@@ -28,6 +28,7 @@ public:
 	PYTHON() void reinitMarching(FlagGrid& flags, Real maxTime=4.0, 
 			MACGrid* velTransport=NULL, bool ignoreWalls=false, bool correctOuterLayer=true, 
 			int obstacleType = FlagGrid::TypeObstacle );
+
 	//! create a triangle mesh from the levelset isosurface
 	PYTHON() void createMesh(Mesh& mesh);
 	

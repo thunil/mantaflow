@@ -35,7 +35,7 @@ void InitPreconditionIncompCholesky(FlagGrid& flags,
 	
 	FOR_IJK(A0) {
 		if (flags.isFluid(i,j,k)) {
-			const int idx = A0.index(i,j,k);
+			const IndexInt idx = A0.index(i,j,k);
 			A0[idx] = sqrt(A0[idx]);
 			
 			// correct left and top stencil in other entries
@@ -113,7 +113,7 @@ void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid
 	
 	// backward substitution
 	FOR_IJK_REVERSE(dst) {
-		const int idx = A0.index(i,j,k);
+		const IndexInt idx = A0.index(i,j,k);
 		if (!flags.isFluid(idx)) continue;
 		dst[idx] = A0[idx] * ( dst[idx] 
 			   - dst(i+1,j,k) * Ai[idx]
@@ -139,7 +139,7 @@ void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1,
 	
 	// backward substitution
 	FOR_IJK_REVERSE(dst) {            
-		const int idx = A0.index(i,j,k);
+		const IndexInt idx = A0.index(i,j,k);
 		if (!flags.isFluid(idx)) continue;
 		const Real p = Aprecond[idx];
 		dst[idx] = p * ( dst[idx] 

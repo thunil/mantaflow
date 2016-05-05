@@ -33,7 +33,8 @@ void FluidSolver::GridStorage<T>::free() {
 template<class T>
 T* FluidSolver::GridStorage<T>::get(Vec3i size) {
 	if ((int)grids.size() <= used) {
-		grids.push_back(new T[size.x * size.y * size.z]);
+		debMsg("FluidSolver::GridStorage::get Allocating new "<<size.x<<","<<size.y<<","<<size.z<<" ",3); 
+		grids.push_back( new T[(long long)(size.x) * size.y * size.z] );
 	}
 	if (used > 200)
 		errMsg("too many temp grids used -- are they released properly ?");
@@ -57,6 +58,9 @@ template<> Real* FluidSolver::getGridPointer<Real>() {
 template<> Vec3* FluidSolver::getGridPointer<Vec3>() {
 	return mGridsVec.get(mGridSize);    
 }
+template<> Vec4* FluidSolver::getGridPointer<Vec4>() {
+	return mGridsVec4.get(mGridSize);    
+}
 template<> void FluidSolver::freeGridPointer<int>(int *ptr) {
 	mGridsInt.release(ptr);
 }
@@ -66,14 +70,44 @@ template<> void FluidSolver::freeGridPointer<Real>(Real* ptr) {
 template<> void FluidSolver::freeGridPointer<Vec3>(Vec3* ptr) {
 	mGridsVec.release(ptr);
 }
+template<> void FluidSolver::freeGridPointer<Vec4>(Vec4* ptr) {
+	mGridsVec4.release(ptr);
+}
+
+// 4d data (work around for now, convert to 1d length)
+
+template<> int* FluidSolver::getGrid4dPointer<int>() {
+	return mGrids4dInt.get( Vec3i(mGridSize[0]*mGridSize[1],mGridSize[2],mFourthDim) );    
+}
+template<> Real* FluidSolver::getGrid4dPointer<Real>() {
+	return mGrids4dReal.get( Vec3i(mGridSize[0]*mGridSize[1],mGridSize[2],mFourthDim) );    
+}
+template<> Vec3* FluidSolver::getGrid4dPointer<Vec3>() {
+	return mGrids4dVec.get( Vec3i(mGridSize[0]*mGridSize[1],mGridSize[2],mFourthDim) );    
+}
+template<> Vec4* FluidSolver::getGrid4dPointer<Vec4>() {
+	return mGrids4dVec4.get( Vec3i(mGridSize[0]*mGridSize[1],mGridSize[2],mFourthDim) );    
+}
+template<> void FluidSolver::freeGrid4dPointer<int>(int *ptr) {
+	mGrids4dInt.release(ptr);
+}
+template<> void FluidSolver::freeGrid4dPointer<Real>(Real* ptr) {
+	mGrids4dReal.release(ptr);
+}
+template<> void FluidSolver::freeGrid4dPointer<Vec3>(Vec3* ptr) {
+	mGrids4dVec.release(ptr);
+}
+template<> void FluidSolver::freeGrid4dPointer<Vec4>(Vec4* ptr) {
+	mGrids4dVec4.release(ptr);
+}
 
 //******************************************************************************
 // FluidSolver members
 
-FluidSolver::FluidSolver(Vec3i gridsize, int dim)
+FluidSolver::FluidSolver(Vec3i gridsize, int dim, int fourthDim)
 	: PbClass(this), mDt(1.0), mTimeTotal(0.), mFrame(0), 
 	  mCflCond(1000), mDtMin(1.), mDtMax(1.), mFrameLength(1.),
-	  mGridSize(gridsize), mDim(dim) , mTimePerFrame(0.), mLockDt(false)
+	  mGridSize(gridsize), mDim(dim) , mTimePerFrame(0.), mLockDt(false), mFourthDim(fourthDim)
 {    
 	assertMsg(dim==2 || dim==3, "Can only create 2D and 3D solvers");
 	assertMsg(dim!=2 || gridsize.z == 1, "Trying to create 2D solver with size.z != 1");
@@ -83,6 +117,12 @@ FluidSolver::~FluidSolver() {
 	mGridsInt.free();
 	mGridsReal.free();
 	mGridsVec.free();
+	mGridsVec4.free();
+
+	mGrids4dInt.free();
+	mGrids4dReal.free();
+	mGrids4dVec.free();
+	mGrids4dVec4.free();
 }
 
 PbClass* FluidSolver::create(PbType t, PbTypeVec T, const string& name) {        
@@ -124,8 +164,14 @@ PYTHON() void mantaMsg(const std::string& out, int level=1) {
 void FluidSolver::printMemInfo() {
 	std::ostringstream msg;
 	msg << "Allocated grids: int " << mGridsInt.used  <<"/"<< mGridsInt.grids.size()  <<", ";
-	msg <<                  "real "<< mGridsReal.used <<"/"<< mGridsReal.grids.size() <<", ";
-	msg <<                  "vec3 "<< mGridsVec.used  <<"/"<< mGridsVec.grids.size()  <<". ";
+	msg << "                 real "<< mGridsReal.used <<"/"<< mGridsReal.grids.size() <<", ";
+	msg << "                 vec3 "<< mGridsVec.used  <<"/"<< mGridsVec.grids.size()  <<". ";
+	msg << "                 vec4 "<< mGridsVec4.used <<"/"<< mGridsVec4.grids.size() <<". ";
+	if(has4D()) {
+	msg << "Allocated 4d grids: int " << mGrids4dInt.used  <<"/"<< mGrids4dInt.grids.size()  <<", ";
+	msg << "                    real "<< mGrids4dReal.used <<"/"<< mGrids4dReal.grids.size() <<", ";
+	msg << "                    vec3 "<< mGrids4dVec.used  <<"/"<< mGrids4dVec.grids.size()  <<". ";
+	msg << "                    vec4 "<< mGrids4dVec4.used <<"/"<< mGrids4dVec4.grids.size() <<". "; }
 	printf("%s\n", msg.str().c_str() );
 }
 

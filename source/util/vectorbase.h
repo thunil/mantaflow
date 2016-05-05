@@ -226,8 +226,11 @@ public:
 		};
 	};
 
-	// zero element
+	//! zero element
 	static const Vector3D<S> Zero, Invalid;
+		
+	//! For compatibility with 4d vectors (discards 4th comp)
+	inline Vector3D ( S vx, S vy, S vz, S vDummy) : x(vx), y(vy), z(vz) {}
 	
 protected:
 

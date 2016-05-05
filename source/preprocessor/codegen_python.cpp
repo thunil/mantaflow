@@ -29,7 +29,8 @@ $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, P
 	try {
 		PbArgs _args(_linargs, _kwds);
 		FluidSolver *parent = _args.obtainParent();
-		pbPreparePlugin(parent, "$FUNCNAME$" );
+		bool noTiming = _args.getOpt<bool>("notiming", -1, 0);
+		pbPreparePlugin(parent, "$FUNCNAME$" , !noTiming );
 		PyObject *_retval = 0;
 		{ 
 			ArgLocker _lock;
@@ -42,7 +43,7 @@ $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, P
 			@END
 			_args.check();
 		}
-		pbFinalizePlugin(parent,"$FUNCNAME$" );
+		pbFinalizePlugin(parent,"$FUNCNAME$", !noTiming );
 		return _retval;
 	} catch(std::exception& e) {
 		pbSetError("$FUNCNAME$",e.what());
@@ -56,7 +57,8 @@ $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, P
 	try {
 		PbArgs _args(_linargs, _kwds);
 		$CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(_self));
-		pbPreparePlugin(pbo->getParent(), "$CLASS$::$FUNCNAME$");
+		bool noTiming = _args.getOpt<bool>("notiming", -1, 0);
+		pbPreparePlugin(pbo->getParent(), "$CLASS$::$FUNCNAME$" , !noTiming);
 		PyObject *_retval = 0;
 		{ 
 			ArgLocker _lock;
@@ -70,7 +72,7 @@ $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, P
 			@END
 			pbo->_args.check();
 		}
-		pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$");
+		pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$" , !noTiming);
 		return _retval;
 	} catch(std::exception& e) {
 		pbSetError("$CLASS$::$FUNCNAME$",e.what());
@@ -84,7 +86,8 @@ $TEMPLATE$ static int _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObjec
 	if (obj) delete obj; 
 	try {
 		PbArgs _args(_linargs, _kwds);
-		pbPreparePlugin(0, "$CLASS$::$FUNCNAME$" );
+		bool noTiming = _args.getOpt<bool>("notiming", -1, 0);
+		pbPreparePlugin(0, "$CLASS$::$FUNCNAME$" , !noTiming );
 		{ 
 			ArgLocker _lock;
 			$ARGLOADER$
@@ -92,7 +95,7 @@ $TEMPLATE$ static int _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObjec
 			obj->registerObject(_self, &_args); 
 			_args.check();
 		}
-		pbFinalizePlugin(obj->getParent(),"$CLASS$::$FUNCNAME$" );
+		pbFinalizePlugin(obj->getParent(),"$CLASS$::$FUNCNAME$" , !noTiming );
 		return 0;
 	} catch(std::exception& e) {
 		pbSetError("$CLASS$::$FUNCNAME$",e.what());
@@ -106,7 +109,8 @@ $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* o) {
 		PbArgs _args(0,0);
 		_args.addLinArg(o);
 		$CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(_self));
-		pbPreparePlugin(pbo->getParent(), "$CLASS$::$FUNCNAME$");
+		bool noTiming = _args.getOpt<bool>("notiming", -1, 0);
+		pbPreparePlugin(pbo->getParent(), "$CLASS$::$FUNCNAME$" , !noTiming);
 		PyObject *_retval = 0;
 		{ 
 			ArgLocker _lock;
@@ -115,7 +119,7 @@ $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* o) {
 			_retval = toPy(pbo->$FUNCNAME$($CALLSTRING$));
 			pbo->_args.check();
 		}
-		pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$");
+		pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$" , !noTiming);
 		return _retval;
 	} catch(std::exception& e) {
 		pbSetError("$CLASS$::$FUNCNAME$",e.what());
@@ -218,7 +222,7 @@ string generateLoader(const Argument& arg) {
 	string optCall =  string("_args.") + (arg.value.empty() ? "get" : "getOpt");
 
 	ptrType.isConst = false;
-	if (integral) {
+	if ( (integral) && (!arg.type.isPointer) ) {
 		ptrType.isPointer = false;
 		ptrType.isRef = false;
 	} else if (arg.type.isPointer) {

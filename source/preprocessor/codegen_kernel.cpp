@@ -39,12 +39,17 @@ $TEMPLATE$ struct $KERNEL$ : public KernelBase {
 		KernelBase($BASE$,$BND$) $INIT$ $LOCALSET$
 @END
 	{
+		runMessage();
 		run();
 	}
 @IF(IJK)
 	inline void op(int i, int j, int k, $ARGS$ $LOCALARG$) $CONST$ $CODE$
 @ELSE
-	inline void op(int idx, $ARGS$ $LOCALARG$) $CONST$ $CODE$
+@IF(FOURD)
+	inline void op(int i, int j, int k, int t, $ARGS$ $LOCALARG$) $CONST$ $CODE$
+@ELSE
+	inline void op(IndexInt idx, $ARGS$ $LOCALARG$) $CONST$ $CODE$
+@END
 @END
 
 @IF(RET_NAME)
@@ -52,6 +57,7 @@ $TEMPLATE$ struct $KERNEL$ : public KernelBase {
 	inline $RET_TYPE$ & getRet() { return $RET_NAME$; }
 @END
 	$ACCESSORS$
+	$RUNMSG_FUNC$
 
 	$RUN$
 	$MEMBERS$
@@ -69,7 +75,11 @@ $TEMPLATE$ struct _$KERNEL$ : public KernelBase {
 @IF(IJK)
 	inline void op(int i, int j, int k, $ARGS$ $LOCALARG$) $CONST$ $CODE$
 @ELSE
-	inline void op(int idx, $ARGS$ $LOCALARG$) $CONST$ $CODE$
+@IF(FOURD)
+	inline void op(int i, int j, int k, int t, $ARGS$ $LOCALARG$) $CONST$ $CODE$
+@ELSE
+	inline void op(IndexInt idx, $ARGS$ $LOCALARG$) $CONST$ $CODE$
+@END
 @END
 	$RUN$
 	$MEMBERS$
@@ -86,6 +96,7 @@ $TEMPLATE$ struct $KERNEL$ : public KernelBase {
 @END
 		$INIT$ $LOCALSET$
 	{
+		runMessage();
 		run();
 	}
 
@@ -96,6 +107,7 @@ $TEMPLATE$ struct $KERNEL$ : public KernelBase {
 	inline $RET_TYPE$ & getRet() { return $RET_NAME$; }
 @END
 	$ACCESSORS$
+	$RUNMSG_FUNC$
 	_$KERNEL$$TPL$ _inner;
 	$MEMBERS$
 	$LOCALS$
@@ -112,15 +124,23 @@ void run() {
 	for (int i=$BND$; i< _maxX; i++)
 		op(i,j,k, $CALL$);
 @ELSE
-	const int _sz = size;
-	for (int i=0; i < _sz; i++)
+@IF(FOURD)
+	for (int t=minT ; t< maxT; t++)
+	for (int k=minZ ; k< maxZ; k++)
+	for (int j=$BND$; j< maxY; j++)
+	for (int i=$BND$; i< maxX; i++)
+		op(i,j,k,t, $CALL$);
+@ELSE
+	const IndexInt _sz = size;
+	for (IndexInt i = 0; i < _sz; i++)
 		op(i, $CALL$);
+@END
 @END
 }
 );
 
 const string TmpRunTBB = STR(
-void operator() (const tbb::blocked_range<size_t>& r) $CONST$ {
+void operator() (const tbb::blocked_range<IndexInt>& r) $CONST$ {
 @IF(IJK)
 	const int _maxX = maxX;
 	const int _maxY = maxY;
@@ -136,18 +156,49 @@ void operator() (const tbb::blocked_range<size_t>& r) $CONST$ {
 			op(i,j,k,$CALL$);
 	}
 @ELSE
-	for (int idx=r.begin(); idx!=(int)r.end(); idx++)
+@IF(FOURD)
+	if (maxT>1) {
+		for (int t=r.begin(); t!=(int)r.end(); t++)
+		for (int k=$BND$; k<maxZ; k++)
+		for (int j=$BND$; j<maxY; j++)
+		for (int i=$BND$; i<maxX; i++)
+			op(i,j,k,t,$CALL$);
+	} else if (maxZ>1) {
+		const int t=0;
+		for (int k=r.begin(); k!=(int)r.end(); k++)
+		for (int j=$BND$; j<maxY; j++)
+		for (int i=$BND$; i<maxX; i++)
+			op(i,j,k,t,$CALL$);
+	} else {
+		const int t=0;
+		const int k=0;
+		for (int j=r.begin(); j!=(int)r.end(); j++)
+		for (int i=$BND$; i<maxX; i++)
+			op(i,j,k,t,$CALL$);
+	}
+@ELSE
+	for (IndexInt idx=r.begin(); idx!=(IndexInt)r.end(); idx++)
 		op(idx, $CALL$);
+@END
 @END
 }
 void run() {
 @IF(IJK)
 	if (maxZ>1)
-		tbb::parallel_$METHOD$ (tbb::blocked_range<size_t>(minZ, maxZ), *this);
+		tbb::parallel_$METHOD$ (tbb::blocked_range<IndexInt>(minZ, maxZ), *this);
 	else
-		tbb::parallel_$METHOD$ (tbb::blocked_range<size_t>($BND$, maxY), *this);
+		tbb::parallel_$METHOD$ (tbb::blocked_range<IndexInt>($BND$, maxY), *this);
 @ELSE
-	tbb::parallel_$METHOD$ (tbb::blocked_range<size_t>(0, size), *this);
+@IF(FOURD)
+	if (maxT>1) {
+		tbb::parallel_$METHOD$ (tbb::blocked_range<IndexInt>(minT, maxT), *this);
+	} else if (maxZ>1) {
+		tbb::parallel_$METHOD$ (tbb::blocked_range<IndexInt>(minZ, maxZ), *this);
+	} else {
+		tbb::parallel_$METHOD$ (tbb::blocked_range<IndexInt>($BND$, maxY), *this); }
+@ELSE
+	tbb::parallel_$METHOD$ (tbb::blocked_range<IndexInt>(0, size), *this);
+@END
 @END
 }
 @IF(REDUCE)
@@ -186,21 +237,59 @@ void run() {
 		}
 	}
 @ELSE
-	const int _sz = size;
+@IF(FOURD)
+	const int _maxX = maxX; 
+	const int _maxY = maxY;
+	if (maxT > 1) {
+		const int _maxZ = maxZ;
+		$PRAGMA$ omp parallel $NL$
+		{
+			$OMP_DIRECTIVE$
+			for (int t=$BND$; t < maxT; t++)
+			for (int k=$BND$; k < _maxZ; k++)
+			for (int j=$BND$; j < _maxY; j++)
+			for (int i=$BND$; i < _maxX; i++)
+			   op(i,j,k,t,$CALL$);
+		   $OMP_POST$
+		}
+	} else if (maxZ > 1) {
+		const int t=0;
+		$PRAGMA$ omp parallel $NL$
+		{
+			$OMP_DIRECTIVE$
+			for (int k=minZ; k < maxZ; k++)
+			for (int j=$BND$; j < _maxY; j++)
+			for (int i=$BND$; i < _maxX; i++)
+			   op(i,j,k,t,$CALL$);
+		   $OMP_POST$
+		}
+	} else {
+		const int t=0;
+		const int k=0;
+		$PRAGMA$ omp parallel $NL$
+		{
+			$OMP_DIRECTIVE$
+			for (int j=$BND$; j < _maxY; j++)
+			for (int i=$BND$; i < _maxX; i++)
+				op(i,j,k,t,$CALL$);
+			$OMP_POST$
+		}
+	}
+@ELSE
+	const IndexInt _sz = size;
 	$PRAGMA$ omp parallel $NL$
 	{ 
 		$OMP_DIRECTIVE$ 
-		for (int i=0; i < _sz; i++)
+		for (IndexInt i = 0; i < _sz; i++)
 			op(i,$CALL$);
 		$OMP_POST$
 	}
+@END
 @END
 }
 );
 
 const string TmpOMPDirective = STR (
-this->threadId = omp_get_thread_num(); 
-this->threadNum = omp_get_num_threads();
 @IF(REDUCE)
 	$OMP_PRE$
 	$PRAGMA$ omp for nowait $NL$
@@ -221,7 +310,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 	}
 
 	// process options
-	bool idxMode = false, reduce = false, pts = false;
+	bool idxMode = false, reduce = false, pts = false, fourdMode = false;
 	bool hasLocals = !block.locals.empty(), hasRet = kernel.returnType.name != "void";
 	string bnd = "0", reduceOp="";
 
@@ -238,6 +327,8 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 			pts = true;
 		else if (opt == "bnd")
 			bnd = block.options[i].value;
+		else if (opt == "fourd" )
+			fourdMode = true;
 		else if (opt == "reduce") {
 			reduce = true;
 			reduceOp = block.options[i].value;
@@ -268,6 +359,8 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 	for (int i=0; i<(int)kernel.arguments.size(); i++) {
 		const string& type = kernel.arguments[i].type.name;
 		bool isGrid = type.find("Grid") != string::npos;
+		// NT_DEBUG , todo - add case for fourd
+		// ? bool is4d = type.find("Grid4d") != string::npos;
 		if (isGrid || pts) { 
 			baseGrid = kernel.arguments[i].name;
 			if (isGrid && !kernel.arguments[i].type.isPointer)
@@ -291,6 +384,17 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 		accessors << replaceSet(TmpAccessor, table);
 	}
 
+	// optional - print cmd line msg for each kernel call
+	stringstream runMsgFunc;
+	if(true) {
+		runMsgFunc << "void runMessage() { debMsg(\"Executing kernel "+ kernel.name +" \", 2); ";
+		runMsgFunc << "debMsg(\"Kernel range\" << \" x \"<<  maxX  << \" y \"<< maxY  << \" z \"<< minZ<<\" - \"<< maxZ  << \" \"  ";
+		if(fourdMode) runMsgFunc << " \" t \"<< minT<<\" - \"<< maxT ";
+		runMsgFunc << " , 3); };";
+	}  else { 
+		runMsgFunc << "void runMessage() { };"; // disable
+	}
+
 	// build locals, and reduce joiners
 	stringstream joiner, preReduce, postReduce;
 	for (int i=0; i<(int)block.locals.size(); i++) {
@@ -312,7 +416,8 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 	
 	const string table[] = { "IDX", idxMode ? "Y":"",
 							 "PTS", pts ? "Y":"",
-							 "IJK", (!pts && !idxMode) ? "Y":"",
+							 "IJK", (!pts && !idxMode && !fourdMode) ? "Y":"",
+							 "FOURD", (fourdMode) ? "Y":"",
 							 "REDUCE", reduce ? "Y":"",
 							 "TEMPLATE", kernel.isTemplated() ? "template "+kernel.templateTypes.minimal : "",
 							 "TPL", kernel.isTemplated() ? "<"+kernel.templateTypes.names()+">" : "",
@@ -329,6 +434,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 							 "LOCALS", block.locals.createMembers(false),
 							 "LOCALS_REF", block.locals.createMembers(true),
 							 "ACCESSORS", accessors.str(),
+							 "RUNMSG_FUNC", runMsgFunc.str(),
 							 "CONST", (!reduce && mtType==MTTBB) ? "const" : "",
 							 "CODE", code,
 							 "RET_TYPE", hasRet ? block.locals[0].type.minimal : "",

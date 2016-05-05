@@ -34,8 +34,8 @@ inline Vec3 hermiteSpline(const Vec3& p0, const Vec3& p1, const Vec3& m0, const 
     return (2.0*t3 - 3.0*t2 + 1.0)*p0 + (t3 - 2.0*t2 + t)*m0 + (-2.0*t3 + 3.0*t2)*p1 + (t3 - t2)*m1;
 }
 
-static inline void checkIndexInterpol(const Vec3i& size, int idx) {
-    if (idx<0 || idx > size.x * size.y * size.z) {
+static inline void checkIndexInterpol(const Vec3i& size, IndexInt idx) {
+    if (idx<0 || idx > (IndexInt)size.x * size.y * size.z) {
         std::ostringstream s;
         s << "Grid interpol dim " << size << " : index " << idx << " out of bound ";
         errMsg(s.str());
@@ -68,7 +68,7 @@ static inline void checkIndexInterpol(const Vec3i& size, int idx) {
 template <class T>
 inline T interpol(const T* data, const Vec3i& size, const int Z, const Vec3& pos) {
     BUILD_INDEX
-    int idx = xi + Y * yi + Z * zi;    
+    IndexInt idx = (IndexInt)xi + (IndexInt)Y * yi + (IndexInt)Z * zi;    
     DEBUG_ONLY(checkIndexInterpol(size,idx)); DEBUG_ONLY(checkIndexInterpol(size,idx+X+Y+Z));
     
     return  ((data[idx]    *t0 + data[idx+Y]    *t1) * s0
@@ -80,7 +80,7 @@ inline T interpol(const T* data, const Vec3i& size, const int Z, const Vec3& pos
 template <int c>
 inline Real interpolComponent(const Vec3* data, const Vec3i& size, const int Z, const Vec3& pos) {    
     BUILD_INDEX
-    int idx = xi + Y * yi + Z * zi;    
+    IndexInt idx = (IndexInt)xi + (IndexInt)Y * yi + (IndexInt)Z * zi;    
     DEBUG_ONLY(checkIndexInterpol(size,idx)); DEBUG_ONLY(checkIndexInterpol(size,idx+X+Y+Z));
     
     return  ((data[idx][c]    *t0 + data[idx+Y][c]    *t1) * s0
@@ -93,7 +93,7 @@ template<class T>
 inline void setInterpol(T* data, const Vec3i& size, const int Z, const Vec3& pos, const T& v, Real* sumBuffer) 
 {
     BUILD_INDEX
-    int idx = xi + Y * yi + Z * zi;    
+    IndexInt idx = (IndexInt)xi + (IndexInt)Y * yi + (IndexInt)Z * zi;    
     DEBUG_ONLY(checkIndexInterpol(size,idx)); DEBUG_ONLY(checkIndexInterpol(size,idx+X+Y+Z));
     
     T* ref = &data[idx];
@@ -126,9 +126,9 @@ inline void setInterpol(T* data, const Vec3i& size, const int Z, const Vec3& pos
 
 inline Vec3 interpolMAC(const Vec3* data, const Vec3i& size, const int Z, const Vec3& pos) 
 {
-    BUILD_INDEX_SHIFT
-    DEBUG_ONLY(checkIndexInterpol(size,(zi*size.y+yi)*size.x+xi)); 
-    DEBUG_ONLY(checkIndexInterpol(size,(s_zi*size.y+s_yi)*size.x+s_xi+X+Y+Z));
+	BUILD_INDEX_SHIFT;
+	DEBUG_ONLY(checkIndexInterpol(size, (zi*(IndexInt)size.y + yi)*(IndexInt)size.x + xi));
+	DEBUG_ONLY(checkIndexInterpol(size, (s_zi*(IndexInt)size.y + s_yi)*(IndexInt)size.x + s_xi + X + Y + Z));
     
     // process individual components
     Vec3 ret(0.);
@@ -158,13 +158,13 @@ inline Vec3 interpolMAC(const Vec3* data, const Vec3i& size, const int Z, const 
 
 inline void setInterpolMAC(Vec3* data, const Vec3i& size, const int Z, const Vec3& pos, const Vec3& val, Vec3* sumBuffer) 
 {
-    BUILD_INDEX_SHIFT
-    DEBUG_ONLY(checkIndexInterpol(size,(zi*size.y+yi)*size.x+xi)); 
-    DEBUG_ONLY(checkIndexInterpol(size,(s_zi*size.y+s_yi)*size.x+s_xi+X+Y+Z));
+	BUILD_INDEX_SHIFT;
+	DEBUG_ONLY(checkIndexInterpol(size, (zi*(IndexInt)size.y + yi)*(IndexInt)size.x + xi));
+	DEBUG_ONLY(checkIndexInterpol(size, (s_zi*(IndexInt)size.y + s_yi)*(IndexInt)size.x + s_xi + X + Y + Z));
     
     // process individual components
     {   // X
-        const int idx = (zi*size.y+yi)*size.x+s_xi;
+        const IndexInt idx = (IndexInt)(zi*size.y+yi)*size.x+s_xi;
         Vec3 *ref = &data[idx], *sum = &sumBuffer[idx];
         Real s0f0=s_s0*f0, s1f0=s_s1*f0, s0f1=s_s0*f1, s1f1=s_s1*f1;
         Real w0 = t0*s0f0, wx = t0*s1f0, wy = t1*s0f0, wxy = t1*s1f0;
@@ -176,7 +176,7 @@ inline void setInterpolMAC(Vec3* data, const Vec3i& size, const int Z, const Vec
         ref[0].x += w0*val.x; ref[X].x += wx*val.x; ref[Y].x += wy*val.x; ref[X+Y].x += wxy*val.x;
     }
     {   // Y
-        const int idx = (zi*size.y+s_yi)*size.x+xi;
+        const IndexInt idx = (IndexInt)(zi*size.y+s_yi)*size.x+xi;
         Vec3 *ref = &data[idx], *sum = &sumBuffer[idx];
         Real s0f0=s0*f0, s1f0=s1*f0, s0f1=s0*f1, s1f1=s1*f1;
         Real w0 = s_t0*s0f0, wx = s_t0*s1f0, wy = s_t1*s0f0, wxy = s_t1*s1f0;
@@ -188,7 +188,7 @@ inline void setInterpolMAC(Vec3* data, const Vec3i& size, const int Z, const Vec
         ref[0].y += w0*val.y; ref[X].y += wx*val.y; ref[Y].y += wy*val.y; ref[X+Y].y += wxy*val.y;
     }
     {   // Z
-        const int idx = (s_zi*size.y+yi)*size.x+xi;
+        const IndexInt idx = (IndexInt)(s_zi*size.y+yi)*size.x+xi;
         Vec3 *ref = &data[idx], *sum = &sumBuffer[idx];
         Real s0f0=s0*s_f0, s1f0=s1*s_f0, s0f1=s0*s_f1, s1f1=s1*s_f1;
         Real w0 = t0*s0f0, wx = t0*s1f0, wy = t1*s0f0, wxy = t1*s1f0;

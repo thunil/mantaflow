@@ -23,12 +23,12 @@ namespace Manta {
 //******************************************************************************
 // Free functions
 
-void pbPreparePlugin(FluidSolver* parent, const string& name) {
-    TimingData::instance().start(parent, name);
+void pbPreparePlugin(FluidSolver* parent, const string& name, bool doTime) {
+	if(doTime) TimingData::instance().start(parent, name);
 }
 
-void pbFinalizePlugin(FluidSolver *parent, const string& name) {
-    TimingData::instance().stop(parent, name);
+void pbFinalizePlugin(FluidSolver *parent, const string& name, bool doTime) {
+    if(doTime) TimingData::instance().stop(parent, name);
 	
 	// GUI update, also print name of parent if there's more than one
 	std::ostringstream msg;

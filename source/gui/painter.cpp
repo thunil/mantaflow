@@ -1,7 +1,7 @@
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ * Copyright 2016 Tobias Pfaff, Nils Thuerey  
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL) 
@@ -12,6 +12,7 @@
  ******************************************************************************/
 
 #include "painter.h"
+#include "simpleimage.h"
 #include <QtOpenGL>
 #include <sstream>
 #include <iomanip>
@@ -110,7 +111,7 @@ void GridPainter<T>::update() {
 	Grid<T>* src = (Grid<T>*) mObject;
 	
 	if (!mLocalGrid) {
-		mLocalGrid = new Grid<T>(src->getParent());
+		mLocalGrid   = new Grid<T>(src->getParent());
 		// int grid is base for resolution
 		if (src->getType() & GridBase::TypeInt)
 			emit setViewport(src->getSize());
@@ -124,7 +125,7 @@ void GridPainter<T>::update() {
 			emit setViewport(src->getSize());
 	}
 	
-	mLocalGrid->copyFrom( *src ); // copy grid data and type marker
+	mLocalGrid->copyFrom( *src , true ); // copy grid data and type marker
 	mLocalGrid->setName(src->getName());
 	mLocalGrid->setParent(src->getParent());    
 	mMaxVal = mLocalGrid->getMaxAbsValue();
@@ -134,7 +135,7 @@ void GridPainter<T>::update() {
 	updateText();    
 }
 
-template<> string GridPainter<int>::getID() { return "Grid<int>"; }
+template<> string GridPainter<int>::getID()  { return "Grid<int>";  }
 template<> string GridPainter<Vec3>::getID() { return "Grid<Vec3>"; }
 template<> string GridPainter<Real>::getID() { return "Grid<Real>"; }
 
@@ -165,18 +166,29 @@ void GridPainter<T>::processKeyEvent(PainterEvent e, int param)
 template<class T>
 Real GridPainter<T>::getScale() {
 	if (!mObject) return 0;
+	std::pair<void*, int> id; id.first=mObject; id.second=mDispMode;
 	
-	if (mValScale.find(mObject) == mValScale.end()) {
+	if (mValScale.find(id) == mValScale.end()) {
 		// init new scale value
-		Real s = 1.0;
+		Real s = 1.0 - VECTOR_EPSILON;
 		if (mLocalGrid->getType() & GridBase::TypeVec3)
 			s = 0.5 - VECTOR_EPSILON;
 		else if (mLocalGrid->getType() & GridBase::TypeLevelset)
 			s = 1.0; 
-		mValScale[mObject] = s;
+		else if (mLocalGrid->getType() & GridBase::TypeReal) {
+			if(mDispMode == RealDispShadeVol ) s = 4.0; // depends a bit on grid size in practice...
+			if(mDispMode == RealDispShadeSurf) s = 1.0; 
+		}
+		mValScale[id] = s;
 	}
-	return mValScale[mObject];
+	return mValScale[id];
 	
+}
+
+template<class T>
+void GridPainter<T>::setScale(Real v) {
+	std::pair<void*, int> id; id.first=mObject; id.second=mDispMode;
+	mValScale[id] = v;
 }
 
 //******************************************************************************
@@ -194,10 +206,15 @@ void GridPainter<Real>::processSpecificKeyEvent(PainterEvent e, int param) {
 		nextObject();
 		// by default, switch levelsets to alt color scale
 		if (mLocalGrid->getType() & GridBase::TypeLevelset) mDispMode = RealDispLevelset;
+		else mDispMode = RealDispStd;
 	} else if (e == EventScaleRealDown && mObject)
-		mValScale[mObject] = getScale() * 0.5;
+		setScale( getScale() * 0.5 );
 	else if (e == EventScaleRealUp && mObject)
-		mValScale[mObject] = getScale() * 2.0;
+		setScale( getScale() * 2.0 );
+	else if (e == EventScaleRealDownSm && mObject)
+		setScale( getScale() * 0.9 );
+	else if (e == EventScaleRealUpSm && mObject)
+		setScale( getScale() * 1.1 );
 	else if (e == EventNextRealDisplayMode) {
 		mDispMode  = (mDispMode+1)%NumRealDispModes;
 		mHideLocal = (mDispMode==RealDispOff); 
@@ -209,9 +226,9 @@ void GridPainter<Vec3>::processSpecificKeyEvent(PainterEvent e, int param) {
 	if (e == EventNextVec)
 		nextObject();
 	else if (e == EventScaleVecDown && mObject)
-		mValScale[mObject] = getScale() * 0.5;
+		setScale( getScale() * 0.5 );
 	else if (e == EventScaleVecUp && mObject)
-		mValScale[mObject] = getScale() * 2.0;
+		setScale( getScale() * 2.0 );
 	else if (e == EventNextVecDisplayMode) {
 		mDispMode  = (mDispMode+1)%NumVecDispModes;
 		mHideLocal = (mDispMode==VecDispOff); 
@@ -220,7 +237,9 @@ void GridPainter<Vec3>::processSpecificKeyEvent(PainterEvent e, int param) {
 
 template<> void GridPainter<int>::updateText() {
 	stringstream s;
-	if (mObject && (!mHide)) {
+	//if (mObject && (!mHide)) {
+	if (mObject) {
+		if(mHide) s <<"(hidden) ";
 		s << "Int Grid '" << mLocalGrid->getName() << "'" << endl;
 	}    
 	mInfo->setText(s.str().c_str());    
@@ -238,16 +257,19 @@ template<> void GridPainter<Real>::updateText() {
 
 	if (mObject && !mHide && !mHideLocal) {
 		s << "Real Grid '" << mLocalGrid->getName() << "'" << endl;
-		s << "-> Max " << fixed << setprecision(2) << mMaxVal << "  Scale " << getScale() << endl;
+		s << "-> Max " << fixed << setprecision(2) << mMaxVal << endl<<"-> Scale " << getScale() << endl;
 	}
 	mInfo->setText(s.str().c_str());    
 }
 
 template<> void GridPainter<Vec3>::updateText() {
 	stringstream s;
-	if (mObject && !mHide && !mHideLocal) {
+	if (mObject) {
 		s << "Vec Grid '" << mLocalGrid->getName() << "'" << endl;
-		s << "-> Max norm " << fixed << setprecision(2) << mMaxVal << "  Scale " << getScale() << endl;
+		if(mHide || mHideLocal) 
+			s <<"(hidden) "<< endl;
+		else
+			s << "-> Max norm " << fixed << setprecision(2) << mMaxVal << endl<<"-> Scale " << getScale() << endl;
 	}
 	mInfo->setText(s.str().c_str());
 }
@@ -389,6 +411,9 @@ template<> void GridPainter<int>::paint() {
 	}
 }
 
+// from simpleimage.cpp
+void projectImg( SimpleImage& img, Grid<Real>& val, int shadeMode=0, Real scale=1.);
+
 // Paint box colors
 template<> void GridPainter<Real>::paint() {
 	if (!mObject || mHide || mHideLocal || mPlane <0 || mPlane >= mLocalGrid->getSize()[mDim] || !mFlags || !(*mFlags))
@@ -398,53 +423,10 @@ template<> void GridPainter<Real>::paint() {
 	Vec3 box[4];
 	glBegin(GL_QUADS);
 	Real scale = getScale();
-	//glPolygonOffset(1.0,1.0);
-	//glDepthFunc(GL_LESS);
 
-	const bool useOldDrawStyle = false;
-	if(useOldDrawStyle) {
-		// original mantaflow drawing style
-		FlagGrid *flags = *mFlags;
-		if (flags->getSize() != mLocalGrid->getSize()) flags = 0;
-		bool isLevelset = mLocalGrid->getType() & GridBase::TypeLevelset;
-
-		FOR_P_SLICE(mLocalGrid, mDim, mPlane) { 
-			int flag = FlagGrid::TypeFluid;
-			if (flags && (mLocalGrid->getType() & GridBase::TypeLevelset) == 0) flag = flags->get(p);
-			if (flag & FlagGrid::TypeObstacle)
-				glColor3f(0.15,0.15,0.15);
-			else if (flag & FlagGrid::TypeOutflow)
-				glColor3f(0.3,0.0,0.0);
-			else if (flag & FlagGrid::TypeEmpty)
-				glColor3f(0.,0.2,0.);
-			else {
-				Real v = mLocalGrid->get(p) * scale;
-				
-				if (isLevelset) {
-					v = max(min(v*0.2, 1.0),-1.0);
-					if (v>=0)
-						glColor3f(v,0,0.5);
-					else
-						glColor3f(0.5, 1.0+v, 0.);
-				} else {
-					if (v>0)
-						glColor3f(v,0,0);
-					else
-						glColor3f(0,0,-v);
-				}
-			}
-			
-			if ((flag & FlagGrid::TypeEmpty) == 0) {
-				getCellCoordinates(p, box, mDim);
-				for (int n=0;n<4;n++) 
-					glVertex(box[n], dx);
-			}
-		}
-
-	} else {
-		// "new" drawing style 
-		// ignore flags, its a bit dangerous to skip outside info
-		if( (mDispMode==RealDispStd) || (mDispMode==RealDispLevelset) ) {
+	// "new" drawing style 
+	// ignore flags, its a bit dangerous to skip outside info
+	if( (mDispMode==RealDispStd) || (mDispMode==RealDispLevelset) ) {
 
 		FOR_P_SLICE(mLocalGrid, mDim, mPlane) 
 		{ 
@@ -467,12 +449,33 @@ template<> void GridPainter<Real>::paint() {
 				glVertex(box[n], dx);
 		}
 
+	}
+
+	if( (mDispMode==RealDispShadeVol) || (mDispMode==RealDispShadeSurf) ) {
+		SimpleImage img;
+
+		// note - slightly wasteful, projects all 3 axes!
+		int mode = 0;
+		if (mDispMode==RealDispShadeSurf) mode = 1;
+		projectImg( img, *mLocalGrid, mode, scale );
+
+		FOR_P_SLICE(mLocalGrid, mDim, mPlane) 
+		{ 
+			Vec3 col(0.); Vec3i s  = mLocalGrid->getSize();
+
+			// "un-transform" projected image
+		   	if(mDim==2) col = img.get( 0       + p[0], p[1] );
+		   	if(mDim==0) col = img.get( s[0]    + p[2], p[1] );
+		   	if(mDim==1) col = img.get( s[0]+s[2]+p[0], p[2] );
+
+			glColor3f(col.x,col.y,col.z); 
+			getCellCoordinates(p, box, mDim);
+			for (int n=0;n<4;n++) 
+				glVertex(box[n], dx);
 		}
 	}
 
 	glEnd();    
-	//glDepthFunc(GL_ALWAYS);    
-	//glPolygonOffset(0,0);    
 }
 
 // Paint velocity vectors

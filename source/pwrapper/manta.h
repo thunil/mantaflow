@@ -22,6 +22,7 @@
 
 #include "general.h"
 #include "vectorbase.h"
+#include "vector4d.h"
 #include "registry.h"
 #include "pclass.h"
 #include "pconvert.h"
