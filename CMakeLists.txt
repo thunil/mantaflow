@@ -597,7 +597,7 @@ IF(NOT NOPYTHON)
 
 ELSE()
 	# only build static library in nopython mode
-	ADD_LIBRARY (core OBJECT ${SOURCES})
+	ADD_LIBRARY (core OBJECT ${SOURCES} ${GITINFO})
 	ADD_LIBRARY (${EXECCMD} STATIC $<TARGET_OBJECTS:core>)
 ENDIF()
 
