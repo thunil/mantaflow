@@ -17,7 +17,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/source/cmake/")
 SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 SET(VERBOSE 1)
 
-SET(MANTAVERSION "0.8")
+SET(MANTAVERSION "0.9")
 
 #******************************************************************************
 # Default paths
@@ -82,9 +82,10 @@ IF(NOT DEBUG)
 		SET(DEBUG 1)
 	ENDIF()
 ENDIF()
+
 IF(DEBUG)
 	SET(CMAKE_BUILD_TYPE "Debug")
-	add_definitions ( -DDEBUG )
+	add_definitions ( -DDEBUG=1 )
 ENDIF()
 
 MESSAGE(STATUS "")
@@ -267,10 +268,11 @@ if (NOPYTHON)
 	) 
 	# update paths to use nopython versions
 	SET(INCLUDE_PATHS
+		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
+		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/util
 		source/nopython
 		source/cuda
 		source/util
-		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
 	)
 
 	add_definitions( -DNOPYTHON=1 )
@@ -300,7 +302,7 @@ if(MT)
 		endif()
 	else()
 		# OpenMP
-		add_definitions( -DOPENMP )
+		add_definitions( -DOPENMP=1 )
 
 		if (WIN32)
 			add_definitions( /openmp)
@@ -422,7 +424,7 @@ endif()
 
 IF(NOT WIN32)
 	set(GITINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/gitinfo.h")
-	MESSAGE(STATUS "Hg info target header ${GITINFO}")
+	MESSAGE(STATUS "Git info target header ${GITINFO}")
 	add_custom_command(OUTPUT ${GITINFO}
 					   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py" "${GITINFO}"
 					   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS}
@@ -531,37 +533,6 @@ endif()
 #******************************************************************************
 # setup executable
 
-# compiler flags
-IF(NOT WIN32)
-	IF(DEBUG)
-		add_definitions( -DDEBUG )
-		# stricter: no optimizations and inlining, comment out if needed...
-		add_definitions( -O0 -fno-inline -Wall )
-	ELSE()
-		# non-debug, optimized version
-		add_definitions( -O3 -Wall )
-	ENDIF()
-	# c++11 required for all c++ sources
-	set_source_files_properties(${PP_SOURCES} PROPERTIES COMPILE_FLAGS "  -std=c++11  " )
-ELSE()
-	# get rid of some MSVC warnings
-	add_definitions( /wd4018 /wd4146 /wd4800 )
-
-	# for zlib
-	add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
-	add_definitions(-D_CRT_NONSTDC_NO_DEPRECATE)
-
-	# unsigned to signed conversions
-	add_definitions( /wd4267 )
-	# double <> single precision
-	add_definitions( /wd4244 /wd4305 )
-	# disable warnings for unsecure functions
-	add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )
-
-	# enable when using Qt creator:
-	#add_definitions(/FS)
-ENDIF()
-
 SET(EXECCMD manta)
 
 SET(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${F_LINKADD} ")
@@ -602,8 +573,45 @@ IF(NOT NOPYTHON)
 
 ELSE()
 	# only build static library in nopython mode
-	ADD_LIBRARY (core OBJECT ${SOURCES})
+	ADD_LIBRARY (core OBJECT ${SOURCES} ${GITINFO})
 	ADD_LIBRARY (${EXECCMD} STATIC $<TARGET_OBJECTS:core>)
+ENDIF()
+
+# compiler flags
+
+IF(NOT WIN32)
+	IF(DEBUG)
+		# stricter: no optimizations and inlining, comment out if needed...
+		#add_definitions( -O0 -fno-inline -Wall )
+		set_target_properties(manta PROPERTIES COMPILE_FLAGS "-O0 -fno-inline  -Wall ")
+	ELSE()
+		# non-debug, optimized version
+		#add_definitions( -O3 -Wall )
+		set_target_properties(manta PROPERTIES COMPILE_FLAGS "-O3 -Wall ")
+	ENDIF()
+	# c++11 required for all c++ sources
+	set_source_files_properties(${PP_SOURCES} PROPERTIES COMPILE_FLAGS "  -std=c++11  " )
+	#add_definitions( -std=c++11  )
+	#set_target_properties(manta PROPERTIES COMPILE_FLAGS "-std=c++11")
+ENDIF()
+
+IF(WIN32)
+	# get rid of some MSVC warnings
+	add_definitions( /wd4018 /wd4146 /wd4800 )
+
+	# for zlib
+	add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
+	add_definitions(-D_CRT_NONSTDC_NO_DEPRECATE)
+
+	# unsigned to signed conversions
+	add_definitions( /wd4267 )
+	# double <> single precision
+	add_definitions( /wd4244 /wd4305 )
+	# disable warnings for unsecure functions
+	add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )
+
+	# enable when using Qt creator:
+	#add_definitions(/FS)
 ENDIF()
 
 # debug summary
