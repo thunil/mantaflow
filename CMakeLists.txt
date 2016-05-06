@@ -25,8 +25,8 @@ SET(MANTAVERSION "0.9")
 # - allow override from command line on OsX, eg use "cmake ..  -DCMAKE_PREFIX_PATH=/Users/someone/qt5.2.1/5.2.1/clang_64/
 
 IF(WIN32)
-	SET(WIN_QT_PATH "C:/Qt/5.5/msvc2013_64_opengl") # qt5/win64
-	SET(WIN_PYTHON_PATH "C:/Python34")
+	SET(WIN_QT_PATH        "C:/Qt/5.5/msvc2013_64_opengl") # qt5/win64
+	SET(WIN_PYTHON_PATH    "C:/Python34")
 	SET(WIN_PYTHON_VERSION "34")
 	SET(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
 	SET(CMAKE_PREFIX_PATH ${WIN_QT_PATH})
@@ -439,6 +439,7 @@ set(HEADERS ${NOPP_HEADERS})
 set(PP_REGCPP)
 set(PP_REGS)
 set(PP_PREPD "0")
+set(PREPPED_SOURCES)
 if (PREPDEBUG)
 	set(PP_PREPD "1")
 endif()
@@ -467,8 +468,9 @@ FOREACH(it ${PP_SOURCES} ${PP_HEADERS})
 					WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 	set_source_files_properties(${OUTFILES} PROPERTIES GENERATED 1)
-	list(APPEND SOURCES ${CURPP})
+	list(APPEND PREPPED_SOURCES ${CURPP})
 ENDFOREACH(it)
+list(APPEND SOURCES ${PREPPED_SOURCES})
 
 # link reg files , for python glue code
 IF(NOT NOPYTHON)
@@ -589,10 +591,8 @@ IF(NOT WIN32)
 		#add_definitions( -O3 -Wall )
 		set_target_properties(manta PROPERTIES COMPILE_FLAGS "-O3 -Wall ")
 	ENDIF()
-	# c++11 required for all c++ sources
-	set_source_files_properties(${PP_SOURCES} PROPERTIES COMPILE_FLAGS "  -std=c++11  " )
-	#add_definitions( -std=c++11  )
-	#set_target_properties(manta PROPERTIES COMPILE_FLAGS "-std=c++11")
+	# use c++11 for all pre-processed c++ sources
+	set_source_files_properties(${PREPPED_SOURCES} PROPERTIES COMPILE_FLAGS "  -std=c++11  " )
 ENDIF()
 
 IF(WIN32)
