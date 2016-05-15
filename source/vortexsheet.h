@@ -8,6 +8,7 @@
  * http://www.gnu.org/licenses
  *
  * Vortex sheets
+ * (warning, the vortex methods are currently experimental, and not fully supported!)
  *
  ******************************************************************************/
 

@@ -135,6 +135,7 @@ SET(PP_SOURCES
 	source/fluidsolver.cpp
 	source/conjugategrad.cpp
 	source/grid.cpp
+	source/grid4d.cpp
 	source/levelset.cpp
 	source/fastmarch.cpp
 	source/shapes.cpp
@@ -160,7 +161,6 @@ SET(PP_SOURCES
 	source/plugin/vortexplugins.cpp
 	source/plugin/waveletturbulence.cpp
 	source/plugin/waves.cpp
-	source/util/grid4d.cpp
 	source/python/defines.py
 	source/test.cpp
 )
@@ -172,6 +172,7 @@ SET(PP_HEADERS
 	source/fastmarch.h
 	source/fluidsolver.h
 	source/grid.h
+	source/grid4d.h
 	source/mesh.h
 	source/particle.h
 	source/levelset.h
@@ -185,7 +186,6 @@ SET(PP_HEADERS
 	source/edgecollapse.h
 	source/vortexpart.h
 	source/turbulencepart.h
-	source/util/grid4d.h
 )
 
 # no pre-processing needed
