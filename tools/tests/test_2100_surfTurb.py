@@ -109,7 +109,7 @@ while s.frame<30:
 	flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97 )
 		
 	# approx 1,000 coarse particles and 2,000 surface points (for 'breaking dam' setup)
-	particleSurfaceTurbulence( coarseParts=pp, coarsePartsPrevPos=pPrevPos, surfPoints=surfacePoints, surfaceNormals=surfaceNormal, surfaceWaveH=surfaceWaveH, surfaceWaveDtH=surfaceWaveDtH, surfacePointsDisplaced=surfacePointsDisplaced, surfaceWaveSource=surfaceWaveSource, surfaceWaveSeed=surfaceWaveSeed, surfaceWaveSeedAmplitude=surfaceWaveSeedAmplitude, res=res,
+	particleSurfaceTurbulence( flags=flags, coarseParts=pp, coarsePartsPrevPos=pPrevPos, surfPoints=surfacePoints, surfaceNormals=surfaceNormal, surfaceWaveH=surfaceWaveH, surfaceWaveDtH=surfaceWaveDtH, surfacePointsDisplaced=surfacePointsDisplaced, surfaceWaveSource=surfaceWaveSource, surfaceWaveSeed=surfaceWaveSeed, surfaceWaveSeedAmplitude=surfaceWaveSeedAmplitude, res=res,
 		nbSurfaceMaintenanceIterations = 4,
 		surfaceDensity = 15,
 		dt = 0.005,

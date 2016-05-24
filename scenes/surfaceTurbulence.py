@@ -121,20 +121,20 @@ for t in range(500):
 	flipVelocityUpdate(vel=vel, velOld=velOld, flags=flags, parts=pp, partVel=pVel, flipRatio=0.97 )
 			
 	particleSurfaceTurbulence( flags=flags, coarseParts=pp, coarsePartsPrevPos=pPrevPos, surfPoints=surfacePoints, surfaceNormals=surfaceNormal, surfaceWaveH=surfaceWaveH, surfaceWaveDtH=surfaceWaveDtH,surfacePointsDisplaced=surfacePointsDisplaced, surfaceWaveSource=surfaceWaveSource, surfaceWaveSeed=surfaceWaveSeed, surfaceWaveSeedAmplitude=surfaceWaveSeedAmplitude, res=res,
-	nbSurfaceMaintenanceIterations = 6,
-	surfaceDensity = 12,
-	outerRadius = 1.0*radiusFactor,
-	dt = 0.005,
-	waveSpeed = 32, # res,
-	waveDamping = 0.05,
-	waveSeedFrequency = 4.0,# res/8.0,
-	waveMaxAmplitude = 0.5, # res/64.0
-	waveMaxSeedingAmplitude = 0.5, # as a multiple of max amplitude
-	waveMaxFrequency = 128.0,
-	waveSeedingCurvatureThresholdRegionCenter = 0.025, # any curvature higher than this value will seed waves
-	waveSeedingCurvatureThresholdRegionRadius = 0.01,
-	waveSeedStepSizeRatioOfMax = 0.05 # higher values will result in faster and more violent wave seeding
-	)
+		nbSurfaceMaintenanceIterations = 6,
+		surfaceDensity = 12,
+		outerRadius = 1.0*radiusFactor,
+		dt = 0.005,
+		waveSpeed = 32, # res,
+		waveDamping = 0.05,
+		waveSeedFrequency = 4.0,# res/8.0,
+		waveMaxAmplitude = 0.5, # res/64.0
+		waveMaxSeedingAmplitude = 0.5, # as a multiple of max amplitude
+		waveMaxFrequency = 128.0,
+		waveSeedingCurvatureThresholdRegionCenter = 0.025, # any curvature higher than this value will seed waves
+		waveSeedingCurvatureThresholdRegionRadius = 0.01,
+		waveSeedStepSizeRatioOfMax = 0.05 # higher values will result in faster and more violent wave seeding
+		)
 	
 	
 	
