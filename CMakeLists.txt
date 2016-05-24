@@ -158,6 +158,7 @@ SET(PP_SOURCES
 	source/plugin/initplugins.cpp
 	source/plugin/meshplugins.cpp
 	source/plugin/pressure.cpp
+	source/plugin/surfaceturbulence.cpp
 	source/plugin/vortexplugins.cpp
 	source/plugin/waveletturbulence.cpp
 	source/plugin/waves.cpp
