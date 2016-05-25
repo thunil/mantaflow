@@ -15,8 +15,21 @@
  *
  ******************************************************************************/
 
+// check whether chrono is available
+#ifdef __GNUC__
+#if __GNUC__<5
+#define USE_CHRONO 0
+#endif
+#endif 
+
+#ifndef USE_CHRONO
+#define USE_CHRONO 1
+#endif
+
 #include <iomanip>
+#if USE_CHRONO==1
 #include <chrono>
+#endif
 #include "particle.h"
 
 using namespace std;
@@ -31,25 +44,25 @@ namespace SurfaceTurbulence {
 //
 struct SurfaceTurbulenceParameters {
     int res;
-    float outerRadius;
+    Real outerRadius;
     int surfaceDensity;
     int nbSurfaceMaintenanceIterations;
-    float dt;
-    float waveSpeed;
-    float waveDamping;
-    float waveSeedFrequency;
-    float waveMaxAmplitude;
-    float waveMaxFrequency;
-    float waveMaxSeedingAmplitude; // as ratio of max amp;
-    float waveSeedingCurvatureThresholdRegionCenter;
-    float waveSeedingCurvatureThresholdRegionRadius;
-    float waveSeedStepSizeRatioOfMax;
-    float innerRadius;
-    float meanFineDistance;
-    float constraintA;
-    float normalRadius;
-    float tangentRadius;
-    float bndXm, bndXp, bndYm, bndYp, bndZm, bndZp;
+    Real dt;
+    Real waveSpeed;
+    Real waveDamping;
+    Real waveSeedFrequency;
+    Real waveMaxAmplitude;
+    Real waveMaxFrequency;
+    Real waveMaxSeedingAmplitude; // as ratio of max amp;
+    Real waveSeedingCurvatureThresholdRegionCenter;
+    Real waveSeedingCurvatureThresholdRegionRadius;
+    Real waveSeedStepSizeRatioOfMax;
+    Real innerRadius;
+    Real meanFineDistance;
+    Real constraintA;
+    Real normalRadius;
+    Real tangentRadius;
+    Real bndXm, bndXp, bndYm, bndYp, bndZm, bndZp;
 };
 SurfaceTurbulenceParameters params;
 
@@ -181,7 +194,7 @@ struct BasicParticleSystemWrapper : PointSetWrapper {
     void insertBufferedParticles() {points->insertBufferedParticles();}
     void kill(int id) {points->kill(id);}
 
-    bool hasNeighbor(Vec3 pos, float radius) {
+    bool hasNeighbor(Vec3 pos, Real radius) {
         bool answer = false;
         int minI = clamp<int>(floor((pos.x-radius)/params.res*accel->res), 0, accel->res-1);
         int maxI = clamp<int>(floor((pos.x+radius)/params.res*accel->res), 0, accel->res-1);
@@ -203,7 +216,7 @@ struct BasicParticleSystemWrapper : PointSetWrapper {
         return answer;
     }
 
-    bool hasNeighborOtherThanItself(int idx, float radius) {
+    bool hasNeighborOtherThanItself(int idx, Real radius) {
         bool answer = false;
         Vec3 pos = points->getPos(idx);
         int minI = clamp<int>(floor((pos.x-radius)/params.res*accel->res), 0, accel->res-1);
@@ -262,7 +275,7 @@ ParticleAccelGrid accelCoarse, accelSurface;
 BasicParticleSystemWrapper coarseParticles(&accelCoarse), surfacePoints(&accelSurface);
 ParticleDataImplVec3Wrapper coarseParticlesPrevPos(&accelCoarse); // WARNING: reusing the coarse accel grid to save space, don't query coarseParticlesPrevPos and coarseParticles at the same time.
 vector<Vec3> tempSurfaceVec3; // to store misc info on surface points
-vector<float> tempSurfaceFloat; // to store misc info on surface points
+vector<Real> tempSurfaceFloat; // to store misc info on surface points
 int frameCount = 0;
 
 
@@ -271,16 +284,16 @@ int frameCount = 0;
 //
 //**** weighting kernels *****
 //
-float triangularWeight(float distance, float radius) {
+Real triangularWeight(Real distance, Real radius) {
     return 1.0f - distance/radius;
 }
-float exponentialWeight(float distance, float radius, float falloff) {
+Real exponentialWeight(Real distance, Real radius, Real falloff) {
     if(distance > radius) return 0;
-    float tmp = distance/radius;
+    Real tmp = distance/radius;
     return expf(-falloff*tmp*tmp);
 }
 
-float weightKernelAdvection(float distance) {
+Real weightKernelAdvection(Real distance) {
     if(distance > 2.f*params.outerRadius) {
         return 0;
     } else {
@@ -288,11 +301,11 @@ float weightKernelAdvection(float distance) {
     }
 }
 
-float weightKernelCoarseDensity(float distance) {
+Real weightKernelCoarseDensity(Real distance) {
     return exponentialWeight(distance, params.outerRadius, 2.0f);
 }
 
-float weightSurfaceNormal(float distance) {
+Real weightSurfaceNormal(Real distance) {
     if(distance > params.normalRadius) {
         return 0;
     } else {
@@ -300,7 +313,7 @@ float weightSurfaceNormal(float distance) {
     }
 }
 
-float weightSurfaceTangent(float distance) {
+Real weightSurfaceTangent(Real distance) {
     if(distance > params.tangentRadius) {
         return 0;
     } else {
@@ -320,8 +333,8 @@ bool isInDomain(Vec3 pos)
            params.bndZm <= pos.z && pos.z <= params.bndZp ;
 }
 
-float smoothstep( float edgeLeft, float edgeRight, float val ){
-    float x = clamp((val - edgeLeft)/(edgeRight - edgeLeft), 0.f, 1.f);
+Real smoothstep( Real edgeLeft, Real edgeRight, Real val ){
+    Real x = clamp((val - edgeLeft)/(edgeRight - edgeLeft), Real(0.), Real(1.) );
     return x*x*(3 - 2*x);
 }
 
@@ -336,8 +349,8 @@ void initFines(
     FlagGrid& flags
 ){
     unsigned int discretization = (unsigned int) M_PI*(params.outerRadius+params.innerRadius)/params.meanFineDistance;
-    float dtheta = 2*params.meanFineDistance/(params.outerRadius+params.innerRadius);
-    float outerRadius2 = params.outerRadius*params.outerRadius;
+    Real dtheta = 2*params.meanFineDistance/(params.outerRadius+params.innerRadius);
+    Real outerRadius2 = params.outerRadius*params.outerRadius;
 
     surfacePoints.clear();
     for (int idx=0; idx<(int)coarseParticles.size(); idx++) {
@@ -360,9 +373,9 @@ void initFines(
 
             if(nearSurface) {
                 for(unsigned int i = 0; i <= discretization/2; ++i){
-                    float discretization2 = float(floor(2*M_PI*sin(i*dtheta)/dtheta)+1);
-                    for(float phi = 0; phi < 2*M_PI; phi += float(2*M_PI/discretization2)){
-                        float theta = i*dtheta;
+                    Real discretization2 = Real(floor(2*M_PI*sin(i*dtheta)/dtheta)+1);
+                    for(Real phi = 0; phi < 2*M_PI; phi += Real(2*M_PI/discretization2)){
+                        Real theta = i*dtheta;
                         Vec3 normal(sin(theta)*cos(phi), cos(theta), sin(theta)*sin(phi));
                         Vec3 position = coarseParticles.getPos(idx) + params.outerRadius*normal;
     
@@ -397,15 +410,15 @@ void advectSurfacePoints(
 {
     if(surfacePoints.isActive(idx)) {
         Vec3 avgDisplacement(0,0,0);
-        float totalWeight = 0;
+        Real totalWeight = 0;
         Vec3 p = surfacePoints.getPos(idx);
         LOOP_NEIGHBORS_BEGIN(coarseParticlesPrevPos, surfacePoints.getPos(idx), 2.0f*params.outerRadius)
             if((coarseParticles.getStatus(idn) & ParticleBase::PNEW)==0 &&
                (coarseParticles.getStatus(idn) & ParticleBase::PDELETE)==0)
             {
                 Vec3 disp = coarseParticles.getPos(idn) - coarseParticlesPrevPos.getVec3(idn);
-                float distance = norm(coarseParticlesPrevPos.getVec3(idn) - p);
-                float w = weightKernelAdvection(distance);
+                Real distance = norm(coarseParticlesPrevPos.getVec3(idn) - p);
+                Real w = weightKernelAdvection(distance);
                 avgDisplacement += w * disp;
                 totalWeight += w;
             }
@@ -419,11 +432,11 @@ void advectSurfacePoints(
 //
 // **** value and gradient of level-set band constraint ****
 //
-float computeConstraintLevel(
+Real computeConstraintLevel(
         BasicParticleSystemWrapper& coarseParticles,
         Vec3 pos
 ){
-    float lvl = 0.0f;
+    Real lvl = 0.0f;
     LOOP_NEIGHBORS_BEGIN(coarseParticles, pos, 1.5f*params.outerRadius)
         lvl += expf(-params.constraintA*normSquare(coarseParticles.getPos(idn) - pos));
     LOOP_NEIGHBORS_END
@@ -438,7 +451,7 @@ Vec3 computeConstraintGradient(
 ){
     Vec3 gradient(0,0,0);
     LOOP_NEIGHBORS_BEGIN(coarseParticles, pos, 1.5f*params.outerRadius)
-        gradient += 2.f*params.constraintA*(float)(expf(-params.constraintA*normSquare(coarseParticles.getPos(idn) - pos)))*(pos - coarseParticles.getPos(idn));
+        gradient += 2.f*params.constraintA*(Real)(expf(-params.constraintA*normSquare(coarseParticles.getPos(idn) - pos)))*(pos - coarseParticles.getPos(idn));
     LOOP_NEIGHBORS_END
     return getNormalized(gradient);
 }
@@ -463,19 +476,19 @@ void computeSurfaceNormals(
         Vec3 n = getNormalized(gradient);
         Vec3 vx(1,0,0);
         Vec3 vy(0,1,0);
-        float dotX = dot(n, vx);
-        float dotY = dot(n, vy);
+        Real dotX = dot(n, vx);
+        Real dotY = dot(n, vy);
         Vec3 t1 = getNormalized(fabs(dotX)<fabs(dotY) ? cross(n, vx) : cross(n, vy));
         Vec3 t2 = getNormalized( cross(n,t1) ); // initial frame
 
         // linear fit of neighboring surface points in approximated tangent frame
-        float sw = 0, swx = 0, swy = 0, swxy = 0, swx2 = 0, swy2 = 0, swxz = 0, swyz = 0, swz = 0;
+        Real sw = 0, swx = 0, swy = 0, swxy = 0, swx2 = 0, swy2 = 0, swxz = 0, swyz = 0, swz = 0;
         LOOP_NEIGHBORS_BEGIN(surfacePoints, pos, params.normalRadius)
             LOOP_GHOSTS_POS_BEGIN(surfacePoints.getPos(idn), params.normalRadius)
-                 float x = dot(gPos - pos, t1);
-                 float y = dot(gPos - pos, t2);
-                 float z = dot(gPos - pos, n);
-                 float w = weightSurfaceNormal(norm(pos - gPos));
+                 Real x = dot(gPos - pos, t1);
+                 Real y = dot(gPos - pos, t2);
+                 Real z = dot(gPos - pos, n);
+                 Real w = weightSurfaceNormal(norm(pos - gPos));
                  swx2 += w*x*x;
                  swy2 += w*y*y;
                  swxy += w*x*y;
@@ -487,7 +500,7 @@ void computeSurfaceNormals(
                  sw   += w;                             
             LOOP_GHOSTS_END
         LOOP_NEIGHBORS_END
-        float det = -sw*swxy*swxy + 2.f*swx*swxy*swy - swx2*swy*swy - swx*swx*swy2 + sw*swx2*swy2;
+        Real det = -sw*swxy*swxy + 2.f*swx*swxy*swy - swx2*swy*swy - swx*swx*swy2 + sw*swx2*swy2;
         if(det == 0) {surfaceNormals[idx]=Vec3(0,0,0);}
         else {
             Vec3 abc = 1.f/det*Vec3(
@@ -514,7 +527,7 @@ void computeAveragedNormals(
     Vec3 pos = surfacePoints.getPos(idx);
     Vec3 newNormal = Vec3(0,0,0);
     LOOP_NEIGHBORS_BEGIN(surfacePoints, pos, params.normalRadius)
-        float w = weightSurfaceNormal(norm(pos - surfacePoints.getPos(idn)));
+        Real w = weightSurfaceNormal(norm(pos - surfacePoints.getPos(idn)));
         newNormal += w * surfaceNormals[idn];
     LOOP_NEIGHBORS_END
     tempSurfaceVec3[idx] = getNormalized(newNormal);
@@ -554,19 +567,19 @@ void addDeleteSurfacePoints(
 
         Vec3 gradient = computeConstraintGradient(coarseParticles, pos);
 
-        float wt = 0;
+        Real wt = 0;
         Vec3 tangentDisplacement(0,0,0);
         LOOP_NEIGHBORS_BEGIN(surfacePoints, pos, params.tangentRadius)
             if(idn != idx) {
                 Vec3 dir = pos - surfacePoints.getPos(idn);
-                float length = norm(dir);
+                Real length = norm(dir);
                 dir = getNormalized(dir);
     
                 // Decompose direction into normal and tangent directions.
                 Vec3 dn = dot(dir, gradient)*gradient;
                 Vec3 dt = dir - dn;
     
-                float w = weightSurfaceTangent(length);
+                Real w = weightSurfaceTangent(length);
                 wt += w;
                 tangentDisplacement += w * dt;
             }
@@ -613,7 +626,7 @@ void addDeleteSurfacePoints(
     // delete surface point if too far from constraint
     fixedSize = surfacePoints.size();
     for (int idx=0; idx<fixedSize; idx++) {
-        float level = computeConstraintLevel(coarseParticles, surfacePoints.getPos(idx));
+        Real level = computeConstraintLevel(coarseParticles, surfacePoints.getPos(idx));
         if(level < -0.2 || level > 1.2) {
             surfacePoints.kill(idx);
         }
@@ -635,7 +648,7 @@ void computeSurfaceDensities(
         void* dummy
 ) {
     Vec3 pos = surfacePoints.getPos(idx);
-    float density = 0;
+    Real density = 0;
     LOOP_NEIGHBORS_BEGIN(surfacePoints, pos, params.normalRadius)
         LOOP_GHOSTS_POS_BEGIN(surfacePoints.getPos(idn), params.normalRadius)
             density += weightSurfaceNormal(norm(pos-gPos));
@@ -654,16 +667,16 @@ void computeSurfaceDisplacements(
     
     Vec3 displacementNormal(0,0,0);
     Vec3 displacementTangent(0,0,0);
-    float wTotal = 0;
+    Real wTotal = 0;
     LOOP_NEIGHBORS_BEGIN(surfacePoints, pos, params.normalRadius)
             
         LOOP_GHOSTS_POS_NORMAL_BEGIN(surfacePoints.getPos(idn), surfaceNormals[idn], params.normalRadius)
             Vec3 dir = pos - gPos;
-            float length = norm(dir);            
+            Real length = norm(dir);            
             Vec3 dn = dot(dir,surfaceNormals[idx])*surfaceNormals[idx];
             Vec3 dt = dir - dn;
             if(tempSurfaceFloat[idn]==0) {continue;}
-            float w = weightSurfaceNormal( length ) / tempSurfaceFloat[idn];
+            Real w = weightSurfaceNormal( length ) / tempSurfaceFloat[idn];
             
             Vec3 crossVec = getNormalized(cross(normal, -dir));
             Vec3 projectedNormal = getNormalized(gNormal - dot(crossVec,gNormal)*crossVec);
@@ -713,7 +726,7 @@ void constrainSurface(
         BasicParticleSystemWrapper& coarseParticles        
 ) {
         Vec3 pos = surfacePoints.getPos(idx);
-        float level = computeConstraintLevel(coarseParticles, surfacePoints.getPos(idx));
+        Real level = computeConstraintLevel(coarseParticles, surfacePoints.getPos(idx));
         if(level > 1) {
             surfacePoints.setPos(idx, pos - (params.outerRadius-params.innerRadius)*(level-1)*computeConstraintGradient(coarseParticles, surfacePoints.getPos(idx)));
         }else if(level < 0) {
@@ -725,19 +738,19 @@ void constrainSurface(
 KERNEL(pts)
 void interpolateNewWaveData(
         BasicParticleSystemWrapper& surfacePoints,
-        ParticleDataImpl<float>& surfaceWaveH,
-        ParticleDataImpl<float>& surfaceWaveDtH,
-        ParticleDataImpl<float>& surfaceWaveSeed,
-        ParticleDataImpl<float>& surfaceWaveSeedAmplitude
+        ParticleDataImpl<Real>& surfaceWaveH,
+        ParticleDataImpl<Real>& surfaceWaveDtH,
+        ParticleDataImpl<Real>& surfaceWaveSeed,
+        ParticleDataImpl<Real>& surfaceWaveSeedAmplitude
 ){
     if(surfacePoints.getStatus(idx) & ParticleBase::PNEW) {
         Vec3 pos = surfacePoints.getPos(idx);
         surfaceWaveH[idx] = 0;
         surfaceWaveDtH[idx] = 0;
-        float wTotal = 0;
+        Real wTotal = 0;
         LOOP_NEIGHBORS_BEGIN(surfacePoints, pos, params.tangentRadius)
             if(!(surfacePoints.getStatus(idn) & ParticleBase::PNEW)) {
-                float w = weightSurfaceTangent(norm( pos - surfacePoints.getPos(idn) ));
+                Real w = weightSurfaceTangent(norm( pos - surfacePoints.getPos(idn) ));
                 surfaceWaveH[idx] += w * surfaceWaveH[idn];
                 surfaceWaveDtH[idx] += w * surfaceWaveDtH[idn];
                 surfaceWaveSeed[idx] += w * surfaceWaveSeed[idn];
@@ -759,10 +772,10 @@ void surfaceMaintenance(
         BasicParticleSystemWrapper& coarseParticles,
         BasicParticleSystemWrapper& surfacePoints,
         ParticleDataImpl<Vec3>& surfaceNormals,
-        ParticleDataImpl<float>& surfaceWaveH,
-        ParticleDataImpl<float>& surfaceWaveDtH,
-        ParticleDataImpl<float>& surfaceWaveSeed,
-        ParticleDataImpl<float>& surfaceWaveSeedAmplitude,
+        ParticleDataImpl<Real>& surfaceWaveH,
+        ParticleDataImpl<Real>& surfaceWaveDtH,
+        ParticleDataImpl<Real>& surfaceWaveSeed,
+        ParticleDataImpl<Real>& surfaceWaveSeedAmplitude,
         int nbIterations
 ){
     int countIterations = nbIterations;
@@ -794,8 +807,8 @@ void surfaceMaintenance(
 KERNEL(pts)
 void addSeed(
         BasicParticleSystemWrapper& surfacePoints,
-        ParticleDataImpl<float>& surfaceWaveH,
-        ParticleDataImpl<float>& surfaceWaveSeed
+        ParticleDataImpl<Real>& surfaceWaveH,
+        ParticleDataImpl<Real>& surfaceWaveSeed
 ){
     surfaceWaveH[idx] += surfaceWaveSeed[idx];
 }
@@ -805,7 +818,7 @@ KERNEL(pts)
 void computeSurfaceWaveNormal(
         BasicParticleSystemWrapper& surfacePoints,
         ParticleDataImpl<Vec3>& surfaceNormals,
-        ParticleDataImpl<float>& surfaceWaveH
+        ParticleDataImpl<Real>& surfaceWaveH
 ){
     Vec3 pos = surfacePoints.getPos(idx);
 
@@ -813,19 +826,19 @@ void computeSurfaceWaveNormal(
     Vec3 n = getNormalized(surfaceNormals[idx]);
     Vec3 vx(1,0,0);
     Vec3 vy(0,1,0);
-    float dotX = dot(n, vx);
-    float dotY = dot(n, vy);
+    Real dotX = dot(n, vx);
+    Real dotY = dot(n, vy);
     Vec3 t1 = getNormalized(fabs(dotX)<fabs(dotY) ? cross(n, vx) : cross(n, vy));
     Vec3 t2 = getNormalized( cross(n,t1) );
 
     // linear fit
-    float sw = 0, swx = 0, swy = 0, swxy = 0, swx2 = 0, swy2 = 0, swxz = 0, swyz = 0, swz = 0;
+    Real sw = 0, swx = 0, swy = 0, swxy = 0, swx2 = 0, swy2 = 0, swxz = 0, swyz = 0, swz = 0;
     LOOP_NEIGHBORS_BEGIN(surfacePoints, pos, params.tangentRadius)
         LOOP_GHOSTS_POS_BEGIN(surfacePoints.getPos(idn), params.tangentRadius)
-            float x = dot(gPos - pos, t1);
-            float y = dot(gPos - pos, t2);
-            float z = surfaceWaveH[idn];
-            float w = weightSurfaceTangent(norm(pos - gPos));
+            Real x = dot(gPos - pos, t1);
+            Real y = dot(gPos - pos, t2);
+            Real z = surfaceWaveH[idn];
+            Real w = weightSurfaceTangent(norm(pos - gPos));
             swx2 += w*x*x;
             swy2 += w*y*y;
             swxy += w*x*y;
@@ -837,7 +850,7 @@ void computeSurfaceWaveNormal(
             sw   += w;
         LOOP_GHOSTS_END
     LOOP_NEIGHBORS_END
-    float det = -sw*swxy*swxy + 2.f*swx*swxy*swy - swx2*swy*swy - swx*swx*swy2 + sw*swx2*swy2;
+    Real det = -sw*swxy*swxy + 2.f*swx*swxy*swy - swx2*swy*swy - swx*swx*swy2 + sw*swx2*swy2;
     if(det == 0) {tempSurfaceVec3[idx]=Vec3(0,0,0);}
     else {
         Vec3 abc = 1.f/det*Vec3(
@@ -854,38 +867,38 @@ KERNEL(pts)
 void computeSurfaceWaveLaplacians(
         BasicParticleSystemWrapper& surfacePoints,
         ParticleDataImpl<Vec3>& surfaceNormals,
-        ParticleDataImpl<float>& surfaceWaveH
+        ParticleDataImpl<Real>& surfaceWaveH
 ){
-    float laplacian = 0;
-    float wTotal = 0;
+    Real laplacian = 0;
+    Real wTotal = 0;
     Vec3 pPos = surfacePoints.getPos(idx);
     Vec3 pNormal = surfaceNormals[idx];
 
     Vec3 vx(1,0,0);
     Vec3 vy(0,1,0);
-    float dotX = dot(pNormal, vx);
-    float dotY = dot(pNormal, vy);
+    Real dotX = dot(pNormal, vx);
+    Real dotY = dot(pNormal, vy);
     Vec3 t1 = getNormalized(fabs(dotX)<fabs(dotY) ? cross(pNormal, vx) : cross(pNormal, vy));
     Vec3 t2 = getNormalized( cross(pNormal,t1) );
 
     Vec3 pWaveNormal = tempSurfaceVec3[idx];
-    float ph = surfaceWaveH[idx];
+    Real ph = surfaceWaveH[idx];
     if(pWaveNormal.z == 0) {tempSurfaceFloat[idx]=0;}
     else {
 
         LOOP_NEIGHBORS_BEGIN(surfacePoints, pPos, params.tangentRadius)
-            float nh = surfaceWaveH[idn];
+            Real nh = surfaceWaveH[idn];
             LOOP_GHOSTS_POS_BEGIN(surfacePoints.getPos(idn), params.tangentRadius)
                 Vec3 dir = gPos - pPos;
-                float lengthDir = norm(dir);
+                Real lengthDir = norm(dir);
                 if(lengthDir < 1e-5) continue;
                 Vec3 tangentDir = lengthDir*getNormalized(dir - dot(dir, pNormal)*pNormal);
-                float dirX = dot(tangentDir, t1);
-                float dirY = dot(tangentDir, t2);
-                float dz = nh - ph - (-pWaveNormal.x/pWaveNormal.z)*dirX - (-pWaveNormal.y/pWaveNormal.z)*dirY;
-                float w = weightSurfaceTangent(norm(pPos - gPos));
+                Real dirX = dot(tangentDir, t1);
+                Real dirY = dot(tangentDir, t2);
+                Real dz = nh - ph - (-pWaveNormal.x/pWaveNormal.z)*dirX - (-pWaveNormal.y/pWaveNormal.z)*dirY;
+                Real w = weightSurfaceTangent(norm(pPos - gPos));
                 wTotal += w;
-                laplacian += clamp(w * 4*dz/(lengthDir*lengthDir), -100.f, 100.f);
+                laplacian += clamp(w * 4*dz/(lengthDir*lengthDir), Real(-100.), Real(100.) );
             LOOP_GHOSTS_END
         LOOP_NEIGHBORS_END
         if(wTotal != 0) {tempSurfaceFloat[idx] = laplacian/wTotal;}
@@ -897,9 +910,9 @@ void computeSurfaceWaveLaplacians(
 KERNEL(pts)
 void evolveWave(
         BasicParticleSystemWrapper& surfacePoints,
-        ParticleDataImpl<float>& surfaceWaveH,
-        ParticleDataImpl<float>& surfaceWaveDtH,
-        ParticleDataImpl<float>& surfaceWaveSeed
+        ParticleDataImpl<Real>& surfaceWaveH,
+        ParticleDataImpl<Real>& surfaceWaveDtH,
+        ParticleDataImpl<Real>& surfaceWaveSeed
 ){
     surfaceWaveDtH[idx] += params.waveSpeed*params.waveSpeed * params.dt * tempSurfaceFloat[idx];
     surfaceWaveDtH[idx] /= (1 + params.dt * params.waveDamping);
@@ -919,20 +932,20 @@ void computeSurfaceCurvature(
         ParticleDataImpl<Vec3>& surfaceNormals
 ){
     Vec3 pPos = surfacePoints.getPos(idx);
-    float wTotal = 0;
-    float curv = 0;
+    Real wTotal = 0;
+    Real curv = 0;
     Vec3 pNormal = surfaceNormals[idx];
 
     LOOP_NEIGHBORS_BEGIN(surfacePoints, pPos, params.normalRadius)
         LOOP_GHOSTS_POS_NORMAL_BEGIN(surfacePoints.getPos(idn), surfaceNormals[idn], params.normalRadius)    
             Vec3 dir = pPos - gPos;
             if(dot(pNormal, gNormal) < 0) {continue;} // backfacing
-            float dist = norm(dir);
+            Real dist = norm(dir);
             if(dist < params.normalRadius/100.f){ continue; }
 
-            float distn = dot(dir, pNormal);
+            Real distn = dot(dir, pNormal);
 
-            float w = weightSurfaceNormal(dist);
+            Real w = weightSurfaceNormal(dist);
             curv += w * distn;
             wTotal += w;
         LOOP_GHOSTS_END
@@ -945,14 +958,14 @@ void computeSurfaceCurvature(
 KERNEL(pts)
 void smoothCurvature(
         BasicParticleSystemWrapper& surfacePoints,
-        ParticleDataImpl<float>& surfaceWaveSource
+        ParticleDataImpl<Real>& surfaceWaveSource
 ){
     Vec3 pPos = surfacePoints.getPos(idx);
-    float curv = 0;
-    float wTotal = 0;
+    Real curv = 0;
+    Real wTotal = 0;
     
     LOOP_NEIGHBORS_BEGIN(surfacePoints, pPos, params.normalRadius)
-        float w = weightSurfaceNormal(norm( pPos - surfacePoints.getPos(idn) ));
+        Real w = weightSurfaceNormal(norm( pPos - surfacePoints.getPos(idn) ));
         curv += w * tempSurfaceFloat[idn];
         wTotal += w;                
     LOOP_NEIGHBORS_END
@@ -964,17 +977,17 @@ void smoothCurvature(
 KERNEL(pts)
 void seedWaves(
         BasicParticleSystemWrapper& surfacePoints,
-        ParticleDataImpl<float>& surfaceWaveSeed,
-        ParticleDataImpl<float>& surfaceWaveSeedAmplitude,
-        ParticleDataImpl<float>& surfaceWaveSource
+        ParticleDataImpl<Real>& surfaceWaveSeed,
+        ParticleDataImpl<Real>& surfaceWaveSeedAmplitude,
+        ParticleDataImpl<Real>& surfaceWaveSource
 ){
-    float source = smoothstep(params.waveSeedingCurvatureThresholdRegionCenter - params.waveSeedingCurvatureThresholdRegionRadius, params.waveSeedingCurvatureThresholdRegionCenter + params.waveSeedingCurvatureThresholdRegionRadius, (float) surfaceWaveSource[idx]) * 2.f - 1.f;
-    float freq = params.waveSeedFrequency;
-    float theta = params.dt * frameCount * params.waveSpeed * freq;
-    float costheta = cosf(theta);
-    float maxSeedAmplitude = params.waveMaxSeedingAmplitude * params.waveMaxAmplitude;
+    Real source = smoothstep(params.waveSeedingCurvatureThresholdRegionCenter - params.waveSeedingCurvatureThresholdRegionRadius, params.waveSeedingCurvatureThresholdRegionCenter + params.waveSeedingCurvatureThresholdRegionRadius, (Real) surfaceWaveSource[idx]) * 2.f - 1.f;
+    Real freq = params.waveSeedFrequency;
+    Real theta = params.dt * frameCount * params.waveSpeed * freq;
+    Real costheta = cosf(theta);
+    Real maxSeedAmplitude = params.waveMaxSeedingAmplitude * params.waveMaxAmplitude;
 
-    surfaceWaveSeedAmplitude[idx] = clamp<float>(surfaceWaveSeedAmplitude[idx]+source*params.waveSeedStepSizeRatioOfMax*maxSeedAmplitude, 0.f, maxSeedAmplitude);
+    surfaceWaveSeedAmplitude[idx] = clamp<Real>(surfaceWaveSeedAmplitude[idx]+source*params.waveSeedStepSizeRatioOfMax*maxSeedAmplitude, 0.f, maxSeedAmplitude);
     surfaceWaveSeed[idx] = surfaceWaveSeedAmplitude[idx] * costheta;
 
     // source values for display (not used after this point anyway)
@@ -986,11 +999,11 @@ void seedWaves(
 void surfaceWaves(
         BasicParticleSystemWrapper& surfacePoints,
         ParticleDataImpl<Vec3>& surfaceNormals,
-        ParticleDataImpl<float>& surfaceWaveH,
-        ParticleDataImpl<float>& surfaceWaveDtH,
-        ParticleDataImpl<float>& surfaceWaveSource,
-        ParticleDataImpl<float>& surfaceWaveSeed,
-        ParticleDataImpl<float>& surfaceWaveSeedAmplitude
+        ParticleDataImpl<Real>& surfaceWaveH,
+        ParticleDataImpl<Real>& surfaceWaveDtH,
+        ParticleDataImpl<Real>& surfaceWaveSource,
+        ParticleDataImpl<Real>& surfaceWaveSeed,
+        ParticleDataImpl<Real>& surfaceWaveSeedAmplitude
 ){
     addSeed(surfacePoints, surfaceWaveH, surfaceWaveSeed);
     computeSurfaceWaveNormal(surfacePoints, surfaceNormals, surfaceWaveH);
@@ -1015,34 +1028,35 @@ PYTHON() void particleSurfaceTurbulence(
     ParticleDataImpl<Vec3>& coarsePartsPrevPos,
     BasicParticleSystem& surfPoints,
     ParticleDataImpl<Vec3>& surfaceNormals,
-    ParticleDataImpl<float>& surfaceWaveH,
-    ParticleDataImpl<float>& surfaceWaveDtH,
+    ParticleDataImpl<Real>& surfaceWaveH,
+    ParticleDataImpl<Real>& surfaceWaveDtH,
     BasicParticleSystem& surfacePointsDisplaced,
-    ParticleDataImpl<float>& surfaceWaveSource,
-    ParticleDataImpl<float>& surfaceWaveSeed,
-    ParticleDataImpl<float>& surfaceWaveSeedAmplitude,
+    ParticleDataImpl<Real>& surfaceWaveSource,
+    ParticleDataImpl<Real>& surfaceWaveSeed,
+    ParticleDataImpl<Real>& surfaceWaveSeedAmplitude,
     // params with default values
     int res,
-    float outerRadius = 1.0f,
+    Real outerRadius = 1.0f,
     int surfaceDensity = 20,
     int nbSurfaceMaintenanceIterations = 4,
-    float dt = 0.005f,
-    float waveSpeed = 16.0f,
-    float waveDamping = 0.0f,
-    float waveSeedFrequency = 4,
-    float waveMaxAmplitude = 0.25f,
-    float waveMaxFrequency = 800,
-    float waveMaxSeedingAmplitude = 0.5, // as multiple of max amplitude
-    float waveSeedingCurvatureThresholdRegionCenter = 0.025f, // any curvature higher than this value will seed waves
-    float waveSeedingCurvatureThresholdRegionRadius = 0.01f,
-    float waveSeedStepSizeRatioOfMax = 0.05f // higher values will result in faster and more violent wave seeding
+    Real dt = 0.005f,
+    Real waveSpeed = 16.0f,
+    Real waveDamping = 0.0f,
+    Real waveSeedFrequency = 4,
+    Real waveMaxAmplitude = 0.25f,
+    Real waveMaxFrequency = 800,
+    Real waveMaxSeedingAmplitude = 0.5, // as multiple of max amplitude
+    Real waveSeedingCurvatureThresholdRegionCenter = 0.025f, // any curvature higher than this value will seed waves
+    Real waveSeedingCurvatureThresholdRegionRadius = 0.01f,
+    Real waveSeedStepSizeRatioOfMax = 0.05f // higher values will result in faster and more violent wave seeding
 )
 { 
-    static std::chrono::high_resolution_clock::time_point begin, end;
-
+#	if USE_CHRONO==1
+    static std::chrono::high_resolution_clock::time_point begin, end; 
     end = std::chrono::high_resolution_clock::now();
     cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1000000000.f << " : time sim" << endl;
     begin = std::chrono::high_resolution_clock::now();
+#	endif
     
     // wrap data
     coarseParticles.points = &coarseParts;
@@ -1134,10 +1148,11 @@ PYTHON() void particleSurfaceTurbulence(
         }
     }
     
+#	if USE_CHRONO==1
     end = std::chrono::high_resolution_clock::now();
-    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1000000000.f << " : time upres" << endl;
-    
+    cout << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/1000000000.f << " : time upres" << endl; 
     begin = std::chrono::high_resolution_clock::now();
+#	endif
 }
 
 
