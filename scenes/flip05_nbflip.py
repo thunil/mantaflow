@@ -72,7 +72,7 @@ phi.join( fluidDam.computeLevelset() )
 	
 flags.updateFromLevelset(phi)
 
-sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.4 )
+sampleLevelsetWithParticles( phi=phi, flags=flags, parts=pp, discretization=2, randomness=0.1 )
 mapGridToPartsVec3(source=vel, parts=pp, target=pVel )
 
 if 1 and (GUI):
