@@ -17,6 +17,16 @@
 #include "general.h"
 #include "timing.h"
 
+#ifdef GUI
+#   include <QMutex>
+#else
+struct QMutex {
+	void lock() {};
+	void unlock() {};
+	bool tryLock() {return true;};
+};
+#endif
+
 using namespace std;
 namespace Manta {
 
@@ -74,12 +84,14 @@ string PbType::str() const {
 vector<PbClass*> PbClass::mInstances;
 
 PbClass::PbClass(FluidSolver* parent, const string& name, PyObject* obj)
-	: mMutex(), mParent(parent), mPyObject(obj), mName(name), mHidden(false)
+	: mMutex(NULL), mParent(parent), mPyObject(obj), mName(name), mHidden(false)
 {
+	mMutex = new QMutex();
 }
 
-PbClass::PbClass(const PbClass& a) : mMutex(), mParent(a.mParent), mPyObject(0), mName("_unnamed"), mHidden(false)
+PbClass::PbClass(const PbClass& a) : mMutex(NULL), mParent(a.mParent), mPyObject(0), mName("_unnamed"), mHidden(false)
 {
+	mMutex = new QMutex();
 }
 	
 
@@ -90,16 +102,17 @@ PbClass::~PbClass() {
 			break;
 		}
 	}
+	delete mMutex;
 }
 	
 void PbClass::lock() {
-	mMutex.lock();
+	mMutex->lock();
 }
 void PbClass::unlock() {
-	mMutex.unlock();
+	mMutex->unlock();
 }
 bool PbClass::tryLock() {
-	return mMutex.tryLock();
+	return mMutex->tryLock();
 }
 	
 PbClass* PbClass::getInstance(int idx) {
