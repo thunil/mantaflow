@@ -33,20 +33,24 @@ using namespace std;
 
 namespace Manta {
 
-//! uni file header 
+static const int STR_LEN_GRID  = 252;
+static const int STR_LEN_PDATA = 256;
+
+//! uni file header, v4
 typedef struct {
 	int dimX, dimY, dimZ; // grid size
 	int gridType, elementType, bytesPerElement; // data type info
-	char info[256]; // mantaflow build information
+	char info[252]; // mantaflow build information
+	int dimT;       // optionally store forth dimension for 4d grids
 	unsigned long long timestamp; // creation time
 } UniHeader;
 
-//! in line with grid uni header
+//! pdata uni header, v3  (similar to grid header)
 typedef struct {
 	int dim; // number of partilces
 	int dimX, dimY, dimZ; // underlying solver resolution (all data in local coordinates!)
 	int elementType, bytesPerElement; // type id and byte size
-	char info[256]; // mantaflow build information
+	char info[STR_LEN_PDATA]; // mantaflow build information
 	unsigned long long timestamp; // creation time
 } UniPartHeader;
 
@@ -264,11 +268,12 @@ void writeObjFile(const string& name, Mesh* mesh) {
 
 //*****************************************************************************
 // conversion functions for double precision
+// (note - uni files always store single prec. values)
 //*****************************************************************************
 
 #if NO_ZLIB!=1
-template <class T>
-void gridConvertWrite(gzFile& gzf, Grid<T>& grid, void* ptr, UniHeader& head) {
+template <class GRIDT> 
+void gridConvertWrite(gzFile& gzf, GRIDT& grid, void* ptr, UniHeader& head) {
 	errMsg("unknown type, not yet supported");
 }
 
@@ -297,6 +302,48 @@ void gridConvertWrite(gzFile& gzf, Grid<Vector3D<double> >& grid, void* ptr, Uni
 	} 
 	gzwrite(gzf, ptr, sizeof(Vector3D<float>) *head.dimX*head.dimY*head.dimZ);
 }
+
+template <>
+void gridConvertWrite(gzFile& gzf, Grid4d<int>& grid, void* ptr, UniHeader& head) {
+	gzwrite(gzf, &head,    sizeof(UniHeader));
+	gzwrite(gzf, &grid[0], sizeof(int)*head.dimX*head.dimY*head.dimZ*head.dimT);
+}
+template <>
+void gridConvertWrite(gzFile& gzf, Grid4d<double>& grid, void* ptr, UniHeader& head) {
+	head.bytesPerElement = sizeof(float);
+	gzwrite(gzf, &head, sizeof(UniHeader));
+	float* ptrf = (float*)ptr;
+	IndexInt s = grid.getStrideT()*grid.getSizeT();
+	for(IndexInt i=0; i<grid.getStrideT()*grid.getSizeT(); ++i,++ptrf) {
+		*ptrf = (float)grid[i];
+	} 
+	gzwrite(gzf, ptr, sizeof(float)* s);
+} 
+template <>
+void gridConvertWrite(gzFile& gzf, Grid4d<Vector3D<double> >& grid, void* ptr, UniHeader& head) {
+	head.bytesPerElement = sizeof(Vector3D<float>);
+	gzwrite(gzf, &head, sizeof(UniHeader));
+	float* ptrf = (float*)ptr;
+	IndexInt s = grid.getStrideT()*grid.getSizeT();
+	for(IndexInt i=0; i<s; ++i) {
+		for(int c=0; c<3; ++c) { *ptrf = (float)grid[i][c]; ptrf++; }
+	} 
+	gzwrite(gzf, ptr, sizeof(Vector3D<float>) *s);
+}
+template <>
+void gridConvertWrite(gzFile& gzf, Grid4d<Vector4D<double> >& grid, void* ptr, UniHeader& head) {
+	head.bytesPerElement = sizeof(Vector3D<float>);
+	gzwrite(gzf, &head, sizeof(UniHeader));
+	float* ptrf = (float*)ptr;
+	IndexInt s = grid.getStrideT()*grid.getSizeT();
+	for(IndexInt i=0; i<s; ++i) {
+		for(int c=0; c<4; ++c) { *ptrf = (float)grid[i][c]; ptrf++; }
+	} 
+	gzwrite(gzf, ptr, sizeof(Vector4D<float>) *s);
+}
+
+// NT_DEBUG 
+//continue with read codes... (test with   MANTA_GEN_TEST_DATA=0 MANTA_FPACCURACY=2 ~/devel/manta/buildMasterDouble/manta t4dio.py )
 
 template <class T>
 void pdataConvertWrite( gzFile& gzf, ParticleDataImpl<T>& pdata, void* ptr, UniPartHeader& head) {
@@ -399,6 +446,12 @@ void pdataReadConvert<Vec3>(gzFile& gzf, ParticleDataImpl<Vec3>& pdata, void* pt
 	} 
 }
 
+template <class T>
+void gridConvertWrite4d(gzFile& gzf, Grid4d<T>& grid, void* ptr, UniHeader& head) {
+	errMsg("unknown type, not yet supported"); // NT_DEBUG remove?
+}
+
+
 // make sure compatible grid types dont lead to errors...
 static int unifyGridType(int type) {
 	// real <> levelset
@@ -471,6 +524,13 @@ typedef struct {
 	int gridType, elementType, bytesPerElement;
 } UniLegacyHeader2;
 
+typedef struct {
+	int dimX, dimY, dimZ;
+	int gridType, elementType, bytesPerElement;
+	char info[256];
+	unsigned long long timestamp;
+} UniLegacyHeader3;
+
 //! for test run debugging
 PYTHON() void printUniFileInfoString(const string& name) {
 #	if NO_ZLIB!=1
@@ -487,6 +547,7 @@ PYTHON() void printUniFileInfoString(const string& name) {
 		}
 		gzclose(gzf);
 	}
+// NT_DEBUG , todo use: getUniFileSize
 #	endif
 	debMsg("File '"<<name<<"', no valid info string found",1);
 }
@@ -499,19 +560,33 @@ void getUniFileSize(const string& name, int& x, int& y, int& z, int* t) {
 	if (gzf) { 
 		char ID[5]={0,0,0,0,0};
 		gzread(gzf, ID, 4); 
+
+		// v3
 		if ( (!strcmp(ID, "MNT2")) || (!strcmp(ID, "M4T2")) ) {
+			UniLegacyHeader3 head;
+			assertMsg (gzread(gzf, &head, sizeof(UniLegacyHeader3)) == sizeof(UniLegacyHeader3), "can't read file, no header present"); 
+			x = head.dimX;
+			y = head.dimY;
+			z = head.dimZ;
+
+			// optionally , read fourth dim
+			if ((!strcmp(ID, "M4T2")) && t) {
+				int dimT = 0;
+				gzread(gzf, &dimT, sizeof(int) );
+				(*t) = dimT;
+			}
+		}
+
+		// v4
+		if ( (!strcmp(ID, "MNT3")) || (!strcmp(ID, "M4T3")) ) {
 			UniHeader head;
 			assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no header present"); 
 			x = head.dimX;
 			y = head.dimY;
 			z = head.dimZ;
+			if(t) (*t) = head.dimT;
 		}
-		// optionally , read fourth dim
-		if ((!strcmp(ID, "M4T2")) && t) {
-			int dimT = 0;
-			gzread(gzf, &dimT, sizeof(int) );
-			(*t) = dimT;
-		}
+
 		gzclose(gzf);
 	}
 #	endif
@@ -530,14 +605,15 @@ void writeGridUni(const string& name, Grid<T>* grid) {
 	debMsg( "Writing grid " << grid->getName() << " to uni file " << name ,1);
 	
 #	if NO_ZLIB!=1
-	char ID[5] = "MNT2";
+	char ID[5] = "MNT3";
 	UniHeader head;
 	head.dimX = grid->getSizeX();
 	head.dimY = grid->getSizeY();
 	head.dimZ = grid->getSizeZ();
+	head.dimT = 0;
 	head.gridType = grid->getType();
 	head.bytesPerElement = sizeof(T);
-	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
+	snprintf( head.info, STR_LEN_GRID, "%s", buildInfoString().c_str() );	
 	MuTime stamp;
 	head.timestamp = stamp.time;
 	
@@ -605,6 +681,21 @@ void readGridUni(const string& name, Grid<T>* grid) {
 		gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
 	}
 	else if (!strcmp(ID, "MNT2")) {
+		// a bit ugly, almost identical to MNT3
+		UniLegacyHeader3 head;
+		assertMsg (gzread(gzf, &head, sizeof(UniLegacyHeader3)) == sizeof(UniLegacyHeader3), "can't read file, no header present");
+		assertMsg (head.dimX == grid->getSizeX() && head.dimY == grid->getSizeY() && head.dimZ == grid->getSizeZ(), "grid dim doesn't match, "<< Vec3(head.dimX,head.dimY,head.dimZ)<<" vs "<< grid->getSize() );
+		assertMsg ( unifyGridType(head.gridType)==unifyGridType(grid->getType()) , "grid type doesn't match "<< head.gridType<<" vs "<< grid->getType() );
+#		if FLOATINGPOINT_PRECISION!=1
+		Grid<T> temp(grid->getParent());
+		void*  ptr  = &(temp[0]);
+		gridReadConvert<T>(gzf, *grid, ptr, head.bytesPerElement);
+#		else
+		assertMsg (head.bytesPerElement == sizeof(T), "grid element size doesn't match "<< head.bytesPerElement <<" vs "<< sizeof(T) );
+		gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
+#		endif
+	} 
+	else if (!strcmp(ID, "MNT3")) {
 		// current file format
 		UniHeader head;
 		assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no header present");
@@ -719,14 +810,15 @@ void writeGrid4dUni(const string& name, Grid4d<T>* grid) {
 	debMsg( "writing grid4d " << grid->getName() << " to uni file " << name ,1);
 	
 #	if NO_ZLIB!=1
-	char ID[5] = "M4T2";
+	char ID[5] = "M4T3";
 	UniHeader head;
 	head.dimX = grid->getSizeX();
 	head.dimY = grid->getSizeY();
 	head.dimZ = grid->getSizeZ();
+	head.dimT = grid->getSizeT();
 	head.gridType = grid->getType();
 	head.bytesPerElement = sizeof(T);
-	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
+	snprintf( head.info, STR_LEN_GRID, "%s", buildInfoString().c_str() );	
 	MuTime stamp; stamp.get();
 	head.timestamp = stamp.time;
 	
@@ -746,16 +838,16 @@ void writeGrid4dUni(const string& name, Grid4d<T>* grid) {
 	
 	gzwrite(gzf, ID, 4);
 #	if FLOATINGPOINT_PRECISION!=1
-	errMsg( "NYI" );
+	//errMsg( "NYI" );  // NT_DEBUG
+	Grid4d<T> temp(grid->getParent());
+	gridConvertWrite< Grid4d<T> >( gzf, *grid, &(temp[0]), head);
 #	else
 	gzwrite(gzf, &head, sizeof(UniHeader));
-	int fourthDim = grid->getSizeT();
-	gzwrite(gzf, &fourthDim, sizeof(fourthDim)); 
 
 	// can be too large - write in chunks
-	for(int t=0; t<fourthDim; ++t) { 
-		void* ptr = &((*grid)[              head.dimX*head.dimY*head.dimZ* t ]);
-		gzwrite(gzf, ptr,   sizeof(T)*head.dimX*head.dimY*head.dimZ* 1);
+	for(int t=0; t<head.dimT; ++t) { 
+		void* ptr = &((*grid)[           head.dimX*head.dimY*head.dimZ* t ]);
+		gzwrite(gzf, ptr,      sizeof(T)*head.dimX*head.dimY*head.dimZ* 1);
 	}
 #	endif
 	gzclose(gzf);
@@ -792,35 +884,54 @@ void readGrid4dUni(const string& name, Grid4d<T>* grid, int readTslice, Grid4d<T
 		return;
 	}
 	
-	if (!strcmp(ID, "M4T2")) {
+	if( (!strcmp(ID, "M4T2")) || (!strcmp(ID, "M4T3")) ) {
+		int headerSize = -1;
+
 		// current file format
 		UniHeader head;
-		assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no header present");
-		assertMsg (head.bytesPerElement == sizeof(T), "grid element size doesn't match "<< head.bytesPerElement <<" vs "<< sizeof(T) );
+		if(!strcmp(ID, "M4T3")) {
+			headerSize = sizeof(UniHeader);
+			assertMsg (gzread(gzf, &head, sizeof(UniHeader)) == sizeof(UniHeader), "can't read file, no 4d header present");
+			assertMsg (head.bytesPerElement == sizeof(T), "4d grid element size doesn't match "<< head.bytesPerElement <<" vs "<< sizeof(T) );
+		}
+		// old header
+		if(!strcmp(ID, "M4T2")) {
+			UniLegacyHeader3 lhead;
+			headerSize = sizeof(UniLegacyHeader3) + sizeof(int);
+			assertMsg (gzread(gzf, &lhead, sizeof(UniLegacyHeader3)) == sizeof(UniLegacyHeader3), "can't read file, no 4dl header present");
+			assertMsg (lhead.bytesPerElement == sizeof(T), "4d grid element size doesn't match "<< lhead.bytesPerElement <<" vs "<< sizeof(T) ); 
 
-		int fourthDim = 0;
-		gzread(gzf, &fourthDim, sizeof(fourthDim));
+			int fourthDim  = 0;
+			gzread(gzf, &fourthDim, sizeof(fourthDim));
+
+			head.dimX = lhead.dimX;
+			head.dimY = lhead.dimY;
+			head.dimZ = lhead.dimZ;
+			head.dimT = fourthDim;
+			head.gridType = lhead.gridType;
+		}
 
 		if(readTslice<0) {
 			assertMsg (head.dimX == grid->getSizeX() && head.dimY == grid->getSizeY() && head.dimZ == grid->getSizeZ(), "grid dim doesn't match, "<< Vec3(head.dimX,head.dimY,head.dimZ)<<" vs "<< grid->getSize() );
 			assertMsg ( unifyGridType(head.gridType)==unifyGridType(grid->getType()) , "grid type doesn't match "<< head.gridType<<" vs "<< grid->getType() );
 
 			// read full 4d grid
-			assertMsg (fourthDim == grid->getSizeT(), "grid dim4 doesn't match, "<< fourthDim <<" vs "<< grid->getSize() );
+			assertMsg (head.dimT == grid->getSizeT(), "grid dim4 doesn't match, "<< head.dimT <<" vs "<< grid->getSize() );
 
 			// can be too large - read in chunks
-			for(int t=0; t<fourthDim; ++t) { 
+			for(int t=0; t<head.dimT; ++t) { 
 				void* ptr = &((*grid)[             head.dimX*head.dimY*head.dimZ* t ]);
 				gzread(gzf, ptr,         sizeof(T)*head.dimX*head.dimY*head.dimZ* 1);
 			}
 		} else {
+			// read chosen slice only
 			assertMsg (head.dimX == slice->getSizeX() && head.dimY == slice->getSizeY() && head.dimZ == slice->getSizeZ(), "grid dim doesn't match, "<< Vec3(head.dimX,head.dimY,head.dimZ)<<" vs "<< slice->getSize() );
 			assertMsg ( unifyGridType(head.gridType)==unifyGridType(slice->getType()) , "grid type doesn't match "<< head.gridType<<" vs "<< slice->getType() );
 
 			assertMsg( slice, "No 3d slice grid data given" );
-			assertMsg (readTslice < fourthDim, "grid dim4 slice too large "<< readTslice <<" vs "<< fourthDim );
+			assertMsg (readTslice < head.dimT, "grid dim4 slice too large "<< readTslice <<" vs "<< head.dimT );
 			void* ptr = &( (*slice)[ 0 ] );
-			gzseek(gzf, sizeof(T)*head.dimX*head.dimY*head.dimZ* readTslice + sizeof(UniHeader) + sizeof(int) + 4 , SEEK_SET );
+			gzseek(gzf, sizeof(T)*head.dimX*head.dimY*head.dimZ* readTslice + headerSize + 4 , SEEK_SET );
 			gzread(gzf, ptr,         sizeof(T)*head.dimX*head.dimY*head.dimZ* 1);
 		}
 	} else {
@@ -863,7 +974,7 @@ void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 	head.dimZ     = gridSize.z;
 	head.bytesPerElement = PartSysSize;
 	head.elementType = 0; // 0 for base data
-	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
+	snprintf( head.info, STR_LEN_PDATA, "%s", buildInfoString().c_str() );	
 	MuTime stamp;
 	head.timestamp = stamp.time;
 	
@@ -946,7 +1057,7 @@ void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	head.dim      = pdata->size();
 	head.bytesPerElement = sizeof(T);
 	head.elementType = 1; // 1 for particle data, todo - add sub types?
-	snprintf( head.info, 256, "%s", buildInfoString().c_str() );	
+	snprintf( head.info, STR_LEN_PDATA, "%s", buildInfoString().c_str() );	
 	MuTime stamp;
 	head.timestamp = stamp.time;
 	

@@ -40,11 +40,11 @@ public:
 	inline Vec3i getSize() const { return mSize; }
 	
 	//! Get Stride in X dimension
-	inline int getStrideX() const { return 1; }
+	inline IndexInt getStrideX() const { return 1; }
 	//! Get Stride in Y dimension
-	inline int getStrideY() const { return mSize.x; }
+	inline IndexInt getStrideY() const { return mSize.x; }
 	//! Get Stride in Z dimension
-	inline int getStrideZ() const { return mStrideZ; }
+	inline IndexInt getStrideZ() const { return mStrideZ; }
 	
 	inline Real getDx() { return mDx; }
 	
