@@ -185,11 +185,14 @@ PYTHON() void setDebugLevel(int level=1) {
 	gDebugLevel = level; 
 }
 
+//! warning, uses 10^-4 epsilon values, thus only use around "regular" FPS time scales, e.g. 30 frames per time unit
+//! pass max magnitude of current velocity as maxvel, not yet scaled by dt!
 void FluidSolver::adaptTimestep(Real maxVel)
 {
+	const Real mvt = maxVel * mDt;
 	if (!mLockDt) {
 		// calculate current timestep from maxvel, clamp range
-		mDt = std::max( std::min( (Real)(mCflCond/(maxVel+1e-05)), mDtMax) , mDtMin );
+		mDt = std::max( std::min( mDt * (Real)(mCflCond/(mvt+1e-05)), mDtMax) , mDtMin );
 		if( (mTimePerFrame+mDt*1.05) > mFrameLength ) {
 			// within 5% of full step? add epsilon to prevent roundoff errors...
 			mDt = ( mFrameLength - mTimePerFrame ) + 1e-04;
@@ -200,7 +203,7 @@ void FluidSolver::adaptTimestep(Real maxVel)
 			mLockDt = true;
 		}
 	}
-	debMsg( "Frame "<<mFrame<<" current max vel: "<<maxVel<<" , dt: "<<mDt<<", "<<mTimePerFrame<<"/"<<mFrameLength<<" lock:"<<mLockDt , 2);
+	debMsg( "Frame "<<mFrame<<", max vel per step: "<<mvt<<" , dt: "<<mDt<<", frame time "<<mTimePerFrame<<"/"<<mFrameLength<<"; lock:"<<mLockDt , 2);
 
 	// sanity check
 	assertMsg( (mDt > (mDtMin/2.) ) , "Invalid dt encountered! Shouldnt happen..." );
