@@ -97,20 +97,22 @@ else:
 
 
 # verify
+# note - unfortunately, vec3 & vec4 are float in python , so here we have some round off problems...
+# thus, strict FPaccuracy=2 thresholds are reduced for vcg1&3, and fdg1&3
 
 doTestGrid( sys.argv[0], "rlg1", s, rlg1 , threshold=1e-07 , thresholdStrict=1e-14  )
 doTestGrid( sys.argv[0], "rlg2", s, rlg2 , threshold=1e-07 , thresholdStrict=1e-14  )
 doTestGrid( sys.argv[0], "rlg3", s, rlg3 , threshold=1e-07 , thresholdStrict=1e-14  )
 
-doTestGrid( sys.argv[0], "vcg1", s, vcg1 , threshold=5e-07 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "vcg1", s, vcg1 , threshold=5e-07 , thresholdStrict=5e-07  )
 doTestGrid( sys.argv[0], "vcg2", s, vcg2 , threshold=5e-07 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "vcg3", s, vcg3 , threshold=5e-07 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "vcg3", s, vcg3 , threshold=5e-07 , thresholdStrict=5e-07  )
 
 doTestGrid( sys.argv[0], "int1", s, int1 , threshold=1e-14 , thresholdStrict=1e-14  )
 doTestGrid( sys.argv[0], "int2", s, int2 , threshold=1e-14 , thresholdStrict=1e-14  )
 doTestGrid( sys.argv[0], "int3", s, int3 , threshold=1e-14 , thresholdStrict=1e-14  )
 
-doTestGrid( sys.argv[0], "fdg1", s, fdg1 , threshold=5e-07 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "fdg1", s, fdg1 , threshold=5e-07 , thresholdStrict=5e-07  )
 doTestGrid( sys.argv[0], "fdg2", s, fdg2 , threshold=5e-07 , thresholdStrict=1e-14  )
-doTestGrid( sys.argv[0], "fdg3", s, fdg3 , threshold=5e-07 , thresholdStrict=1e-14  )
+doTestGrid( sys.argv[0], "fdg3", s, fdg3 , threshold=5e-07 , thresholdStrict=5e-07  )
 
