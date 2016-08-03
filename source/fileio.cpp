@@ -262,8 +262,36 @@ void readObjFile(const std::string& name, Mesh* mesh, bool append) {
 	ifs.close();    
 }
 
+// write regular .obj file, in line with bobj.gz output (but only verts & tris for now)
 void writeObjFile(const string& name, Mesh* mesh) {
-	errMsg("obj exporter not yet implemented");
+	const Real  dx = mesh->getParent()->getDx();
+	const Vec3i gs = mesh->getParent()->getGridSize();
+
+	ofstream ofs(name.c_str());
+	if (!ofs.good())
+		errMsg("writeObjFile: can't open file " << name);
+
+	ofs << "o MantaMesh\n";
+	
+	// write vertices
+	int numVerts = mesh->numNodes();
+	for (int i=0; i<numVerts; i++) {
+		Vector3D<float> pos = toVec3f(mesh->nodes(i).pos);
+		// normalize to unit cube around 0
+		pos -= toVec3f(gs)*0.5;
+		pos *= dx;
+		ofs << "v "<< pos.value[0] <<" "<< pos.value[1] <<" "<< pos.value[2] <<" "<< "\n";
+	}
+	
+	// no normals for now
+	
+	// write tris
+	int numTris = mesh->numTris();
+	for(int t=0; t<numTris; t++) {
+		ofs << "f "<< (mesh->tris(t).c[0]+1) <<" "<< (mesh->tris(t).c[1]+1) <<" "<< (mesh->tris(t).c[2]+1) <<" "<< "\n";
+	}
+
+	ofs.close();
 }
 
 //*****************************************************************************
