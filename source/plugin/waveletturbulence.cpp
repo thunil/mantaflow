@@ -83,19 +83,19 @@ PYTHON() void interpolateMACGrid(MACGrid& target, MACGrid& source, Vec3 scale=Ve
 
 //! Apply vector noise to grid, this is a simplified version - no position scaling or UVs
 KERNEL() 
-void knApplySimpleNoiseVec(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
+void knApplySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
 					  Real scale, Grid<Real>* weight ) 
 {
 	if ( !flags.isFluid(i,j,k) ) return; 
 	Real factor = 1;
 	if(weight) factor = (*weight)(i,j,k);
-	target(i,j,k) += noise.evaluateCurl( Vec3(i,j,k) ) * scale * factor;
+	target(i,j,k) += noise.evaluateCurl( Vec3(i,j,k)+Vec3(0.5) ) * scale * factor;
 }
 PYTHON() void applySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
 							Real scale=1.0 , Grid<Real>* weight=NULL )
 {
 	// note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
-	knApplySimpleNoiseVec(flags, target, noise, scale , weight );
+	knApplySimpleNoiseVec3(flags, target, noise, scale , weight );
 }
 
 
@@ -107,7 +107,7 @@ void knApplySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseFie
 	if ( !flags.isFluid(i,j,k) ) return; 
 	Real factor = 1;
 	if(weight) factor = (*weight)(i,j,k);
-	target(i,j,k) += noise.evaluate( Vec3(i,j,k) ) * scale * factor;
+	target(i,j,k) += noise.evaluate( Vec3(i,j,k)+Vec3(0.5) ) * scale * factor;
 }
 PYTHON() void applySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseField& noise, 
 							Real scale=1.0 , Grid<Real>* weight=NULL )
@@ -121,7 +121,7 @@ PYTHON() void applySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletN
 //! This is the version with more functionality - supports uv grids, and on-the-fly interpolation
 //! of input grids.
 KERNEL() 
-void knApplyNoiseVec(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
+void knApplyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
 					  Real scale, Real scaleSpatial, Grid<Real>* weight, Grid<Vec3>* uv, bool uvInterpol, const Vec3& sourceFactor ) 
 {
 	if ( !flags.isFluid(i,j,k) ) return;
@@ -137,7 +137,7 @@ void knApplyNoiseVec(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noi
 	}
 
 	// compute position where to evaluate the noise
-	Vec3 pos = Vec3(i,j,k);
+	Vec3 pos = Vec3(i,j,k)+Vec3(0.5);
 	if(uv) {
 		if(!uvInterpol) {
 			pos = (*uv)(i,j,k);
@@ -171,7 +171,7 @@ PYTHON() void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseFi
 	if(uv && weight) assertMsg( uv->getSize() == weight->getSize(), "UV and weight grid have to match!");
 
 	// note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
-	knApplyNoiseVec(flags, target, noise, scale, scaleSpatial, weight , uv,uvInterpol,sourceFactor );
+	knApplyNoiseVec3(flags, target, noise, scale, scaleSpatial, weight , uv,uvInterpol,sourceFactor );
 }
 
 
