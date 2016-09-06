@@ -626,9 +626,9 @@ ParticleBase* ConnectedParticleSystem<DATA,CON>::clone() {
 template<class S>  
 std::string ParticleSystem<S>::infoString() const { 
 	std::stringstream s;
-	s << "ParticleSys '" << getName() << "' [" << size() << " parts";
-	if(this->getNumPdata()>0) s<< " "<< this->getNumPdata()<<" pd";
-	s << "]";
+	s << "ParticleSys '" << getName() << "'\n-> ";
+	if(this->getNumPdata()>0) s<< "pdata: "<< this->getNumPdata();
+	s << "parts: " << size();
 	//for(IndexInt i=0; i<(IndexInt)mPartData.size(); ++i) { sstr << i<<":" << mPartData[i]->size() <<" "; } 
 	return s.str();
 }
