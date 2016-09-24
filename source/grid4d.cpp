@@ -49,7 +49,7 @@ template<class T>
 Grid4d<T>::Grid4d(FluidSolver* parent, bool show)
 	: Grid4dBase(parent)
 {
-	assertMsg( parent->is3D() && parent->has4D(), "Solver does not support 4d grids , or is two-dimensional!");
+	assertMsg( parent->is3D() && parent->supports4D(), "To use 4d grids create a 3d solver with fourthDim>0");
 
 	mType = typeList<T>();
 	Vec3i s = parent->getGridSize();

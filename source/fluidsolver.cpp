@@ -108,8 +108,9 @@ FluidSolver::FluidSolver(Vec3i gridsize, int dim, int fourthDim)
 	: PbClass(this), mDt(1.0), mTimeTotal(0.), mFrame(0), 
 	  mCflCond(1000), mDtMin(1.), mDtMax(1.), mFrameLength(1.),
 	  mGridSize(gridsize), mDim(dim) , mTimePerFrame(0.), mLockDt(false), mFourthDim(fourthDim)
-{    
-	assertMsg(dim==2 || dim==3, "Can only create 2D and 3D solvers");
+{
+	if(dim==4 && mFourthDim>0) errMsg("Don't create 4D solvers, use 3D with fourth-dim parameter >0 instead.");
+	assertMsg(dim==2 || dim==3, "Only 2D and 3D solvers allowed.");
 	assertMsg(dim!=2 || gridsize.z == 1, "Trying to create 2D solver with size.z != 1");
 }
 
@@ -167,7 +168,7 @@ void FluidSolver::printMemInfo() {
 	msg << "                 real "<< mGridsReal.used <<"/"<< mGridsReal.grids.size() <<", ";
 	msg << "                 vec3 "<< mGridsVec.used  <<"/"<< mGridsVec.grids.size()  <<". ";
 	msg << "                 vec4 "<< mGridsVec4.used <<"/"<< mGridsVec4.grids.size() <<". ";
-	if(has4D()) {
+	if( supports4D() ) {
 	msg << "Allocated 4d grids: int " << mGrids4dInt.used  <<"/"<< mGrids4dInt.grids.size()  <<", ";
 	msg << "                    real "<< mGrids4dReal.used <<"/"<< mGrids4dReal.grids.size() <<", ";
 	msg << "                    vec3 "<< mGrids4dVec.used  <<"/"<< mGrids4dVec.grids.size()  <<". ";
