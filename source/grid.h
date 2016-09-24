@@ -246,6 +246,10 @@ public:
 		case 2:  return interpolCubicMAC(mData, mSize, mStrideZ, pos)[comp];  // warning - not yet optimized
 		default: assertMsg(false, "Unknown interpolation order "<<order); }
 	}
+
+	//! set all boundary cells of a MAC grid to certain value (Dirchlet). Respects staggered grid locations
+	//! optionally, only set normal components
+	PYTHON() void setBoundMAC(Vec3 value, int boundaryWidth, bool normalOnly=false);
 	
 protected:
 };

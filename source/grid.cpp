@@ -434,6 +434,30 @@ template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
 	knSetBoundaryNeumann<T>( *this, boundaryWidth );
 }
 
+//! kernel to set velocity components of mac grid to value for a boundary of w cells
+KERNEL() void knSetBoundaryMAC (Grid<Vec3>& grid, Vec3 value, int w) { 
+	if (i<=w   || i>=grid.getSizeX()  -w || j<=w-1 || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w-1 || k>=grid.getSizeZ()-1-w)))
+		grid(i,j,k).x = value.x;
+	if (i<=w-1 || i>=grid.getSizeX()-1-w || j<=w   || j>=grid.getSizeY()  -w || (grid.is3D() && (k<=w-1 || k>=grid.getSizeZ()-1-w)))
+		grid(i,j,k).y = value.y;
+	if (i<=w-1 || i>=grid.getSizeX()-1-w || j<=w-1 || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w   || k>=grid.getSizeZ()  -w)))
+		grid(i,j,k).z = value.z;
+} 
+
+//! only set normal velocity components of mac grid to value for a boundary of w cells
+KERNEL() void knSetBoundaryMACNorm (Grid<Vec3>& grid, Vec3 value, int w) { 
+	if (i<=w   || i>=grid.getSizeX()  -w ) grid(i,j,k).x = value.x;
+	if (j<=w   || j>=grid.getSizeY()  -w ) grid(i,j,k).y = value.y;
+	if ( (grid.is3D() && (k<=w   || k>=grid.getSizeZ()  -w))) grid(i,j,k).z = value.z;
+} 
+
+//! set velocity components of mac grid to value for a boundary of w cells (optionally only normal values)
+void MACGrid::setBoundMAC(Vec3 value, int boundaryWidth, bool normalOnly) { 
+	if(!normalOnly) knSetBoundaryMAC    ( *this, value, boundaryWidth ); 
+	else            knSetBoundaryMACNorm( *this, value, boundaryWidth ); 
+}
+
+
 //! helper kernels for getGridAvg
 KERNEL(idx, reduce=+) returns(double result=0.0)
 double knGridTotalSum(const Grid<Real>& a, FlagGrid* flags) {
