@@ -141,7 +141,7 @@ PYTHON() void cgSolveWE(FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<
 	for (int iter=0; iter<maxIter; iter++) {
 		if (!gcg->iterate()) iter=maxIter;
 	} 
-	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
+	debMsg("cgSolveWaveEq iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
 
 	utm1.swap( ut );
 	ut.copyFrom( out );
