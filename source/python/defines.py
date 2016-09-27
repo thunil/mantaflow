@@ -43,4 +43,9 @@ IntEuler = 0
 IntRK2   = 1
 IntRK4   = 2
 
+# CG preconditioner
+PcNone = 0
+PcMIC  = 1
+PcMG   = 2
+
 

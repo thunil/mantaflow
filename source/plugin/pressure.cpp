@@ -13,9 +13,12 @@
 #include "vectorbase.h"
 #include "kernel.h"
 #include "conjugategrad.h"
+#include "multigrid.h"
 
 using namespace std;
 namespace Manta {
+
+enum Preconditioner { PcNone = 0, PcMIC = 1, PcMG = 2 };
 
 //! Kernel: Construct the right-hand side of the poisson equation
 KERNEL(bnd=1, reduce=+) returns(int cnt=0) returns(double sum=0)
@@ -191,7 +194,7 @@ IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, 
 	MACGrid* fractions = 0,
 	Real gfClamp = 1e-04,
 	Real cgMaxIterFac = 1.5,
-	bool precondition = true,
+	int preconditioner = PcMIC,
 	bool enforceCompatibility = false,
 	bool useL2Norm = false,
 	bool zeroPressureFixing = false,
@@ -251,26 +254,47 @@ IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, 
 		}
 	}
 
-	// CG setup
-	// note: the last factor increases the max iterations for 2d, which right now can't use a preconditioner 
-	const int maxIter = (int)(cgMaxIterFac * flags.getSize().max()) * (flags.is3D() ? 1 : 4);
-	GridCgInterface *gcg;
-	if (vel.is3D())
-		gcg = new GridCg<ApplyMatrix>  (pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
-	else
-		gcg = new GridCg<ApplyMatrix2D>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
+
+	if (preconditioner == PcNone || preconditioner == PcMIC)
+	{
+		// CG setup
+		// note: the last factor increases the max iterations for 2d, which right now can't use a preconditioner 
+		const int maxIter = (int)(cgMaxIterFac * flags.getSize().max()) * (flags.is3D() ? 1 : 4);
+		GridCgInterface *gcg;
+		if (vel.is3D())
+			gcg = new GridCg<ApplyMatrix>  (pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
+		else
+			gcg = new GridCg<ApplyMatrix2D>(pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
 	
-	gcg->setAccuracy( cgAccuracy ); 
-	gcg->setUseL2Norm( useL2Norm );
+		gcg->setAccuracy( cgAccuracy ); 
+		gcg->setUseL2Norm( useL2Norm );
 
-	// optional preconditioning
-	gcg->setPreconditioner( precondition ? GridCgInterface::PC_mICP : GridCgInterface::PC_None, &pca0, &pca1, &pca2, &pca3);
+		// optional preconditioning
+		gcg->setPreconditioner( preconditioner ? GridCgInterface::PC_mICP : GridCgInterface::PC_None, &pca0, &pca1, &pca2, &pca3);
 
-	for (int iter=0; iter<maxIter; iter++) {
-		if (!gcg->iterate()) iter=maxIter;
-	} 
-	//debMsg("FluidSolver::solvePressureBase iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
-	delete gcg;
+		for (int iter=0; iter<maxIter; iter++) {
+			if (!gcg->iterate()) iter=maxIter;
+		} 
+		//debMsg("FluidSolver::solvePressureBase iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
+		delete gcg;
+	}
+	else if (preconditioner == PcMG)
+	{
+		const int maxIter = 10;
+		GridMg* gmg = new GridMg(pressure);
+
+		gmg->setA(flags, &A0, &Ai, &Aj, &Ak);
+		gmg->setRhs(rhs);
+
+		gmg->setAccuracy(cgAccuracy);
+
+		for (int iter = 0; iter<maxIter; iter++) {
+			if (!gmg->doVCycle(pressure)) iter=maxIter;
+		}
+		//debMsg("FluidSolver::solvePressureBase iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
+		delete gmg;
+	}
+	
 	return fixPidx;
 }
 
@@ -281,14 +305,14 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     MACGrid* fractions = 0,
     Real gfClamp = 1e-04,
     Real cgMaxIterFac = 1.5,
-    bool precondition = true,
-    bool enforceCompatibility = false,
+	int preconditioner = PcMIC,
+	bool enforceCompatibility = false,
     bool useL2Norm = false, 
 	bool zeroPressureFixing = false,
 	Grid<Real>* retRhs = NULL )
 {
-	Grid<Real> rhs(vel.getParent());
-	IndexInt fixPidx = solvePressureBase(vel, pressure, flags, rhs, cgAccuracy, phi, perCellCorr, fractions, gfClamp, cgMaxIterFac, precondition, enforceCompatibility, useL2Norm, zeroPressureFixing, retRhs);
+	Grid<Real> rhs(vel.getParent()); 
+	IndexInt fixPidx = solvePressureBase(vel, pressure, flags, rhs, cgAccuracy, phi, perCellCorr, fractions, gfClamp, cgMaxIterFac, preconditioner, enforceCompatibility, useL2Norm, zeroPressureFixing, retRhs);
 	
 	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {
