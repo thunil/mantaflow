@@ -14,7 +14,7 @@
 #ifndef _MULTIGRID_H
 #define _MULTIGRID_H
 
-// #include "vectorbase.h"
+#include "vectorbase.h"
 #include "grid.h"
 // #include "kernel.h"
 
@@ -40,18 +40,24 @@ class GridMg {
 		//Real getResNorm() const = 0;
 		void setAccuracy(Real set) { mAccuracy = set; }
 		Real getAccuracy() const { return mAccuracy; }
+		void setSmoothing(int numPreSmooth, int numPostSmooth) { mNumPreSmooth = numPreSmooth; mNumPostSmooth = numPostSmooth; }
+		int getNumPreSmooth() { return mNumPreSmooth; }
+		int getNumPostSmooth() { return mNumPostSmooth; }
 
 	private:
 		void smoothGS(int l);
 		void calcResidual(int l);
+		Real calcResidualNorm(int l);
 		void solveCG(int l);
 
-		void restrict(int l_dst);
-		void interpolate(int l_dst);
+		void restrict(int l_dst, std::vector<Real>& src, std::vector<Real>& dst);
+		void interpolate(int l_dst, std::vector<Real>& src, std::vector<Real>& dst);
 
 	private:
 		//! accuracy of solver (max. residuum)
 		Real mAccuracy;
+		int mNumPreSmooth;
+		int mNumPostSmooth;
 
 		// A has a 7-point stencil on level 0, and a full 27-point stencil on levels >0
 		std::vector<std::vector<Real>> mA; // A[level][vertex/stencilentry]
