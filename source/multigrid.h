@@ -60,11 +60,12 @@ class GridMg {
 		int mNumPostSmooth;
 
 		// A has a 7-point stencil on level 0, and a full 27-point stencil on levels >0
-		std::vector<std::vector<Real>> mA; // A[level][vertex/stencilentry]
+		std::vector<std::vector<Real>> mA; // A[level][vertex*14 + stencilentry]
 		std::vector<std::vector<Real>> mx; // x[level][vertex]
 		std::vector<std::vector<Real>> mb; // b[level][vertex]
 		std::vector<std::vector<Real>> mr; // residual[level][vertex]
-		std::vector<int> mSizeX, mSizeY, mSizeZ;
+		std::vector<std::vector<bool>> mActive; // active[level][vertex]
+		std::vector<Vec3i> mSize, mPitch;
 }; // GridCg
 
 } // namespace

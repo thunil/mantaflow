@@ -23,36 +23,35 @@ GridMg::GridMg(const Grid<Real>& sizeRef)
 	mNumPostSmooth(1)
 {
 	// Create level 0 (=original grid)
-	mSizeX.push_back(sizeRef.getSizeX());
-	mSizeY.push_back(sizeRef.getSizeY());
-	mSizeZ.push_back(sizeRef.getSizeZ());
-	int n = mSizeX[0] * mSizeY[0] * mSizeZ[0];
+	mSize.push_back(sizeRef.getSize());
+	mPitch.push_back(Vec3i(1, mSize.back().x, mSize.back().x*mSize.back().y));
+	int n = mSize.back().x * mSize.back().y * mSize.back().z;
 
 	mA.push_back(std::vector<Real>(n * 14));
 	mx.push_back(std::vector<Real>(n));
 	mb.push_back(std::vector<Real>(n));
 	mr.push_back(std::vector<Real>(n));
+	mActive.push_back(std::vector<bool>(n));
 
-	debMsg("GridMg::GridMg level 0: "<<mSizeX[0]<<" x " << mSizeY[0] << " x " << mSizeZ[0] << " x ", 1);
+	debMsg("GridMg::GridMg level 0: "<<mSize[0].x<<" x " << mSize[0].y << " x " << mSize[0].z << " x ", 1);
 
 	// Create coarse levels >0
-	for (int l=1; ;l++)
+	for (int l=1; l<=1; l++)
 	{
-		break;
-		if (mSizeX[l-1] <= 5 && mSizeY[l-1] <= 5 && mSizeZ[l-1] <= 5)
+		if (mSize[l-1].x <= 5 && mSize[l-1].y <= 5 && mSize[l-1].z <= 5)
 			break;
 
-		mSizeX.push_back((mSizeX[l-1] + 2) / 2);
-		mSizeY.push_back((mSizeY[l-1] + 2) / 2);
-		mSizeZ.push_back((mSizeZ[l-1] + 2) / 2);
-		int n = mSizeX[l] * mSizeY[l] * mSizeZ[l];
+		mSize.push_back((mSize[l-1] + 2) / 2);
+		mPitch.push_back(Vec3i(1, mSize.back().x, mSize.back().x*mSize.back().y));
+		int n = mSize.back().x * mSize.back().y * mSize.back().z;
 
 		mA.push_back(std::vector<Real>(n * 14));
 		mx.push_back(std::vector<Real>(n));
 		mb.push_back(std::vector<Real>(n));
 		mr.push_back(std::vector<Real>(n));
+		mActive.push_back(std::vector<bool>(n));
 		
-		debMsg("GridMg::GridMg level "<<l<<": " << mSizeX[l] << " x " << mSizeY[l] << " x " << mSizeZ[l] << " x ", 1);
+		debMsg("GridMg::GridMg level "<<l<<": " << mSize[l].x << " x " << mSize[l].y << " x " << mSize[l].z << " x ", 1);
 	}
 }
 
@@ -80,6 +79,8 @@ void GridMg::setA(FlagGrid& flags, Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* 
 		mA[0][idx * 14 +  1] = (*pAi)[idx];
 		mA[0][idx * 14 +  3] = (*pAj)[idx];
 		mA[0][idx * 14 +  9] = (*pAk)[idx];
+			
+		mActive[0][idx] = (mA[0][idx*14 + 0] != Real(0));
 	}
 
 	// Create coarse operators on levels >0
@@ -88,7 +89,7 @@ void GridMg::setA(FlagGrid& flags, Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* 
 		// loop over coarse grid vertices
 		for (int v=0; v<mb[l].size(); v++)
 		{
-			Vec3i V(v % mSizeX[l], (v % (mSizeX[l]*mSizeY[l])) / mSizeX[l], v / (mSizeX[l]*mSizeY[l]));
+			Vec3i V(v % mSize[l].x, (v % (mSize[l].x*mSize[l].y)) / mSize[l].x, v / (mSize[l].x*mSize[l].y));
 
 			// loop over stencil entries
 			for (int s = 0; s<14; s++)
@@ -109,12 +110,12 @@ void GridMg::setA(FlagGrid& flags, Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* 
 
 						Vec3i A1 = 2*V+R;
 						Vec3i A2 = 2*(V+S)+I;
-						int a1 = dot(A1, Vec3i(1,mSizeX[l-1],mSizeX[l-1]*mSizeY[l-1]));
-						int a2 = dot(A2, Vec3i(1,mSizeX[l-1],mSizeX[l-1]*mSizeY[l-1]));
+						int a1 = dot(A1, mPitch[l-1]);
+						int a2 = dot(A2, mPitch[l-1]);
 
-						if (A1.x>=0 && A1.x<mSizeX[l-1] && A2.x>=0 && A2.x<mSizeX[l-1] &&
-							A1.y>=0 && A1.y<mSizeY[l-1] && A2.y>=0 && A2.y<mSizeY[l-1] &&
-							A1.z>=0 && A1.z<mSizeZ[l-1] && A2.z>=0 && A2.z<mSizeZ[l-1])
+						if (A1.x>=0 && A1.x<mSize[l-1].x && A2.x>=0 && A2.x<mSize[l-1].x &&
+							A1.y>=0 && A1.y<mSize[l-1].y && A2.y>=0 && A2.y<mSize[l-1].y &&
+							A1.z>=0 && A1.z<mSize[l-1].z && A2.z>=0 && A2.z<mSize[l-1].z)
 						{
 							Vec3i d = A2-A1;
 							if (d.x>=-1 && d.x<=1 && d.y>=-1 && d.y<=1 && d.z>=-1 && d.z<=1)
@@ -136,6 +137,8 @@ void GridMg::setA(FlagGrid& flags, Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* 
 
 				mA[l][v*14 + s] = sum;
 			}
+
+			mActive[l][v] = (mA[l][v*14 + 0] != Real(0));
 		}		
 	}
 }
@@ -153,8 +156,11 @@ bool GridMg::doVCycle(Grid<Real>& dst)
 	const int maxLevel = mA.size() - 1;
 
 	for (int i=0; i<mx[0].size(); i++) {
-		mx[0][i] = Real(0);
+		mx[0][i] = dst[i];
 	}
+
+	calcResidual(0);
+	Real resOld = calcResidualNorm(0);
 
 	for (int l=0; l<maxLevel; l++)
 	{
@@ -186,6 +192,10 @@ bool GridMg::doVCycle(Grid<Real>& dst)
 	calcResidual(0);
 	Real res = calcResidualNorm(0);
 
+	for (int i=0; i<mx[0].size(); i++) {
+		dst[i] = mx[0][i];
+	}
+
 	return res >= mAccuracy;
 }
 
@@ -193,9 +203,9 @@ bool GridMg::doVCycle(Grid<Real>& dst)
 void GridMg::smoothGS(int l)
 {
 	for (int v=0; v<mb[l].size(); v++) {		
-		if (mA[l][v*14 + 0] == Real(0)) continue;
+		if (!mActive[l][v]) continue;
 
-		Vec3i V(v % mSizeX[l], (v % (mSizeX[l]*mSizeY[l])) / mSizeX[l], v / (mSizeX[l]*mSizeY[l])); 	
+		Vec3i V(v % mSize[l].x, (v % (mSize[l].x*mSize[l].y)) / mSize[l].x, v / (mSize[l].x*mSize[l].y)); 	
 
 		Real sum = mb[l][v];
 
@@ -204,9 +214,9 @@ void GridMg::smoothGS(int l)
 
 			Vec3i S(s%3-1, (s%9)/3-1, s/9-1);
 			Vec3i N = V + S;
-			int n = dot(N, Vec3i(1,mSizeX[l],mSizeX[l]*mSizeY[l]));
+			int n = dot(N, mPitch[l]);
 
-			if (N.x>=0 && N.x<mSizeX[l] && N.y>=0 && N.y<mSizeY[l] && N.z>=0 && N.z<mSizeZ[l]) {
+			if (N.x>=0 && N.x<mSize[l].x && N.y>=0 && N.y<mSize[l].y && N.z>=0 && N.z<mSize[l].z) {
 				if (s < 13) {
 					sum -= mA[l][n*14 + 13 - s] * mx[l][n];
 				} else {
@@ -222,18 +232,18 @@ void GridMg::smoothGS(int l)
 void GridMg::calcResidual(int l)
 {
 	for (int v=0; v<mb[l].size(); v++) {
-		if (mA[l][v*14 + 0] == Real(0)) continue;
+		if (!mActive[l][v]) continue;
 		
-		Vec3i V(v % mSizeX[l], (v % (mSizeX[l]*mSizeY[l])) / mSizeX[l], v / (mSizeX[l]*mSizeY[l])); 	
+		Vec3i V(v % mSize[l].x, (v % (mSize[l].x*mSize[l].y)) / mSize[l].x, v / (mSize[l].x*mSize[l].y)); 	
 
 		Real sum = mb[l][v];
 
 		for (int s=0; s<27; s++) {
 			Vec3i S(s%3-1, (s%9)/3-1, s/9-1);
 			Vec3i N = V + S;
-			int n = dot(N, Vec3i(1,mSizeX[l],mSizeX[l]*mSizeY[l]));
+			int n = dot(N, mPitch[l]);
 
-			if (N.x>=0 && N.x<mSizeX[l] && N.y>=0 && N.y<mSizeY[l] && N.z>=0 && N.z<mSizeZ[l]) {
+			if (N.x>=0 && N.x<mSize[l].x && N.y>=0 && N.y<mSize[l].y && N.z>=0 && N.z<mSize[l].z) {
 				if (s < 13) {
 					sum -= mA[l][n*14 + 13 - s] * mx[l][n];
 				} else {
@@ -251,6 +261,8 @@ Real GridMg::calcResidualNorm(int l)
 	Real res = Real(0);
 
 	for (int v=0; v<mb[l].size(); v++) {
+		if (!mActive[l][v]) continue;
+
 		res += mr[l][v] * mr[l][v];
 	}
 
@@ -275,12 +287,68 @@ void GridMg::solveCG(int l)
 
 void GridMg::restrict(int l_dst, std::vector<Real>& src, std::vector<Real>& dst)
 {
+	const int l_src = l_dst - 1;
 
+	for (int v=0; v<mb[l_dst].size(); v++) {
+		if (!mActive[l_dst][v]) continue;
+
+		// Coarse grid vertex
+		Vec3i V(v % mSize[l_dst].x, (v % (mSize[l_dst].x*mSize[l_dst].y)) / mSize[l_dst].x, v / (mSize[l_dst].x*mSize[l_dst].y)); 	
+		Vec3i Vfine = V*2; // coordinates on fine grid
+
+
+		// Box of fine grid vertices to restrict from
+		Vec3i RMin = Vfine - 1;
+		Vec3i RMax = Vfine + 1;
+		for (int d=0; d<3; d++) {
+			if (RMin[d] < 0) { RMin[d] = 0; } 
+			if (RMax[d] >= mSize[l_src][d]) { RMax[d] = mSize[l_src][d] - 1; }
+		}
+
+		Real sum = Real(0);
+
+		Vec3i R;
+		for (R.z=RMin.z; R.z<=RMax.z; R.z++)
+		for (R.y=RMin.y; R.y<=RMax.y; R.y++)
+		for (R.x=RMin.x; R.x<=RMax.x; R.x++)
+		{
+			int r = dot(R,mPitch[l_src]);
+			if (!mActive[l_src][r]) continue;
+			Vec3i D = (R - Vfine);
+			Real w = Real(1) / Real(1 << (std::abs(D.x)+std::abs(D.y)+std::abs(D.z)));
+			sum += w * src[r]; 
+		}
+
+		dst[v] = sum;
+	}
 }
 
 void GridMg::interpolate(int l_dst, std::vector<Real>& src, std::vector<Real>& dst)
 {
+	const int l_src = l_dst + 1;
 
+	for (int v=0; v<mb[l_dst].size(); v++) {
+		if (!mActive[l_dst][v]) continue;
+		
+		Vec3i V(v % mSize[l_dst].x, (v % (mSize[l_dst].x*mSize[l_dst].y)) / mSize[l_dst].x, v / (mSize[l_dst].x*mSize[l_dst].y)); 	
+
+		Vec3i IMin = V / 2;
+		Vec3i IMax = (V+1) / 2;
+
+		Real sum = Real(0);
+
+		Vec3i I;
+		for (I.z=IMin.z; I.z<=IMax.z; I.z++)
+		for (I.y=IMin.y; I.y<=IMax.y; I.y++)
+		for (I.x=IMin.x; I.x<=IMax.x; I.x++)
+		{
+			int i = dot(I,mPitch[l_src]);
+			if (mActive[l_src][i]) sum += src[i]; 
+		}
+
+		Real w = Real(1) / Real(1 << dot(IMax-IMin,Vec3i(1)));
+		dst[v] = w * sum;
+	}
 }
 
 
