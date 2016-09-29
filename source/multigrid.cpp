@@ -338,14 +338,21 @@ bool GridMg::doVCycle(Grid<Real>& dst)
 }
 
 // Determine active cells on coarse level l from active cells on fine level l-1
+// This is an implementation of the algorithm described as part of Section 3.3 in
+//     Solving the Fluid Pressure Poisson Equation Using Multigrid-Evaluation
+//     and Improvements, C. Dick, M. Rogowsky, R. Westermann, IEEE TVCG 2015
+// to ensure a full rank interpolation operator.
 void GridMg::genCoarseGrid(int l)
 {
+	//    AF_Free: unused/untouched vertices
+	//    AF_Zero: vertices selected for coarser level
+	// AF_Removed: vertices removed from coarser level
 	enum activeFlags : char {AF_Removed = 0, AF_Zero = 1, AF_Free = 2, };
 
 	// initialize all coarse vertices with 'free'
 	FOR_LVL(v,l) { mActive[l][v] = AF_Free; }
 
-	// initialize min heap of (ID: fine grid vertex, key: # free interpolation vertices) pairs
+	// initialize min heap of (ID: fine grid vertex, key: #free interpolation vertices) pairs
 	NKMinHeap heap(mb[l-1].size(), 9); // max 8 free interpolation vertices
 		
 	FOR_LVL(v,l-1) {
@@ -356,11 +363,17 @@ void GridMg::genCoarseGrid(int l)
 		}
 	}
 
+	// process fine vertices in heap consecutively, always choosing the vertex with 
+	// the currently smallest number of free interpolation vertices
 	while (heap.size() > 0)
 	{
 		int v = heap.popMin().first;
 		Vec3i V = vecIdx(v,l-1);
 
+
+		// loop over associated interpolation vertices of V on coarse level l:
+		// the first encountered 'free' vertex is set to 'zero',
+		// all remaining 'free' vertices are set to 'removed'.
 		bool vdone = false;
 
 		FOR_VEC_MINMAX(I, V/2, (V+1)/2) {
@@ -374,9 +387,10 @@ void GridMg::genCoarseGrid(int l)
 					vdone = true;
 				}
 
-				// update # free interpolation vertices in heap
+				// update #free interpolation vertices in heap:
+				// loop over all associated restriction vertices of I on fine level l-1
 				FOR_VEC_MINMAX(R, vmax(Vec3i(0)    , I*2-1), 
-						            vmin(mSize[l-1]-1, I*2+1)) {
+						          vmin(mSize[l-1]-1, I*2+1)) {
 					int r = linIdx(R,l-1);
 					int key = heap.getKey(r); 
 
@@ -387,68 +401,66 @@ void GridMg::genCoarseGrid(int l)
 		}
 	}
 
+	// set all remaining 'free' vertices to 'removed'
 	FOR_LVL(v,l) { if (mActive[l][v] == AF_Free) mActive[l][v] = AF_Removed; }
 }
 
-// Calculate A on coarse level l from A on fine level l-1 using Galerkin-based coarsening
+// Calculate A_l on coarse level l from A_{l-1} on fine level l-1 using 
+// Galerkin-based coarsening, i.e., compute A_l = R * A_{l-1} * I.
 void GridMg::genCoraseGridOperator(int l)
 {
-	// loop over coarse grid vertices
-	for (int v=0; v<mb[l].size(); v++)
-	{
+	// loop over coarse grid vertices V
+	FOR_LVL(v,l) {
 		if (!mActive[l][v]) continue;
 
-		Vec3i V(v % mSize[l].x, (v % (mSize[l].x*mSize[l].y)) / mSize[l].x, v / (mSize[l].x*mSize[l].y));
+		for (int i=0; i<14; i++) { mA[l][v*14+i] = Real(0); } // clear stencil
 
-		// loop over stencil entries
-		for (int s = 0; s<14; s++)
-		{
-			Vec3i S((s+13)%3-1, ((s+13)%9)/3-1, (s+13)/9-1);
-			Vec3i N = V+S;
-			int n = linIdx(N,l);
+		Vec3i V = vecIdx(v,l);
 
-			if (!inGrid(N,l) || !mActive[l][n]) continue;
-				
-			Real sum = Real(0);
-				
-			for (int r=0; r<27; r++)
-			{
-				Vec3i R(r%3-1, (r%9)/3-1, r/9-1);
-				Real rw = Real(1) / Real(1 << (std::abs(R.x)+std::abs(R.y)+std::abs(R.z)));
+		// Calculate the stencil of A_l at V by considering all vertex paths of the form:
+		// (V) <--restriction-- (U) <--A_{l-1}-- (W) <--interpolation-- (N)
+		// V and N are vertices on the coarse grid level l, 
+		// U and W are vertices on the fine grid level l-1.
 
-				for (int i=0; i<27; i++)
-				{
-					Vec3i I(i%3-1, (i%9)/3-1, i/9-1);
-					Real iw = Real(1) / Real(1 << (std::abs(I.x)+std::abs(I.y)+std::abs(I.z)));
+		// loop over restriction vertices U on level l-1 associated with V
+		FOR_VEC_MINMAX(U, vmax(Vec3i(0)    , V*2-1), 
+					      vmin(mSize[l-1]-1, V*2+1)) {
+			int u = linIdx(U,l-1);
+			if (!mActive[l-1][u]) continue;
 
-					Vec3i A1 = 2*V+R;
-					Vec3i A2 = 2*N+I;
-					int a1 = dot(A1, mPitch[l-1]);
-					int a2 = dot(A2, mPitch[l-1]);
+			// restriction weight			
+			Real rw = Real(1) / Real(1 << ((U.x % 2) + (U.y % 2) + (U.z % 2))); 
 
-					if (A1.x>=0 && A1.x<mSize[l-1].x && A2.x>=0 && A2.x<mSize[l-1].x &&
-						A1.y>=0 && A1.y<mSize[l-1].y && A2.y>=0 && A2.y<mSize[l-1].y &&
-						A1.z>=0 && A1.z<mSize[l-1].z && A2.z>=0 && A2.z<mSize[l-1].z)
-					{
-						Vec3i d = A2-A1;
-						if (d.x>=-1 && d.x<=1 && d.y>=-1 && d.y<=1 && d.z>=-1 && d.z<=1)
-						{
-							int stencil = dot(d+1, Vec3i(1,3,9));
+			// loop over all stencil neighbors N of V level l that can be reached via restriction to U
+			FOR_VEC_MINMAX(N, (U-1)/2, vmin(mSize[l]-1, (U+2)/2)) {
+				int n = linIdx(N,l);
+				if (!mActive[l][n]) continue;
+							
+				// stencil entry at V associated to N (coarse grid level l)
+				Vec3i SC = N-V+1;
+				int sc = SC.x + 3*SC.y + 9*SC.z;
+				if (sc < 13) continue;
 
-							if (stencil >= 13)
-							{
-								sum += rw * mA[l-1][a1*14 + stencil - 13] * iw;
-							}
-							else
-							{
-								sum += rw * mA[l-1][a2*14 + 13 - stencil] * iw;
-							}
-						}
+				// loop over all vertices W which are in the stencil of A_{l-1} at U 
+				// and which interpolate from N
+				FOR_VEC_MINMAX(W, vmax(Vec3i(0)    ,vmax(U-1,N*2-1)),
+				                  vmin(mSize[l-1]-1,vmin(U+1,N*2+1))) {
+					int w = linIdx(W,l-1);
+					if (!mActive[l-1][w]) continue;
+
+					// stencil entry at U associated to W (fine grid level l-1)
+					Vec3i SF = W-U+1;
+					int sf = SF.x + 3*SF.y + 9*SF.z;
+
+					Real iw = Real(1) / Real(1 << ((W.x % 2) + (W.y % 2) + (W.z % 2))); // interpolation weight
+
+					if (sf < 13) {
+						mA[l][v*14 + sc-13] += rw * mA[l-1][w*14 + 13-sf] *iw;
+					} else {
+						mA[l][v*14 + sc-13] += rw * mA[l-1][u*14 + sf-13] *iw;
 					}
 				}
 			}
-
-			mA[l][v*14 + s] = sum;
 		}
 	}		
 }
