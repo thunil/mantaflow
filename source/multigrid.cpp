@@ -332,7 +332,7 @@ bool GridMg::doVCycle(Grid<Real>& dst)
 		dst[i] = mx[0][i];
 	}
 
-	debMsg("VCycle Residual: "<<resOld<<" -> "<<res);
+	debMsg("VCycle Residual: "<<resOld<<" -> "<<res, 1);
 
 	return res >= mAccuracy;
 }
@@ -467,10 +467,10 @@ void GridMg::genCoraseGridOperator(int l)
 
 void GridMg::smoothGS(int l)
 {
-	for (int v=0; v<mb[l].size(); v++) {		
+	FOR_LVL(v,l) {
 		if (!mActive[l][v]) continue;
 
-		Vec3i V(v % mSize[l].x, (v % (mSize[l].x*mSize[l].y)) / mSize[l].x, v / (mSize[l].x*mSize[l].y)); 	
+		Vec3i V = vecIdx(v,l);
 
 		Real sum = mb[l][v];
 
@@ -479,13 +479,13 @@ void GridMg::smoothGS(int l)
 
 			Vec3i S(s%3-1, (s%9)/3-1, s/9-1);
 			Vec3i N = V + S;
-			int n = dot(N, mPitch[l]);
+			int n = linIdx(N,l);
 
-			if (N.x>=0 && N.x<mSize[l].x && N.y>=0 && N.y<mSize[l].y && N.z>=0 && N.z<mSize[l].z) {
+			if (inGrid(N,l) && mActive[l][n]) {
 				if (s < 13) {
-					sum -= mA[l][n*14 + 13 - s] * mx[l][n];
+					sum -= mA[l][n*14 + 13-s] * mx[l][n];
 				} else {
-					sum -= mA[l][v*14 + s - 13] * mx[l][n];
+					sum -= mA[l][v*14 + s-13] * mx[l][n];
 				}
 			}
 		}
@@ -496,23 +496,23 @@ void GridMg::smoothGS(int l)
 
 void GridMg::calcResidual(int l)
 {
-	for (int v=0; v<mb[l].size(); v++) {
+	FOR_LVL(v,l) {
 		if (!mActive[l][v]) continue;
 		
-		Vec3i V(v % mSize[l].x, (v % (mSize[l].x*mSize[l].y)) / mSize[l].x, v / (mSize[l].x*mSize[l].y)); 	
+		Vec3i V = vecIdx(v,l);
 
 		Real sum = mb[l][v];
 
 		for (int s=0; s<27; s++) {
 			Vec3i S(s%3-1, (s%9)/3-1, s/9-1);
 			Vec3i N = V + S;
-			int n = dot(N, mPitch[l]);
+			int n = linIdx(N,l);
 
-			if (N.x>=0 && N.x<mSize[l].x && N.y>=0 && N.y<mSize[l].y && N.z>=0 && N.z<mSize[l].z) {
+			if (inGrid(N,l) && mActive[l][n]) {
 				if (s < 13) {
-					sum -= mA[l][n*14 + 13 - s] * mx[l][n];
+					sum -= mA[l][n*14 + 13-s] * mx[l][n];
 				} else {
-					sum -= mA[l][v*14 + s - 13] * mx[l][n];
+					sum -= mA[l][v*14 + s-13] * mx[l][n];
 				}
 			}
 		}
@@ -525,7 +525,7 @@ Real GridMg::calcResidualNorm(int l)
 {
 	Real res = Real(0);
 
-	for (int v=0; v<mb[l].size(); v++) {
+	FOR_LVL(v,l) {
 		if (!mActive[l][v]) continue;
 
 		res += mr[l][v] * mr[l][v];
@@ -553,35 +553,24 @@ void GridMg::solveCG(int l)
 void GridMg::restrict(int l_dst, std::vector<Real>& src, std::vector<Real>& dst)
 {
 	const int l_src = l_dst - 1;
-
-	for (int v=0; v<mb[l_dst].size(); v++) {
+	
+	FOR_LVL(v,l_dst) {
 		if (!mActive[l_dst][v]) continue;
 
 		// Coarse grid vertex
-		Vec3i V(v % mSize[l_dst].x, (v % (mSize[l_dst].x*mSize[l_dst].y)) / mSize[l_dst].x, v / (mSize[l_dst].x*mSize[l_dst].y)); 	
-		Vec3i Vfine = V*2; // coordinates on fine grid
-
-
-		// Box of fine grid vertices to restrict from
-		Vec3i RMin = Vfine - 1;
-		Vec3i RMax = Vfine + 1;
-		for (int d=0; d<3; d++) {
-			if (RMin[d] < 0) { RMin[d] = 0; } 
-			if (RMax[d] >= mSize[l_src][d]) { RMax[d] = mSize[l_src][d] - 1; }
-		}
-
+		Vec3i V = vecIdx(v,l_dst);
+		
 		Real sum = Real(0);
 
-		Vec3i R;
-		for (R.z=RMin.z; R.z<=RMax.z; R.z++)
-		for (R.y=RMin.y; R.y<=RMax.y; R.y++)
-		for (R.x=RMin.x; R.x<=RMax.x; R.x++)
-		{
-			int r = dot(R,mPitch[l_src]);
+		FOR_VEC_MINMAX(R, vmax(Vec3i(0)      , V*2-1),
+		                  vmin(mSize[l_src]-1, V*2+1)) {
+			int r = linIdx(R,l_src);
 			if (!mActive[l_src][r]) continue;
-			Vec3i D = (R - Vfine);
-			Real w = Real(1) / Real(1 << (std::abs(D.x)+std::abs(D.y)+std::abs(D.z)));
-			sum += w * src[r]; 
+
+			// restriction weight			
+			Real rw = Real(1) / Real(1 << ((R.x % 2) + (R.y % 2) + (R.z % 2))); 
+			
+			sum += rw * src[r]; 
 		}
 
 		dst[v] = sum;
@@ -592,27 +581,22 @@ void GridMg::interpolate(int l_dst, std::vector<Real>& src, std::vector<Real>& d
 {
 	const int l_src = l_dst + 1;
 
-	for (int v=0; v<mb[l_dst].size(); v++) {
+	FOR_LVL(v,l_dst) {
 		if (!mActive[l_dst][v]) continue;
 		
-		Vec3i V(v % mSize[l_dst].x, (v % (mSize[l_dst].x*mSize[l_dst].y)) / mSize[l_dst].x, v / (mSize[l_dst].x*mSize[l_dst].y)); 	
-
-		Vec3i IMin = V / 2;
-		Vec3i IMax = (V+1) / 2;
+		Vec3i V = vecIdx(v,l_dst);
 
 		Real sum = Real(0);
 
-		Vec3i I;
-		for (I.z=IMin.z; I.z<=IMax.z; I.z++)
-		for (I.y=IMin.y; I.y<=IMax.y; I.y++)
-		for (I.x=IMin.x; I.x<=IMax.x; I.x++)
-		{
-			int i = dot(I,mPitch[l_src]);
+		FOR_VEC_MINMAX(I, V/2, (V+1)/2) {
+			int i = linIdx(I,l_src);
 			if (mActive[l_src][i]) sum += src[i]; 
 		}
 
-		Real w = Real(1) / Real(1 << dot(IMax-IMin,Vec3i(1)));
-		dst[v] = w * sum;
+		// restriction weight			
+		Real iw = Real(1) / Real(1 << ((V.x % 2) + (V.y % 2) + (V.z % 2)));
+
+		dst[v] = iw * sum;
 	}
 }
 
