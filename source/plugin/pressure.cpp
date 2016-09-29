@@ -283,7 +283,7 @@ IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, 
 		const int maxIter = 10;
 		GridMg* gmg = new GridMg(pressure);
 
-		gmg->setA(flags, &A0, &Ai, &Aj, &Ak);
+		gmg->setA(&A0, &Ai, &Aj, &Ak);
 		gmg->setRhs(rhs);
 
 		gmg->setAccuracy(cgAccuracy);

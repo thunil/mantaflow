@@ -29,7 +29,7 @@ class GridMg {
 		~GridMg() {};
 
 		// solving functions
-		void setA(FlagGrid& flags, Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk);
+		void setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk);
 		void setRhs(Grid<Real>& rhs);
 		
 		// returns false if finished
@@ -45,6 +45,13 @@ class GridMg {
 		int getNumPostSmooth() { return mNumPostSmooth; }
 
 	private:
+		Vec3i vecIdx(int   v, int l) { return Vec3i(v%mSize[l].x, (v%(mSize[l].x*mSize[l].y))/mSize[l].x, v/(mSize[l].x*mSize[l].y)); }
+		int   linIdx(Vec3i V, int l) { return V.x + V.y*mPitch[l].y + V.z*mPitch[l].z; }
+		bool  inGrid(Vec3i V, int l) { return V.x>=0 && V.y>=0 && V.z>=0 && V.x<mSize[l].x && V.y<mSize[l].y && V.z<mSize[l].z; }
+
+		void genCoarseGrid(int l);
+		void genCoraseGridOperator(int l);
+
 		void smoothGS(int l);
 		void calcResidual(int l);
 		Real calcResidualNorm(int l);
@@ -64,7 +71,7 @@ class GridMg {
 		std::vector<std::vector<Real>> mx; // x[level][vertex]
 		std::vector<std::vector<Real>> mb; // b[level][vertex]
 		std::vector<std::vector<Real>> mr; // residual[level][vertex]
-		std::vector<std::vector<bool>> mActive; // active[level][vertex]
+		std::vector<std::vector<char>> mActive; // active[level][vertex]
 		std::vector<Vec3i> mSize, mPitch;
 }; // GridCg
 

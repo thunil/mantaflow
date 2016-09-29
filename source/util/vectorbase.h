@@ -320,6 +320,42 @@ inline bool operator!= (const Vector3D<S>& s1, const Vector3D<S>& s2) {
 // External functions
 //************************************************************************
 
+//! Min operator
+template<class S>
+inline Vector3D<S> vmin (const Vector3D<S>& s1, const Vector3D<S>& s2) {
+	return Vector3D<S>(std::min(s1.x,s2.x), std::min(s1.y,s2.y), std::min(s1.z,s2.z));
+}
+
+//! Min operator
+template<class S, class S2>
+inline Vector3D<S> vmin (const Vector3D<S>& s1, S2 s2) {
+	return Vector3D<S>(std::min(s1.x,s2), std::min(s1.y,s2), std::min(s1.z,s2));
+}
+
+//! Min operator
+template<class S1, class S>
+inline Vector3D<S> vmin (S1 s1, const Vector3D<S>& s2) {
+	return Vector3D<S>(std::min(s1,s2.x), std::min(s1,s2.y), std::min(s1,s2.z));
+}
+
+//! Max operator
+template<class S>
+inline Vector3D<S> vmax (const Vector3D<S>& s1, const Vector3D<S>& s2) {
+	return Vector3D<S>(std::max(s1.x,s2.x), std::max(s1.y,s2.y), std::max(s1.z,s2.z));
+}
+
+//! Max operator
+template<class S, class S2>
+inline Vector3D<S> vmax (const Vector3D<S>& s1, S2 s2) {
+	return Vector3D<S>(std::max(s1.x,s2), std::max(s1.y,s2), std::max(s1.z,s2));
+}
+
+//! Max operator
+template<class S1, class S>
+inline Vector3D<S> vmax (S1 s1, const Vector3D<S>& s2) {
+	return Vector3D<S>(std::max(s1,s2.x), std::max(s1,s2.y), std::max(s1,s2.z));
+}
+
 //! Dot product
 template<class S>
 inline S dot ( const Vector3D<S> &t, const Vector3D<S> &v ) {
