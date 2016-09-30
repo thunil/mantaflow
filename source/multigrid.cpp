@@ -14,7 +14,7 @@
 // TODO
 // - active vertex lists
 // - parallelization
-// - finest level optimization
+// - finest level optimization (operator coarsening)
 // - analyze performance
 // - accuracy parameters configuration (coarsest CG)
 
@@ -260,6 +260,25 @@ GridMg::GridMg(const Vec3i& gridSize)
 	}
 
 	debMsg("GridMg: Allocation done in "<<time.update(), 0);
+
+	// Test code: precalculate coarsening paths
+	int a = 0;
+	Vec3i p7stencil[7] = { Vec3i(0,0,0), Vec3i(-1, 0, 0), Vec3i(1,0,0),
+	                                     Vec3i( 0,-1, 0), Vec3i(0,1,0),
+	                                     Vec3i( 0, 0,-1), Vec3i(0,0,1) };
+	Vec3i V (1,1,1);
+	FOR_VEC_MINMAX(U, V*2-1, V*2+1) {		
+		for (int i=0; i<1+2*mDim; i++) {
+			Vec3i W = U + p7stencil[i];
+			FOR_VEC_MINMAX(N, W/2, (W+1)/2) {				
+				int s = dot(N,Vec3i(1,3,9));
+
+				if (s>=13) {
+					a++;	
+				}
+			}
+		}
+	}
 }
 
 void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk)
