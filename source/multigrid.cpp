@@ -11,6 +11,14 @@
  *
  ******************************************************************************/
 
+// TODO
+// - CG solver
+// - 2D specialization
+// - active vertex lists
+// - parallelization
+// - finest level optimization
+// - analyze performance
+
 #include "multigrid.h"
 
 #define FOR_LVL(IDX,LVL) \
@@ -26,6 +34,12 @@
 	for(VEC.z=VEC##__min.z; VEC.z<=VEC##__max.z; VEC.z++) \
 	for(VEC.y=VEC##__min.y; VEC.y<=VEC##__max.y; VEC.y++) \
 	for(VEC.x=VEC##__min.x; VEC.x<=VEC##__max.x; VEC.x++)
+
+#define FOR_VECLIN_MINMAX(VEC,LIN,MIN,MAX) Vec3i VEC; int LIN = 0; \
+	const Vec3i VEC##__min = (MIN), VEC##__max = (MAX); \
+	for(VEC.z=VEC##__min.z; VEC.z<=VEC##__max.z; VEC.z++) \
+	for(VEC.y=VEC##__min.y; VEC.y<=VEC##__max.y; VEC.y++) \
+	for(VEC.x=VEC##__min.x; VEC.x<=VEC##__max.x; VEC.x++, LIN++)
 
 
 using namespace std;
@@ -389,8 +403,7 @@ void GridMg::genCoarseGrid(int l)
 
 				// update #free interpolation vertices in heap:
 				// loop over all associated restriction vertices of I on fine level l-1
-				FOR_VEC_MINMAX(R, vmax(Vec3i(0)    , I*2-1), 
-						          vmin(mSize[l-1]-1, I*2+1)) {
+				FOR_VEC_MINMAX(R, vmax(0, I*2-1), vmin(mSize[l-1]-1, I*2+1)) {
 					int r = linIdx(R,l-1);
 					int key = heap.getKey(r); 
 
@@ -423,8 +436,7 @@ void GridMg::genCoraseGridOperator(int l)
 		// U and W are vertices on the fine grid level l-1.
 
 		// loop over restriction vertices U on level l-1 associated with V
-		FOR_VEC_MINMAX(U, vmax(Vec3i(0)    , V*2-1), 
-					      vmin(mSize[l-1]-1, V*2+1)) {
+		FOR_VEC_MINMAX(U, vmax(0, V*2-1), vmin(mSize[l-1]-1, V*2+1)) {
 			int u = linIdx(U,l-1);
 			if (!mActive[l-1][u]) continue;
 
@@ -443,8 +455,8 @@ void GridMg::genCoraseGridOperator(int l)
 
 				// loop over all vertices W which are in the stencil of A_{l-1} at U 
 				// and which interpolate from N
-				FOR_VEC_MINMAX(W, vmax(Vec3i(0)    ,vmax(U-1,N*2-1)),
-				                  vmin(mSize[l-1]-1,vmin(U+1,N*2+1))) {
+				FOR_VEC_MINMAX(W, vmax(           0, vmax(U-1,N*2-1)),
+				                  vmin(mSize[l-1]-1, vmin(U+1,N*2+1))) {
 					int w = linIdx(W,l-1);
 					if (!mActive[l-1][w]) continue;
 
@@ -474,10 +486,9 @@ void GridMg::smoothGS(int l)
 
 		Real sum = mb[l][v];
 
-		for (int s=0; s<27; s++) {
+		FOR_VECLIN_MINMAX(S, s, -1, 1) {
 			if (s==13) continue;
 
-			Vec3i S(s%3-1, (s%9)/3-1, s/9-1);
 			Vec3i N = V + S;
 			int n = linIdx(N,l);
 
@@ -503,8 +514,7 @@ void GridMg::calcResidual(int l)
 
 		Real sum = mb[l][v];
 
-		for (int s=0; s<27; s++) {
-			Vec3i S(s%3-1, (s%9)/3-1, s/9-1);
+		FOR_VECLIN_MINMAX(S, s, -1, 1) {
 			Vec3i N = V + S;
 			int n = linIdx(N,l);
 
@@ -534,20 +544,109 @@ Real GridMg::calcResidualNorm(int l)
 	return std::sqrt(res);
 }
 
+// Standard conjugate gradients with Jacobi preconditioner
 void GridMg::solveCG(int l)
 {
-	// temporarily replace with full GS solve
-	while (true)
-	{
-		calcResidual(l);
-		Real res = calcResidualNorm(l);
-		if (res < Real(1E-6)) break;
+	std::vector<Real> z(mb[l].size());
+	std::vector<Real> p(mb[l].size());
 
-		for (int i=0; i<5; i++)
-		{
-			smoothGS(l);
+	std::vector<Real>& x = mx[l];
+	std::vector<Real>& r = mr[l];
+
+	// Initialization:
+	// r_0 = b - A * x_0
+	// z_0 = M^{-1} r_0
+	// p_0 = z_0
+	// alphaTop = (r_0)^T z_0	
+
+	Real alphaTop = Real(0);
+
+	FOR_LVL(v,l) {
+		if (!mActive[l][v]) continue;
+		
+		Vec3i V = vecIdx(v,l);
+
+		Real sum = mb[l][v];
+
+		FOR_VECLIN_MINMAX(S, s, -1, 1) {
+			Vec3i N = V + S;
+			int n = linIdx(N,l);
+
+			if (inGrid(N,l) && mActive[l][n]) {
+				if (s < 13) {
+					sum -= mA[l][n*14 + 13-s] * x[n];
+				} else {
+					sum -= mA[l][v*14 + s-13] * x[n];
+				}
+			}
+		}
+
+		r[v] = sum;
+		z[v] = r[v] / mA[l][v*14 + 0];
+		p[v] = z[v];
+		alphaTop += r[v] * z[v];
+	}
+
+	int iter = 0;
+	const int maxIter = 10000;
+	Real residual = Real(-1);
+
+	for (; iter<maxIter; iter++)
+	{
+		Real alphaBot = Real(0);
+
+		FOR_LVL(v,l) {
+			if (!mActive[l][v]) continue;
+		
+			Vec3i V = vecIdx(v,l);
+
+			z[v] = Real(0);
+
+			FOR_VECLIN_MINMAX(S, s, -1, 1) {
+				Vec3i N = V + S;
+				int n = linIdx(N,l);
+
+				if (inGrid(N,l) && mActive[l][n]) {
+					if (s < 13) {
+						z[v] += mA[l][n*14 + 13-s] * p[n];
+					} else {
+						z[v] += mA[l][v*14 + s-13] * p[n];
+					}
+				}
+			}
+
+			alphaBot += p[v] * z[v];
+		}
+
+		Real alpha = alphaTop / alphaBot;
+		
+		Real alphaTopNew = Real(0);
+		residual = Real(0);
+
+		FOR_LVL(v,l) {
+			if (!mActive[l][v]) continue;
+		
+			x[v] += alpha * p[v];
+			r[v] -= alpha * z[v];
+			residual += r[v] * r[v];
+			z[v] = r[v] / mA[l][v*14 + 0];
+			alphaTopNew += r[v] * z[v];
+		}
+
+		residual = std::sqrt(residual);
+
+		if (residual < 1E-8) break;
+
+		Real beta = alphaTopNew / alphaTop;
+		alphaTop = alphaTopNew;
+
+		FOR_LVL(v,l) {
+			p[v] = z[v] + beta * p[v];
 		}
 	}
+
+	if (iter == maxIter) { debMsg("GridMg::solveCG Warning: Reached maximum number of CG iterations", 1); }
+	else { debMsg("GridMg::solveCG Info: Reached residual "<<residual<<" in "<<iter<<" iterations", 1); }
 }
 
 void GridMg::restrict(int l_dst, std::vector<Real>& src, std::vector<Real>& dst)
@@ -562,8 +661,7 @@ void GridMg::restrict(int l_dst, std::vector<Real>& src, std::vector<Real>& dst)
 		
 		Real sum = Real(0);
 
-		FOR_VEC_MINMAX(R, vmax(Vec3i(0)      , V*2-1),
-		                  vmin(mSize[l_src]-1, V*2+1)) {
+		FOR_VEC_MINMAX(R, vmax(0, V*2-1), vmin(mSize[l_src]-1, V*2+1)) {
 			int r = linIdx(R,l_src);
 			if (!mActive[l_src][r]) continue;
 
