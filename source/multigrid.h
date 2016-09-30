@@ -73,6 +73,10 @@ class GridMg {
 		std::vector<std::vector<Real>> mr; // residual[level][vertex]
 		std::vector<std::vector<char>> mActive; // active[level][vertex]
 		std::vector<Vec3i> mSize, mPitch;
+		bool mIs3D;
+		int mStencilSize;
+		Vec3i mStencilMin;
+		Vec3i mStencilMax;
 }; // GridCg
 
 } // namespace
