@@ -281,7 +281,7 @@ IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, 
 	else if (preconditioner == PcMG)
 	{
 		const int maxIter = 10;
-		GridMg* gmg = new GridMg(pressure);
+		GridMg* gmg = new GridMg(pressure.getSize());
 
 		gmg->setA(&A0, &Ai, &Aj, &Ak);
 		gmg->setRhs(rhs);

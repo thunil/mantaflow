@@ -212,14 +212,14 @@ void NKMinHeap::print()
 // |     | -  -  -,   -  0  1,   8  9 10
 // o-> x | -  -  -,   -  -  -,   5  6  7
 
-GridMg::GridMg(const Grid<Real>& sizeRef)
+GridMg::GridMg(const Vec3i& gridSize)
   : mA(),
 	mAccuracy(VECTOR_EPSILON),
 	mNumPreSmooth(1),
 	mNumPostSmooth(1)
 {
 	// Create level 0 (=original grid)
-	mSize.push_back(sizeRef.getSize());
+	mSize.push_back(gridSize);
 	mPitch.push_back(Vec3i(1, mSize.back().x, mSize.back().x*mSize.back().y));
 	int n = mSize.back().x * mSize.back().y * mSize.back().z;
 

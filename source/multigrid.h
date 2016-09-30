@@ -25,7 +25,7 @@ namespace Manta {
 class GridMg {
 	public:
 		//! constructor
-		GridMg(const Grid<Real>& sizeRef);
+		GridMg(const Vec3i& gridSize);
 		~GridMg() {};
 
 		// solving functions
