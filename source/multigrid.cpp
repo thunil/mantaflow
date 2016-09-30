@@ -12,12 +12,12 @@
  ******************************************************************************/
 
 // TODO
-// - CG solver
 // - 2D specialization
 // - active vertex lists
 // - parallelization
 // - finest level optimization
 // - analyze performance
+// - accuracy parameters configuration (coarsest CG)
 
 #include "multigrid.h"
 
@@ -46,9 +46,11 @@ using namespace std;
 namespace Manta 
 {
 
-// Efficient min heap for <ID, key> pairs with 0<=ID<N and 0<=key<K.
-// If K<<N, all ops are O(1) on avg (worst case O(K)).
-// Memory usage O(K+N): (K+N) * 3 * sizeof(int).
+// ----------------------------------------------------------------------------
+// Efficient min heap for <ID, key> pairs with 0<=ID<N and 0<=key<K
+// (IDs are stored in K buckets, where each bucket is a list of IDs).
+// - if K<<N, all ops are O(1) on avg (worst case O(K)).
+// - memory usage O(K+N): (K+N) * 3 * sizeof(int).
 class NKMinHeap
 {
 private:
@@ -59,8 +61,8 @@ private:
 
 	int mN, mK, mSize, mMinKey;
 
-	// Double linked lists of entries, one for each key value. 
-	// The first K entries are head pointers
+	// Double linked lists of IDs, one for each bucket/key.
+	// The first K entries are the buckets' head pointers,
 	// and the last N entries correspond to the IDs.
 	std::vector<Entry> mEntries; 
 	
@@ -69,8 +71,7 @@ public:
 
 	int size() { return mSize; }
 	int getKey(int ID) { return mEntries[mK+ID].key; }
-
-
+	
 	// Insert, decrease or increase key (or delete by setting key to -1)
 	void setKey(int ID, int key);
 
@@ -196,8 +197,20 @@ void NKMinHeap::print()
 	std::cout << std::endl;
 }
 
-
-
+// ----------------------------------------------------------------------------
+// GridMg methods
+//
+// Illustration of 27-point stencil indices
+// y     | z = -1    z = 0      z = 1
+// ^     | 6  7  8,  15 16 17,  24 25 26
+// |     | 3  4  5,  12 13 14,  21 22 23
+// o-> x | 0  1  2,   9 10 11,  18 19 20
+//
+// Symmetric storage with only 14 entries per vertex
+// y     | z = -1    z = 0      z = 1
+// ^     | -  -  -,   2  3  4,  11 12 13
+// |     | -  -  -,   -  0  1,   8  9 10
+// o-> x | -  -  -,   -  -  -,   5  6  7
 
 GridMg::GridMg(const Grid<Real>& sizeRef)
   : mA(),
@@ -205,26 +218,6 @@ GridMg::GridMg(const Grid<Real>& sizeRef)
 	mNumPreSmooth(1),
 	mNumPostSmooth(1)
 {
-	//NKMinHeap h(10, 4);
-	//h.print();
-	//h.setKey(3, 1);
-	//h.setKey(4, 2);
-	//h.setKey(5, 1);
-	//h.setKey(8, 0);
-	//h.setKey(1, 3);
-	//h.setKey(0, 1);
-	//h.setKey(5, 2);
-	//h.setKey(7, 2);
-	//h.setKey(4, 1);
-	//h.print();
-
-	//while (h.size() > 0)
-	//{
-	//	auto r = h.popMin();
-	//	std::cout << "Popped ("<<r.first <<", "<<r.second<<")" << std::endl;
-	//	h.print();
-	//}
-
 	// Create level 0 (=original grid)
 	mSize.push_back(sizeRef.getSize());
 	mPitch.push_back(Vec3i(1, mSize.back().x, mSize.back().x*mSize.back().y));
@@ -239,7 +232,7 @@ GridMg::GridMg(const Grid<Real>& sizeRef)
 	debMsg("GridMg::GridMg level 0: "<<mSize[0].x<<" x " << mSize[0].y << " x " << mSize[0].z << " x ", 1);
 
 	// Create coarse levels >0
-	for (int l=1; l<=1; l++)
+	for (int l=1; l<=100; l++)
 	{
 		if (mSize[l-1].x <= 5 && mSize[l-1].y <= 5 && mSize[l-1].z <= 5)
 			break;
@@ -257,19 +250,6 @@ GridMg::GridMg(const Grid<Real>& sizeRef)
 		debMsg("GridMg::GridMg level "<<l<<": " << mSize[l].x << " x " << mSize[l].y << " x " << mSize[l].z << " x ", 1);
 	}
 }
-
-
-// 27-Point stencil indices
-// y     | z = -1    z = 0      z = 1
-// ^     | x  x  x,   2  3  4,  11 12 13
-// |     | x  x  x,   x  0  1,   8  9 10
-// o-> x | x  x  x,   x  x  x,   5  6  7
-//
-// y     | z = -1    z = 0      z = 1
-// ^     | 6  7  8,  15 16 17,  24 25 26
-// |     | 3  4  5,  12 13 14,  21 22 23
-// o-> x | 0  1  2,   9 10 11,  18 19 20
-
 
 void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk)
 {
@@ -355,7 +335,7 @@ bool GridMg::doVCycle(Grid<Real>& dst)
 // This is an implementation of the algorithm described as part of Section 3.3 in
 //     Solving the Fluid Pressure Poisson Equation Using Multigrid-Evaluation
 //     and Improvements, C. Dick, M. Rogowsky, R. Westermann, IEEE TVCG 2015
-// to ensure a full rank interpolation operator.
+// to ensure a full-rank interpolation operator.
 void GridMg::genCoarseGrid(int l)
 {
 	//    AF_Free: unused/untouched vertices
@@ -547,6 +527,7 @@ Real GridMg::calcResidualNorm(int l)
 // Standard conjugate gradients with Jacobi preconditioner
 void GridMg::solveCG(int l)
 {
+	// TODO: preallocate
 	std::vector<Real> z(mb[l].size());
 	std::vector<Real> p(mb[l].size());
 
@@ -554,11 +535,6 @@ void GridMg::solveCG(int l)
 	std::vector<Real>& r = mr[l];
 
 	// Initialization:
-	// r_0 = b - A * x_0
-	// z_0 = M^{-1} r_0
-	// p_0 = z_0
-	// alphaTop = (r_0)^T z_0	
-
 	Real alphaTop = Real(0);
 
 	FOR_LVL(v,l) {
@@ -591,6 +567,7 @@ void GridMg::solveCG(int l)
 	const int maxIter = 10000;
 	Real residual = Real(-1);
 
+	// CG iterations
 	for (; iter<maxIter; iter++)
 	{
 		Real alphaBot = Real(0);
