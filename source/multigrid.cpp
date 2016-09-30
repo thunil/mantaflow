@@ -217,6 +217,8 @@ GridMg::GridMg(const Vec3i& gridSize)
 	mNumPreSmooth(1),
 	mNumPostSmooth(1)
 {
+	MuTime time;
+
 	// 2D or 3D mode
 	mIs3D = (gridSize.z > 1); 
 	mStencilSize = mIs3D ? 14 : 5; 
@@ -254,10 +256,14 @@ GridMg::GridMg(const Vec3i& gridSize)
 		
 		debMsg("GridMg::GridMg level "<<l<<": " << mSize[l].x << " x " << mSize[l].y << " x " << mSize[l].z << " x ", 1);
 	}
+
+	debMsg("GridMg: Allocation done in "<<time.update(), 0);
 }
 
 void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk)
 {
+	MuTime time;
+
 	// Copy level 0
 	FOR_LVL(v,0) {
 		for (int i=0; i<mStencilSize; i++) { mA[0][v*mStencilSize + i] = Real(0); }
@@ -273,8 +279,11 @@ void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* 
 
 	// Create coarse grids and operators on levels >0
 	for (int l=1; l<mA.size(); l++) {
+		time.get();
 		genCoarseGrid(l);	
+		debMsg("GridMg: Generated level "<<l<<" in "<<time.update(), 0);
 		genCoraseGridOperator(l);	
+		debMsg("GridMg: Generated operator "<<l<<" in "<<time.update(), 0);
 	}
 }
 
@@ -288,6 +297,12 @@ void GridMg::setRhs(Grid<Real>& rhs)
 
 bool GridMg::doVCycle(Grid<Real>& dst)
 {
+	MuTime timeSmooth, timeCG, timeI, timeR, timeTotal, time;
+	timeSmooth.clear();
+	timeCG.clear();
+	timeI.clear();
+	timeR.clear();
+
 	const int maxLevel = mA.size() - 1;
 
 	for (int i=0; i<mx[0].size(); i++) {
@@ -300,29 +315,40 @@ bool GridMg::doVCycle(Grid<Real>& dst)
 
 	for (int l=0; l<maxLevel; l++)
 	{
+		time.update();
 		for (int i=0; i<mNumPreSmooth; i++) {
 			smoothGS(l);
 		}
+		
+		timeSmooth += time.update();
+
 		calcResidual(l);
 		restrict(l+1, mr[l], mb[l+1]);
 
 		for (int i=0; i<mx[l+1].size(); i++) {
 			mx[l+1][i] = Real(0);
 		}
+		timeR += time.update();
 	}
 
+	time.update();
 	solveCG(maxLevel);
+	timeCG += time.update();
 
 	for (int l=maxLevel-1; l>=0; l--)
 	{
+		time.update();
 		interpolate(l, mx[l+1], mr[l]);
 		for (int i=0; i<mx[l].size(); i++) {
 			mx[l][i] += mr[l][i];
 		}
 
+		timeI += time.update();
+
 		for (int i=0; i<mNumPostSmooth; i++) {
 			smoothGS(l);
 		}
+		timeSmooth += time.update();
 	}
 
 	calcResidual(0);
@@ -333,6 +359,8 @@ bool GridMg::doVCycle(Grid<Real>& dst)
 	}
 
 	debMsg("VCycle Residual: "<<resOld<<" -> "<<res, 1);
+
+	debMsg("GridMg: Finished VCycle in "<<timeTotal.update()<<" (smoothing: "<<timeSmooth<<", CG: "<<timeCG<<", R: "<<timeR<<", I: "<<timeI<<")", 0);
 
 	return res >= mAccuracy;
 }
@@ -369,7 +397,6 @@ void GridMg::genCoarseGrid(int l)
 	{
 		int v = heap.popMin().first;
 		Vec3i V = vecIdx(v,l-1);
-
 
 		// loop over associated interpolation vertices of V on coarse level l:
 		// the first encountered 'free' vertex is set to 'zero',
@@ -674,7 +701,7 @@ void GridMg::interpolate(int l_dst, std::vector<Real>& src, std::vector<Real>& d
 			if (mActive[l_src][i]) sum += src[i]; 
 		}
 
-		// restriction weight			
+		// interpolation weight			
 		Real iw = Real(1) / Real(1 << ((V.x % 2) + (V.y % 2) + (V.z % 2)));
 
 		dst[v] = iw * sum;
