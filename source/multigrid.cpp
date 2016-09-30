@@ -221,7 +221,9 @@ GridMg::GridMg(const Vec3i& gridSize)
 
 	// 2D or 3D mode
 	mIs3D = (gridSize.z > 1); 
-	mStencilSize = mIs3D ? 14 : 5; 
+	mDim = mIs3D ? 3 : 2; 
+	mStencilSize  = mIs3D ? 14 : 5; 
+	mStencilSize0 = mIs3D ?  4 : 3; 
 	mStencilMin = Vec3i(-1,-1, mIs3D ? -1:0);
 	mStencilMax = Vec3i( 1, 1, mIs3D ?  1:0);
 
@@ -230,7 +232,7 @@ GridMg::GridMg(const Vec3i& gridSize)
 	mPitch.push_back(Vec3i(1, mSize.back().x, mSize.back().x*mSize.back().y));
 	int n = mSize.back().x * mSize.back().y * mSize.back().z;
 
-	mA.push_back(std::vector<Real>(n * mStencilSize));
+	mA.push_back(std::vector<Real>(n * mStencilSize0));
 	mx.push_back(std::vector<Real>(n));
 	mb.push_back(std::vector<Real>(n));
 	mr.push_back(std::vector<Real>(n));
@@ -266,15 +268,15 @@ void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* 
 
 	// Copy level 0
 	FOR_LVL(v,0) {
-		for (int i=0; i<mStencilSize; i++) { mA[0][v*mStencilSize + i] = Real(0); }
+		for (int i=0; i<mStencilSize0; i++) { mA[0][v*mStencilSize0 + i] = Real(0); }
 
-		mA[0][v*mStencilSize + 0] = (* A0)[v];
-		mA[0][v*mStencilSize + 1] = (*pAi)[v];
-		mA[0][v*mStencilSize + 3] = (*pAj)[v];
-		if (mIs3D) mA[0][v*mStencilSize + 9] = (*pAk)[v];
+		mA[0][v*mStencilSize0 + 0] = (* A0)[v];
+		mA[0][v*mStencilSize0 + 1] = (*pAi)[v];
+		mA[0][v*mStencilSize0 + 2] = (*pAj)[v];
+		if (mIs3D) mA[0][v*mStencilSize0 + 3] = (*pAk)[v];
 			
 		// active vertices on level 0 are vertices with non-zero diagonal entry in A
-		mActive[0][v] = char(mA[0][v*mStencilSize + 0] != Real(0));
+		mActive[0][v] = char(mA[0][v*mStencilSize0 + 0] != Real(0));
 	}
 
 	// Create coarse grids and operators on levels >0
@@ -477,12 +479,28 @@ void GridMg::genCoraseGridOperator(int l)
 					Vec3i SF = W - U + mStencilMax;
 					int sf = SF.x + 3*SF.y + 9*SF.z;
 
-					Real iw = Real(1) / Real(1 << ((W.x % 2) + (W.y % 2) + (W.z % 2))); // interpolation weight
+					if (l==1) {
+						// 2D: sf=1,3,4,5,7
+						// 3D: sf=4,10,12,13,14,16,2
+						int d = std::abs(sf - (mStencilSize-1));
+						if (d!=0 && d!=1 && d!=3 && d!=9) continue;
 
-					if (sf < mStencilSize) {
-						mA[l][v*mStencilSize + sc-mStencilSize+1] += rw * mA[l-1][w*mStencilSize + mStencilSize-1-sf] *iw;
+						Real iw = Real(1) / Real(1 << ((W.x % 2) + (W.y % 2) + (W.z % 2))); // interpolation weight
+
+						const static int map[10] = {0,1,-1,2,-1,-1,-1,-1,-1,3};
+						if (sf < mStencilSize) {
+							mA[l][v*mStencilSize + sc-mStencilSize+1] += rw * mA[0][w*mStencilSize0 + map[d]] * iw;
+						} else {
+							mA[l][v*mStencilSize + sc-mStencilSize+1] += rw * mA[0][u*mStencilSize0 + map[d]] * iw;
+						}
 					} else {
-						mA[l][v*mStencilSize + sc-mStencilSize+1] += rw * mA[l-1][u*mStencilSize + sf-mStencilSize+1] *iw;
+						Real iw = Real(1) / Real(1 << ((W.x % 2) + (W.y % 2) + (W.z % 2))); // interpolation weight
+
+						if (sf < mStencilSize) {
+							mA[l][v*mStencilSize + sc-mStencilSize+1] += rw * mA[l-1][w*mStencilSize + mStencilSize-1-sf] *iw;
+						} else {
+							mA[l][v*mStencilSize + sc-mStencilSize+1] += rw * mA[l-1][u*mStencilSize + sf-mStencilSize+1] *iw;
+						}
 					}
 				}
 			}
@@ -499,22 +517,33 @@ void GridMg::smoothGS(int l)
 
 		Real sum = mb[l][v];
 
-		FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
-			if (s == mStencilSize-1) continue;
+		if (l==0) {
+			int n;
+			for (int d=0; d<mDim; d++) {
+				if (V[d]>0)             { n = v-mPitch[0][d]; sum -= mA[0][n*mStencilSize0 + d+1] * mx[0][n]; }
+				if (V[d]<mSize[0][d]-1) { n = v+mPitch[0][d]; sum -= mA[0][v*mStencilSize0 + d+1] * mx[0][n]; }
+			}
 
-			Vec3i N = V + S;
-			int n = linIdx(N,l);
+			mx[0][v] = sum / mA[0][v*mStencilSize0 + 0];
+		} else {
+			FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
+				if (s == mStencilSize-1) continue;
 
-			if (inGrid(N,l) && mActive[l][n]) {
-				if (s < mStencilSize) {
-					sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * mx[l][n];
-				} else {
-					sum -= mA[l][v*mStencilSize + s-mStencilSize+1] * mx[l][n];
+				Vec3i N = V + S;
+				int n = linIdx(N,l);
+
+				if (inGrid(N,l) && mActive[l][n]) {
+					if (s < mStencilSize) {
+						sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * mx[l][n];
+					} else {
+						sum -= mA[l][v*mStencilSize + s-mStencilSize+1] * mx[l][n];
+					}
 				}
 			}
+
+			mx[l][v] = sum / mA[l][v*mStencilSize + 0];
 		}
 
-		mx[l][v] = sum / mA[l][v*mStencilSize + 0];
 	}
 }
 
@@ -527,15 +556,24 @@ void GridMg::calcResidual(int l)
 
 		Real sum = mb[l][v];
 
-		FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
-			Vec3i N = V + S;
-			int n = linIdx(N,l);
+		if (l==0) {
+			int n;
+			for (int d=0; d<mDim; d++) {
+				if (V[d]>0)             { n = v-mPitch[0][d]; sum -= mA[0][n*mStencilSize0 + d+1] * mx[0][n]; }
+				if (V[d]<mSize[0][d]-1) { n = v+mPitch[0][d]; sum -= mA[0][v*mStencilSize0 + d+1] * mx[0][n]; }
+			}
+			sum -= mA[0][v*mStencilSize0 + 0] * mx[0][v];
+		} else {
+			FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
+				Vec3i N = V + S;
+				int n = linIdx(N,l);
 
-			if (inGrid(N,l) && mActive[l][n]) {
-				if (s < mStencilSize) {
-					sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * mx[l][n];
-				} else {
-					sum -= mA[l][v*mStencilSize + s-mStencilSize+1] * mx[l][n];
+				if (inGrid(N,l) && mActive[l][n]) {
+					if (s < mStencilSize) {
+						sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * mx[l][n];
+					} else {
+						sum -= mA[l][v*mStencilSize + s-mStencilSize+1] * mx[l][n];
+					}
 				}
 			}
 		}
@@ -577,21 +615,33 @@ void GridMg::solveCG(int l)
 
 		Real sum = mb[l][v];
 
-		FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
-			Vec3i N = V + S;
-			int n = linIdx(N,l);
+		if (l==0) {
+			int n;
+			for (int d=0; d<mDim; d++) {
+				if (V[d]>0)             { n = v-mPitch[0][d]; sum -= mA[0][n*mStencilSize0 + d+1] * x[n]; }
+				if (V[d]<mSize[0][d]-1) { n = v+mPitch[0][d]; sum -= mA[0][v*mStencilSize0 + d+1] * x[n]; }
+			}
+			sum -= mA[0][v*mStencilSize0 + 0] * x[v];
+			
+			z[v] = sum / mA[0][v*mStencilSize0 + 0];
+		} else {
+			FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
+				Vec3i N = V + S;
+				int n = linIdx(N,l);
 
-			if (inGrid(N,l) && mActive[l][n]) {
-				if (s < mStencilSize) {
-					sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * x[n];
-				} else {
-					sum -= mA[l][v*mStencilSize + s-mStencilSize+1] * x[n];
+				if (inGrid(N,l) && mActive[l][n]) {
+					if (s < mStencilSize) {
+						sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * x[n];
+					} else {
+						sum -= mA[l][v*mStencilSize + s-mStencilSize+1] * x[n];
+					}
 				}
 			}
+			
+			z[v] = sum / mA[l][v*mStencilSize + 0];
 		}
 
 		r[v] = sum;
-		z[v] = r[v] / mA[l][v*mStencilSize + 0];
 		p[v] = z[v];
 		alphaTop += r[v] * z[v];
 	}
@@ -612,15 +662,24 @@ void GridMg::solveCG(int l)
 
 			z[v] = Real(0);
 
-			FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
-				Vec3i N = V + S;
-				int n = linIdx(N,l);
+			if (l==0) {
+				int n;
+				for (int d=0; d<mDim; d++) {
+					if (V[d]>0)             { n = v-mPitch[0][d]; z[v] += mA[0][n*mStencilSize0 + d+1] * p[n]; }
+					if (V[d]<mSize[0][d]-1) { n = v+mPitch[0][d]; z[v] += mA[0][v*mStencilSize0 + d+1] * p[n]; }
+				}
+				z[v] += mA[0][v*mStencilSize0 + 0] * p[v];
+			} else {
+				FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
+					Vec3i N = V + S;
+					int n = linIdx(N,l);
 
-				if (inGrid(N,l) && mActive[l][n]) {
-					if (s < mStencilSize) {
-						z[v] += mA[l][n*mStencilSize + mStencilSize-1-s] * p[n];
-					} else {
-						z[v] += mA[l][v*mStencilSize + s-mStencilSize+1] * p[n];
+					if (inGrid(N,l) && mActive[l][n]) {
+						if (s < mStencilSize) {
+							z[v] += mA[l][n*mStencilSize + mStencilSize-1-s] * p[n];
+						} else {
+							z[v] += mA[l][v*mStencilSize + s-mStencilSize+1] * p[n];
+						}
 					}
 				}
 			}
@@ -639,7 +698,8 @@ void GridMg::solveCG(int l)
 			x[v] += alpha * p[v];
 			r[v] -= alpha * z[v];
 			residual += r[v] * r[v];
-			z[v] = r[v] / mA[l][v*mStencilSize + 0];
+			if (l==0) z[v] = r[v] / mA[0][v*mStencilSize0 + 0];
+			else      z[v] = r[v] / mA[l][v*mStencilSize  + 0];			
 			alphaTopNew += r[v] * z[v];
 		}
 
