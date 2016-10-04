@@ -12,10 +12,10 @@
  ******************************************************************************/
 
 // TODO
+// - handle trivial equations x_i = b_i
 // - active vertex lists
 // - parallelization
 // - analyze performance
-// - accuracy parameters configuration (coarsest CG)
 // - Boundary optimization (add 1-cell band)???
 
 #include "multigrid.h"
