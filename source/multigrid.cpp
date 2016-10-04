@@ -14,7 +14,6 @@
 // TODO
 // - active vertex lists
 // - parallelization
-// - finest level optimization (operator coarsening)
 // - analyze performance
 // - accuracy parameters configuration (coarsest CG)
 // - Boundary optimization (add 1-cell band)???
