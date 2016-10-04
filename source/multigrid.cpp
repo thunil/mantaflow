@@ -20,7 +20,6 @@
 // - Boundary optimization (add 1-cell band)???
 
 #include "multigrid.h"
-//#include <fstream>
 
 #define FOR_LVL(IDX,LVL) \
 	for(int IDX=0, IDX##total=mSize[LVL].x*mSize[LVL].y*mSize[LVL].z; IDX<IDX##total; IDX++)
@@ -296,16 +295,6 @@ GridMg::GridMg(const Vec3i& gridSize)
 		return p1.sc < p2.sc;
 	};
 	std::sort(mCoarseningPaths0.begin(), mCoarseningPaths0.end(), pathLess);
-
-	//std::ofstream file("paths.txt", std::ios_base::out);
-	//file << "Nx,Ny,Nz,Ux,Uy,Uz,Wx,Wy,Wz,sc,sf,rw,iw,atU" << std::endl;
-	//for (auto it=mCoarseningPaths.begin(); it!=mCoarseningPaths.end(); it++) {
-	//	file <<it->N.x<<","<<it->N.y<<","<<it->N.z<<","
-	//		 <<it->U.x<<","<<it->U.y<<","<<it->U.z<<","
-	//		 <<it->W.x<<","<<it->W.y<<","<<it->W.z<<","
-	//		<<it->sc<<","<<it->sf<<","<<it->rw<<","<<it->iw<<","
-	//		<<it->inUStencil<< std::endl;
-	//}
 }
 
 void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk)
