@@ -17,7 +17,7 @@
 #include "vectorbase.h"
 #include "grid.h"
 #include "kernel.h"
-
+#include "multigrid.h"
 
 namespace Manta { 
 
@@ -26,7 +26,7 @@ static const bool CG_DEBUG = false;
 //! Basic CG interface 
 class GridCgInterface {
 	public:
-		enum PreconditionType { PC_None=0, PC_ICP, PC_mICP };
+		enum PreconditionType { PC_None=0, PC_ICP, PC_mICP, PC_MG };
 		
 		GridCgInterface() : mUseL2Norm(true) {};
 		virtual ~GridCgInterface() {};
@@ -37,6 +37,7 @@ class GridCgInterface {
 
 		// precond
 		virtual void setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak) = 0;
+		virtual void setPreconditioner(PreconditionType method, GridMg* MG) = 0;
 
 		// access
 		virtual Real getSigma() const = 0;
@@ -71,6 +72,7 @@ class GridCg : public GridCgInterface {
 		void solve(int maxIter);
 		//! init pointers, and copy values from "normal" matrix
 		void setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak);
+		void setPreconditioner(PreconditionType method, GridMg* MG);
 		
 		// Accessors        
 		Real getSigma() const { return mSigma; }
@@ -97,6 +99,7 @@ class GridCg : public GridCgInterface {
 		PreconditionType mPcMethod;
 		//! preconditioning grids
 		Grid<Real> *mpPCA0, *mpPCAi, *mpPCAj, *mpPCAk;
+		GridMg* mMG;
 
 		//! sigma / residual
 		Real mSigma;

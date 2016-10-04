@@ -47,5 +47,6 @@ IntRK4   = 2
 PcNone = 0
 PcMIC  = 1
 PcMG   = 2
+PcMG_Dbg = 3
 
 

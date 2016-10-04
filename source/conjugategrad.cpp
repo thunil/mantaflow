@@ -96,6 +96,16 @@ void InitPreconditionModifiedIncompCholesky2(FlagGrid& flags,
 	}
 };
 
+//! Preconditioning using multigrid ala Dick et al.
+void InitPreconditionMultigrid(GridMg* MG, Grid<Real>&A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, Real mAccuracy) 
+{
+	// build multigrid hierarchy (this is expensive)
+	// possible optimization: skip this when A did not change since last solve!
+	MG->setA(&A0, &Ai, &Aj, &Ak);
+	MG->setCoarsestLevelAccuracy(mAccuracy * 1E-4);
+	MG->setSmoothing(1,1);
+};
+
 //! Apply WT-style ICP
 void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid& flags,
 				Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak,
@@ -149,6 +159,14 @@ void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1,
 	}
 }
 
+//! Perform one Multigrid VCycle
+void ApplyPreconditionMultigrid(GridMg* pMG, Grid<Real>& dst, Grid<Real>& Var1) 
+{
+	// one VCycle on "A*dst = Var1" with initial guess dst=0
+	pMG->setRhs(Var1);
+	pMG->doVCycle(dst); 
+}
+
 
 //*****************************************************************************
 // Kernels    
@@ -186,7 +204,7 @@ GridCg<APPLYMAT>::GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual,
 			   Grid<Real>* pA0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk) :
 	GridCgInterface(), mInited(false), mIterations(0), mDst(dst), mRhs(rhs), mResidual(residual),
 	mSearch(search), mFlags(flags), mTmp(tmp), mpA0(pA0), mpAi(pAi), mpAj(pAj), mpAk(pAk),
-	mPcMethod(PC_None), mpPCA0(pA0), mpPCAi(pAi), mpPCAj(pAj), mpPCAk(pAk), mSigma(0.), mAccuracy(VECTOR_EPSILON), mResNorm(1e20) 
+	mPcMethod(PC_None), mpPCA0(pA0), mpPCAi(pAi), mpPCAj(pAj), mpPCAk(pAk), mMG(nullptr), mSigma(0.), mAccuracy(VECTOR_EPSILON), mResNorm(1e20) 
 {
 	dst.clear();
 	residual.clear();
@@ -208,6 +226,9 @@ void GridCg<APPLYMAT>::doInit() {
 		assertMsg(mDst.is3D(), "mICP only supports 3D grids so far");
 		InitPreconditionModifiedIncompCholesky2(mFlags, *mpPCA0, *mpA0, *mpAi, *mpAj, *mpAk);
 		ApplyPreconditionModifiedIncompCholesky2(mTmp, mResidual, mFlags, *mpPCA0, *mpA0, *mpAi, *mpAj, *mpAk);
+	} else if (mPcMethod == PC_MG) {
+		InitPreconditionMultigrid(mMG, *mpA0, *mpAi, *mpAj, *mpAk, mAccuracy);
+		ApplyPreconditionMultigrid(mMG, mTmp, mResidual);
 	} else {
 		mTmp.copyFrom( mResidual );
 	}
@@ -241,6 +262,8 @@ bool GridCg<APPLYMAT>::iterate() {
 		ApplyPreconditionIncompCholesky(mTmp, mResidual, mFlags, *mpPCA0, *mpPCAi, *mpPCAj, *mpPCAk, *mpA0, *mpAi, *mpAj, *mpAk);
 	else if (mPcMethod == PC_mICP)
 		ApplyPreconditionModifiedIncompCholesky2(mTmp, mResidual, mFlags, *mpPCA0, *mpA0, *mpAi, *mpAj, *mpAk);
+	else if (mPcMethod == PC_MG)
+		ApplyPreconditionMultigrid(mMG, mTmp, mResidual);
 	else
 		mTmp.copyFrom( mResidual );
 		
@@ -283,9 +306,9 @@ static bool gPrint2dWarning = true;
 template<class APPLYMAT>
 void GridCg<APPLYMAT>::setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak) {
 	mPcMethod = method;
-	if( (!A0->is3D()) && (mPcMethod!=PC_None) ) {
+	if( (!A0->is3D()) && (mPcMethod==PC_ICP || mPcMethod==PC_mICP) ) {
 		if(gPrint2dWarning) {
-			debMsg("Pre-conditioning only supported in 3D for now, disabling it.", 1);
+			debMsg("ICP/mICP pre-conditioning only supported in 3D for now, disabling it.", 1);
 			gPrint2dWarning = false;
 		}
 		mPcMethod=PC_None;
@@ -294,6 +317,13 @@ void GridCg<APPLYMAT>::setPreconditioner(PreconditionType method, Grid<Real> *A0
 	mpPCAi = Ai;
 	mpPCAj = Aj;
 	mpPCAk = Ak;
+}
+
+template<class APPLYMAT>
+void GridCg<APPLYMAT>::setPreconditioner(PreconditionType method, GridMg* MG) {
+	mPcMethod = method;
+	
+	mMG = MG;
 }
 
 // explicit instantiation

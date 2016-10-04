@@ -213,9 +213,9 @@ void NKMinHeap::print()
 
 GridMg::GridMg(const Vec3i& gridSize)
   : mA(),
-	mAccuracy(VECTOR_EPSILON),
 	mNumPreSmooth(1),
-	mNumPostSmooth(1)
+	mNumPostSmooth(1),
+	mCoarsestLevelAccuracy(1E-8)
 {
 	MuTime time;
 
@@ -331,7 +331,7 @@ void GridMg::setRhs(Grid<Real>& rhs)
 	}
 }
 
-bool GridMg::doVCycle(Grid<Real>& dst)
+Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 {
 	MuTime timeSmooth, timeCG, timeI, timeR, timeTotal, time;
 	timeSmooth.clear();
@@ -341,9 +341,8 @@ bool GridMg::doVCycle(Grid<Real>& dst)
 
 	const int maxLevel = mA.size() - 1;
 
-	for (int i=0; i<mx[0].size(); i++) {
-		mx[0][i] = dst[i];
-	}
+	if (src) { for (int i=0; i<mx[0].size(); i++) { mx[0][i] = (*src)[i]; } }
+	else     { for (int i=0; i<mx[0].size(); i++) { mx[0][i] = Real(0);   } }
 
 	// Next two lines are debug code, remove later
 	calcResidual(0);
@@ -390,15 +389,13 @@ bool GridMg::doVCycle(Grid<Real>& dst)
 	calcResidual(0);
 	Real res = calcResidualNorm(0);
 
-	for (int i=0; i<mx[0].size(); i++) {
-		dst[i] = mx[0][i];
-	}
+	for (int i=0; i<mx[0].size(); i++) { dst[i] = mx[0][i];	}
 
 	debMsg("VCycle Residual: "<<resOld<<" -> "<<res, 1);
 
 	debMsg("GridMg: Finished VCycle in "<<timeTotal.update()<<" (smoothing: "<<timeSmooth<<", CG: "<<timeCG<<", R: "<<timeR<<", I: "<<timeI<<")", 0);
 
-	return res >= mAccuracy;
+	return res;
 }
 
 // Determine active cells on coarse level l from active cells on fine level l-1
@@ -746,7 +743,7 @@ void GridMg::solveCG(int l)
 
 		residual = std::sqrt(residual);
 
-		if (residual < 1E-8) break;
+		if (residual < mCoarsestLevelAccuracy) break;
 
 		Real beta = alphaTopNew / alphaTop;
 		alphaTop = alphaTopNew;

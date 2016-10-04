@@ -33,13 +33,13 @@ class GridMg {
 		void setRhs(Grid<Real>& rhs);
 		
 		// returns false if finished
-		bool doVCycle(Grid<Real>& dst); 
+		Real doVCycle(Grid<Real>& dst, Grid<Real>* src = nullptr); // if src is null, then a zero vector is used instead
 		
 		// access
 		//Real getIterations() const = 0;
 		//Real getResNorm() const = 0;
-		void setAccuracy(Real set) { mAccuracy = set; }
-		Real getAccuracy() const { return mAccuracy; }
+		void setCoarsestLevelAccuracy(Real accuracy) { mCoarsestLevelAccuracy = accuracy; }
+		Real getCoarsestLevelAccuracy() const { return mCoarsestLevelAccuracy; }
 		void setSmoothing(int numPreSmooth, int numPostSmooth) { mNumPreSmooth = numPreSmooth; mNumPostSmooth = numPostSmooth; }
 		int getNumPreSmooth() { return mNumPreSmooth; }
 		int getNumPostSmooth() { return mNumPostSmooth; }
@@ -69,9 +69,9 @@ class GridMg {
 		};
 
 		//! accuracy of solver (max. residuum)
-		Real mAccuracy;
 		int mNumPreSmooth;
 		int mNumPostSmooth;
+		Real mCoarsestLevelAccuracy;
 
 		// A has a 7-point stencil on level 0, and a full 27-point stencil on levels >0
 		std::vector<std::vector<Real>> mA; // A[level][vertex*14 + stencilentry]

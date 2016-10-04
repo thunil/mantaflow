@@ -18,7 +18,7 @@
 using namespace std;
 namespace Manta {
 
-enum Preconditioner { PcNone = 0, PcMIC = 1, PcMG = 2 };
+enum Preconditioner { PcNone = 0, PcMIC = 1, PcMG = 2, PcMG_Dbg = 3 };
 
 //! Kernel: Construct the right-hand side of the poisson equation
 KERNEL(bnd=1, reduce=+) returns(int cnt=0) returns(double sum=0)
@@ -209,10 +209,6 @@ IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, 
 	Grid<Real> Aj(parent);
 	Grid<Real> Ak(parent);
 	Grid<Real> tmp(parent);
-	Grid<Real> pca0(parent);
-	Grid<Real> pca1(parent);
-	Grid<Real> pca2(parent);
-	Grid<Real> pca3(parent);
 		
 	// setup matrix and boundaries 
 	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak, fractions);
@@ -255,7 +251,7 @@ IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, 
 	}
 
 
-	if (preconditioner == PcNone || preconditioner == PcMIC)
+	if (preconditioner == PcNone || preconditioner == PcMIC || preconditioner == PcMG)
 	{
 		// CG setup
 		// note: the last factor increases the max iterations for 2d, which right now can't use a preconditioner 
@@ -269,29 +265,51 @@ IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, 
 		gcg->setAccuracy( cgAccuracy ); 
 		gcg->setUseL2Norm( useL2Norm );
 
-		// optional preconditioning
-		gcg->setPreconditioner( preconditioner ? GridCgInterface::PC_mICP : GridCgInterface::PC_None, &pca0, &pca1, &pca2, &pca3);
+		if (preconditioner == PcNone || preconditioner == PcMIC) {			
+			Grid<Real> pca0(parent);
+			Grid<Real> pca1(parent);
+			Grid<Real> pca2(parent);
+			Grid<Real> pca3(parent);
 
-		for (int iter=0; iter<maxIter; iter++) {
-			if (!gcg->iterate()) iter=maxIter;
-		} 
+			// optional preconditioning	
+			gcg->setPreconditioner( preconditioner == PcMIC ? GridCgInterface::PC_mICP : GridCgInterface::PC_None, 
+				&pca0, &pca1, &pca2, &pca3);
+
+			for (int iter=0; iter<maxIter; iter++) {
+				if (!gcg->iterate()) iter=maxIter;
+			} 
+
+			delete gcg;
+		} else if (preconditioner == PcMG) {
+			GridMg* gmg = new GridMg(pressure.getSize());
+
+			// optional preconditioning	
+			gcg->setPreconditioner( GridCgInterface::PC_MG, gmg);
+
+			for (int iter=0; iter<maxIter; iter++) {
+				if (!gcg->iterate()) iter=maxIter;
+			} 
+			
+			delete gcg;
+			delete gmg;
+		}
+		
 		//debMsg("FluidSolver::solvePressureBase iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
-		delete gcg;
 	}
-	else if (preconditioner == PcMG)
+	else if (preconditioner == PcMG_Dbg)
 	{
+		// Use multigrid solver directly, no CG solver involved (for debugging only)
 		const int maxIter = 10;
 		GridMg* gmg = new GridMg(pressure.getSize());
 
 		gmg->setA(&A0, &Ai, &Aj, &Ak);
 		gmg->setRhs(rhs);
 
-		gmg->setAccuracy(cgAccuracy);
+		gmg->setCoarsestLevelAccuracy(cgAccuracy * 1E-4);
 
 		for (int iter = 0; iter<maxIter; iter++) {
-			if (!gmg->doVCycle(pressure)) iter=maxIter;
+			if (gmg->doVCycle(pressure, &pressure) < cgAccuracy) iter=maxIter;
 		}
-		//debMsg("FluidSolver::solvePressureBase iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
 		delete gmg;
 	}
 	
