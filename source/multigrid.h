@@ -61,6 +61,13 @@ class GridMg {
 		void interpolate(int l_dst, std::vector<Real>& src, std::vector<Real>& dst);
 
 	private:
+		struct CoarseningPath {
+			Vec3i U, W, N;
+			int sc, sf;
+			Real rw, iw;
+			bool inUStencil;
+		};
+
 		//! accuracy of solver (max. residuum)
 		Real mAccuracy;
 		int mNumPreSmooth;
@@ -73,6 +80,8 @@ class GridMg {
 		std::vector<std::vector<Real>> mr; // residual[level][vertex]
 		std::vector<std::vector<char>> mActive; // active[level][vertex]
 		std::vector<Vec3i> mSize, mPitch;
+		std::vector<CoarseningPath> mCoarseningPaths0;
+
 		bool mIs3D;
 		int mDim;
 		int mStencilSize;

@@ -17,8 +17,10 @@
 // - finest level optimization (operator coarsening)
 // - analyze performance
 // - accuracy parameters configuration (coarsest CG)
+// - Boundary optimization (add 1-cell band)???
 
 #include "multigrid.h"
+//#include <fstream>
 
 #define FOR_LVL(IDX,LVL) \
 	for(int IDX=0, IDX##total=mSize[LVL].x*mSize[LVL].y*mSize[LVL].z; IDX<IDX##total; IDX++)
@@ -261,24 +263,49 @@ GridMg::GridMg(const Vec3i& gridSize)
 
 	debMsg("GridMg: Allocation done in "<<time.update(), 0);
 
-	// Test code: precalculate coarsening paths
-	int a = 0;
+	// Precalculate coarsening paths:
+	// (V) <--restriction-- (U) <--A_{l-1}-- (W) <--interpolation-- (N)
 	Vec3i p7stencil[7] = { Vec3i(0,0,0), Vec3i(-1, 0, 0), Vec3i(1,0,0),
 	                                     Vec3i( 0,-1, 0), Vec3i(0,1,0),
 	                                     Vec3i( 0, 0,-1), Vec3i(0,0,1) };
-	Vec3i V (1,1,1);
-	FOR_VEC_MINMAX(U, V*2-1, V*2+1) {		
+	Vec3i V (1,1,1); // reference coarse grid vertex at (1,1,1)
+	FOR_VEC_MINMAX(U, V*2+mStencilMin, V*2+mStencilMax) {		
 		for (int i=0; i<1+2*mDim; i++) {
 			Vec3i W = U + p7stencil[i];
 			FOR_VEC_MINMAX(N, W/2, (W+1)/2) {				
 				int s = dot(N,Vec3i(1,3,9));
 
 				if (s>=13) {
-					a++;	
+					CoarseningPath path;
+					path.N  = N-1;   // offset of N on coarse grid
+					path.U  = U-2*V; // offset of U on fine grid
+					path.W  = W-2*V; // offset of W on fine grid
+					path.sc = s-13;  // stencil index corresponding to V<-N on coarse grid
+					path.sf = (i+1)/2;   // stencil index corresponding to U<-W on coarse grid
+					path.inUStencil = (i%2==0); // fine grid stencil entry stored at U or W?
+					path.rw = Real(1) / Real(1 << ((U.x % 2) + (U.y % 2) + (U.z % 2))); // restriction weight V<-U
+					path.iw = Real(1) / Real(1 << ((W.x % 2) + (W.y % 2) + (W.z % 2))); // interpolation weight W<-N
+					mCoarseningPaths0.push_back(path);
 				}
 			}
 		}
 	}
+
+	auto pathLess = [](const GridMg::CoarseningPath& p1, const GridMg::CoarseningPath& p2) {
+		if (p1.sc == p2.sc) return dot(p1.U+1,Vec3i(1,3,9)) < dot(p2.U+1,Vec3i(1,3,9));
+		return p1.sc < p2.sc;
+	};
+	std::sort(mCoarseningPaths0.begin(), mCoarseningPaths0.end(), pathLess);
+
+	//std::ofstream file("paths.txt", std::ios_base::out);
+	//file << "Nx,Ny,Nz,Ux,Uy,Uz,Wx,Wy,Wz,sc,sf,rw,iw,atU" << std::endl;
+	//for (auto it=mCoarseningPaths.begin(); it!=mCoarseningPaths.end(); it++) {
+	//	file <<it->N.x<<","<<it->N.y<<","<<it->N.z<<","
+	//		 <<it->U.x<<","<<it->U.y<<","<<it->U.z<<","
+	//		 <<it->W.x<<","<<it->W.y<<","<<it->W.z<<","
+	//		<<it->sc<<","<<it->sf<<","<<it->rw<<","<<it->iw<<","
+	//		<<it->inUStencil<< std::endl;
+	//}
 }
 
 void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk)
@@ -469,50 +496,57 @@ void GridMg::genCoraseGridOperator(int l)
 		// V and N are vertices on the coarse grid level l, 
 		// U and W are vertices on the fine grid level l-1.
 
-		// loop over restriction vertices U on level l-1 associated with V
-		FOR_VEC_MINMAX(U, vmax(0, V*2-1), vmin(mSize[l-1]-1, V*2+1)) {
-			int u = linIdx(U,l-1);
-			if (!mActive[l-1][u]) continue;
-
-			// restriction weight			
-			Real rw = Real(1) / Real(1 << ((U.x % 2) + (U.y % 2) + (U.z % 2))); 
-
-			// loop over all stencil neighbors N of V on level l that can be reached via restriction to U
-			FOR_VEC_MINMAX(N, (U-1)/2, vmin(mSize[l]-1, (U+2)/2)) {
+		if (l==1) {
+			for (auto it = mCoarseningPaths0.begin(); it != mCoarseningPaths0.end(); it++) {
+				Vec3i N = V + it->N;
 				int n = linIdx(N,l);
-				if (!mActive[l][n]) continue;
+				if (!inGrid(N,l) || !mActive[l][n]) continue;
+
+				Vec3i U = V*2 + it->U;
+				int u = linIdx(U,l-1);
+				if (!inGrid(U,l-1) || !mActive[l-1][u]) continue;
+
+				Vec3i W = V*2 + it->W;
+				int w = linIdx(W,l-1);
+				if (!inGrid(W,l-1) || !mActive[l-1][w]) continue;
+				
+				if (it->inUStencil) {
+					mA[l][v*mStencilSize + it->sc] += it->rw * mA[l-1][u*mStencilSize0 + it->sf] *it->iw;			
+				} else {
+					mA[l][v*mStencilSize + it->sc] += it->rw * mA[l-1][w*mStencilSize0 + it->sf] *it->iw;			
+				}
+			}
+		} else {
+			// l > 1: 
+			// loop over restriction vertices U on level l-1 associated with V
+			FOR_VEC_MINMAX(U, vmax(0, V*2-1), vmin(mSize[l-1]-1, V*2+1)) {
+				int u = linIdx(U,l-1);
+				if (!mActive[l-1][u]) continue;
+
+				// restriction weight			
+				Real rw = Real(1) / Real(1 << ((U.x % 2) + (U.y % 2) + (U.z % 2))); 
+
+				// loop over all stencil neighbors N of V on level l that can be reached via restriction to U
+				FOR_VEC_MINMAX(N, (U-1)/2, vmin(mSize[l]-1, (U+2)/2)) {
+					int n = linIdx(N,l);
+					if (!mActive[l][n]) continue;
 							
-				// stencil entry at V associated to N (coarse grid level l)
-				Vec3i SC = N - V + mStencilMax;
-				int sc = SC.x + 3*SC.y + 9*SC.z;
-				if (sc < mStencilSize-1) continue;
+					// stencil entry at V associated to N (coarse grid level l)
+					Vec3i SC = N - V + mStencilMax;
+					int sc = SC.x + 3*SC.y + 9*SC.z;
+					if (sc < mStencilSize-1) continue;
 
-				// loop over all vertices W which are in the stencil of A_{l-1} at U 
-				// and which interpolate from N
-				FOR_VEC_MINMAX(W, vmax(           0, vmax(U-1,N*2-1)),
-				                  vmin(mSize[l-1]-1, vmin(U+1,N*2+1))) {
-					int w = linIdx(W,l-1);
-					if (!mActive[l-1][w]) continue;
+					// loop over all vertices W which are in the stencil of A_{l-1} at U 
+					// and which interpolate from N
+					FOR_VEC_MINMAX(W, vmax(           0, vmax(U-1,N*2-1)),
+									  vmin(mSize[l-1]-1, vmin(U+1,N*2+1))) {
+						int w = linIdx(W,l-1);
+						if (!mActive[l-1][w]) continue;
 
-					// stencil entry at U associated to W (fine grid level l-1)
-					Vec3i SF = W - U + mStencilMax;
-					int sf = SF.x + 3*SF.y + 9*SF.z;
+						// stencil entry at U associated to W (fine grid level l-1)
+						Vec3i SF = W - U + mStencilMax;
+						int sf = SF.x + 3*SF.y + 9*SF.z;
 
-					if (l==1) {
-						// 2D: sf=1,3,4,5,7
-						// 3D: sf=4,10,12,13,14,16,2
-						int d = std::abs(sf - (mStencilSize-1));
-						if (d!=0 && d!=1 && d!=3 && d!=9) continue;
-
-						Real iw = Real(1) / Real(1 << ((W.x % 2) + (W.y % 2) + (W.z % 2))); // interpolation weight
-
-						const static int map[10] = {0,1,-1,2,-1,-1,-1,-1,-1,3};
-						if (sf < mStencilSize) {
-							mA[l][v*mStencilSize + sc-mStencilSize+1] += rw * mA[0][w*mStencilSize0 + map[d]] * iw;
-						} else {
-							mA[l][v*mStencilSize + sc-mStencilSize+1] += rw * mA[0][u*mStencilSize0 + map[d]] * iw;
-						}
-					} else {
 						Real iw = Real(1) / Real(1 << ((W.x % 2) + (W.y % 2) + (W.z % 2))); // interpolation weight
 
 						if (sf < mStencilSize) {
