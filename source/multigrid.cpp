@@ -12,16 +12,15 @@
  ******************************************************************************/
 
 // TODO
-// - handle trivial equations x_i = b_i
+// - handle trivial equations x_i = b_i (not working yet)
 // - active vertex lists
-// - parallelization
 // - analyze performance
 // - Boundary optimization (add 1-cell band)???
 
 #include "multigrid.h"
 
 #define FOR_LVL(IDX,LVL) \
-	for(int IDX=0, IDX##total=mSize[LVL].x*mSize[LVL].y*mSize[LVL].z; IDX<IDX##total; IDX++)
+	for(int IDX=0; IDX<mb[LVL].size(); IDX++)
 
 #define FOR_VEC_LVL(VEC,LVL) Vec3i VEC; \
 	for(VEC.z=0; VEC.z<mSize[LVL].z; VEC.z++) \
@@ -44,6 +43,9 @@
 using namespace std;
 namespace Manta 
 {
+
+// Constants
+const static Real TrivialEquationScale = 1; //Real(1E-6);
 
 // ----------------------------------------------------------------------------
 // Efficient min heap for <ID, key> pairs with 0<=ID<N and 0<=key<K
@@ -237,27 +239,37 @@ GridMg::GridMg(const Vec3i& gridSize)
 	mb.push_back(std::vector<Real>(n));
 	mr.push_back(std::vector<Real>(n));
 	mActive.push_back(std::vector<char>(n));
+	mCGtmp1.push_back(std::vector<Real>());
+	mCGtmp2.push_back(std::vector<Real>());
 
 	debMsg("GridMg::GridMg level 0: "<<mSize[0].x<<" x " << mSize[0].y << " x " << mSize[0].z << " x ", 1);
 
 	// Create coarse levels >0
 	for (int l=1; l<=100; l++)
 	{
-		if (mSize[l-1].x <= 5 && mSize[l-1].y <= 5 && mSize[l-1].z <= 5)
-			break;
+		if (mSize[l-1].x <= 5 && mSize[l-1].y <= 5 && mSize[l-1].z <= 5) break;
+		if (n <= 1000) break;
 
 		mSize.push_back((mSize[l-1] + 2) / 2);
 		mPitch.push_back(Vec3i(1, mSize.back().x, mSize.back().x*mSize.back().y));
-		int n = mSize.back().x * mSize.back().y * mSize.back().z;
+		n = mSize.back().x * mSize.back().y * mSize.back().z;
 
 		mA.push_back(std::vector<Real>(n * mStencilSize));
 		mx.push_back(std::vector<Real>(n));
 		mb.push_back(std::vector<Real>(n));
 		mr.push_back(std::vector<Real>(n));
 		mActive.push_back(std::vector<char>(n));
+		mCGtmp1.push_back(std::vector<Real>());
+		mCGtmp2.push_back(std::vector<Real>());
 		
 		debMsg("GridMg::GridMg level "<<l<<": " << mSize[l].x << " x " << mSize[l].y << " x " << mSize[l].z << " x ", 1);
 	}
+
+	// Additional memory for CG on coarsest level
+	mCGtmp1.pop_back();
+	mCGtmp1.push_back(std::vector<Real>(n));
+	mCGtmp2.pop_back();
+	mCGtmp2.push_back(std::vector<Real>(n));
 
 	debMsg("GridMg: Allocation done in "<<time.update(), 0);
 
@@ -300,7 +312,10 @@ void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* 
 {
 	MuTime time;
 
+	bool trivialEquations = false;
+
 	// Copy level 0
+	#pragma omp parallel for
 	FOR_LVL(v,0) {
 		for (int i=0; i<mStencilSize0; i++) { mA[0][v*mStencilSize0 + i] = Real(0); }
 
@@ -308,10 +323,18 @@ void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* 
 		mA[0][v*mStencilSize0 + 1] = (*pAi)[v];
 		mA[0][v*mStencilSize0 + 2] = (*pAj)[v];
 		if (mIs3D) mA[0][v*mStencilSize0 + 3] = (*pAk)[v];
-			
+
+		// scale down trivial equations ala x_i = b_i to improve coarse grid operators
+		if (isEquationTrivial(v)) { 
+			mA[0][v*mStencilSize0 + 0] *= TrivialEquationScale; 
+			trivialEquations = true;
+		};
+					
 		// active vertices on level 0 are vertices with non-zero diagonal entry in A
 		mActive[0][v] = char(mA[0][v*mStencilSize0 + 0] != Real(0));
 	}
+
+	if (trivialEquations) debMsg("GridMg: Found at least one trivial equation", 1);
 
 	// Create coarse grids and operators on levels >0
 	for (int l=1; l<mA.size(); l++) {
@@ -325,9 +348,13 @@ void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* 
 
 void GridMg::setRhs(Grid<Real>& rhs)
 {
+	#pragma omp parallel for
 	FOR_LVL(v,0)
 	{
 		mb[0][v] = rhs[v];
+
+		// scale down trivial equations ala x_i = b_i to improve coarse grid operators
+		if (isEquationTrivial(v)) { mb[0][v] *= TrivialEquationScale; };
 	}
 }
 
@@ -341,8 +368,8 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 
 	const int maxLevel = mA.size() - 1;
 
-	if (src) { for (int i=0; i<mx[0].size(); i++) { mx[0][i] = (*src)[i]; } }
-	else     { for (int i=0; i<mx[0].size(); i++) { mx[0][i] = Real(0);   } }
+	#pragma omp parallel for
+	FOR_LVL(v,0) { mx[0][v] = src ? (*src)[v] : Real(0); }
 
 	// Next two lines are debug code, remove later
 	calcResidual(0);
@@ -360,9 +387,9 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 		calcResidual(l);
 		restrict(l+1, mr[l], mb[l+1]);
 
-		for (int i=0; i<mx[l+1].size(); i++) {
-			mx[l+1][i] = Real(0);
-		}
+		#pragma omp parallel for
+		FOR_LVL(v,l+1) { mx[l+1][v] = Real(0); }
+
 		timeR += time.update();
 	}
 
@@ -374,9 +401,9 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 	{
 		time.update();
 		interpolate(l, mx[l+1], mr[l]);
-		for (int i=0; i<mx[l].size(); i++) {
-			mx[l][i] += mr[l][i];
-		}
+		
+		#pragma omp parallel for
+		FOR_LVL(v,l) { mx[l][v] += mr[l][v]; }
 
 		timeI += time.update();
 
@@ -389,13 +416,25 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 	calcResidual(0);
 	Real res = calcResidualNorm(0);
 
-	for (int i=0; i<mx[0].size(); i++) { dst[i] = mx[0][i];	}
+	#pragma omp parallel for
+	FOR_LVL(v,0) { dst[v] = mx[0][v];	}
 
 	debMsg("VCycle Residual: "<<resOld<<" -> "<<res, 1);
 
 	debMsg("GridMg: Finished VCycle in "<<timeTotal.update()<<" (smoothing: "<<timeSmooth<<", CG: "<<timeCG<<", R: "<<timeR<<", I: "<<timeI<<")", 0);
 
 	return res;
+}
+
+bool GridMg::isEquationTrivial(int v) {
+	Vec3i V = vecIdx(v,0);
+	return         mA[0][v*mStencilSize0 + 0]!=Real(0)  &&
+	               mA[0][v*mStencilSize0 + 1]==Real(0)  && 
+		           mA[0][v*mStencilSize0 + 2]==Real(0)  && 
+	    (!mIs3D || mA[0][v*mStencilSize0 + 3]==Real(0)) && 
+	              (V.x==0 || mA[0][(v-mPitch[0].x)*mStencilSize0 + 1]==Real(0)) && 
+	              (V.y==0 || mA[0][(v-mPitch[0].y)*mStencilSize0 + 1]==Real(0)) && 
+	    (!mIs3D || V.z==0 || mA[0][(v-mPitch[0].z)*mStencilSize0 + 1]==Real(0));
 }
 
 // Determine active cells on coarse level l from active cells on fine level l-1
@@ -411,6 +450,7 @@ void GridMg::genCoarseGrid(int l)
 	enum activeFlags : char {AF_Removed = 0, AF_Zero = 1, AF_Free = 2, };
 
 	// initialize all coarse vertices with 'free'
+	#pragma omp parallel for
 	FOR_LVL(v,l) { mActive[l][v] = AF_Free; }
 
 	// initialize min heap of (ID: fine grid vertex, key: #free interpolation vertices) pairs
@@ -461,6 +501,7 @@ void GridMg::genCoarseGrid(int l)
 	}
 
 	// set all remaining 'free' vertices to 'removed'
+	#pragma omp parallel for
 	FOR_LVL(v,l) { if (mActive[l][v] == AF_Free) mActive[l][v] = AF_Removed; }
 }
 
@@ -469,6 +510,7 @@ void GridMg::genCoarseGrid(int l)
 void GridMg::genCoraseGridOperator(int l)
 {
 	// loop over coarse grid vertices V
+	#pragma omp parallel for schedule(static,1)
 	FOR_LVL(v,l) {
 		if (!mActive[l][v]) continue;
 
@@ -482,6 +524,7 @@ void GridMg::genCoraseGridOperator(int l)
 		// U and W are vertices on the fine grid level l-1.
 
 		if (l==1) {
+			// loop over precomputed paths
 			for (auto it = mCoarseningPaths0.begin(); it != mCoarseningPaths0.end(); it++) {
 				Vec3i N = V + it->N;
 				int n = linIdx(N,l);
@@ -548,45 +591,72 @@ void GridMg::genCoraseGridOperator(int l)
 
 void GridMg::smoothGS(int l)
 {
-	FOR_LVL(v,l) {
-		if (!mActive[l][v]) continue;
+	// Multicolor Gauss-Seidel with two colors for the 5/7-point stencil on level 0 
+	// and with four/eight colors for the 9/27-point stencil on levels > 0
+	std::vector<std::vector<Vec3i>> colorOffs;
+	Vec3i a[8] = {Vec3i(0,0,0), Vec3i(1,0,0), Vec3i(0,1,0), Vec3i(1,1,0), 
+		          Vec3i(0,0,1), Vec3i(1,0,1), Vec3i(0,1,1), Vec3i(1,1,1)};
+	if (mIs3D) {
+		if (l==0) colorOffs = {{a[0],a[3],a[5],a[6]}, {a[1],a[2],a[4],a[7]}};
+		else      colorOffs = {{a[0]}, {a[1]}, {a[2]}, {a[3]}, {a[4]}, {a[5]}, {a[6]}, {a[7]}};
+	} else {
+		if (l==0) colorOffs = {{a[0],a[3]}, {a[1],a[2]}};
+		else      colorOffs = {{a[0]}, {a[1]}, {a[2]}, {a[3]}};
+	}
 
-		Vec3i V = vecIdx(v,l);
+	// Divide grid into 2x2 blocks for parallelization
+	Vec3i blockSize = (mSize[l]+1)/2;
+	int numBlocks = blockSize.x * blockSize.y * blockSize.z;
+		
+	for (int color = 0; color < colorOffs.size(); color++) {
+		
+		#pragma omp parallel for schedule(static,1)
+		for (int b = 0; b < numBlocks; b++)	{
+			for (int off = 0; off < colorOffs[color].size(); off++) {
+				Vec3i B(b%blockSize.x, (b%(blockSize.x*blockSize.y))/blockSize.x, b/(blockSize.x*blockSize.y));
+				
+				Vec3i V = 2*B + colorOffs[color][off];
+				if (!inGrid(V,l)) continue;
+				
+				int v = linIdx(V,l);
+				if (!mActive[l][v]) continue;
 
-		Real sum = mb[l][v];
+				Real sum = mb[l][v];
 
-		if (l==0) {
-			int n;
-			for (int d=0; d<mDim; d++) {
-				if (V[d]>0)             { n = v-mPitch[0][d]; sum -= mA[0][n*mStencilSize0 + d+1] * mx[0][n]; }
-				if (V[d]<mSize[0][d]-1) { n = v+mPitch[0][d]; sum -= mA[0][v*mStencilSize0 + d+1] * mx[0][n]; }
-			}
-
-			mx[0][v] = sum / mA[0][v*mStencilSize0 + 0];
-		} else {
-			FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
-				if (s == mStencilSize-1) continue;
-
-				Vec3i N = V + S;
-				int n = linIdx(N,l);
-
-				if (inGrid(N,l) && mActive[l][n]) {
-					if (s < mStencilSize) {
-						sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * mx[l][n];
-					} else {
-						sum -= mA[l][v*mStencilSize + s-mStencilSize+1] * mx[l][n];
+				if (l==0) {
+					int n;
+					for (int d=0; d<mDim; d++) {
+						if (V[d]>0)             { n = v-mPitch[0][d]; sum -= mA[0][n*mStencilSize0 + d+1] * mx[0][n]; }
+						if (V[d]<mSize[0][d]-1) { n = v+mPitch[0][d]; sum -= mA[0][v*mStencilSize0 + d+1] * mx[0][n]; }
 					}
+
+					mx[0][v] = sum / mA[0][v*mStencilSize0 + 0];
+				} else {
+					FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
+						if (s == mStencilSize-1) continue;
+
+						Vec3i N = V + S;
+						int n = linIdx(N,l);
+
+						if (inGrid(N,l) && mActive[l][n]) {
+							if (s < mStencilSize) {
+								sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * mx[l][n];
+							} else {
+								sum -= mA[l][v*mStencilSize + s-mStencilSize+1] * mx[l][n];
+							}
+						}
+					}
+
+					mx[l][v] = sum / mA[l][v*mStencilSize + 0];
 				}
 			}
-
-			mx[l][v] = sum / mA[l][v*mStencilSize + 0];
 		}
-
 	}
 }
 
 void GridMg::calcResidual(int l)
 {
+	#pragma omp parallel for schedule(static,1)
 	FOR_LVL(v,l) {
 		if (!mActive[l][v]) continue;
 		
@@ -624,6 +694,7 @@ Real GridMg::calcResidualNorm(int l)
 {
 	Real res = Real(0);
 
+	#pragma omp parallel for reduction(+: res)
 	FOR_LVL(v,l) {
 		if (!mActive[l][v]) continue;
 
@@ -634,11 +705,11 @@ Real GridMg::calcResidualNorm(int l)
 }
 
 // Standard conjugate gradients with Jacobi preconditioner
+// Note: not parallelized since coarsest level is assumed to be small
 void GridMg::solveCG(int l)
 {
-	// TODO: preallocate
-	std::vector<Real> z(mb[l].size());
-	std::vector<Real> p(mb[l].size());
+	std::vector<Real>& z = mCGtmp1[l];
+	std::vector<Real>& p = mCGtmp2[l];
 
 	std::vector<Real>& x = mx[l];
 	std::vector<Real>& r = mr[l];
@@ -761,6 +832,7 @@ void GridMg::restrict(int l_dst, std::vector<Real>& src, std::vector<Real>& dst)
 {
 	const int l_src = l_dst - 1;
 	
+	#pragma omp parallel for schedule(static,1)
 	FOR_LVL(v,l_dst) {
 		if (!mActive[l_dst][v]) continue;
 
@@ -787,6 +859,7 @@ void GridMg::interpolate(int l_dst, std::vector<Real>& src, std::vector<Real>& d
 {
 	const int l_src = l_dst + 1;
 
+	#pragma omp parallel for schedule(static,1)
 	FOR_LVL(v,l_dst) {
 		if (!mActive[l_dst][v]) continue;
 		

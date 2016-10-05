@@ -32,12 +32,12 @@ class GridMg {
 		void setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk);
 		void setRhs(Grid<Real>& rhs);
 		
-		// returns false if finished
-		Real doVCycle(Grid<Real>& dst, Grid<Real>* src = nullptr); // if src is null, then a zero vector is used instead
+		// perform VCycle iteration
+		// - if src is null, then a zero vector is used instead
+		// - returns norm of residual after VCylcle
+		Real doVCycle(Grid<Real>& dst, Grid<Real>* src = nullptr); 
 		
 		// access
-		//Real getIterations() const = 0;
-		//Real getResNorm() const = 0;
 		void setCoarsestLevelAccuracy(Real accuracy) { mCoarsestLevelAccuracy = accuracy; }
 		Real getCoarsestLevelAccuracy() const { return mCoarsestLevelAccuracy; }
 		void setSmoothing(int numPreSmooth, int numPostSmooth) { mNumPreSmooth = numPreSmooth; mNumPostSmooth = numPostSmooth; }
@@ -48,6 +48,8 @@ class GridMg {
 		Vec3i vecIdx(int   v, int l) { return Vec3i(v%mSize[l].x, (v%(mSize[l].x*mSize[l].y))/mSize[l].x, v/(mSize[l].x*mSize[l].y)); }
 		int   linIdx(Vec3i V, int l) { return V.x + V.y*mPitch[l].y + V.z*mPitch[l].z; }
 		bool  inGrid(Vec3i V, int l) { return V.x>=0 && V.y>=0 && V.z>=0 && V.x<mSize[l].x && V.y<mSize[l].y && V.z<mSize[l].z; }
+
+		bool isEquationTrivial(int v);
 
 		void genCoarseGrid(int l);
 		void genCoraseGridOperator(int l);
@@ -79,6 +81,7 @@ class GridMg {
 		std::vector<std::vector<Real>> mb; // b[level][vertex]
 		std::vector<std::vector<Real>> mr; // residual[level][vertex]
 		std::vector<std::vector<char>> mActive; // active[level][vertex]
+		std::vector<std::vector<Real>> mCGtmp1, mCGtmp2;
 		std::vector<Vec3i> mSize, mPitch;
 		std::vector<CoarseningPath> mCoarseningPaths0;
 
@@ -88,7 +91,7 @@ class GridMg {
 		int mStencilSize0;
 		Vec3i mStencilMin;
 		Vec3i mStencilMax;
-}; // GridCg
+}; // GridMg
 
 } // namespace
 
