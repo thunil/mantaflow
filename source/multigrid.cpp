@@ -8,6 +8,16 @@
  * http://www.gnu.org/licenses
  *
  * Multigrid solver
+ * 
+ * Author: Florian Ferstl (florian.ferstl.ff@gmail.com)
+ *
+ * This is an implementation of the solver developed by Dick et al. [1]
+ * without topology awareness (= vertex duplication on coarser levels). This 
+ * simplification allows us to use regular grids for all levels of the multigrid
+ * hierarchy and works well for moderately complex domains.
+ *
+ * [1] Solving the Fluid Pressure Poisson Equation Using Multigrid-Evaluation
+ *     and Improvements, C. Dick, M. Rogowsky, R. Westermann, IEEE TVCG 2015 
  *
  ******************************************************************************/
 
@@ -39,6 +49,8 @@
 	for(VEC.y=VEC##__min.y; VEC.y<=VEC##__max.y; VEC.y++) \
 	for(VEC.x=VEC##__min.x; VEC.x<=VEC##__max.x; VEC.x++, LIN++)
 
+#define MG_TIMINGS(X)
+//#define MG_TIMINGS(X) X
 
 using namespace std;
 namespace Manta 
@@ -49,7 +61,7 @@ const static Real TrivialEquationScale = 1; //Real(1E-6);
 
 // ----------------------------------------------------------------------------
 // Efficient min heap for <ID, key> pairs with 0<=ID<N and 0<=key<K
-// (IDs are stored in K buckets, where each bucket is a list of IDs).
+// (elements are stored in K buckets, where each bucket is a doubly linked list).
 // - if K<<N, all ops are O(1) on avg (worst case O(K)).
 // - memory usage O(K+N): (K+N) * 3 * sizeof(int).
 class NKMinHeap
@@ -219,13 +231,13 @@ GridMg::GridMg(const Vec3i& gridSize)
 	mNumPostSmooth(1),
 	mCoarsestLevelAccuracy(1E-8)
 {
-	MuTime time;
+	MG_TIMINGS(MuTime time;)
 
 	// 2D or 3D mode
 	mIs3D = (gridSize.z > 1); 
 	mDim = mIs3D ? 3 : 2; 
-	mStencilSize  = mIs3D ? 14 : 5; 
-	mStencilSize0 = mIs3D ?  4 : 3; 
+	mStencilSize  = mIs3D ? 14 : 5; // A has a full 27-point stencil on levels > 0
+	mStencilSize0 = mIs3D ?  4 : 3; // A has a 7-point stencil on level 0
 	mStencilMin = Vec3i(-1,-1, mIs3D ? -1:0);
 	mStencilMax = Vec3i( 1, 1, mIs3D ?  1:0);
 
@@ -242,7 +254,7 @@ GridMg::GridMg(const Vec3i& gridSize)
 	mCGtmp1.push_back(std::vector<Real>());
 	mCGtmp2.push_back(std::vector<Real>());
 
-	debMsg("GridMg::GridMg level 0: "<<mSize[0].x<<" x " << mSize[0].y << " x " << mSize[0].z << " x ", 1);
+	debMsg("GridMg::GridMg level 0: "<<mSize[0].x<<" x " << mSize[0].y << " x " << mSize[0].z << " x ", 3);
 
 	// Create coarse levels >0
 	for (int l=1; l<=100; l++)
@@ -262,7 +274,7 @@ GridMg::GridMg(const Vec3i& gridSize)
 		mCGtmp1.push_back(std::vector<Real>());
 		mCGtmp2.push_back(std::vector<Real>());
 		
-		debMsg("GridMg::GridMg level "<<l<<": " << mSize[l].x << " x " << mSize[l].y << " x " << mSize[l].z << " x ", 1);
+		debMsg("GridMg::GridMg level "<<l<<": " << mSize[l].x << " x " << mSize[l].y << " x " << mSize[l].z << " x ", 3);
 	}
 
 	// Additional memory for CG on coarsest level
@@ -271,7 +283,7 @@ GridMg::GridMg(const Vec3i& gridSize)
 	mCGtmp2.pop_back();
 	mCGtmp2.push_back(std::vector<Real>(n));
 
-	debMsg("GridMg: Allocation done in "<<time.update(), 0);
+	MG_TIMINGS(debMsg("GridMg: Allocation done in "<<time.update(), 2);)
 
 	// Precalculate coarsening paths:
 	// (V) <--restriction-- (U) <--A_{l-1}-- (W) <--interpolation-- (N)
@@ -310,7 +322,7 @@ GridMg::GridMg(const Vec3i& gridSize)
 
 void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk)
 {
-	MuTime time;
+	MG_TIMINGS(MuTime time;)
 
 	bool trivialEquations = false;
 
@@ -334,15 +346,15 @@ void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* 
 		mActive[0][v] = char(mA[0][v*mStencilSize0 + 0] != Real(0));
 	}
 
-	if (trivialEquations) debMsg("GridMg: Found at least one trivial equation", 1);
+	if (trivialEquations) debMsg("GridMg: Found at least one trivial equation", 3);
 
 	// Create coarse grids and operators on levels >0
 	for (int l=1; l<mA.size(); l++) {
-		time.get();
+		MG_TIMINGS(time.get();)
 		genCoarseGrid(l);	
-		debMsg("GridMg: Generated level "<<l<<" in "<<time.update(), 0);
+		MG_TIMINGS(debMsg("GridMg: Generated level "<<l<<" in "<<time.update(), 2);)
 		genCoraseGridOperator(l);	
-		debMsg("GridMg: Generated operator "<<l<<" in "<<time.update(), 0);
+		MG_TIMINGS(debMsg("GridMg: Generated operator "<<l<<" in "<<time.update(), 2);)
 	}
 }
 
@@ -360,11 +372,8 @@ void GridMg::setRhs(Grid<Real>& rhs)
 
 Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 {
-	MuTime timeSmooth, timeCG, timeI, timeR, timeTotal, time;
-	timeSmooth.clear();
-	timeCG.clear();
-	timeI.clear();
-	timeR.clear();
+	MG_TIMINGS(MuTime timeSmooth; MuTime timeCG; MuTime timeI; MuTime timeR; MuTime timeTotal; MuTime time;)
+	MG_TIMINGS(timeSmooth.clear(); timeCG.clear(); timeI.clear(); timeR.clear();)
 
 	const int maxLevel = mA.size() - 1;
 
@@ -377,12 +386,12 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 
 	for (int l=0; l<maxLevel; l++)
 	{
-		time.update();
+		MG_TIMINGS(time.update();)
 		for (int i=0; i<mNumPreSmooth; i++) {
 			smoothGS(l);
 		}
 		
-		timeSmooth += time.update();
+		MG_TIMINGS(timeSmooth += time.update();)
 
 		calcResidual(l);
 		restrict(l+1, mr[l], mb[l+1]);
@@ -390,27 +399,27 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 		#pragma omp parallel for
 		FOR_LVL(v,l+1) { mx[l+1][v] = Real(0); }
 
-		timeR += time.update();
+		MG_TIMINGS(timeR += time.update();)
 	}
 
-	time.update();
+	MG_TIMINGS(time.update();)
 	solveCG(maxLevel);
-	timeCG += time.update();
+	MG_TIMINGS(timeCG += time.update();)
 
 	for (int l=maxLevel-1; l>=0; l--)
 	{
-		time.update();
+		MG_TIMINGS(time.update();)
 		interpolate(l, mx[l+1], mr[l]);
 		
 		#pragma omp parallel for
 		FOR_LVL(v,l) { mx[l][v] += mr[l][v]; }
 
-		timeI += time.update();
+		MG_TIMINGS(timeI += time.update();)
 
 		for (int i=0; i<mNumPostSmooth; i++) {
 			smoothGS(l);
 		}
-		timeSmooth += time.update();
+		MG_TIMINGS(timeSmooth += time.update();)
 	}
 
 	calcResidual(0);
@@ -419,9 +428,9 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 	#pragma omp parallel for
 	FOR_LVL(v,0) { dst[v] = mx[0][v];	}
 
-	debMsg("VCycle Residual: "<<resOld<<" -> "<<res, 1);
+	debMsg("VCycle Residual: "<<resOld<<" -> "<<res, 3);
 
-	debMsg("GridMg: Finished VCycle in "<<timeTotal.update()<<" (smoothing: "<<timeSmooth<<", CG: "<<timeCG<<", R: "<<timeR<<", I: "<<timeI<<")", 0);
+	MG_TIMINGS(debMsg("GridMg: Finished VCycle in "<<timeTotal.update()<<" (smoothing: "<<timeSmooth<<", CG: "<<timeCG<<", R: "<<timeR<<", I: "<<timeI<<")", 2);)
 
 	return res;
 }
@@ -438,10 +447,7 @@ bool GridMg::isEquationTrivial(int v) {
 }
 
 // Determine active cells on coarse level l from active cells on fine level l-1
-// This is an implementation of the algorithm described as part of Section 3.3 in
-//     Solving the Fluid Pressure Poisson Equation Using Multigrid-Evaluation
-//     and Improvements, C. Dick, M. Rogowsky, R. Westermann, IEEE TVCG 2015
-// to ensure a full-rank interpolation operator.
+// while ensuring a full-rank interpolation operator (see Section 3.3 in [1]).
 void GridMg::genCoarseGrid(int l)
 {
 	//    AF_Free: unused/untouched vertices
@@ -824,8 +830,8 @@ void GridMg::solveCG(int l)
 		}
 	}
 
-	if (iter == maxIter) { debMsg("GridMg::solveCG Warning: Reached maximum number of CG iterations", 1); }
-	else { debMsg("GridMg::solveCG Info: Reached residual "<<residual<<" in "<<iter<<" iterations", 1); }
+	if (iter == maxIter) { debMsg("GridMg::solveCG Warning: Reached maximum number of CG iterations", 3); }
+	else { debMsg("GridMg::solveCG Info: Reached residual "<<residual<<" in "<<iter<<" iterations", 3); }
 }
 
 void GridMg::restrict(int l_dst, std::vector<Real>& src, std::vector<Real>& dst)

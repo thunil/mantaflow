@@ -8,6 +8,16 @@
  * http://www.gnu.org/licenses
  *
  * Multigrid solver
+ * 
+ * Author: Florian Ferstl (florian.ferstl.ff@gmail.com)
+ *
+ * This is an implementation of the solver developed by Dick et al. [1]
+ * without topology awareness (= vertex duplication on coarser levels). This 
+ * simplification allows us to use regular grids for all levels of the multigrid
+ * hierarchy and works well for moderately complex domains.
+ *
+ * [1] Solving the Fluid Pressure Poisson Equation Using Multigrid-Evaluation
+ *     and Improvements, C. Dick, M. Rogowsky, R. Westermann, IEEE TVCG 2015
  *
  ******************************************************************************/
 
@@ -16,23 +26,23 @@
 
 #include "vectorbase.h"
 #include "grid.h"
-// #include "kernel.h"
-
 
 namespace Manta { 
 
 //! Multigrid solver
 class GridMg {
 	public:
-		//! constructor
+		//! constructor: preallocates most of required memory for multigrid hierarchy
 		GridMg(const Vec3i& gridSize);
 		~GridMg() {};
 
-		// solving functions
+		//! update system matrix A from symmetric 7-point stencil
 		void setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk);
+		
+		//! set right-hand side
 		void setRhs(Grid<Real>& rhs);
 		
-		// perform VCycle iteration
+		//! perform VCycle iteration
 		// - if src is null, then a zero vector is used instead
 		// - returns norm of residual after VCylcle
 		Real doVCycle(Grid<Real>& dst, Grid<Real>* src = nullptr); 
@@ -70,17 +80,15 @@ class GridMg {
 			bool inUStencil;
 		};
 
-		//! accuracy of solver (max. residuum)
 		int mNumPreSmooth;
 		int mNumPostSmooth;
 		Real mCoarsestLevelAccuracy;
 
-		// A has a 7-point stencil on level 0, and a full 27-point stencil on levels >0
-		std::vector<std::vector<Real>> mA; // A[level][vertex*14 + stencilentry]
-		std::vector<std::vector<Real>> mx; // x[level][vertex]
-		std::vector<std::vector<Real>> mb; // b[level][vertex]
-		std::vector<std::vector<Real>> mr; // residual[level][vertex]
-		std::vector<std::vector<char>> mActive; // active[level][vertex]
+		std::vector<std::vector<Real>> mA;
+		std::vector<std::vector<Real>> mx;
+		std::vector<std::vector<Real>> mb;
+		std::vector<std::vector<Real>> mr;
+		std::vector<std::vector<char>> mActive;
 		std::vector<std::vector<Real>> mCGtmp1, mCGtmp2;
 		std::vector<Vec3i> mSize, mPitch;
 		std::vector<CoarseningPath> mCoarseningPaths0;
