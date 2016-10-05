@@ -255,7 +255,7 @@ IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, 
 	{
 		// CG setup
 		// note: the last factor increases the max iterations for 2d, which right now can't use a preconditioner 
-		const int maxIter = (int)(cgMaxIterFac * flags.getSize().max()) * (flags.is3D() ? 1 : 4);
+		int maxIter = (int)(cgMaxIterFac * flags.getSize().max()) * (flags.is3D() ? 1 : 4);
 		GridCgInterface *gcg;
 		if (vel.is3D())
 			gcg = new GridCg<ApplyMatrix>  (pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
@@ -286,8 +286,11 @@ IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, 
 			// optional preconditioning	
 			gcg->setPreconditioner( GridCgInterface::PC_MG, gmg);
 
+			maxIter = 100;
+
 			for (int iter=0; iter<maxIter; iter++) {
 				if (!gcg->iterate()) iter=maxIter;
+				debMsg("FluidSolver::solvePressureBase ResNorm: "<<gcg->getResNorm(), 1);
 			} 
 			
 			delete gcg;

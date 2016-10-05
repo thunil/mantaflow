@@ -64,7 +64,7 @@ class GridMg {
 		void genCoarseGrid(int l);
 		void genCoraseGridOperator(int l);
 
-		void smoothGS(int l);
+		void smoothGS(int l, bool reversedOrder);
 		void calcResidual(int l);
 		Real calcResidualNorm(int l);
 		void solveCG(int l);

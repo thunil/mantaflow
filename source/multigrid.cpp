@@ -388,7 +388,7 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 	{
 		MG_TIMINGS(time.update();)
 		for (int i=0; i<mNumPreSmooth; i++) {
-			smoothGS(l);
+			smoothGS(l, false);
 		}
 		
 		MG_TIMINGS(timeSmooth += time.update();)
@@ -417,7 +417,7 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 		MG_TIMINGS(timeI += time.update();)
 
 		for (int i=0; i<mNumPostSmooth; i++) {
-			smoothGS(l);
+			smoothGS(l, true);
 		}
 		MG_TIMINGS(timeSmooth += time.update();)
 	}
@@ -428,7 +428,7 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 	#pragma omp parallel for
 	FOR_LVL(v,0) { dst[v] = mx[0][v];	}
 
-	debMsg("VCycle Residual: "<<resOld<<" -> "<<res, 3);
+	debMsg("VCycle Residual: "<<resOld<<" -> "<<res<<"   (factor "<<res/resOld<<")", 3);
 
 	MG_TIMINGS(debMsg("GridMg: Finished VCycle in "<<timeTotal.update()<<" (smoothing: "<<timeSmooth<<", CG: "<<timeCG<<", R: "<<timeR<<", I: "<<timeI<<")", 2);)
 
@@ -595,7 +595,7 @@ void GridMg::genCoraseGridOperator(int l)
 	}		
 }
 
-void GridMg::smoothGS(int l)
+void GridMg::smoothGS(int l, bool reversedOrder)
 {
 	// Multicolor Gauss-Seidel with two colors for the 5/7-point stencil on level 0 
 	// and with four/eight colors for the 9/27-point stencil on levels > 0
@@ -613,9 +613,10 @@ void GridMg::smoothGS(int l)
 	// Divide grid into 2x2 blocks for parallelization
 	Vec3i blockSize = (mSize[l]+1)/2;
 	int numBlocks = blockSize.x * blockSize.y * blockSize.z;
-		
-	for (int color = 0; color < colorOffs.size(); color++) {
-		
+	
+	for (int c = 0; c < colorOffs.size(); c++) {
+		int color = reversedOrder ? colorOffs.size()-1-c : c;
+
 		#pragma omp parallel for schedule(static,1)
 		for (int b = 0; b < numBlocks; b++)	{
 			for (int off = 0; off < colorOffs[color].size(); off++) {
