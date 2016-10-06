@@ -188,6 +188,29 @@ int CountEmptyCells(FlagGrid& flags) {
 // *****************************************************************************
 // Main pressure solve
 
+//! Change 'A' and 'rhs' such that pressure at 'fixPidx' is fixed to 'value'
+void fixPressure (int fixPidx, Real value, Grid<Real>& rhs, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
+{
+	// Bring to rhs at neighbors
+	rhs[fixPidx + Ai.getStrideX()] -= Ai[fixPidx] * value;
+	rhs[fixPidx + Aj.getStrideY()] -= Aj[fixPidx] * value;
+	rhs[fixPidx - Ai.getStrideX()] -= Ai[fixPidx - Ai.getStrideX()] * value;
+	rhs[fixPidx - Aj.getStrideY()] -= Aj[fixPidx - Aj.getStrideY()] * value;
+	if (rhs.is3D()) {
+		rhs[fixPidx + Ak.getStrideZ()] -= Ak[fixPidx] * value;
+		rhs[fixPidx - Ak.getStrideZ()] -= Ak[fixPidx - Ak.getStrideZ()] * value;
+	}
+	
+	// Trivialize equation at 'fixPidx' to: pressure[fixPidx] = value
+	rhs[fixPidx] = value;
+	A0[fixPidx] = Real(1);
+	Ai[fixPidx] = Aj[fixPidx] = Ak[fixPidx] = Real(0);
+	Ai[fixPidx - Ai.getStrideX()] = Real(0);
+	Aj[fixPidx - Aj.getStrideY()] = Real(0);
+	if (rhs.is3D()) { Ak[fixPidx - Ak.getStrideZ()] = Real(0); }
+}
+
+
 IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Real>& rhs, Real cgAccuracy = 1e-3,
 	Grid<Real>* phi = 0,
 	Grid<Real>* perCellCorr = 0,
@@ -244,9 +267,10 @@ IndexInt solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, 
 			// adjustment for approx. symmetric zeroPressureFixing cell (top center)
 			fixPidx = flags.index(flags.getSizeX() / 2, flags.getSizeY() - 2, flags.is3D() ? flags.getSizeZ() / 2 : 0);
 
-			flags[fixPidx] |= FlagGrid::TypeZeroPressure;
-			rhs[fixPidx] = 0.; 
-			debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 2);
+			//flags[fixPidx] |= FlagGrid::TypeZeroPressure;
+			//rhs[fixPidx] = 0.; 
+			fixPressure(fixPidx, Real(0), rhs, A0, Ai, Aj, Ak);
+			debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 1);
 		}
 	}
 

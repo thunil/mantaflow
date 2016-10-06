@@ -326,6 +326,9 @@ void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* 
 
 	bool trivialEquations = false;
 
+	Real amin = Real(1E20), amax = -Real(1E20), aavg = Real(0);
+	int an = 0;
+
 	// Copy level 0
 	#pragma omp parallel for
 	FOR_LVL(v,0) {
@@ -344,9 +347,18 @@ void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* 
 					
 		// active vertices on level 0 are vertices with non-zero diagonal entry in A
 		mActive[0][v] = char(mA[0][v*mStencilSize0 + 0] != Real(0));
+
+		if (mActive[0][v]) {
+			amin = std::min(amin, mA[0][v*mStencilSize0 + 0]);
+			amax = std::max(amax, mA[0][v*mStencilSize0 + 0]);
+			aavg += mA[0][v*mStencilSize0 + 0];
+			an++;
+		}
 	}
 
 	if (trivialEquations) debMsg("GridMg: Found at least one trivial equation", 3);
+	
+	debMsg("GridMg: Diag. A Stats: min = "<<amin<<", max = "<<amax<<", avg = "<<aavg/Real(an)<<"", 3);
 
 	// Create coarse grids and operators on levels >0
 	for (int l=1; l<mA.size(); l++) {
@@ -442,8 +454,8 @@ bool GridMg::isEquationTrivial(int v) {
 		           mA[0][v*mStencilSize0 + 2]==Real(0)  && 
 	    (!mIs3D || mA[0][v*mStencilSize0 + 3]==Real(0)) && 
 	              (V.x==0 || mA[0][(v-mPitch[0].x)*mStencilSize0 + 1]==Real(0)) && 
-	              (V.y==0 || mA[0][(v-mPitch[0].y)*mStencilSize0 + 1]==Real(0)) && 
-	    (!mIs3D || V.z==0 || mA[0][(v-mPitch[0].z)*mStencilSize0 + 1]==Real(0));
+	              (V.y==0 || mA[0][(v-mPitch[0].y)*mStencilSize0 + 2]==Real(0)) && 
+	    (!mIs3D || V.z==0 || mA[0][(v-mPitch[0].z)*mStencilSize0 + 3]==Real(0));
 }
 
 // Determine active cells on coarse level l from active cells on fine level l-1
