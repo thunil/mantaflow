@@ -11,20 +11,23 @@
  * Mercier et al., SIGGRAPH Asia 2015
  * 
  * Possible speedups :
- * - only initialize surface points around coarse particles near the surface. Use the flags in the fluid grid and only use cells with non-fluid neighbors.
+ * - only initialize surface points around coarse particles near the surface. Use the flags in the fluid 
+ *   grid and only use cells with non-fluid neighbors.
  *
  ******************************************************************************/
 
-// check whether chrono is available
+// use chrono stl for detailed timing only if available
 #ifdef __GNUC__
 #if __GNUC__<5
 #define USE_CHRONO 0
 #endif
 #endif 
 
+#if MANTA_WITHCPP11==1 
 #ifndef USE_CHRONO
 #define USE_CHRONO 1
 #endif
+#endif 
 
 #include <iomanip>
 #if USE_CHRONO==1

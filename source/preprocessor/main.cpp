@@ -100,6 +100,39 @@ void doGenerate(int argc, char* argv[], bool docs) {
 	sink.write();
 }
 
+void doRegister(int argc, char* argv[]) {
+	std::ofstream Output("pp/source/registration.cpp");
+	
+	std::stringstream RegistrationsDefs;
+	std::stringstream Registrations;
+	for (int i = 2; i < argc; i++)	{
+		std::ifstream input(argv[i]);
+
+		for (std::string line; getline(input, line); )	{
+			if (line.find("void MantaRegister_") != std::string::npos) {
+				RegistrationsDefs << "\t\textern " << line << ";\n";
+				replaceAll(line, "void ", "");
+				bool isnbvecTestOp = line.find("nbvecTestOp") != std::string::npos;
+				if (isnbvecTestOp) //This one is special due to an #ifdef
+					Registrations << "#if ENABLE_GRID_TEST_DATATYPE==1\n";
+				Registrations << "\t\t" << line << ";\n";
+				if (isnbvecTestOp)
+					Registrations << "#endif\n";
+			}
+		}
+		input.close();
+	}
+	Output << "extern \"C\" {\n";
+	Output << RegistrationsDefs.str();
+	Output << "}";
+	Output << "namespace Pb {\n";
+	Output << "\tvoid MantaEnsureRegistration()\n\t{\n";
+	Output << Registrations.str();
+	Output << "\t}\n";
+	Output << "}\n";
+	Output.close();
+}
+
 
 int main(int argc, char* argv[]) {
 	// command line options
@@ -112,6 +145,8 @@ int main(int argc, char* argv[]) {
 		doGenerate(argc, argv, false);
 	else if (!strcmp(argv[1],"docgen"))
 		doGenerate(argc, argv, true);
+	else if (!strcmp(argv[1], "register"))
+		doRegister(argc, argv);
 	else 
 		usage();
 	

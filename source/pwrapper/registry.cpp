@@ -161,6 +161,7 @@ int cbDisableConstructor(PyObject* self, PyObject* args, PyObject* kwds) {
 }
 
 PyMODINIT_FUNC PyInit_Main(void) {
+	MantaEnsureRegistration();
 #if PY_MAJOR_VERSION >= 3
 	return WrapperRegistry::instance().initModule();   
 #else
@@ -169,7 +170,7 @@ PyMODINIT_FUNC PyInit_Main(void) {
 }
 
 #ifdef BLENDER
-PyObject *PyInit_Main_Obj(void) {
+PyMODINIT_FUNC PyInit_Main_Obj(void) {
 	return PyInit_Main();	
 }
 #endif

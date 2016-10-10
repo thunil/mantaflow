@@ -20,10 +20,10 @@
 #ifdef GUI
 #   include <QMutex>
 #else
-struct QMutex {
+class QMutex { public:
 	void lock() {};
 	void unlock() {};
-	bool tryLock() {return true;};
+	bool tryLock() { return true; };
 };
 #endif
 

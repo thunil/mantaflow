@@ -330,6 +330,11 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 	const string reg = replaceSet(TmpRegisterMethod, table);
 	if (isPlugin) {
 		sink.inplace << reg;
+		sink.inplace << "extern \"C\" { ";
+		sink.inplace << "\nvoid MantaRegister_" + func.name + "()\n{\n";
+		sink.inplace << "\tKEEP_UNUSED(_RP_" + func.name + ");\n";
+		sink.inplace << "}\n";
+		sink.inplace << "}\n";
 	} else {
 		sink.link << '+' << block.parent->name << '^' << reg << '\n';
 	}
@@ -430,7 +435,7 @@ void processPythonClass(const Block& block, const string& code, Sink& sink, vect
 	sink.inplace << "}\n";
 #	else 
 	// add secret bonus members to class and close
-	sink.inplace << "public: PbArgs _args;";
+	sink.inplace << "public: PbArgs _args; ";
 	sink.inplace << "}\n";
 	// add a define to make commenting out classes, and #ifdefs work correctly
 	sink.inplace << "#define _C_" << cls.name << '\n';

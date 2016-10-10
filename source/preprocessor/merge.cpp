@@ -31,7 +31,7 @@ struct Request {
 };
 
 struct RegFile {
-	RegFile(const string& name) : filename(name),idx(0) {}
+	RegFile(const string& name, int index) : filename(name), idx(index) {}
 
 	string filename;
 	ostringstream out, header, footer;
@@ -84,6 +84,7 @@ void resolveChains(RegFile& file) {
 }
 
 void resolveRequests(RegFile& file) {
+	static int FileID = 0;
 	// sort request by class
 	map<string, vector<Request*> > sortedReqs;
 	for (int i=0; i<(int)file.req.size(); i++) {
@@ -94,6 +95,12 @@ void resolveRequests(RegFile& file) {
 			sortedReqs[req.cls].push_back(&req);
 		}
 	}
+	
+	bool IsPython = file.filename.find(".py") != std::string::npos;
+	stringstream FileidxStr;
+	FileidxStr << FileID++;
+	file.footer << "extern \"C\" {\n";
+	file.footer << "void MantaRegister_file_" << FileidxStr.str() << "()\n{\n";
 
 	// process requests
 	for(map<string,vector<Request*> >::iterator it = sortedReqs.begin(); it != sortedReqs.end(); ++it) {
@@ -106,10 +113,17 @@ void resolveRequests(RegFile& file) {
 				idxStr << file.idx++;
 				const string table[] = {"CT", req.tpl, "BT", req.base, "IDX", idxStr.str(), ""};
 				file.out << replaceSet(info.snippets[j], table) << '\n';
+				file.footer << "\tKEEP_UNUSED(_R_" << idxStr.str() << ");\n";
+
 			}
 		}
 		file.out << "#endif\n";
 	}
+	if (IsPython) 
+		file.footer << "\tKEEP_UNUSED(_reg);\n";
+	file.footer << "}\n";
+	file.footer << "}";
+
 }
 
 // create data structure from regfiles
@@ -140,7 +154,7 @@ void parseLine(const string& line, RegFile& file) {
 void generateMerge(int num, char* files[]) {
 	// parse files
 	for (int i=0; i<num; i++) {
-		regFiles.push_back(new RegFile(files[i]));
+		regFiles.push_back(new RegFile(files[i],i));
 
 		string text = readFile(files[i]);
 		replaceAll(text,"\r","");

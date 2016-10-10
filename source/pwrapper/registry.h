@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 
+#define KEEP_UNUSED(var) do { (void)var; } while(false);	
+
 // forward declaration to minimize Python.h includes
 #ifndef PyObject_HEAD
 #ifndef PyObject_Fake
@@ -55,9 +57,13 @@ Manta::PbClass* objFromPy(PyObject* obj);
 Manta::PbClass* createPy(const std::string& classname, const std::string& name, Manta::PbArgs& args, Manta::PbClass* parent);
 void setReference(Manta::PbClass* cls, PyObject* obj);
 PyObject* copyObject(Manta::PbClass* cls, const std::string& classname);
+void MantaEnsureRegistration();
 
 #ifdef BLENDER
-extern "C" PyObject *PyInit_Main_Obj(void);
+#ifdef PyMODINIT_FUNC
+PyMODINIT_FUNC PyInit_Main(void);
+PyMODINIT_FUNC PyInit_Main_Obj(void);
+#endif
 #endif
 
 // callback type

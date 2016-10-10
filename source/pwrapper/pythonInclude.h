@@ -21,7 +21,7 @@
 	#include <vector>
 	#include <iostream>
 
-	#ifdef _DEBUG
+	#if defined(_DEBUG) && defined(PYTHON_DEBUG_AS_RELEASE)
 
 		// special handling for windows
 		// disable linking with debug version of python libs
