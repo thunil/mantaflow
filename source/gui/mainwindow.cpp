@@ -103,18 +103,17 @@ MainWnd::MainWnd() : QMainWindow(0), mPaused(true), mRequestPause(false), mReque
 	this->raise();
 	this->activateWindow();
 
-	/*
-	// MLE 2014-07-05 added
-	// move gui window to upper left corner and resize window to screen size
-	QRect rc = frameGeometry();
-    QRect rcDesktop = QApplication::desktop()->frameGeometry();
-    rc.setLeft(rcDesktop.left());
-    rc.setTop(rcDesktop.top());
-    rc.setRight(rcDesktop.right());
-    rc.setBottom(rcDesktop.bottom());
-    move(rc.topLeft());
-    resize(rc.size());
-	*/
+	// move gui window to upper left corner and resize window to screen size, enable on demand...
+	if(false) {
+		QRect rc = frameGeometry();
+		QRect rcDesktop = QApplication::desktop()->frameGeometry();
+		rc.setLeft(rcDesktop.left());
+		rc.setTop(rcDesktop.top());
+		rc.setRight(rcDesktop.right());
+		rc.setBottom(rcDesktop.bottom());
+		move(rc.topLeft());
+		resize(rc.size());
+	}
 
 	// uncomment to start  paused
 	//emit pause();

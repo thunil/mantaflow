@@ -272,7 +272,8 @@ public:
 		TypeInflow   = 8,
 		TypeOutflow  = 16,
 		TypeOpen     = 32,
-		TypeStick    = 128,
+		TypeStick    = 64,
+		// internal use only, for fast marching
 		TypeReserved = 256,
 		// 2^10 - 2^14 reserved for moving obstacles
 		TypeZeroPressure = (1<<15) 
@@ -310,6 +311,7 @@ public:
 	inline bool isStick(int i, int j, int k) const { return get(i,j,k) & TypeStick; }
 	inline bool isStick(const Vec3i& pos) const { return get(pos) & TypeStick; }
 	inline bool isStick(const Vec3& pos) const { return getAt(pos) & TypeStick; }
+
 	
 	void InitMinXWall(const int &boundaryWidth, Grid<Real>& phiWalls);
 	void InitMaxXWall(const int &boundaryWidth, Grid<Real>& phiWalls);
