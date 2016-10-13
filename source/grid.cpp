@@ -694,27 +694,4 @@ template class Grid<int>;
 template class Grid<Real>;
 template class Grid<Vec3>;
 
-
-//******************************************************************************
-// enable compilation of a more complicated test data type
-// enable in grid.h
-
-#if ENABLE_GRID_TEST_DATATYPE==1
-// todo fix, missing:  template<> const char* Namify<nbVector>::S = "TestDatatype";
-
-template<> Real Grid<nbVector>::getMin() { return 0.; }
-template<> Real Grid<nbVector>::getMax() { return 0.; }
-template<> Real Grid<nbVector>::getMaxAbs()      { return 0.; }
-
-KERNEL() void knNbvecTestKernel (Grid<nbVector>& target) { target(i,j,k).push_back(i+j+k); }
-
-PYTHON() void nbvecTestOp (Grid<nbVector> &target) {
-	knNbvecTestKernel nbvecTest(target); 
-}
-
-// instantiate test datatype , not really required for simulations, mostly here for demonstration purposes
-template class Grid<nbVector>;
-#endif // ENABLE_GRID_TEST_DATATYPE
-
-
 } //namespace
