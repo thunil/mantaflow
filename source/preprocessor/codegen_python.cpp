@@ -291,9 +291,6 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 	return; 
 #	endif
 
-	std::string newl(" "); 
-	if(gDebugMode) newl = "\n";
-
 	// generate variable loader
 	string loader = "";
 	for (int i=0; i<(int)func.arguments.size(); i++)
@@ -340,15 +337,12 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 	if (doRegister) {
 		const string reg = replaceSet(TmpRegisterMethod, table);
 		if (isPlugin) {
+			std::string newl(" "); 
+			if(gDebugMode) newl = "\n"; 
 			sink.inplace << reg << newl;
-			sink.inplace << "\n\n" << replaceSet(TmpRegisterKeepUnused, table) << newl <<"\n\n";
-			//sink.inplace << "extern \"C\" { "<<newl;
-			//sink.inplace << "void MantaRegister_" + func.name + "()" << newl << "{"<<newl;
-			//sink.inplace << "\tKEEP_UNUSED(_RP_" + func.name + ");"<<newl;
-			//sink.inplace << "}"<<newl;
-			//sink.inplace << "}"<<newl;
+			sink.inplace << replaceSet(TmpRegisterKeepUnused, table) << newl;
 		} else {
-			sink.link << '+' << block.parent->name << '^' << reg << newl;
+			sink.link << '+' << block.parent->name << '^' << reg << "\n";
 		}
 	}
 }

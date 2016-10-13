@@ -102,9 +102,7 @@ void doGenerate(int argc, char* argv[], bool docs) {
 
 void doRegister(int argc, char* argv[]) {
 	std::ofstream output("pp/source/registration.cpp");
-	std::string newl(" "); 
-	//if(gDebugMode) 
-	newl = "\n";
+	std::string newl("\n"); 
 	
 	std::stringstream RegistrationsDefs;
 	std::stringstream Registrations;
@@ -112,24 +110,26 @@ void doRegister(int argc, char* argv[]) {
 		std::ifstream input(argv[i]);
 
 		for (std::string line; getline(input, line); )	{
-			pos = line.find("void MantaRegister_");
+			int pos = line.find("void MantaRegister_");
 			if (pos != std::string::npos) {
-				RegistrationsDefs << "\t\textern " << line << ";" << newl;
-				replaceAll(line, "void ", "");
+				std::string lineRegEnd = line.substr( pos, line.length() );
+				int endpos = lineRegEnd.find("{");
+				std::string lineFunc = lineRegEnd.substr( 0, endpos );
 
-				bool isnbvecTestOp = line.find("nbvecTestOp") != std::string::npos;
-				if (isnbvecTestOp) //This one is special due to an #ifdef
-					Registrations << "#if ENABLE_GRID_TEST_DATATYPE==1" << newl;
-				Registrations << "\t\t" << line << ";" << newl;
-				if (isnbvecTestOp)
-					Registrations << "#endif" << newl;
+				RegistrationsDefs << "\t\textern " << lineFunc << ";" << newl;
+				replaceAll(lineFunc, "void ", "");
+				Registrations << "\t\t" << lineFunc << ";" << newl;
 			}
 		}
 		input.close();
 	}
+
+	// add external declarations
 	output << "extern \"C\" {\n";
 	output << RegistrationsDefs.str();
-	output << "}\n";
+	output << "}\n\n";
+
+	// add dummy function calling all of them
 	output << "namespace Pb {\n";
 	output << "\tvoid MantaEnsureRegistration()\n\t{\n";
 	output << Registrations.str();
@@ -143,13 +143,17 @@ int main(int argc, char* argv[]) {
 	// command line options
 	if (argc < 2) usage();
 
-	// use merger
-	if (!strcmp(argv[1],"link")) 
-		doMerge(argc, argv);
-	else if (!strcmp(argv[1],"generate")) 
+	// prep modes:
+	// - preprocessing of header / cpp files, "main" mode
+	// - generating doxygen info
+	// - merge / link generated functions
+	// - create dummy registry call to prevent linkers from discarding python bindings
+	if (!strcmp(argv[1],"generate")) 
 		doGenerate(argc, argv, false);
 	else if (!strcmp(argv[1],"docgen"))
 		doGenerate(argc, argv, true);
+	else if (!strcmp(argv[1],"link")) 
+		doMerge(argc, argv);
 	else if (!strcmp(argv[1], "register"))
 		doRegister(argc, argv);
 	else 
