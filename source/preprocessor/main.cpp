@@ -24,7 +24,7 @@
 using namespace std;
 
 string gFilename;
-bool gDebugMode = true;
+bool gDebugMode = false;
 bool gDocMode;
 bool gIsHeader;
 MType gMTType = MTNone;
@@ -54,7 +54,7 @@ void doGenerate(int argc, char* argv[], bool docs) {
 	const string indir(argv[4]), infile(argv[5]), outfile(argv[6]);
 	bool isPython = infile.size() > 3 && !infile.compare(infile.size()-3, 3, ".py");
 
-	// TP : only enable in cmake's PREP_DEBUG mode (passed via cmd line option dbg_mode)
+	// only enable in cmake's PREP_DEBUG mode (passed via cmd line option dbg_mode)
 	gDebugMode = atoi(argv[2]) != 0;
 	if (!strcmp(argv[3],"TBB")) gMTType = MTTBB;
 	if (!strcmp(argv[3],"OPENMP")) gMTType = MTOpenMP;
@@ -101,7 +101,10 @@ void doGenerate(int argc, char* argv[], bool docs) {
 }
 
 void doRegister(int argc, char* argv[]) {
-	std::ofstream Output("pp/source/registration.cpp");
+	std::ofstream output("pp/source/registration.cpp");
+	std::string newl(" "); 
+	//if(gDebugMode) 
+	newl = "\n";
 	
 	std::stringstream RegistrationsDefs;
 	std::stringstream Registrations;
@@ -109,28 +112,30 @@ void doRegister(int argc, char* argv[]) {
 		std::ifstream input(argv[i]);
 
 		for (std::string line; getline(input, line); )	{
-			if (line.find("void MantaRegister_") != std::string::npos) {
-				RegistrationsDefs << "\t\textern " << line << ";\n";
+			pos = line.find("void MantaRegister_");
+			if (pos != std::string::npos) {
+				RegistrationsDefs << "\t\textern " << line << ";" << newl;
 				replaceAll(line, "void ", "");
+
 				bool isnbvecTestOp = line.find("nbvecTestOp") != std::string::npos;
 				if (isnbvecTestOp) //This one is special due to an #ifdef
-					Registrations << "#if ENABLE_GRID_TEST_DATATYPE==1\n";
-				Registrations << "\t\t" << line << ";\n";
+					Registrations << "#if ENABLE_GRID_TEST_DATATYPE==1" << newl;
+				Registrations << "\t\t" << line << ";" << newl;
 				if (isnbvecTestOp)
-					Registrations << "#endif\n";
+					Registrations << "#endif" << newl;
 			}
 		}
 		input.close();
 	}
-	Output << "extern \"C\" {\n";
-	Output << RegistrationsDefs.str();
-	Output << "}";
-	Output << "namespace Pb {\n";
-	Output << "\tvoid MantaEnsureRegistration()\n\t{\n";
-	Output << Registrations.str();
-	Output << "\t}\n";
-	Output << "}\n";
-	Output.close();
+	output << "extern \"C\" {\n";
+	output << RegistrationsDefs.str();
+	output << "}\n";
+	output << "namespace Pb {\n";
+	output << "\tvoid MantaEnsureRegistration()\n\t{\n";
+	output << Registrations.str();
+	output << "\t}\n";
+	output << "}\n";
+	output.close();
 }
 
 

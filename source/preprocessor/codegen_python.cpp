@@ -148,6 +148,14 @@ const string TmpRegisterMethod = STR(
 @END
 );
 
+// make sure linkers don't "optimize" the registration functions and remove them
+const string TmpRegisterKeepUnused = STR(
+extern "C" { 
+	void MantaRegister_$FUNCNAME$() {
+		KEEP_UNUSED(_RP_$FUNCNAME$);
+	}
+} );
+
 const string TmpRegisterGetSet = STR(
 @IF(CTPL)
 	static const Pb::Register _R_$IDX$ ("$CLASS$<$CT$>$","$PYNAME$",$CLASS$<$CT$>::_GET_$NAME$,$CLASS$<$CT$>::_SET_$NAME$);
@@ -283,6 +291,9 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 	return; 
 #	endif
 
+	std::string newl(" "); 
+	if(gDebugMode) newl = "\n";
+
 	// generate variable loader
 	string loader = "";
 	for (int i=0; i<(int)func.arguments.size(); i++)
@@ -326,17 +337,19 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 	}
 
 	// register functions
-	if (!doRegister) return;
-	const string reg = replaceSet(TmpRegisterMethod, table);
-	if (isPlugin) {
-		sink.inplace << reg;
-		sink.inplace << "extern \"C\" { ";
-		sink.inplace << "\nvoid MantaRegister_" + func.name + "()\n{\n";
-		sink.inplace << "\tKEEP_UNUSED(_RP_" + func.name + ");\n";
-		sink.inplace << "}\n";
-		sink.inplace << "}\n";
-	} else {
-		sink.link << '+' << block.parent->name << '^' << reg << '\n';
+	if (doRegister) {
+		const string reg = replaceSet(TmpRegisterMethod, table);
+		if (isPlugin) {
+			sink.inplace << reg << newl;
+			sink.inplace << "\n\n" << replaceSet(TmpRegisterKeepUnused, table) << newl <<"\n\n";
+			//sink.inplace << "extern \"C\" { "<<newl;
+			//sink.inplace << "void MantaRegister_" + func.name + "()" << newl << "{"<<newl;
+			//sink.inplace << "\tKEEP_UNUSED(_RP_" + func.name + ");"<<newl;
+			//sink.inplace << "}"<<newl;
+			//sink.inplace << "}"<<newl;
+		} else {
+			sink.link << '+' << block.parent->name << '^' << reg << newl;
+		}
 	}
 }
 
