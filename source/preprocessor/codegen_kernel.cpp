@@ -298,6 +298,27 @@ const string TmpOMPDirective = STR (
 @END
 );
 
+// hard coded type names for now
+const std::string gGridNames[] = {
+	std::string("Grid"),
+	std::string("MACGrid"),
+	std::string("LevelsetGrid"),
+	std::string("FlagGrid"),
+	std::string("Grid4d") };
+const std::string gGrid4dNames[] = {
+	std::string("Grid4d") };
+static bool isGridCheck(const std::string& type, const std::string* gridNames, int num) { 
+	for(int i=0; i<num; ++i) {
+		if(type.compare( gridNames[i] )==0) return true;
+	}
+	return false;
+}
+bool isGridType(const std::string& type) { 
+	return isGridCheck(type, gGridNames, 5);
+}
+bool isGrid4dType(const std::string& type) { 
+	return isGridCheck(type, gGrid4dNames, 1);
+}
 
 #define kernelAssert(x,msg) if(!(x)){errMsg(block.line0,string("KERNEL: ") + msg);}
 
@@ -358,14 +379,38 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 	string baseGrid;
 	for (int i=0; i<(int)kernel.arguments.size(); i++) {
 		const string& type = kernel.arguments[i].type.name;
-		bool isGrid = type.find("Grid") != string::npos;
-		// NT_DEBUG , todo - add case for fourd
+		bool isGrid = isGridType(type); // type.find("Grid") != string::npos;
+		// TODO - add case for fourd
 		// ? bool is4d = type.find("Grid4d") != string::npos;
 		if (isGrid || pts) { 
 			baseGrid = kernel.arguments[i].name;
 			if (isGrid && !kernel.arguments[i].type.isPointer)
 				baseGrid = "&"+baseGrid;
 			break;
+		}
+	}
+	// prevents grids being passed by value
+	for (int i=0; i<(int)kernel.arguments.size(); i++) {
+		const string& type = kernel.arguments[i].type.name;
+		//bool isGrid = isGridType(type); // type.find("Grid") != string::npos;
+		//if(isGrid) std::cout <<"TTT "<< type.find("Grid")<<"    "<< type<<"   , "<<isGrid<<" vs "<< _isGrid(type) <<"  \n";
+		//if( isGrid != _isGrid(type)) exit(1);
+		//if(isGrid) std::cout <<"TTT "<< type.find("Grid")<<"    "<< type<<"   "<< _isGrid(type) <<"  \n";
+		if( isGridType(type) && !(kernel.arguments[i].type.isPointer || kernel.arguments[i].type.isRef) ) {
+		//if (isGrid || pts) {  // NT_DEBUG fix
+			//if( (isGrid && !kernel.arguments[i].type.isPointer) &&
+			    //(isGrid && !kernel.arguments[i].type.isRef) ) {
+			errMsg(block.line0, "don't pass grid objects by value!");
+			//}
+		}
+	}
+	// first arg 4d?
+	if(kernel.arguments.size()>0) {
+		const string& type = kernel.arguments[0].type.name;
+		bool is4d = isGrid4dType(type); 
+		//if(is4d) std::cout <<"TTT "<< type.find("Grid")<<"    "<< type<<"   , "<<is4d<<" vs "<< isGrid4dType(type) <<"  \n";
+		if (is4d && (!fourdMode && !idxMode)) {
+			errMsg(block.line0, "enable 4d mode to loop over 4d grids!");
 		}
 	}
 	kernelAssert(!baseGrid.empty(), ": use at least one grid to call the kernel.");

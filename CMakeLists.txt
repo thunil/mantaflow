@@ -374,7 +374,7 @@ find_package(PythonLibs ${PYTHON_FORCE_VERSION} REQUIRED)
 list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
 list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 
-# Z compression
+# Z lib compression
 if (1)
 	# default: build from own sources
 	set(ZLIB_SRC adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c
@@ -602,8 +602,7 @@ IF(BUILD_STATIC)
 	ADD_LIBRARY (libmanta ${SOURCES} ${GITINFO})
 ENDIF()
 
-# compiler flags
-
+# gcc compiler flags 
 IF(NOT WIN32)
 	IF(DEBUG)
 		# stricter: no optimizations and inlining, comment out if needed...
@@ -612,11 +611,7 @@ IF(NOT WIN32)
 		# non-debug, optimized version
 		set_target_properties(manta PROPERTIES COMPILE_FLAGS " -O3 -Wall ")
 	ENDIF()
-	# use c++11 for all pre-processed c++ sources
-	#set_source_files_properties(${PREPPED_SOURCES} PROPERTIES COMPILE_FLAGS " -std=c++11 " )
 ENDIF()
-
-# new
 
 # use c++11 for all pre-processed c++ sources
 include(CheckCXXCompilerFlag)
@@ -630,8 +625,7 @@ elseif(COMPILER_SUPPORTS_CXX0X)
 	add_definitions(-DMANTA_WITHCPP11=1)
 endif()
 
-# new
-
+# MSVC compiler settings
 IF(WIN32)
 	# get rid of some MSVC warnings
 	add_definitions( /wd4018 /wd4146 /wd4800 )
@@ -658,6 +652,6 @@ IF(WIN32)
 	#add_definitions(/FS)
 ENDIF()
 
-# debug summary
+# print debug summary
 # MESSAGE(STATUS "DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")
 

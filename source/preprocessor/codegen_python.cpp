@@ -255,6 +255,10 @@ string generateLoader(const Argument& arg) {
 	return loader.str();
 }
 
+// from gen_kernel
+bool isGridType(const std::string& type);
+bool isGrid4dType(const std::string& type);
+
 // global for tracking state between python class and python function registrations
 bool gFoundConstructor = false;
 
@@ -290,6 +294,14 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 #	if NOPYTHON==1
 	return; 
 #	endif
+
+	// prevents grids being passed by value
+	for (int i=0; i<(int)func.arguments.size(); i++) {
+		const string& type = func.arguments[i].type.name;
+		if( isGridType(type) && !(func.arguments[i].type.isPointer || func.arguments[i].type.isRef) ) {
+			errMsg(block.line0, "don't pass grid objects by value!");
+		}
+	}
 
 	// generate variable loader
 	string loader = "";

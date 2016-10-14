@@ -35,6 +35,21 @@ double minReduction(const Grid<Real>& v)
 		sum = v[idx];
 }
 
+KERNEL() 
+void testkkk(const Grid<Real>& av, int a=1)
+{
+	Real sum = av(i,j,k);
+}
+
+PYTHON()
+double testttt(const Grid<Real>& v)
+{
+	testkkk ttt(v);
+	return v(0,0,0);
+	//check error boris???
+}
+
+
 
 // ... add own test code ...
 
