@@ -19,6 +19,10 @@
 #include <iostream>
 using namespace std;
 
+// from codegen_kernel
+bool isGridType(const std::string& type);
+bool isGrid4dType(const std::string& type);
+
 #define STR(x) #x
 
 //******************************************************
@@ -254,10 +258,6 @@ string generateLoader(const Argument& arg) {
 
 	return loader.str();
 }
-
-// from gen_kernel
-bool isGridType(const std::string& type);
-bool isGrid4dType(const std::string& type);
 
 // global for tracking state between python class and python function registrations
 bool gFoundConstructor = false;

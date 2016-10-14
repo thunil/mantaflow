@@ -17,8 +17,6 @@
 #include <string>
 #include <vector>
 
-#define KEEP_UNUSED(var) do { (void)var; } while(false);	
-
 // forward declaration to minimize Python.h includes
 #ifndef PyObject_HEAD
 #ifndef PyObject_Fake
@@ -91,6 +89,8 @@ struct Register {
 	//! register external code
 	Register(InitFunc func);
 };
+
+#define KEEP_UNUSED(var) do { (void)var; } while(false);	
 
 }
 #endif

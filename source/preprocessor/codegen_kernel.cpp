@@ -379,9 +379,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 	string baseGrid;
 	for (int i=0; i<(int)kernel.arguments.size(); i++) {
 		const string& type = kernel.arguments[i].type.name;
-		bool isGrid = isGridType(type); // type.find("Grid") != string::npos;
-		// TODO - add case for fourd
-		// ? bool is4d = type.find("Grid4d") != string::npos;
+		bool isGrid = isGridType(type);
 		if (isGrid || pts) { 
 			baseGrid = kernel.arguments[i].name;
 			if (isGrid && !kernel.arguments[i].type.isPointer)
@@ -392,28 +390,21 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 	// prevents grids being passed by value
 	for (int i=0; i<(int)kernel.arguments.size(); i++) {
 		const string& type = kernel.arguments[i].type.name;
-		//bool isGrid = isGridType(type); // type.find("Grid") != string::npos;
-		//if(isGrid) std::cout <<"TTT "<< type.find("Grid")<<"    "<< type<<"   , "<<isGrid<<" vs "<< _isGrid(type) <<"  \n";
-		//if( isGrid != _isGrid(type)) exit(1);
-		//if(isGrid) std::cout <<"TTT "<< type.find("Grid")<<"    "<< type<<"   "<< _isGrid(type) <<"  \n";
 		if( isGridType(type) && !(kernel.arguments[i].type.isPointer || kernel.arguments[i].type.isRef) ) {
-		//if (isGrid || pts) {  // NT_DEBUG fix
-			//if( (isGrid && !kernel.arguments[i].type.isPointer) &&
-			    //(isGrid && !kernel.arguments[i].type.isRef) ) {
-			errMsg(block.line0, "don't pass grid objects by value!");
-			//}
+		errMsg(block.line0, "don't pass grid objects by value!");
 		}
 	}
 	// first arg 4d?
 	if(kernel.arguments.size()>0) {
 		const string& type = kernel.arguments[0].type.name;
 		bool is4d = isGrid4dType(type); 
-		//if(is4d) std::cout <<"TTT "<< type.find("Grid")<<"    "<< type<<"   , "<<is4d<<" vs "<< isGrid4dType(type) <<"  \n";
 		if (is4d && (!fourdMode && !idxMode)) {
 			errMsg(block.line0, "enable 4d mode to loop over 4d grids!");
 		}
 	}
-	kernelAssert(!baseGrid.empty(), ": use at least one grid to call the kernel.");
+	// NT_DEBUG auto check?
+
+	kernelAssert(!baseGrid.empty(), "use at least one grid to call the kernel.");
 
 	// build accesors
 	stringstream accessors;

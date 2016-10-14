@@ -17,7 +17,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/source/cmake/")
 SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 SET(VERBOSE 1)
 
-SET(MANTAVERSION "0.9")
+SET(MANTAVERSION "0.10")
 
 #******************************************************************************
 # Default paths
@@ -496,9 +496,9 @@ IF(NOT NOPYTHON)
 	set(PP_REGISTER pp/source/registration.cpp)
 	add_custom_command(OUTPUT ${PP_REGISTER}
 					COMMAND prep register ${SOURCES}
-					DEPENDS prep ${PP_REGS}
+					DEPENDS prep ${PP_REGS} ${SOURCES}
 					WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-					COMMENT "Ensuring registration")
+					COMMENT "Ensuring registration functions are not removed by compiler")
 	list(APPEND SOURCES ${PP_REGISTER})
 ENDIF()
 
@@ -618,10 +618,10 @@ include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
 if(COMPILER_SUPPORTS_CXX11)
-	set_source_files_properties(${PREPPED_SOURCES} PROPERTIES COMPILE_FLAGS " -std=c++11 " )
+	set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS " -std=c++11 " )
 	add_definitions(-DMANTA_WITHCPP11=1)
 elseif(COMPILER_SUPPORTS_CXX0X)
-	set_source_files_properties(${PREPPED_SOURCES} PROPERTIES COMPILE_FLAGS " -std=c++0x " )
+	set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS " -std=c++0x " )
 	add_definitions(-DMANTA_WITHCPP11=1)
 endif()
 
