@@ -110,7 +110,7 @@ void doRegister(int argc, char* argv[]) {
 		std::ifstream input(argv[i]);
 
 		for (std::string line; getline(input, line); )	{
-			int pos = line.find("void MantaRegister_");
+			int pos = line.find("void PbRegister_");
 			if (pos != std::string::npos) {
 				std::string lineRegEnd = line.substr( pos, line.length() );
 				int endpos = lineRegEnd.find("{");

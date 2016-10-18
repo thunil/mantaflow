@@ -155,7 +155,7 @@ const string TmpRegisterMethod = STR(
 // make sure linkers don't "optimize" the registration functions and remove them
 const string TmpRegisterKeepUnused = STR(
 extern "C" { 
-	void MantaRegister_$FUNCNAME$() {
+	void PbRegister_$FUNCNAME$() {
 		KEEP_UNUSED(_RP_$FUNCNAME$);
 	}
 } );

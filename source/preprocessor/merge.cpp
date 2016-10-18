@@ -100,7 +100,7 @@ void resolveRequests(RegFile& file) {
 	stringstream FileidxStr;
 	FileidxStr << FileID++;
 	file.footer << "extern \"C\" {\n";
-	file.footer << "void MantaRegister_file_" << FileidxStr.str() << "()\n{\n";
+	file.footer << "void PbRegister_file_" << FileidxStr.str() << "()\n{\n";
 
 	// process requests
 	for(map<string,vector<Request*> >::iterator it = sortedReqs.begin(); it != sortedReqs.end(); ++it) {

@@ -62,7 +62,11 @@ OPTION(BLENDER "Compile for Blender integration" OFF)
 OPTION(BUILD_STATIC "Enable building static library" OFF)
 
 # special option to compile manta as library, disables python glue code (while trying to keep as much of the rest as possible)
+# this also means: static lib output , instead of executable
 OPTION(NOPYTHON "Compile without python support (limited functionality!)" OFF)
+IF(NOPYTHON)
+	SET(BUILD_STATIC ON)
+ENDIF()
 
 # CUDA is deprecated, and not tested - enable at own risk... (needs cmake version >2.8)
 #OPTION(CUDA "Compile with CUDA plugins" OFF)
@@ -592,15 +596,14 @@ IF(NOT NOPYTHON)
 		ENDIF()
 	ENDIF()
 
-ELSE()
-	# only build static library in nopython mode
-	ADD_LIBRARY (core OBJECT ${SOURCES} ${GITINFO})
-	ADD_LIBRARY (${EXECCMD} STATIC $<TARGET_OBJECTS:core>)
 ENDIF()
 
 IF(BUILD_STATIC)
-	ADD_LIBRARY (libmanta ${SOURCES} ${GITINFO})
+	# only build static library, e.g. for nopython mode
+	ADD_LIBRARY (core OBJECT ${SOURCES} ${GITINFO})
+	ADD_LIBRARY ("${EXECCMD}_static" STATIC $<TARGET_OBJECTS:core>)
 ENDIF()
+
 
 # gcc compiler flags 
 IF(NOT WIN32)
