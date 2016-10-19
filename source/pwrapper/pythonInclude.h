@@ -21,23 +21,18 @@
 	#include <vector>
 	#include <iostream>
 
-	// comment out this define to enable linking with python debug libraries under windows
-	// (by default mantaflow is linked against release libs)
-	#define PYTHON_DEBUG_AS_RELEASE 1
+#endif
 
-	#if defined(_DEBUG) && defined(PYTHON_DEBUG_AS_RELEASE)
+// the PYTHON_DEBUG_WITH_RELEASE define enables linking with python debug libraries 
+#if (defined(_DEBUG)||(DEBUG==1)) && defined(DEBUG_PYTHON_WITH_RELEASE)
 
-		// special handling for windows
-		// disable linking with debug version of python libs
-		#undef _DEBUG
-		#define NDEBUG
-		#include <Python.h>
-		#define _DEBUG
-		#undef NDEBUG
+	// special handling, disable linking with debug version of python libs
+	#undef _DEBUG
+	#define NDEBUG
+	#include <Python.h>
+	#define _DEBUG
+	#undef NDEBUG
 
-	#else
-		#include <Python.h>
-	#endif
 #else
 	#include <Python.h>
 #endif
