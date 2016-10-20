@@ -97,7 +97,8 @@ for t in range(startFrame, endFrame):
 	if(nameScalar != ""):
 		tryToLoad( real1, basename1, nameScalar , t, appendNumber, buildInfo )
 		tryToLoad( real2, basename2, nameScalar , t, appendNumber, buildInfo )
-		realErr.setSub(real1,real2);
+		realErr.copyFrom(real1);
+		realErr.sub(real2);
 		realErrMax = gridMaxDiff(real1, real2)
 	
 		#realErr.print(zSlice=15) 
@@ -106,7 +107,8 @@ for t in range(startFrame, endFrame):
 	if(nameVec3 != ""):
 		tryToLoad( mac1, basename1, nameVec3  , t, appendNumber, buildInfo )
 		tryToLoad( mac2, basename2, nameVec3  , t, appendNumber, buildInfo )
-		macErr.setSub(mac1,mac2);
+		macErr.copyFrom(mac1);
+		macErr.sub(mac2);
 		macErrMax = gridMaxDiffVec3(mac1, mac2)
 	
 		#macErr.print(zSlice=15) 
