@@ -227,6 +227,20 @@ void BasicParticleSystem::printParts(IndexInt start, IndexInt stop, bool printIn
 	debMsg( sstr.str() , 1 );
 }
 
+void BasicParticleSystem::readParticles(BasicParticleSystem* from) {
+	// re-allocate all data
+	this->resizeAll( from->size() ); 
+	assertMsg (from->size() == this->size() , "particle size doesn't match");
+
+	for(int i=0; i<this->size(); ++i) {
+		(*this)[i].pos  = (*from)[i].pos;
+		(*this)[i].flag = (*from)[i].flag;
+	}
+	Vec3i gridSize = from->getParent()->getGridSize();
+	this->transformPositions( Vec3i(gridSize.x,gridSize.y,gridSize.z), this->size() );
+}
+
+
 // particle data
 
 ParticleDataBase::ParticleDataBase(FluidSolver* parent) : 

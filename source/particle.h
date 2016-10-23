@@ -48,13 +48,13 @@ public:
 	virtual std::string infoString() const; 
 	virtual ParticleBase* clone() { assertMsg( false , "Dont use, override..."); return NULL; } 
 
-	// slow virtual function to query size, do not use in kernels! use size() instead
+	//! slow virtual function to query size, do not use in kernels! use size() instead
 	virtual IndexInt getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; } 
 
 	//! add a position as potential candidate for new particle (todo, make usable from parallel threads)
 	inline void addBuffered(const Vec3& pos);
 
-	// particle data functions
+	//! particle data functions
 
 	//! create a particle data object
 	PYTHON() PbClass* create(PbType type, PbTypeVec T=PbTypeVec(), const std::string& name = "");
@@ -101,16 +101,16 @@ public:
 	
 	virtual SystemType getType() const { return S::getType(); };
 	
-	// accessors
+	//! accessors
 	inline S& operator[](IndexInt idx)             { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 	inline const S& operator[](IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
-	// return size of container
-	// note , python binding disabled for now! cannot yet deal with long-long types
+	//! return size of container
+	//! note , python binding disabled for now! cannot yet deal with long-long types
 	inline IndexInt size() const { return mData.size(); }
-	// slow virtual function of base class, also returns size
+	//! slow virtual function of base class, also returns size
 	virtual IndexInt getSizeSlow() const { return size(); }
 
-	// query status
+	//! query status
 	inline int  getStatus(IndexInt idx) { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].flag; }
 	inline bool isActive(IndexInt idx)  { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PDELETE) == 0; }
 	
@@ -130,10 +130,10 @@ public:
 	//! resize data vector, and all pdata fields
 	void resizeAll(IndexInt newsize);
 	
-	// adding and deleting 
+	//! adding and deleting 
 	inline void kill(IndexInt idx);
 	IndexInt add(const S& data);
-	// remove all particles, init 0 length arrays (also pdata)
+	//! remove all particles, init 0 length arrays (also pdata)
 	PYTHON() void clear();
 			
 	//! Advect particle in grid velocity field
@@ -180,16 +180,19 @@ public:
 	PYTHON() void save(std::string name);
 	PYTHON() void load(std::string name);
 
-	// save to text file
+	//! save to text file
 	void writeParticlesText(std::string name);
-	// other output formats
+	//! other output formats
 	void writeParticlesRawPositionsGz(std::string name);
 	void writeParticlesRawVelocityGz(std::string name);
 
-	// add particles in python
+	//! read from other particle system (with resize) 
+	PYTHON() void readParticles(BasicParticleSystem* from);
+
+	//! add particles in python
 	PYTHON() void addParticle(Vec3 pos) { add(BasicParticleData(pos)); }
 
-	// dangerous, get low level access - avoid usage, only used in vortex filament advection for now
+	//! dangerous, get low level access - avoid usage, only used in vortex filament advection for now
 	std::vector<BasicParticleData>& getData() { return mData; }
 
 	PYTHON() void printParts(IndexInt start=-1, IndexInt stop=-1, bool printIndex=false); 
@@ -208,8 +211,8 @@ public:
 	static ParticleBase::SystemType getType() { return ParticleBase::INDEX; }
 
 	IndexInt  sourceIndex; // index of this particle in the original particle system
-	// note - the following two are needed for template instantiation, but not used
-	// for the particle index system (use values from original one!)
+	//! note - the following two are needed for template instantiation, but not used
+	//! for the particle index system (use values from original one!)
 	static Vec3 pos;  // do not use... 
 	static int  flag; // not needed usally 
 	//Vec3 pos; // enable for debugging
@@ -233,7 +236,7 @@ class ConnectedParticleSystem : public ParticleSystem<DATA> {
 public:
 	PYTHON() ConnectedParticleSystem(FluidSolver* parent) : ParticleSystem<DATA>(parent) {}
 	
-	// accessors
+	//! accessors
 	inline bool isSegActive(int i) { return (mSegments[i].flag & ParticleBase::PDELETE) == 0; }    
 	inline int segSize() const { return mSegments.size(); }    
 	inline CON& seg(int i) { return mSegments[i]; }
@@ -254,10 +257,10 @@ public:
 	PYTHON() ParticleDataBase(FluidSolver* parent);
 	virtual ~ParticleDataBase(); 
 
-	// data type IDs, in line with those for grids
+	//! data type IDs, in line with those for grids
 	enum PdataType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4 };
 
-	// interface functions, using assert instead of pure virtual for python compatibility
+	//! interface functions, using assert instead of pure virtual for python compatibility
 	virtual IndexInt  getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; } 
 	virtual void addEntry()   { assertMsg( false , "Dont use, override..."); return;   }
 	virtual ParticleDataBase* clone() { assertMsg( false , "Dont use, override..."); return NULL; }
@@ -290,13 +293,13 @@ public:
 	inline T& operator[](IndexInt idx)            { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 	inline const T operator[](IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 
-	// set all values to 0, note - different from particleSystem::clear! doesnt modify size of array (has to stay in sync with parent system)
+	//! set all values to 0, note - different from particleSystem::clear! doesnt modify size of array (has to stay in sync with parent system)
 	PYTHON() void clear();
 
 	//! set grid from which to get data...
 	PYTHON() void setSource(Grid<T>* grid, bool isMAC=false );
 
-	// particle data base interface
+	//! particle data base interface
 	virtual IndexInt  getSizeSlow() const;
 	virtual void addEntry();
 	virtual ParticleDataBase* clone();
@@ -306,11 +309,11 @@ public:
 
 	IndexInt  size() const { return mData.size(); }
 
-	// fast inlined functions for per particle operations
+	//! fast inlined functions for per particle operations
 	inline void copyValue(IndexInt from, IndexInt to) { get(to) = get(from); } 
 	void initNewValue(IndexInt idx, Vec3 pos);
 
-	// python interface (similar to grid data)
+	//! python interface (similar to grid data)
 	PYTHON() void setConst(T s);
 	PYTHON() ParticleDataImpl<T>& copyFrom(const ParticleDataImpl<T>& a);
 	PYTHON() void add(const ParticleDataImpl<T>& a);
