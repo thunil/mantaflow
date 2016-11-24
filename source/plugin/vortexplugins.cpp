@@ -279,7 +279,7 @@ PYTHON() void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel,
 		GridCgInterface *gcg = new GridCg<ApplyMatrix>(solution, rhs, residual, search, flags, temp1, &A0, &Ai, &Aj, &Ak );
 		gcg->setAccuracy(cgAccuracy); 
 		gcg->setUseL2Norm(true);
-		gcg->setPreconditioner( (GridCgInterface::PreconditionType)precondition, &pca0, &pca1, &pca2, &pca3); 
+		gcg->setICPreconditioner( (GridCgInterface::PreconditionType)precondition, &pca0, &pca1, &pca2, &pca3); 
 		
 		// iterations
 		for (int iter=0; iter<maxIter; iter++) {

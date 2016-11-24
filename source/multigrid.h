@@ -41,6 +41,9 @@ class GridMg {
 		
 		//! set right-hand side
 		void setRhs(Grid<Real>& rhs);
+
+		bool isASet() { return mIsASet; }
+		bool isRhsSet() { return mIsRhsSet; }
 		
 		//! perform VCycle iteration
 		// - if src is null, then a zero vector is used instead
@@ -99,6 +102,9 @@ class GridMg {
 		int mStencilSize0;
 		Vec3i mStencilMin;
 		Vec3i mStencilMax;
+
+		bool mIsASet;
+		bool mIsRhsSet;
 }; // GridMg
 
 } // namespace

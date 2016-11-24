@@ -229,7 +229,9 @@ GridMg::GridMg(const Vec3i& gridSize)
   : mA(),
 	mNumPreSmooth(1),
 	mNumPostSmooth(1),
-	mCoarsestLevelAccuracy(1E-8)
+	mCoarsestLevelAccuracy(1E-8),
+	mIsASet(false),
+	mIsRhsSet(false)
 {
 	MG_TIMINGS(MuTime time;)
 
@@ -356,6 +358,8 @@ void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* 
 		genCoraseGridOperator(l);	
 		MG_TIMINGS(debMsg("GridMg: Generated operator "<<l<<" in "<<time.update(), 2);)
 	}
+
+	mIsASet = true;
 }
 
 void GridMg::setRhs(Grid<Real>& rhs)
@@ -368,12 +372,16 @@ void GridMg::setRhs(Grid<Real>& rhs)
 		// scale down trivial equations ala x_i = b_i to improve coarse grid operators
 		if (isEquationTrivial(v)) { mb[0][v] *= TrivialEquationScale; };
 	}
+
+	mIsRhsSet = true;
 }
 
 Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 {
 	MG_TIMINGS(MuTime timeSmooth; MuTime timeCG; MuTime timeI; MuTime timeR; MuTime timeTotal; MuTime time;)
 	MG_TIMINGS(timeSmooth.clear(); timeCG.clear(); timeI.clear(); timeR.clear();)
+
+	assertMsg(mIsASet && mIsRhsSet, "GridMg::doVCycle Error: Either A or rhs has not been set.");
 
 	const int maxLevel = mA.size() - 1;
 
@@ -453,7 +461,7 @@ void GridMg::genCoarseGrid(int l)
 	//    AF_Free: unused/untouched vertices
 	//    AF_Zero: vertices selected for coarser level
 	// AF_Removed: vertices removed from coarser level
-	enum activeFlags : char {AF_Removed = 0, AF_Zero = 1, AF_Free = 2, };
+	enum activeFlags : char {AF_Removed = 0, AF_Zero = 1, AF_Free = 2};
 
 	// initialize all coarse vertices with 'free'
 	#pragma omp parallel for
@@ -600,8 +608,8 @@ void GridMg::smoothGS(int l, bool reversedOrder)
 	// Multicolor Gauss-Seidel with two colors for the 5/7-point stencil on level 0 
 	// and with four/eight colors for the 9/27-point stencil on levels > 0
 	std::vector<std::vector<Vec3i>> colorOffs;
-	Vec3i a[8] = {Vec3i(0,0,0), Vec3i(1,0,0), Vec3i(0,1,0), Vec3i(1,1,0), 
-		          Vec3i(0,0,1), Vec3i(1,0,1), Vec3i(0,1,1), Vec3i(1,1,1)};
+	const Vec3i a[8] = {Vec3i(0,0,0), Vec3i(1,0,0), Vec3i(0,1,0), Vec3i(1,1,0), 
+		                Vec3i(0,0,1), Vec3i(1,0,1), Vec3i(0,1,1), Vec3i(1,1,1)};
 	if (mIs3D) {
 		if (l==0) colorOffs = {{a[0],a[3],a[5],a[6]}, {a[1],a[2],a[4],a[7]}};
 		else      colorOffs = {{a[0]}, {a[1]}, {a[2]}, {a[3]}, {a[4]}, {a[5]}, {a[6]}, {a[7]}};

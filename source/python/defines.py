@@ -44,9 +44,9 @@ IntRK2   = 1
 IntRK4   = 2
 
 # CG preconditioner
-PcNone = 0
-PcMIC  = 1
-PcMG   = 2
-PcMG_Dbg = 3
+PcNone      = 0
+PcMIC       = 1
+PcMGDynamic = 2
+PcMGStatic  = 3
 
 

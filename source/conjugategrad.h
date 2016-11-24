@@ -26,7 +26,7 @@ static const bool CG_DEBUG = false;
 //! Basic CG interface 
 class GridCgInterface {
 	public:
-		enum PreconditionType { PC_None=0, PC_ICP, PC_mICP, PC_MG };
+		enum PreconditionType { PC_None=0, PC_ICP, PC_mICP, PC_MGP };
 		
 		GridCgInterface() : mUseL2Norm(true) {};
 		virtual ~GridCgInterface() {};
@@ -36,8 +36,8 @@ class GridCgInterface {
 		virtual void solve(int maxIter) = 0;
 
 		// precond
-		virtual void setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak) = 0;
-		virtual void setPreconditioner(PreconditionType method, GridMg* MG) = 0;
+		virtual void setICPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak) = 0;
+		virtual void setMGPreconditioner(PreconditionType method, GridMg* MG) = 0;
 
 		// access
 		virtual Real getSigma() const = 0;
@@ -71,8 +71,8 @@ class GridCg : public GridCgInterface {
 		bool iterate();
 		void solve(int maxIter);
 		//! init pointers, and copy values from "normal" matrix
-		void setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak);
-		void setPreconditioner(PreconditionType method, GridMg* MG);
+		void setICPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak);
+		void setMGPreconditioner(PreconditionType method, GridMg* MG);
 		
 		// Accessors        
 		Real getSigma() const { return mSigma; }
@@ -115,9 +115,6 @@ KERNEL(idx)
 void ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
 				  Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
 {
-	if (flags[idx] & FlagGrid::TypeZeroPressure) { 
-		dst[idx]=0.; return; 
-	} 
 	if (!flags.isFluid(idx)) {
 		dst[idx] = src[idx]; return;
 	}    
@@ -138,10 +135,6 @@ void ApplyMatrix2D (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src,
 {
 	unusedParameter(Ak); // only there for parameter compatibility with ApplyMatrix
 	
-	if (flags[idx] & FlagGrid::TypeZeroPressure) { 
-		dst[idx]=0.; return; 
-	}
-
 	if (!flags.isFluid(idx)) {
 		dst[idx] = src[idx]; return;
 	}    

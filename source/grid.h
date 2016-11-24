@@ -276,7 +276,6 @@ public:
 		// internal use only, for fast marching
 		TypeReserved = 256,
 		// 2^10 - 2^14 reserved for moving obstacles
-		TypeZeroPressure = (1<<15) 
 	};
 		
 	//! access for particles
