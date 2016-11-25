@@ -7,9 +7,7 @@
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Multigrid solver
- * 
- * Author: Florian Ferstl (florian.ferstl.ff@gmail.com)
+ * Multigrid solver by Florian Ferstl (florian.ferstl.ff@gmail.com)
  *
  * This is an implementation of the solver developed by Dick et al. [1]
  * without topology awareness (= vertex duplication on coarser levels). This 
@@ -20,12 +18,6 @@
  *     and Improvements, C. Dick, M. Rogowsky, R. Westermann, IEEE TVCG 2015 
  *
  ******************************************************************************/
-
-// TODO
-// - handle trivial equations x_i = b_i (not working yet)
-// - active vertex lists
-// - analyze performance
-// - Boundary optimization (add 1-cell band)???
 
 #include "multigrid.h"
 
@@ -55,9 +47,6 @@
 using namespace std;
 namespace Manta 
 {
-
-// Constants
-const static Real TrivialEquationScale = 1; //Real(1E-6);
 
 // ----------------------------------------------------------------------------
 // Efficient min heap for <ID, key> pairs with 0<=ID<N and 0<=key<K
@@ -230,6 +219,7 @@ GridMg::GridMg(const Vec3i& gridSize)
 	mNumPreSmooth(1),
 	mNumPostSmooth(1),
 	mCoarsestLevelAccuracy(1E-8),
+	mTrivialEquationScale(1E-6),
 	mIsASet(false),
 	mIsRhsSet(false)
 {
@@ -252,11 +242,11 @@ GridMg::GridMg(const Vec3i& gridSize)
 	mx.push_back(std::vector<Real>(n));
 	mb.push_back(std::vector<Real>(n));
 	mr.push_back(std::vector<Real>(n));
-	mActive.push_back(std::vector<char>(n));
+	mType.push_back(std::vector<VertexType>(n));
 	mCGtmp1.push_back(std::vector<Real>());
 	mCGtmp2.push_back(std::vector<Real>());
 
-	debMsg("GridMg::GridMg level 0: "<<mSize[0].x<<" x " << mSize[0].y << " x " << mSize[0].z << " x ", 3);
+	debMsg("GridMg::GridMg level 0: "<<mSize[0].x<<" x " << mSize[0].y << " x " << mSize[0].z << " x ", 2);
 
 	// Create coarse levels >0
 	for (int l=1; l<=100; l++)
@@ -272,11 +262,11 @@ GridMg::GridMg(const Vec3i& gridSize)
 		mx.push_back(std::vector<Real>(n));
 		mb.push_back(std::vector<Real>(n));
 		mr.push_back(std::vector<Real>(n));
-		mActive.push_back(std::vector<char>(n));
+		mType.push_back(std::vector<VertexType>(n));
 		mCGtmp1.push_back(std::vector<Real>());
 		mCGtmp2.push_back(std::vector<Real>());
 		
-		debMsg("GridMg::GridMg level "<<l<<": " << mSize[l].x << " x " << mSize[l].y << " x " << mSize[l].z << " x ", 3);
+		debMsg("GridMg::GridMg level "<<l<<": " << mSize[l].x << " x " << mSize[l].y << " x " << mSize[l].z << " x ", 2);
 	}
 
 	// Additional memory for CG on coarsest level
@@ -285,7 +275,7 @@ GridMg::GridMg(const Vec3i& gridSize)
 	mCGtmp2.pop_back();
 	mCGtmp2.push_back(std::vector<Real>(n));
 
-	MG_TIMINGS(debMsg("GridMg: Allocation done in "<<time.update(), 2);)
+	MG_TIMINGS(debMsg("GridMg: Allocation done in "<<time.update(), 1);)
 
 	// Precalculate coarsening paths:
 	// (V) <--restriction-- (U) <--A_{l-1}-- (W) <--interpolation-- (N)
@@ -322,55 +312,105 @@ GridMg::GridMg(const Vec3i& gridSize)
 	std::sort(mCoarseningPaths0.begin(), mCoarseningPaths0.end(), pathLess);
 }
 
+void GridMg::analyzeStencil(int v, bool& isStencilSumNonZero, bool& isEquationTrivial) {
+	Vec3i V = vecIdx(v,0);
+
+	// collect stencil entries
+	Real A[7];
+	A[0] = mA[0][v*mStencilSize0 + 0];
+	A[1] = mA[0][v*mStencilSize0 + 1];
+	A[2] = mA[0][v*mStencilSize0 + 2];
+	A[3] = mA[0][v*mStencilSize0 + 3];
+	A[4] = V.x==0 ? Real(0) : mA[0][(v-mPitch[0].x)*mStencilSize0 + 1];
+	A[5] = V.y==0 ? Real(0) : mA[0][(v-mPitch[0].y)*mStencilSize0 + 2];
+	A[6] = V.z==0 ? Real(0) : mA[0][(v-mPitch[0].z)*mStencilSize0 + 3];
+	
+	// compute sum of stencil entries
+	Real stencilMax = Real(0), stencilSum = Real(0);
+	for (int i=0; i<7; i++) {
+		stencilSum += A[i];
+		stencilMax = max(stencilMax, abs(A[i]));
+	}
+
+	// check if sum is numerically zero
+	isStencilSumNonZero = abs(stencilSum / stencilMax) > Real(1E-6);
+
+	// check for trivial equation (exact comparisons)
+	isEquationTrivial = A[0]==Real(1) 
+		             && A[1]==Real(0) && A[2]==Real(0) && A[3]==Real(0) 
+	                 && A[4]==Real(0) && A[5]==Real(0) && A[6]==Real(0);
+}
+
 void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk)
 {
 	MG_TIMINGS(MuTime time;)
 
-	bool trivialEquations = false;
 
 	// Copy level 0
 	#pragma omp parallel for
 	FOR_LVL(v,0) {
-		for (int i=0; i<mStencilSize0; i++) { mA[0][v*mStencilSize0 + i] = Real(0); }
-
 		mA[0][v*mStencilSize0 + 0] = (* A0)[v];
 		mA[0][v*mStencilSize0 + 1] = (*pAi)[v];
 		mA[0][v*mStencilSize0 + 2] = (*pAj)[v];
-		if (mIs3D) mA[0][v*mStencilSize0 + 3] = (*pAk)[v];
+		mA[0][v*mStencilSize0 + 3] = mIs3D ? (*pAk)[v] : Real(0);		
+	}
+	
+	// Determine active vertices and scale trivial equations
+	bool nonZeroStencilSumFound = false;
+	bool trivialEquationsFound  = false;
 
-		// scale down trivial equations ala x_i = b_i to improve coarse grid operators
-		if (isEquationTrivial(v)) { 
-			mA[0][v*mStencilSize0 + 0] *= TrivialEquationScale; 
-			trivialEquations = true;
-		};
-					
+	#pragma omp parallel for
+	FOR_LVL(v,0) {
 		// active vertices on level 0 are vertices with non-zero diagonal entry in A
-		mActive[0][v] = char(mA[0][v*mStencilSize0 + 0] != Real(0));
+		mType[0][v] = vtInactive;
+		
+		if (mA[0][v*mStencilSize0 + 0] != Real(0)) {
+			mType[0][v] = vtActive;
+
+			bool isStencilSumNonZero = false, isEquationTrivial = false;
+			analyzeStencil(v, isStencilSumNonZero, isEquationTrivial);
+			
+			if (isStencilSumNonZero) nonZeroStencilSumFound = true;
+
+			// scale down trivial equations
+			if (isEquationTrivial) { 
+				mType[0][v] = vtActiveTrivial;
+				mA[0][v*mStencilSize0 + 0] *= mTrivialEquationScale; 
+				trivialEquationsFound = true;
+			};
+
+		}					
 	}
 
-	if (trivialEquations) debMsg("GridMg: Found at least one trivial equation", 3);
+	if (trivialEquationsFound)   debMsg("GridMg::setA: Found at least one trivial equation", 2);
 
+	// Sanity check: if all rows of A sum up to 0 --> A doesn't have full rank (opposite direction isn't necessarily true)
+    if (!nonZeroStencilSumFound) debMsg("GridMg::setA: Matrix doesn't have full rank, multigrid may not converge", 1);
+	
 	// Create coarse grids and operators on levels >0
 	for (int l=1; l<mA.size(); l++) {
 		MG_TIMINGS(time.get();)
 		genCoarseGrid(l);	
-		MG_TIMINGS(debMsg("GridMg: Generated level "<<l<<" in "<<time.update(), 2);)
+		MG_TIMINGS(debMsg("GridMg: Generated level "<<l<<" in "<<time.update(), 1);)
 		genCoraseGridOperator(l);	
-		MG_TIMINGS(debMsg("GridMg: Generated operator "<<l<<" in "<<time.update(), 2);)
+		MG_TIMINGS(debMsg("GridMg: Generated operator "<<l<<" in "<<time.update(), 1);)
 	}
 
-	mIsASet = true;
+	mIsASet   = true;
+	mIsRhsSet = false; // invalidate rhs
 }
 
 void GridMg::setRhs(Grid<Real>& rhs)
 {
+	assertMsg(mIsASet, "GridMg::setRhs Error: A has not been set.");
+
 	#pragma omp parallel for
 	FOR_LVL(v,0)
 	{
 		mb[0][v] = rhs[v];
 
-		// scale down trivial equations ala x_i = b_i to improve coarse grid operators
-		if (isEquationTrivial(v)) { mb[0][v] *= TrivialEquationScale; };
+		// scale down trivial equations
+		if (mType[0][v] == vtActiveTrivial) { mb[0][v] *= mTrivialEquationScale; };
 	}
 
 	mIsRhsSet = true;
@@ -381,16 +421,12 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 	MG_TIMINGS(MuTime timeSmooth; MuTime timeCG; MuTime timeI; MuTime timeR; MuTime timeTotal; MuTime time;)
 	MG_TIMINGS(timeSmooth.clear(); timeCG.clear(); timeI.clear(); timeR.clear();)
 
-	assertMsg(mIsASet && mIsRhsSet, "GridMg::doVCycle Error: Either A or rhs has not been set.");
+	assertMsg(mIsASet && mIsRhsSet, "GridMg::doVCycle Error: A and/or rhs have not been set.");
 
 	const int maxLevel = mA.size() - 1;
 
 	#pragma omp parallel for
 	FOR_LVL(v,0) { mx[0][v] = src ? (*src)[v] : Real(0); }
-
-	// Next two lines are debug code, remove later
-	calcResidual(0);
-	Real resOld = calcResidualNorm(0);
 
 	for (int l=0; l<maxLevel; l++)
 	{
@@ -436,23 +472,11 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 	#pragma omp parallel for
 	FOR_LVL(v,0) { dst[v] = mx[0][v];	}
 
-	debMsg("VCycle Residual: "<<resOld<<" -> "<<res<<"   (factor "<<res/resOld<<")", 3);
-
-	MG_TIMINGS(debMsg("GridMg: Finished VCycle in "<<timeTotal.update()<<" (smoothing: "<<timeSmooth<<", CG: "<<timeCG<<", R: "<<timeR<<", I: "<<timeI<<")", 2);)
+	MG_TIMINGS(debMsg("GridMg: Finished VCycle in "<<timeTotal.update()<<" (smoothing: "<<timeSmooth<<", CG: "<<timeCG<<", R: "<<timeR<<", I: "<<timeI<<")", 1);)
 
 	return res;
 }
 
-bool GridMg::isEquationTrivial(int v) {
-	Vec3i V = vecIdx(v,0);
-	return         mA[0][v*mStencilSize0 + 0]!=Real(0)  &&
-	               mA[0][v*mStencilSize0 + 1]==Real(0)  && 
-		           mA[0][v*mStencilSize0 + 2]==Real(0)  && 
-	    (!mIs3D || mA[0][v*mStencilSize0 + 3]==Real(0)) && 
-	              (V.x==0 || mA[0][(v-mPitch[0].x)*mStencilSize0 + 1]==Real(0)) && 
-	              (V.y==0 || mA[0][(v-mPitch[0].y)*mStencilSize0 + 2]==Real(0)) && 
-	    (!mIs3D || V.z==0 || mA[0][(v-mPitch[0].z)*mStencilSize0 + 3]==Real(0));
-}
 
 // Determine active cells on coarse level l from active cells on fine level l-1
 // while ensuring a full-rank interpolation operator (see Section 3.3 in [1]).
@@ -465,13 +489,13 @@ void GridMg::genCoarseGrid(int l)
 
 	// initialize all coarse vertices with 'free'
 	#pragma omp parallel for
-	FOR_LVL(v,l) { mActive[l][v] = AF_Free; }
+	FOR_LVL(v,l) { mType[l][v] = vtFree; }
 
 	// initialize min heap of (ID: fine grid vertex, key: #free interpolation vertices) pairs
 	NKMinHeap heap(mb[l-1].size(), mIs3D ? 9 : 5); // max 8 (or 4 in 2D) free interpolation vertices
 		
 	FOR_LVL(v,l-1) {
-		if (mActive[l-1][v]) {
+		if (mType[l-1][v] != vtInactive) {
 			Vec3i V = vecIdx(v,l-1);
 			int fiv = 1 << ((V.x % 2) + (V.y % 2) + (V.z % 2));
 			heap.setKey(v, fiv);
@@ -493,11 +517,11 @@ void GridMg::genCoarseGrid(int l)
 		FOR_VEC_MINMAX(I, V/2, (V+1)/2) {
 			int i = linIdx(I,l);
 
-			if (mActive[l][i] == AF_Free) {
+			if (mType[l][i] == vtFree) {
 				if (vdone) {
-					mActive[l][i] = AF_Removed; 
+					mType[l][i] = vtRemoved; 
 				} else {
-					mActive[l][i] = AF_Zero; 
+					mType[l][i] = vtZero; 
 					vdone = true;
 				}
 
@@ -514,9 +538,15 @@ void GridMg::genCoarseGrid(int l)
 		}
 	}
 
-	// set all remaining 'free' vertices to 'removed'
 	#pragma omp parallel for
-	FOR_LVL(v,l) { if (mActive[l][v] == AF_Free) mActive[l][v] = AF_Removed; }
+	FOR_LVL(v,l) { 
+		// set all remaining 'free' vertices to 'removed',
+		if (mType[l][v] == vtFree) mType[l][v] = vtRemoved;
+
+		// then convert 'zero' vertices to 'active' and 'removed' vertices to 'inactive'
+		if (mType[l][v] == vtZero   ) mType[l][v] = vtActive;
+		if (mType[l][v] == vtRemoved) mType[l][v] = vtInactive;
+	}
 }
 
 // Calculate A_l on coarse level l from A_{l-1} on fine level l-1 using 
@@ -526,7 +556,7 @@ void GridMg::genCoraseGridOperator(int l)
 	// loop over coarse grid vertices V
 	#pragma omp parallel for schedule(static,1)
 	FOR_LVL(v,l) {
-		if (!mActive[l][v]) continue;
+		if (mType[l][v] == vtInactive) continue;
 
 		for (int i=0; i<mStencilSize; i++) { mA[l][v*mStencilSize+i] = Real(0); } // clear stencil
 
@@ -542,15 +572,15 @@ void GridMg::genCoraseGridOperator(int l)
 			for (auto it = mCoarseningPaths0.begin(); it != mCoarseningPaths0.end(); it++) {
 				Vec3i N = V + it->N;
 				int n = linIdx(N,l);
-				if (!inGrid(N,l) || !mActive[l][n]) continue;
+				if (!inGrid(N,l) || mType[l][n]==vtInactive) continue;
 
 				Vec3i U = V*2 + it->U;
 				int u = linIdx(U,l-1);
-				if (!inGrid(U,l-1) || !mActive[l-1][u]) continue;
+				if (!inGrid(U,l-1) || mType[l-1][u]==vtInactive) continue;
 
 				Vec3i W = V*2 + it->W;
 				int w = linIdx(W,l-1);
-				if (!inGrid(W,l-1) || !mActive[l-1][w]) continue;
+				if (!inGrid(W,l-1) || mType[l-1][w]==vtInactive) continue;
 				
 				if (it->inUStencil) {
 					mA[l][v*mStencilSize + it->sc] += it->rw * mA[l-1][u*mStencilSize0 + it->sf] *it->iw;			
@@ -563,7 +593,7 @@ void GridMg::genCoraseGridOperator(int l)
 			// loop over restriction vertices U on level l-1 associated with V
 			FOR_VEC_MINMAX(U, vmax(0, V*2-1), vmin(mSize[l-1]-1, V*2+1)) {
 				int u = linIdx(U,l-1);
-				if (!mActive[l-1][u]) continue;
+				if (mType[l-1][u] == vtInactive) continue;
 
 				// restriction weight			
 				Real rw = Real(1) / Real(1 << ((U.x % 2) + (U.y % 2) + (U.z % 2))); 
@@ -571,7 +601,7 @@ void GridMg::genCoraseGridOperator(int l)
 				// loop over all stencil neighbors N of V on level l that can be reached via restriction to U
 				FOR_VEC_MINMAX(N, (U-1)/2, vmin(mSize[l]-1, (U+2)/2)) {
 					int n = linIdx(N,l);
-					if (!mActive[l][n]) continue;
+					if (mType[l][n] == vtInactive) continue;
 							
 					// stencil entry at V associated to N (coarse grid level l)
 					Vec3i SC = N - V + mStencilMax;
@@ -583,7 +613,7 @@ void GridMg::genCoraseGridOperator(int l)
 					FOR_VEC_MINMAX(W, vmax(           0, vmax(U-1,N*2-1)),
 									  vmin(mSize[l-1]-1, vmin(U+1,N*2+1))) {
 						int w = linIdx(W,l-1);
-						if (!mActive[l-1][w]) continue;
+						if (mType[l-1][w] == vtInactive) continue;
 
 						// stencil entry at U associated to W (fine grid level l-1)
 						Vec3i SF = W - U + mStencilMax;
@@ -634,7 +664,7 @@ void GridMg::smoothGS(int l, bool reversedOrder)
 				if (!inGrid(V,l)) continue;
 				
 				int v = linIdx(V,l);
-				if (!mActive[l][v]) continue;
+				if (mType[l][v] == vtInactive) continue;
 
 				Real sum = mb[l][v];
 
@@ -653,7 +683,7 @@ void GridMg::smoothGS(int l, bool reversedOrder)
 						Vec3i N = V + S;
 						int n = linIdx(N,l);
 
-						if (inGrid(N,l) && mActive[l][n]) {
+						if (inGrid(N,l) && mType[l][n]!=vtInactive) {
 							if (s < mStencilSize) {
 								sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * mx[l][n];
 							} else {
@@ -673,7 +703,7 @@ void GridMg::calcResidual(int l)
 {
 	#pragma omp parallel for schedule(static,1)
 	FOR_LVL(v,l) {
-		if (!mActive[l][v]) continue;
+		if (mType[l][v] == vtInactive) continue;
 		
 		Vec3i V = vecIdx(v,l);
 
@@ -691,7 +721,7 @@ void GridMg::calcResidual(int l)
 				Vec3i N = V + S;
 				int n = linIdx(N,l);
 
-				if (inGrid(N,l) && mActive[l][n]) {
+				if (inGrid(N,l) && mType[l][n]!=vtInactive) {
 					if (s < mStencilSize) {
 						sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * mx[l][n];
 					} else {
@@ -711,7 +741,7 @@ Real GridMg::calcResidualNorm(int l)
 
 	#pragma omp parallel for reduction(+: res)
 	FOR_LVL(v,l) {
-		if (!mActive[l][v]) continue;
+		if (mType[l][v] == vtInactive) continue;
 
 		res += mr[l][v] * mr[l][v];
 	}
@@ -731,9 +761,10 @@ void GridMg::solveCG(int l)
 
 	// Initialization:
 	Real alphaTop = Real(0);
+	Real initialResidual = Real(0);
 
 	FOR_LVL(v,l) {
-		if (!mActive[l][v]) continue;
+		if (mType[l][v] == vtInactive) continue;
 		
 		Vec3i V = vecIdx(v,l);
 
@@ -753,7 +784,7 @@ void GridMg::solveCG(int l)
 				Vec3i N = V + S;
 				int n = linIdx(N,l);
 
-				if (inGrid(N,l) && mActive[l][n]) {
+				if (inGrid(N,l) && mType[l][n]!=vtInactive) {
 					if (s < mStencilSize) {
 						sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * x[n];
 					} else {
@@ -766,9 +797,12 @@ void GridMg::solveCG(int l)
 		}
 
 		r[v] = sum;
+		initialResidual += r[v] * r[v];
 		p[v] = z[v];
 		alphaTop += r[v] * z[v];
 	}
+
+	initialResidual = std::sqrt(initialResidual);
 
 	int iter = 0;
 	const int maxIter = 10000;
@@ -780,7 +814,7 @@ void GridMg::solveCG(int l)
 		Real alphaBot = Real(0);
 
 		FOR_LVL(v,l) {
-			if (!mActive[l][v]) continue;
+			if (mType[l][v] == vtInactive) continue;
 		
 			Vec3i V = vecIdx(v,l);
 
@@ -798,7 +832,7 @@ void GridMg::solveCG(int l)
 					Vec3i N = V + S;
 					int n = linIdx(N,l);
 
-					if (inGrid(N,l) && mActive[l][n]) {
+					if (inGrid(N,l) && mType[l][n]!=vtInactive) {
 						if (s < mStencilSize) {
 							z[v] += mA[l][n*mStencilSize + mStencilSize-1-s] * p[n];
 						} else {
@@ -817,7 +851,7 @@ void GridMg::solveCG(int l)
 		residual = Real(0);
 
 		FOR_LVL(v,l) {
-			if (!mActive[l][v]) continue;
+			if (mType[l][v] == vtInactive) continue;
 		
 			x[v] += alpha * p[v];
 			r[v] -= alpha * z[v];
@@ -829,7 +863,7 @@ void GridMg::solveCG(int l)
 
 		residual = std::sqrt(residual);
 
-		if (residual < mCoarsestLevelAccuracy) break;
+		if (residual / initialResidual < mCoarsestLevelAccuracy) break;
 
 		Real beta = alphaTopNew / alphaTop;
 		alphaTop = alphaTopNew;
@@ -839,8 +873,8 @@ void GridMg::solveCG(int l)
 		}
 	}
 
-	if (iter == maxIter) { debMsg("GridMg::solveCG Warning: Reached maximum number of CG iterations", 3); }
-	else { debMsg("GridMg::solveCG Info: Reached residual "<<residual<<" in "<<iter<<" iterations", 3); }
+	if (iter == maxIter) { debMsg("GridMg::solveCG Warning: Reached maximum number of CG iterations", 1); }
+	else { debMsg("GridMg::solveCG Info: Reached residual "<<residual<<" in "<<iter<<" iterations", 2); }
 }
 
 void GridMg::restrict(int l_dst, std::vector<Real>& src, std::vector<Real>& dst)
@@ -849,7 +883,7 @@ void GridMg::restrict(int l_dst, std::vector<Real>& src, std::vector<Real>& dst)
 	
 	#pragma omp parallel for schedule(static,1)
 	FOR_LVL(v,l_dst) {
-		if (!mActive[l_dst][v]) continue;
+		if (mType[l_dst][v] == vtInactive) continue;
 
 		// Coarse grid vertex
 		Vec3i V = vecIdx(v,l_dst);
@@ -858,7 +892,7 @@ void GridMg::restrict(int l_dst, std::vector<Real>& src, std::vector<Real>& dst)
 
 		FOR_VEC_MINMAX(R, vmax(0, V*2-1), vmin(mSize[l_src]-1, V*2+1)) {
 			int r = linIdx(R,l_src);
-			if (!mActive[l_src][r]) continue;
+			if (mType[l_src][r] == vtInactive) continue;
 
 			// restriction weight			
 			Real rw = Real(1) / Real(1 << ((R.x % 2) + (R.y % 2) + (R.z % 2))); 
@@ -876,7 +910,7 @@ void GridMg::interpolate(int l_dst, std::vector<Real>& src, std::vector<Real>& d
 
 	#pragma omp parallel for schedule(static,1)
 	FOR_LVL(v,l_dst) {
-		if (!mActive[l_dst][v]) continue;
+		if (mType[l_dst][v] == vtInactive) continue;
 		
 		Vec3i V = vecIdx(v,l_dst);
 
@@ -884,7 +918,7 @@ void GridMg::interpolate(int l_dst, std::vector<Real>& src, std::vector<Real>& d
 
 		FOR_VEC_MINMAX(I, V/2, (V+1)/2) {
 			int i = linIdx(I,l_src);
-			if (mActive[l_src][i]) sum += src[i]; 
+			if (mType[l_src][i] != vtInactive) sum += src[i]; 
 		}
 
 		// interpolation weight			

@@ -261,18 +261,35 @@ void solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid
 		int numEmpty = CountEmptyCells(flags);
 		IndexInt fixPidx = -1;
 		if(numEmpty==0) {
-			FOR_IJK_BND(flags,1) {
-				if(flags.isFluid(i,j,k)) {
-					fixPidx = flags.index(i,j,k);
+			// Determine appropriate fluid cell for pressure fixing
+			// 1) First check some preferred positions for approx. symmetric zeroPressureFixing
+			Vec3i topCenter(flags.getSizeX() / 2, flags.getSizeY() - 1, flags.is3D() ? flags.getSizeZ() / 2 : 0);
+			Vec3i preferredPos [] = { topCenter, 
+				                      topCenter - Vec3i(0,1,0), 
+				                      topCenter - Vec3i(0,2,0) };
+			
+			for (Vec3i pos : preferredPos) {
+				if(flags.isFluid(pos)) {
+					fixPidx = flags.index(pos);
 					break;
+				}
+			}
+
+			// 2) Then search whole domain
+			if (fixPidx == -1) {
+				FOR_IJK_BND(flags,1) {
+					if(flags.isFluid(i,j,k)) {
+						fixPidx = flags.index(i,j,k);
+						// break FOR_IJK_BND loop
+						i = flags.getSizeX()-1; 
+						j = flags.getSizeY()-1;
+						k = __kmax;
+					}
 				}
 			}
 			//debMsg("No empty cells! Fixing pressure of cell "<<fixPidx<<" to zero",1);
 		}
 		if(fixPidx>=0) {
-			// adjustment for approx. symmetric zeroPressureFixing cell (top center)
-			fixPidx = flags.index(flags.getSizeX() / 2, flags.getSizeY() - 2, flags.is3D() ? flags.getSizeZ() / 2 : 0);
-
 			fixPressure(fixPidx, Real(0), rhs, A0, Ai, Aj, Ak);
 			debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 1);
 		}
@@ -292,7 +309,7 @@ void solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid
 	int maxIter = 0;
 	
 	Grid<Real> *pca0 = nullptr, *pca1 = nullptr, *pca2 = nullptr, *pca3 = nullptr;
-	static GridMg* gmg = nullptr; // cleanup up by OS if nonzero at program termination
+	static GridMg* gmg = nullptr; // leave cleanup to OS if nonzero at program termination (PcMGStatic mode)
 
 	// optional preconditioning	
 	if (preconditioner == PcNone || preconditioner == PcMIC) {			
@@ -334,20 +351,6 @@ void solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid
 	}
 
 	//debMsg("FluidSolver::solvePressureBase iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
-
-	/* // Use multigrid solver directly, no CG solver involved (for debugging only)
-	const int maxIter = 10;
-	GridMg* gmg = new GridMg(pressure.getSize());
-
-	gmg->setA(&A0, &Ai, &Aj, &Ak);
-	gmg->setRhs(rhs);
-
-	gmg->setCoarsestLevelAccuracy(cgAccuracy * 1E-4);
-
-	for (int iter = 0; iter<maxIter; iter++) {
-		if (gmg->doVCycle(pressure, &pressure) < cgAccuracy) iter=maxIter;
-	}
-	delete gmg; */
 }
 
 //! Perform pressure projection of the velocity grid

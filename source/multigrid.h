@@ -7,9 +7,7 @@
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Multigrid solver
- * 
- * Author: Florian Ferstl (florian.ferstl.ff@gmail.com)
+ * Multigrid solver by Florian Ferstl (florian.ferstl.ff@gmail.com)
  *
  * This is an implementation of the solver developed by Dick et al. [1]
  * without topology awareness (= vertex duplication on coarser levels). This 
@@ -57,12 +55,21 @@ class GridMg {
 		int getNumPreSmooth() { return mNumPreSmooth; }
 		int getNumPostSmooth() { return mNumPostSmooth; }
 
+		//! Set factor for automated downscaling of trivial equations:
+		// 1*x_i = b_i  --->  trivialEquationScale*x_i = trivialEquationScale*b_i
+		//     Info: Trivial equations of the form x_i = b_i can have a negative 
+		//     effect on the coarse grid operators of the multigrid hierarchy (due 
+		//     to scaling mismatches), which can lead to slow multigrid convergence.
+		//     To avoid this, the solver checks for such equations when updating A 
+		//     (and rhs) and scales these equations by a fixed factor < 1.
+		void setTrivialEquationScale(Real scale) { mTrivialEquationScale = scale; }
+
 	private:
 		Vec3i vecIdx(int   v, int l) { return Vec3i(v%mSize[l].x, (v%(mSize[l].x*mSize[l].y))/mSize[l].x, v/(mSize[l].x*mSize[l].y)); }
 		int   linIdx(Vec3i V, int l) { return V.x + V.y*mPitch[l].y + V.z*mPitch[l].z; }
 		bool  inGrid(Vec3i V, int l) { return V.x>=0 && V.y>=0 && V.z>=0 && V.x<mSize[l].x && V.y<mSize[l].y && V.z<mSize[l].z; }
 
-		bool isEquationTrivial(int v);
+		void analyzeStencil(int v, bool& isStencilSumNonZero, bool& isEquationTrivial);
 
 		void genCoarseGrid(int l);
 		void genCoraseGridOperator(int l);
@@ -76,6 +83,15 @@ class GridMg {
 		void interpolate(int l_dst, std::vector<Real>& src, std::vector<Real>& dst);
 
 	private:
+		enum VertexType : char {
+			vtInactive      = 0,
+			vtActive        = 1,
+			vtActiveTrivial = 2, // only on finest level 0
+			vtRemoved       = 3, //-+
+			vtZero          = 4, // +-- only during coarse grid generation
+			vtFree          = 5  //-+
+		};
+
 		struct CoarseningPath {
 			Vec3i U, W, N;
 			int sc, sf;
@@ -86,12 +102,13 @@ class GridMg {
 		int mNumPreSmooth;
 		int mNumPostSmooth;
 		Real mCoarsestLevelAccuracy;
+		Real mTrivialEquationScale;
 
 		std::vector<std::vector<Real>> mA;
 		std::vector<std::vector<Real>> mx;
 		std::vector<std::vector<Real>> mb;
 		std::vector<std::vector<Real>> mr;
-		std::vector<std::vector<char>> mActive;
+		std::vector<std::vector<VertexType>> mType;
 		std::vector<std::vector<Real>> mCGtmp1, mCGtmp2;
 		std::vector<Vec3i> mSize, mPitch;
 		std::vector<CoarseningPath> mCoarseningPaths0;
