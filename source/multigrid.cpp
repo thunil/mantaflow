@@ -312,7 +312,7 @@ GridMg::GridMg(const Vec3i& gridSize)
 	std::sort(mCoarseningPaths0.begin(), mCoarseningPaths0.end(), pathLess);
 }
 
-void GridMg::analyzeStencil(int v, bool& isStencilSumNonZero, bool& isEquationTrivial) {
+void GridMg::analyzeStencil(int v, bool& isStencilSumNonZero, bool& isEquationTrivial) const {
 	Vec3i V = vecIdx(v,0);
 
 	// collect stencil entries
@@ -341,46 +341,54 @@ void GridMg::analyzeStencil(int v, bool& isStencilSumNonZero, bool& isEquationTr
 	                 && A[4]==Real(0) && A[5]==Real(0) && A[6]==Real(0);
 }
 
-void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk)
+KERNEL(pts)
+void knCopyA(std::vector<Real>& sizeRef, std::vector<Real>& A0, int stencilSize0, bool is3D, 
+	const Grid<Real>* pA0, const Grid<Real>* pAi, const Grid<Real>* pAj, const Grid<Real>* pAk) 
+{
+	A0[idx*stencilSize0 + 0] = (*pA0)[idx];
+	A0[idx*stencilSize0 + 1] = (*pAi)[idx];
+	A0[idx*stencilSize0 + 2] = (*pAj)[idx];
+	A0[idx*stencilSize0 + 3] = is3D ? (*pAk)[idx] : Real(0);	
+}
+
+KERNEL(pts)
+void knActivateVertices(std::vector<GridMg::VertexType>& type_0, std::vector<Real>& A0,
+	bool& nonZeroStencilSumFound, bool& trivialEquationsFound, const GridMg& mg) 
+{
+	// active vertices on level 0 are vertices with non-zero diagonal entry in A
+	type_0[idx] = GridMg::vtInactive;
+		
+	if (mg.mA[0][idx*mg.mStencilSize0 + 0] != Real(0)) {
+		type_0[idx] = GridMg::vtActive;
+
+		bool isStencilSumNonZero = false, isEquationTrivial = false;
+		mg.analyzeStencil(idx, isStencilSumNonZero, isEquationTrivial);
+			
+		// Note: nonZeroStencilSumFound and trivialEquationsFound are only 
+		// changed from false to true, and hence there are no race conditions.
+		if (isStencilSumNonZero) nonZeroStencilSumFound = true;
+
+		// scale down trivial equations
+		if (isEquationTrivial) { 
+			type_0[idx] = GridMg::vtActiveTrivial;
+			A0[idx*mg.mStencilSize0 + 0] *= mg.mTrivialEquationScale; 
+			trivialEquationsFound = true;
+		};
+	}
+}
+
+void GridMg::setA(Grid<Real>* pA0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk)
 {
 	MG_TIMINGS(MuTime time;)
-
-
+		
 	// Copy level 0
-	#pragma omp parallel for
-	FOR_LVL(v,0) {
-		mA[0][v*mStencilSize0 + 0] = (* A0)[v];
-		mA[0][v*mStencilSize0 + 1] = (*pAi)[v];
-		mA[0][v*mStencilSize0 + 2] = (*pAj)[v];
-		mA[0][v*mStencilSize0 + 3] = mIs3D ? (*pAk)[v] : Real(0);		
-	}
-	
+	knCopyA(mx[0], mA[0], mStencilSize0, mIs3D, pA0, pAi, pAj, pAk);
+		
 	// Determine active vertices and scale trivial equations
 	bool nonZeroStencilSumFound = false;
 	bool trivialEquationsFound  = false;
 
-	#pragma omp parallel for
-	FOR_LVL(v,0) {
-		// active vertices on level 0 are vertices with non-zero diagonal entry in A
-		mType[0][v] = vtInactive;
-		
-		if (mA[0][v*mStencilSize0 + 0] != Real(0)) {
-			mType[0][v] = vtActive;
-
-			bool isStencilSumNonZero = false, isEquationTrivial = false;
-			analyzeStencil(v, isStencilSumNonZero, isEquationTrivial);
-			
-			if (isStencilSumNonZero) nonZeroStencilSumFound = true;
-
-			// scale down trivial equations
-			if (isEquationTrivial) { 
-				mType[0][v] = vtActiveTrivial;
-				mA[0][v*mStencilSize0 + 0] *= mTrivialEquationScale; 
-				trivialEquationsFound = true;
-			};
-
-		}					
-	}
+	knActivateVertices(mType[0], mA[0], nonZeroStencilSumFound, trivialEquationsFound, *this);
 
 	if (trivialEquationsFound)   debMsg("GridMg::setA: Found at least one trivial equation", 2);
 
@@ -400,21 +408,38 @@ void GridMg::setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* 
 	mIsRhsSet = false; // invalidate rhs
 }
 
-void GridMg::setRhs(Grid<Real>& rhs)
+KERNEL(pts)
+void knSetRhs(std::vector<Real>& b, const Grid<Real>& rhs, const GridMg& mg)
+{
+	b[idx] = rhs[idx];
+
+	// scale down trivial equations
+	if (mg.mType[0][idx] == GridMg::vtActiveTrivial) { b[idx] *= mg.mTrivialEquationScale; };
+}
+
+void GridMg::setRhs(const Grid<Real>& rhs)
 {
 	assertMsg(mIsASet, "GridMg::setRhs Error: A has not been set.");
 
-	#pragma omp parallel for
-	FOR_LVL(v,0)
-	{
-		mb[0][v] = rhs[v];
-
-		// scale down trivial equations
-		if (mType[0][v] == vtActiveTrivial) { mb[0][v] *= mTrivialEquationScale; };
-	}
+	knSetRhs(mb[0], rhs, *this);
 
 	mIsRhsSet = true;
 }
+
+
+KERNEL(pts) template<class T> void knSet(std::vector<T>& data, T value) { data[idx] = value; }
+
+//KERNEL(pts) template<class T> 
+//void knCopy(std::vector<T>& dst, const std::vector<T>& src) { dst[idx] = src[idx]; }
+
+KERNEL(pts) template<class T> 
+void knCopyToVector(std::vector<T>& dst, const Grid<T>& src) { dst[idx] = src[idx]; }
+
+KERNEL(idx) template<class T> 
+void knCopyToGrid(Grid<T>& dst, const std::vector<T>& src) { dst[idx] = src[idx]; }
+
+KERNEL(pts) template<class T> 
+void knAddAssign(std::vector<T>& dst, const std::vector<T>& src) { dst[idx] += src[idx]; }
 
 Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 {
@@ -425,8 +450,8 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 
 	const int maxLevel = mA.size() - 1;
 
-	#pragma omp parallel for
-	FOR_LVL(v,0) { mx[0][v] = src ? (*src)[v] : Real(0); }
+	if (src) { knCopyToVector<Real>(mx[0], *src);   }
+	else     { knSet<Real>(mx[0], Real(0)); }
 
 	for (int l=0; l<maxLevel; l++)
 	{
@@ -440,8 +465,7 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 		calcResidual(l);
 		restrict(l+1, mr[l], mb[l+1]);
 
-		#pragma omp parallel for
-		FOR_LVL(v,l+1) { mx[l+1][v] = Real(0); }
+		knSet<Real>(mx[l+1], Real(0));
 
 		MG_TIMINGS(timeR += time.update();)
 	}
@@ -455,8 +479,7 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 		MG_TIMINGS(time.update();)
 		interpolate(l, mx[l+1], mr[l]);
 		
-		#pragma omp parallel for
-		FOR_LVL(v,l) { mx[l][v] += mr[l][v]; }
+		knAddAssign<Real>(mx[l], mr[l]);
 
 		MG_TIMINGS(timeI += time.update();)
 
@@ -469,14 +492,24 @@ Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
 	calcResidual(0);
 	Real res = calcResidualNorm(0);
 
-	#pragma omp parallel for
-	FOR_LVL(v,0) { dst[v] = mx[0][v];	}
+	knCopyToGrid<Real>(dst, mx[0]);
 
 	MG_TIMINGS(debMsg("GridMg: Finished VCycle in "<<timeTotal.update()<<" (smoothing: "<<timeSmooth<<", CG: "<<timeCG<<", R: "<<timeR<<", I: "<<timeI<<")", 1);)
 
 	return res;
 }
 
+
+KERNEL(pts)
+void knActivateCoarseVertices(std::vector<GridMg::VertexType>& type, int unused)
+{
+	// set all remaining 'free' vertices to 'removed',
+	if (type[idx] == GridMg::vtFree) type[idx] = GridMg::vtRemoved;
+
+	// then convert 'zero' vertices to 'active' and 'removed' vertices to 'inactive'
+	if (type[idx] == GridMg::vtZero   ) type[idx] = GridMg::vtActive;
+	if (type[idx] == GridMg::vtRemoved) type[idx] = GridMg::vtInactive;
+}
 
 // Determine active cells on coarse level l from active cells on fine level l-1
 // while ensuring a full-rank interpolation operator (see Section 3.3 in [1]).
@@ -488,8 +521,7 @@ void GridMg::genCoarseGrid(int l)
 	enum activeFlags : char {AF_Removed = 0, AF_Zero = 1, AF_Free = 2};
 
 	// initialize all coarse vertices with 'free'
-	#pragma omp parallel for
-	FOR_LVL(v,l) { mType[l][v] = vtFree; }
+	knSet<VertexType>(mType[l], vtFree);
 
 	// initialize min heap of (ID: fine grid vertex, key: #free interpolation vertices) pairs
 	NKMinHeap heap(mb[l-1].size(), mIs3D ? 9 : 5); // max 8 (or 4 in 2D) free interpolation vertices
@@ -538,99 +570,143 @@ void GridMg::genCoarseGrid(int l)
 		}
 	}
 
-	#pragma omp parallel for
-	FOR_LVL(v,l) { 
-		// set all remaining 'free' vertices to 'removed',
-		if (mType[l][v] == vtFree) mType[l][v] = vtRemoved;
+	knActivateCoarseVertices(mType[l],0);
+}
 
-		// then convert 'zero' vertices to 'active' and 'removed' vertices to 'inactive'
-		if (mType[l][v] == vtZero   ) mType[l][v] = vtActive;
-		if (mType[l][v] == vtRemoved) mType[l][v] = vtInactive;
+KERNEL(pts,ompfor=schedule(static,1))
+void knGenCoraseGridOperator(std::vector<Real>& sizeRef, std::vector<Real>& A, int l, const GridMg& mg)
+{
+	if (mg.mType[l][idx] == GridMg::vtInactive) return;
+
+	for (int i=0; i<mg.mStencilSize; i++) { A[idx*mg.mStencilSize+i] = Real(0); } // clear stencil
+
+	Vec3i V = mg.vecIdx(idx,l);
+
+	// Calculate the stencil of A_l at V by considering all vertex paths of the form:
+	// (V) <--restriction-- (U) <--A_{l-1}-- (W) <--interpolation-- (N)
+	// V and N are vertices on the coarse grid level l, 
+	// U and W are vertices on the fine grid level l-1.
+
+	if (l==1) {
+		// loop over precomputed paths
+		for (auto it = mg.mCoarseningPaths0.begin(); it != mg.mCoarseningPaths0.end(); it++) {
+			Vec3i N = V + it->N;
+			int n = mg.linIdx(N,l);
+			if (!mg.inGrid(N,l) || mg.mType[l][n]==GridMg::vtInactive) continue;
+
+			Vec3i U = V*2 + it->U;
+			int u = mg.linIdx(U,l-1);
+			if (!mg.inGrid(U,l-1) || mg.mType[l-1][u]==GridMg::vtInactive) continue;
+
+			Vec3i W = V*2 + it->W;
+			int w = mg.linIdx(W,l-1);
+			if (!mg.inGrid(W,l-1) || mg.mType[l-1][w]==GridMg::vtInactive) continue;
+				
+			if (it->inUStencil) {
+				A[idx*mg.mStencilSize + it->sc] += it->rw * mg.mA[l-1][u*mg.mStencilSize0 + it->sf] *it->iw;			
+			} else {
+				A[idx*mg.mStencilSize + it->sc] += it->rw * mg.mA[l-1][w*mg.mStencilSize0 + it->sf] *it->iw;			
+			}
+		}
+	} else {
+		// l > 1: 
+		// loop over restriction vertices U on level l-1 associated with V
+		FOR_VEC_MINMAX(U, vmax(0, V*2-1), vmin(mg.mSize[l-1]-1, V*2+1)) {
+			int u = mg.linIdx(U,l-1);
+			if (mg.mType[l-1][u] == GridMg::vtInactive) continue;
+
+			// restriction weight			
+			Real rw = Real(1) / Real(1 << ((U.x % 2) + (U.y % 2) + (U.z % 2))); 
+
+			// loop over all stencil neighbors N of V on level l that can be reached via restriction to U
+			FOR_VEC_MINMAX(N, (U-1)/2, vmin(mg.mSize[l]-1, (U+2)/2)) {
+				int n = mg.linIdx(N,l);
+				if (mg.mType[l][n] == GridMg::vtInactive) continue;
+							
+				// stencil entry at V associated to N (coarse grid level l)
+				Vec3i SC = N - V + mg.mStencilMax;
+				int sc = SC.x + 3*SC.y + 9*SC.z;
+				if (sc < mg.mStencilSize-1) continue;
+
+				// loop over all vertices W which are in the stencil of A_{l-1} at U 
+				// and which interpolate from N
+				FOR_VEC_MINMAX(W, vmax(              0, vmax(U-1,N*2-1)),
+				                  vmin(mg.mSize[l-1]-1, vmin(U+1,N*2+1))) {
+					int w = mg.linIdx(W,l-1);
+					if (mg.mType[l-1][w] == GridMg::vtInactive) continue;
+
+					// stencil entry at U associated to W (fine grid level l-1)
+					Vec3i SF = W - U + mg.mStencilMax;
+					int sf = SF.x + 3*SF.y + 9*SF.z;
+
+					Real iw = Real(1) / Real(1 << ((W.x % 2) + (W.y % 2) + (W.z % 2))); // interpolation weight
+
+					if (sf < mg.mStencilSize) {
+						A[idx*mg.mStencilSize + sc-mg.mStencilSize+1] += rw * mg.mA[l-1][w*mg.mStencilSize + mg.mStencilSize-1-sf] *iw;
+					} else {
+						A[idx*mg.mStencilSize + sc-mg.mStencilSize+1] += rw * mg.mA[l-1][u*mg.mStencilSize + sf-mg.mStencilSize+1] *iw;
+					}
+				}
+			}
+		}
 	}
 }
+
 
 // Calculate A_l on coarse level l from A_{l-1} on fine level l-1 using 
 // Galerkin-based coarsening, i.e., compute A_l = R * A_{l-1} * I.
 void GridMg::genCoraseGridOperator(int l)
 {
-	// loop over coarse grid vertices V
-	#pragma omp parallel for schedule(static,1)
-	FOR_LVL(v,l) {
-		if (mType[l][v] == vtInactive) continue;
+	// for each coarse grid vertex V
+	knGenCoraseGridOperator(mx[l], mA[l], l, *this);
+}
 
-		for (int i=0; i<mStencilSize; i++) { mA[l][v*mStencilSize+i] = Real(0); } // clear stencil
 
-		Vec3i V = vecIdx(v,l);
-
-		// Calculate the stencil of A_l at V by considering all vertex paths of the form:
-		// (V) <--restriction-- (U) <--A_{l-1}-- (W) <--interpolation-- (N)
-		// V and N are vertices on the coarse grid level l, 
-		// U and W are vertices on the fine grid level l-1.
-
-		if (l==1) {
-			// loop over precomputed paths
-			for (auto it = mCoarseningPaths0.begin(); it != mCoarseningPaths0.end(); it++) {
-				Vec3i N = V + it->N;
-				int n = linIdx(N,l);
-				if (!inGrid(N,l) || mType[l][n]==vtInactive) continue;
-
-				Vec3i U = V*2 + it->U;
-				int u = linIdx(U,l-1);
-				if (!inGrid(U,l-1) || mType[l-1][u]==vtInactive) continue;
-
-				Vec3i W = V*2 + it->W;
-				int w = linIdx(W,l-1);
-				if (!inGrid(W,l-1) || mType[l-1][w]==vtInactive) continue;
+class ThreadSize { IndexInt s; public: ThreadSize(IndexInt _s) {s=_s;} IndexInt size() { return s; }};
+	
+KERNEL(pts,ompfor=schedule(static,1))
+void knSmoothColor(ThreadSize& numBlocks, std::vector<Real>& x, const Vec3i& blockSize, 
+	const std::vector<Vec3i>& colorOffs, int l, const GridMg& mg)
+{
+	Vec3i blockOff (idx%blockSize.x, (idx%(blockSize.x*blockSize.y))/blockSize.x, idx/(blockSize.x*blockSize.y));
+	
+	for (int off = 0; off < colorOffs.size(); off++) {
 				
-				if (it->inUStencil) {
-					mA[l][v*mStencilSize + it->sc] += it->rw * mA[l-1][u*mStencilSize0 + it->sf] *it->iw;			
-				} else {
-					mA[l][v*mStencilSize + it->sc] += it->rw * mA[l-1][w*mStencilSize0 + it->sf] *it->iw;			
-				}
+		Vec3i V = 2*blockOff + colorOffs[off];
+		if (!mg.inGrid(V,l)) continue;
+				
+		const int v = mg.linIdx(V,l);
+		if (mg.mType[l][v] == GridMg::vtInactive) continue;
+
+		Real sum = mg.mb[l][v];
+
+		if (l==0) {
+			int n;
+			for (int d=0; d<mg.mDim; d++) {
+				if (V[d]>0)                { n = v-mg.mPitch[0][d]; sum -= mg.mA[0][n*mg.mStencilSize0 + d+1] * mg.mx[0][n]; }
+				if (V[d]<mg.mSize[0][d]-1) { n = v+mg.mPitch[0][d]; sum -= mg.mA[0][v*mg.mStencilSize0 + d+1] * mg.mx[0][n]; }
 			}
+
+			x[v] = sum / mg.mA[0][v*mg.mStencilSize0 + 0];
 		} else {
-			// l > 1: 
-			// loop over restriction vertices U on level l-1 associated with V
-			FOR_VEC_MINMAX(U, vmax(0, V*2-1), vmin(mSize[l-1]-1, V*2+1)) {
-				int u = linIdx(U,l-1);
-				if (mType[l-1][u] == vtInactive) continue;
+			FOR_VECLIN_MINMAX(S, s, mg.mStencilMin, mg.mStencilMax) {
+				if (s == mg.mStencilSize-1) continue;
 
-				// restriction weight			
-				Real rw = Real(1) / Real(1 << ((U.x % 2) + (U.y % 2) + (U.z % 2))); 
+				Vec3i N = V + S;
+				int n = mg.linIdx(N,l);
 
-				// loop over all stencil neighbors N of V on level l that can be reached via restriction to U
-				FOR_VEC_MINMAX(N, (U-1)/2, vmin(mSize[l]-1, (U+2)/2)) {
-					int n = linIdx(N,l);
-					if (mType[l][n] == vtInactive) continue;
-							
-					// stencil entry at V associated to N (coarse grid level l)
-					Vec3i SC = N - V + mStencilMax;
-					int sc = SC.x + 3*SC.y + 9*SC.z;
-					if (sc < mStencilSize-1) continue;
-
-					// loop over all vertices W which are in the stencil of A_{l-1} at U 
-					// and which interpolate from N
-					FOR_VEC_MINMAX(W, vmax(           0, vmax(U-1,N*2-1)),
-									  vmin(mSize[l-1]-1, vmin(U+1,N*2+1))) {
-						int w = linIdx(W,l-1);
-						if (mType[l-1][w] == vtInactive) continue;
-
-						// stencil entry at U associated to W (fine grid level l-1)
-						Vec3i SF = W - U + mStencilMax;
-						int sf = SF.x + 3*SF.y + 9*SF.z;
-
-						Real iw = Real(1) / Real(1 << ((W.x % 2) + (W.y % 2) + (W.z % 2))); // interpolation weight
-
-						if (sf < mStencilSize) {
-							mA[l][v*mStencilSize + sc-mStencilSize+1] += rw * mA[l-1][w*mStencilSize + mStencilSize-1-sf] *iw;
-						} else {
-							mA[l][v*mStencilSize + sc-mStencilSize+1] += rw * mA[l-1][u*mStencilSize + sf-mStencilSize+1] *iw;
-						}
+				if (mg.inGrid(N,l) && mg.mType[l][n]!=GridMg::vtInactive) {
+					if (s < mg.mStencilSize) {
+						sum -= mg.mA[l][n*mg.mStencilSize + mg.mStencilSize-1-s] * mg.mx[l][n];
+					} else {
+						sum -= mg.mA[l][v*mg.mStencilSize + s-mg.mStencilSize+1] * mg.mx[l][n];
 					}
 				}
 			}
+
+			x[v] = sum / mg.mA[l][v*mg.mStencilSize + 0];
 		}
-	}		
+	}
 }
 
 void GridMg::smoothGS(int l, bool reversedOrder)
@@ -650,101 +726,65 @@ void GridMg::smoothGS(int l, bool reversedOrder)
 
 	// Divide grid into 2x2 blocks for parallelization
 	Vec3i blockSize = (mSize[l]+1)/2;
-	int numBlocks = blockSize.x * blockSize.y * blockSize.z;
+	ThreadSize numBlocks(blockSize.x * blockSize.y * blockSize.z);
 	
 	for (int c = 0; c < colorOffs.size(); c++) {
 		int color = reversedOrder ? colorOffs.size()-1-c : c;
 
-		#pragma omp parallel for schedule(static,1)
-		for (int b = 0; b < numBlocks; b++)	{
-			for (int off = 0; off < colorOffs[color].size(); off++) {
-				Vec3i B(b%blockSize.x, (b%(blockSize.x*blockSize.y))/blockSize.x, b/(blockSize.x*blockSize.y));
-				
-				Vec3i V = 2*B + colorOffs[color][off];
-				if (!inGrid(V,l)) continue;
-				
-				int v = linIdx(V,l);
-				if (mType[l][v] == vtInactive) continue;
+		knSmoothColor(numBlocks, mx[l], blockSize, colorOffs[color], l, *this);
+	}
+}
 
-				Real sum = mb[l][v];
+KERNEL(pts,ompfor=schedule(static,1))
+void knCalcResidual(std::vector<Real>& r, int l, const GridMg& mg)
+{
+	if (mg.mType[l][idx] == GridMg::vtInactive) return;
+		
+	Vec3i V = mg.vecIdx(idx,l);
 
-				if (l==0) {
-					int n;
-					for (int d=0; d<mDim; d++) {
-						if (V[d]>0)             { n = v-mPitch[0][d]; sum -= mA[0][n*mStencilSize0 + d+1] * mx[0][n]; }
-						if (V[d]<mSize[0][d]-1) { n = v+mPitch[0][d]; sum -= mA[0][v*mStencilSize0 + d+1] * mx[0][n]; }
-					}
+	Real sum = mg.mb[l][idx];
 
-					mx[0][v] = sum / mA[0][v*mStencilSize0 + 0];
+	if (l==0) {
+		int n;
+		for (int d=0; d<mg.mDim; d++) {
+			if (V[d]>0)                { n = idx-mg.mPitch[0][d]; sum -= mg.mA[0][n  *mg.mStencilSize0 + d+1] * mg.mx[0][n]; }
+			if (V[d]<mg.mSize[0][d]-1) { n = idx+mg.mPitch[0][d]; sum -= mg.mA[0][idx*mg.mStencilSize0 + d+1] * mg.mx[0][n]; }
+		}
+		sum -= mg.mA[0][idx*mg.mStencilSize0 + 0] * mg.mx[0][idx];
+	} else {
+		FOR_VECLIN_MINMAX(S, s, mg.mStencilMin, mg.mStencilMax) {
+			Vec3i N = V + S;
+			int n = mg.linIdx(N,l);
+
+			if (mg.inGrid(N,l) && mg.mType[l][n]!=GridMg::vtInactive) {
+				if (s < mg.mStencilSize) {
+					sum -= mg.mA[l][n  *mg.mStencilSize + mg.mStencilSize-1-s] * mg.mx[l][n];
 				} else {
-					FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
-						if (s == mStencilSize-1) continue;
-
-						Vec3i N = V + S;
-						int n = linIdx(N,l);
-
-						if (inGrid(N,l) && mType[l][n]!=vtInactive) {
-							if (s < mStencilSize) {
-								sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * mx[l][n];
-							} else {
-								sum -= mA[l][v*mStencilSize + s-mStencilSize+1] * mx[l][n];
-							}
-						}
-					}
-
-					mx[l][v] = sum / mA[l][v*mStencilSize + 0];
+					sum -= mg.mA[l][idx*mg.mStencilSize + s-mg.mStencilSize+1] * mg.mx[l][n];
 				}
 			}
 		}
 	}
+
+	r[idx] = sum;
 }
 
 void GridMg::calcResidual(int l)
 {
-	#pragma omp parallel for schedule(static,1)
-	FOR_LVL(v,l) {
-		if (mType[l][v] == vtInactive) continue;
-		
-		Vec3i V = vecIdx(v,l);
-
-		Real sum = mb[l][v];
-
-		if (l==0) {
-			int n;
-			for (int d=0; d<mDim; d++) {
-				if (V[d]>0)             { n = v-mPitch[0][d]; sum -= mA[0][n*mStencilSize0 + d+1] * mx[0][n]; }
-				if (V[d]<mSize[0][d]-1) { n = v+mPitch[0][d]; sum -= mA[0][v*mStencilSize0 + d+1] * mx[0][n]; }
-			}
-			sum -= mA[0][v*mStencilSize0 + 0] * mx[0][v];
-		} else {
-			FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
-				Vec3i N = V + S;
-				int n = linIdx(N,l);
-
-				if (inGrid(N,l) && mType[l][n]!=vtInactive) {
-					if (s < mStencilSize) {
-						sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * mx[l][n];
-					} else {
-						sum -= mA[l][v*mStencilSize + s-mStencilSize+1] * mx[l][n];
-					}
-				}
-			}
-		}
-
-		mr[l][v] = sum;
-	}
+	knCalcResidual(mr[l], l, *this);
 }
+
+KERNEL(pts, reduce=+) returns(Real result=Real(0))
+Real knResidualNormSumSqr (const vector<Real>& r, int l, const GridMg& mg) 
+{
+	if (mg.mType[l][idx] == GridMg::vtInactive) return;
+
+	result += r[idx] * r[idx];
+};
 
 Real GridMg::calcResidualNorm(int l)
 {
-	Real res = Real(0);
-
-	#pragma omp parallel for reduction(+: res)
-	FOR_LVL(v,l) {
-		if (mType[l][v] == vtInactive) continue;
-
-		res += mr[l][v] * mr[l][v];
-	}
+	Real res = knResidualNormSumSqr(mr[l], l, *this);
 
 	return std::sqrt(res);
 }
@@ -877,55 +917,61 @@ void GridMg::solveCG(int l)
 	else { debMsg("GridMg::solveCG Info: Reached residual "<<residual<<" in "<<iter<<" iterations", 2); }
 }
 
-void GridMg::restrict(int l_dst, std::vector<Real>& src, std::vector<Real>& dst)
+KERNEL(pts,ompfor=schedule(static,1))
+void knRestrict(std::vector<Real>& dst, const std::vector<Real>& src, int l_dst, const GridMg& mg)
 {
+	if (mg.mType[l_dst][idx] == GridMg::vtInactive) return;
+
 	const int l_src = l_dst - 1;
-	
-	#pragma omp parallel for schedule(static,1)
-	FOR_LVL(v,l_dst) {
-		if (mType[l_dst][v] == vtInactive) continue;
 
-		// Coarse grid vertex
-		Vec3i V = vecIdx(v,l_dst);
+	// Coarse grid vertex
+	Vec3i V = mg.vecIdx(idx,l_dst);
 		
-		Real sum = Real(0);
+	Real sum = Real(0);
 
-		FOR_VEC_MINMAX(R, vmax(0, V*2-1), vmin(mSize[l_src]-1, V*2+1)) {
-			int r = linIdx(R,l_src);
-			if (mType[l_src][r] == vtInactive) continue;
+	FOR_VEC_MINMAX(R, vmax(0, V*2-1), vmin(mg.mSize[l_src]-1, V*2+1)) {
+		int r = mg.linIdx(R,l_src);
+		if (mg.mType[l_src][r] == GridMg::vtInactive) continue;
 
-			// restriction weight			
-			Real rw = Real(1) / Real(1 << ((R.x % 2) + (R.y % 2) + (R.z % 2))); 
+		// restriction weight			
+		Real rw = Real(1) / Real(1 << ((R.x % 2) + (R.y % 2) + (R.z % 2))); 
 			
-			sum += rw * src[r]; 
-		}
-
-		dst[v] = sum;
+		sum += rw * src[r]; 
 	}
+
+	dst[idx] = sum;
 }
 
-void GridMg::interpolate(int l_dst, std::vector<Real>& src, std::vector<Real>& dst)
+void GridMg::restrict(int l_dst, const std::vector<Real>& src, std::vector<Real>& dst) const
 {
+	knRestrict(dst, src, l_dst, *this);
+}
+
+KERNEL(pts,ompfor=schedule(static,1))
+void knInterpolate(std::vector<Real>& dst, const std::vector<Real>& src, int l_dst, const GridMg& mg)
+{
+	if (mg.mType[l_dst][idx] == GridMg::vtInactive) return;
+
 	const int l_src = l_dst + 1;
 
-	#pragma omp parallel for schedule(static,1)
-	FOR_LVL(v,l_dst) {
-		if (mType[l_dst][v] == vtInactive) continue;
-		
-		Vec3i V = vecIdx(v,l_dst);
+	Vec3i V = mg.vecIdx(idx,l_dst);
 
-		Real sum = Real(0);
+	Real sum = Real(0);
 
-		FOR_VEC_MINMAX(I, V/2, (V+1)/2) {
-			int i = linIdx(I,l_src);
-			if (mType[l_src][i] != vtInactive) sum += src[i]; 
-		}
-
-		// interpolation weight			
-		Real iw = Real(1) / Real(1 << ((V.x % 2) + (V.y % 2) + (V.z % 2)));
-
-		dst[v] = iw * sum;
+	FOR_VEC_MINMAX(I, V/2, (V+1)/2) {
+		int i = mg.linIdx(I,l_src);
+		if (mg.mType[l_src][i] != GridMg::vtInactive) sum += src[i]; 
 	}
+
+	// interpolation weight			
+	Real iw = Real(1) / Real(1 << ((V.x % 2) + (V.y % 2) + (V.z % 2)));
+
+	dst[idx] = iw * sum;
+}
+
+void GridMg::interpolate(int l_dst, const std::vector<Real>& src, std::vector<Real>& dst) const
+{
+	knInterpolate(dst, src, l_dst, *this);
 }
 
 

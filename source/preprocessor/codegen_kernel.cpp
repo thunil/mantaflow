@@ -292,9 +292,9 @@ void run() {
 const string TmpOMPDirective = STR (
 @IF(REDUCE)
 	$OMP_PRE$
-	$PRAGMA$ omp for nowait $NL$
+	$PRAGMA$ omp for nowait $OMP_FOR_OPT$ $NL$
 @ELSE
-	$PRAGMA$ omp for $NL$
+	$PRAGMA$ omp for $OMP_FOR_OPT$ $NL$
 @END
 );
 
@@ -333,7 +333,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 	// process options
 	bool idxMode = false, reduce = false, pts = false, fourdMode = false;
 	bool hasLocals = !block.locals.empty(), hasRet = kernel.returnType.name != "void";
-	string bnd = "0", reduceOp="";
+	string bnd = "0", reduceOp="", ompForOpt="";
 
 	MType mtType = gMTType;
 	for (size_t i=0; i<block.options.size(); i++) {
@@ -356,6 +356,8 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 			if (!(reduceOp == "+" || reduceOp == "-" || reduceOp == "*" ||
 				  reduceOp == "/" || reduceOp == "min" || reduceOp == "max"))
 				errMsg(block.line0, "invalid 'reduce' operator. Expected reduce= +|-|*|/|min|max");
+		} else if (opt == "ompfor") {
+			ompForOpt = block.options[i].value;
 		} else
 			errMsg(block.line0, "illegal kernel option '"+ opt +
 								"' Supported options are: 'ijk', 'idx', 'bnd=x', 'reduce=x', 'st', 'pts'");
@@ -483,6 +485,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 							 "COMMA", ",",
 							 "JOINER", joiner.str(),
 							 "OMP_PRE", preReduce.str(),
+							 "OMP_FOR_OPT", ompForOpt,
 							 "OMP_POST", ompPost,
 							 "" };
 

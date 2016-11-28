@@ -35,13 +35,13 @@ class GridMg {
 		~GridMg() {};
 
 		//! update system matrix A from symmetric 7-point stencil
-		void setA(Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk);
+		void setA(Grid<Real>* pA0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk);
 		
 		//! set right-hand side
-		void setRhs(Grid<Real>& rhs);
+		void setRhs(const Grid<Real>& rhs);
 
-		bool isASet() { return mIsASet; }
-		bool isRhsSet() { return mIsRhsSet; }
+		bool isASet() const { return mIsASet; }
+		bool isRhsSet() const { return mIsRhsSet; }
 		
 		//! perform VCycle iteration
 		// - if src is null, then a zero vector is used instead
@@ -52,8 +52,8 @@ class GridMg {
 		void setCoarsestLevelAccuracy(Real accuracy) { mCoarsestLevelAccuracy = accuracy; }
 		Real getCoarsestLevelAccuracy() const { return mCoarsestLevelAccuracy; }
 		void setSmoothing(int numPreSmooth, int numPostSmooth) { mNumPreSmooth = numPreSmooth; mNumPostSmooth = numPostSmooth; }
-		int getNumPreSmooth() { return mNumPreSmooth; }
-		int getNumPostSmooth() { return mNumPostSmooth; }
+		int getNumPreSmooth() const { return mNumPreSmooth; }
+		int getNumPostSmooth() const { return mNumPostSmooth; }
 
 		//! Set factor for automated downscaling of trivial equations:
 		// 1*x_i = b_i  --->  trivialEquationScale*x_i = trivialEquationScale*b_i
@@ -64,12 +64,12 @@ class GridMg {
 		//     (and rhs) and scales these equations by a fixed factor < 1.
 		void setTrivialEquationScale(Real scale) { mTrivialEquationScale = scale; }
 
-	private:
-		Vec3i vecIdx(int   v, int l) { return Vec3i(v%mSize[l].x, (v%(mSize[l].x*mSize[l].y))/mSize[l].x, v/(mSize[l].x*mSize[l].y)); }
-		int   linIdx(Vec3i V, int l) { return V.x + V.y*mPitch[l].y + V.z*mPitch[l].z; }
-		bool  inGrid(Vec3i V, int l) { return V.x>=0 && V.y>=0 && V.z>=0 && V.x<mSize[l].x && V.y<mSize[l].y && V.z<mSize[l].z; }
+	private:		
+Vec3i vecIdx(int   v, int l) const { return Vec3i(v%mSize[l].x, (v%(mSize[l].x*mSize[l].y))/mSize[l].x, v/(mSize[l].x*mSize[l].y)); }
+		int   linIdx(Vec3i V, int l) const { return V.x + V.y*mPitch[l].y + V.z*mPitch[l].z; }
+		bool  inGrid(Vec3i V, int l) const { return V.x>=0 && V.y>=0 && V.z>=0 && V.x<mSize[l].x && V.y<mSize[l].y && V.z<mSize[l].z; }
 
-		void analyzeStencil(int v, bool& isStencilSumNonZero, bool& isEquationTrivial);
+		void analyzeStencil(int v, bool& isStencilSumNonZero, bool& isEquationTrivial) const;
 
 		void genCoarseGrid(int l);
 		void genCoraseGridOperator(int l);
@@ -79,8 +79,8 @@ class GridMg {
 		Real calcResidualNorm(int l);
 		void solveCG(int l);
 
-		void restrict(int l_dst, std::vector<Real>& src, std::vector<Real>& dst);
-		void interpolate(int l_dst, std::vector<Real>& src, std::vector<Real>& dst);
+		void restrict(int l_dst, const std::vector<Real>& src, std::vector<Real>& dst) const;
+		void interpolate(int l_dst, const std::vector<Real>& src, std::vector<Real>& dst) const;
 
 	private:
 		enum VertexType : char {
@@ -122,6 +122,17 @@ class GridMg {
 
 		bool mIsASet;
 		bool mIsRhsSet;
+
+		// provide kernels with access
+		friend struct knActivateVertices;
+		friend struct knActivateCoarseVertices;
+		friend struct knSetRhs;
+		friend struct knGenCoraseGridOperator;
+		friend struct knSmoothColor;
+		friend struct knCalcResidual;
+		friend struct knResidualNormSumSqr;
+		friend struct knRestrict;
+		friend struct knInterpolate;
 }; // GridMg
 
 } // namespace
