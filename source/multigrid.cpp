@@ -217,8 +217,7 @@ void NKMinHeap::print()
 // o-> x | -  -  -,   -  -  -,   5  6  7
 
 GridMg::GridMg(const Vec3i& gridSize)
-  : mA(),
-	mNumPreSmooth(1),
+  : mNumPreSmooth(1),
 	mNumPostSmooth(1),
 	mCoarsestLevelAccuracy(1E-8),
 	mTrivialEquationScale(1E-6),
@@ -314,18 +313,18 @@ GridMg::GridMg(const Vec3i& gridSize)
 	std::sort(mCoarseningPaths0.begin(), mCoarseningPaths0.end(), pathLess);
 }
 
-void GridMg::analyzeStencil(int v, bool& isStencilSumNonZero, bool& isEquationTrivial) const {
+void GridMg::analyzeStencil(int v, bool is3D, bool& isStencilSumNonZero, bool& isEquationTrivial) const {
 	Vec3i V = vecIdx(v,0);
 
 	// collect stencil entries
 	Real A[7];
 	A[0] = mA[0][v*mStencilSize0 + 0];
-	A[1] = mA[0][v*mStencilSize0 + 1];
-	A[2] = mA[0][v*mStencilSize0 + 2];
-	A[3] = mA[0][v*mStencilSize0 + 3];
-	A[4] = V.x==0 ? Real(0) : mA[0][(v-mPitch[0].x)*mStencilSize0 + 1];
-	A[5] = V.y==0 ? Real(0) : mA[0][(v-mPitch[0].y)*mStencilSize0 + 2];
-	A[6] = V.z==0 ? Real(0) : mA[0][(v-mPitch[0].z)*mStencilSize0 + 3];
+	A[1] =        mA[0][v*mStencilSize0 + 1];
+	A[2] =        mA[0][v*mStencilSize0 + 2];
+	A[3] = is3D ? mA[0][v*mStencilSize0 + 3] : Real(0);
+	A[4] = V.x!=0 ?         mA[0][(v-mPitch[0].x)*mStencilSize0 + 1] : Real(0);
+	A[5] = V.y!=0 ?         mA[0][(v-mPitch[0].y)*mStencilSize0 + 2] : Real(0);
+	A[6] = V.z!=0 && is3D ? mA[0][(v-mPitch[0].z)*mStencilSize0 + 3] : Real(0);
 	
 	// compute sum of stencil entries
 	Real stencilMax = Real(0), stencilSum = Real(0);
@@ -350,7 +349,7 @@ void knCopyA(std::vector<Real>& sizeRef, std::vector<Real>& A0, int stencilSize0
 	A0[idx*stencilSize0 + 0] = (*pA0)[idx];
 	A0[idx*stencilSize0 + 1] = (*pAi)[idx];
 	A0[idx*stencilSize0 + 2] = (*pAj)[idx];
-	A0[idx*stencilSize0 + 3] = is3D ? (*pAk)[idx] : Real(0);	
+	if (is3D) A0[idx*stencilSize0 + 3] = (*pAk)[idx];	
 }
 
 KERNEL(pts)
@@ -364,7 +363,7 @@ void knActivateVertices(std::vector<GridMg::VertexType>& type_0, std::vector<Rea
 		type_0[idx] = GridMg::vtActive;
 
 		bool isStencilSumNonZero = false, isEquationTrivial = false;
-		mg.analyzeStencil(idx, isStencilSumNonZero, isEquationTrivial);
+		mg.analyzeStencil(idx, mg.mIs3D, isStencilSumNonZero, isEquationTrivial);
 			
 		// Note: nonZeroStencilSumFound and trivialEquationsFound are only 
 		// changed from false to true, and hence there are no race conditions.
@@ -395,7 +394,7 @@ void GridMg::setA(const Grid<Real>* pA0, const Grid<Real>* pAi, const Grid<Real>
 	if (trivialEquationsFound)   debMsg("GridMg::setA: Found at least one trivial equation", 2);
 
 	// Sanity check: if all rows of A sum up to 0 --> A doesn't have full rank (opposite direction isn't necessarily true)
-    if (!nonZeroStencilSumFound) debMsg("GridMg::setA: Matrix doesn't have full rank, multigrid may not converge", 1);
+    if (!nonZeroStencilSumFound) debMsg("GridMg::setA: Found constant mode: A*1=0! A does not have full rank and multigrid may not converge. (forgot to fix a pressure value?)", 1);
 	
 	// Create coarse grids and operators on levels >0
 	for (int l=1; l<mA.size(); l++) {

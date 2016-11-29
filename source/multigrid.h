@@ -69,7 +69,7 @@ class GridMg {
 		int   linIdx(Vec3i V, int l) const { return V.x + V.y*mPitch[l].y + V.z*mPitch[l].z; }
 		bool  inGrid(Vec3i V, int l) const { return V.x>=0 && V.y>=0 && V.z>=0 && V.x<mSize[l].x && V.y<mSize[l].y && V.z<mSize[l].z; }
 
-		void analyzeStencil(int v, bool& isStencilSumNonZero, bool& isEquationTrivial) const;
+		void analyzeStencil(int v, bool is3D, bool& isStencilSumNonZero, bool& isEquationTrivial) const;
 
 		void genCoarseGrid(int l);
 		void genCoraseGridOperator(int l);
