@@ -24,11 +24,6 @@
 #define FOR_LVL(IDX,LVL) \
 	for(int IDX=0; IDX<mb[LVL].size(); IDX++)
 
-#define FOR_VEC_LVL(VEC,LVL) Vec3i VEC; \
-	for(VEC.z=0; VEC.z<mSize[LVL].z; VEC.z++) \
-	for(VEC.y=0; VEC.y<mSize[LVL].y; VEC.y++) \
-	for(VEC.x=0; VEC.x<mSize[LVL].x; VEC.x++)
-
 #define FOR_VEC_MINMAX(VEC,MIN,MAX) Vec3i VEC; \
 	const Vec3i VEC##__min = (MIN), VEC##__max = (MAX); \
 	for(VEC.z=VEC##__min.z; VEC.z<=VEC##__max.z; VEC.z++) \
@@ -47,6 +42,13 @@
 using namespace std;
 namespace Manta 
 {
+// Helper class for calling mantaflow kernels with a specific number of threads
+class ThreadSize { 
+	IndexInt s; 
+public: 
+	ThreadSize(IndexInt _s) {s=_s;} 
+	IndexInt size() { return s; }
+};
 
 // ----------------------------------------------------------------------------
 // Efficient min heap for <ID, key> pairs with 0<=ID<N and 0<=key<K
@@ -377,7 +379,7 @@ void knActivateVertices(std::vector<GridMg::VertexType>& type_0, std::vector<Rea
 	}
 }
 
-void GridMg::setA(Grid<Real>* pA0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk)
+void GridMg::setA(const Grid<Real>* pA0, const Grid<Real>* pAi, const Grid<Real>* pAj, const Grid<Real>* pAk)
 {
 	MG_TIMINGS(MuTime time;)
 		
@@ -427,10 +429,8 @@ void GridMg::setRhs(const Grid<Real>& rhs)
 }
 
 
-KERNEL(pts) template<class T> void knSet(std::vector<T>& data, T value) { data[idx] = value; }
-
-//KERNEL(pts) template<class T> 
-//void knCopy(std::vector<T>& dst, const std::vector<T>& src) { dst[idx] = src[idx]; }
+KERNEL(pts) template<class T> 
+void knSet(std::vector<T>& data, T value) { data[idx] = value; }
 
 KERNEL(pts) template<class T> 
 void knCopyToVector(std::vector<T>& dst, const Grid<T>& src) { dst[idx] = src[idx]; }
@@ -573,7 +573,7 @@ void GridMg::genCoarseGrid(int l)
 	knActivateCoarseVertices(mType[l],0);
 }
 
-KERNEL(pts,ompfor=schedule(static,1))
+KERNEL(pts,imbalanced)
 void knGenCoraseGridOperator(std::vector<Real>& sizeRef, std::vector<Real>& A, int l, const GridMg& mg)
 {
 	if (mg.mType[l][idx] == GridMg::vtInactive) return;
@@ -660,11 +660,8 @@ void GridMg::genCoraseGridOperator(int l)
 	// for each coarse grid vertex V
 	knGenCoraseGridOperator(mx[l], mA[l], l, *this);
 }
-
-
-class ThreadSize { IndexInt s; public: ThreadSize(IndexInt _s) {s=_s;} IndexInt size() { return s; }};
 	
-KERNEL(pts,ompfor=schedule(static,1))
+KERNEL(pts,imbalanced)
 void knSmoothColor(ThreadSize& numBlocks, std::vector<Real>& x, const Vec3i& blockSize, 
 	const std::vector<Vec3i>& colorOffs, int l, const GridMg& mg)
 {
@@ -735,7 +732,7 @@ void GridMg::smoothGS(int l, bool reversedOrder)
 	}
 }
 
-KERNEL(pts,ompfor=schedule(static,1))
+KERNEL(pts,imbalanced)
 void knCalcResidual(std::vector<Real>& r, int l, const GridMg& mg)
 {
 	if (mg.mType[l][idx] == GridMg::vtInactive) return;
@@ -917,7 +914,7 @@ void GridMg::solveCG(int l)
 	else { debMsg("GridMg::solveCG Info: Reached residual "<<residual<<" in "<<iter<<" iterations", 2); }
 }
 
-KERNEL(pts,ompfor=schedule(static,1))
+KERNEL(pts,imbalanced)
 void knRestrict(std::vector<Real>& dst, const std::vector<Real>& src, int l_dst, const GridMg& mg)
 {
 	if (mg.mType[l_dst][idx] == GridMg::vtInactive) return;
@@ -947,7 +944,7 @@ void GridMg::restrict(int l_dst, const std::vector<Real>& src, std::vector<Real>
 	knRestrict(dst, src, l_dst, *this);
 }
 
-KERNEL(pts,ompfor=schedule(static,1))
+KERNEL(pts,imbalanced)
 void knInterpolate(std::vector<Real>& dst, const std::vector<Real>& src, int l_dst, const GridMg& mg)
 {
 	if (mg.mType[l_dst][idx] == GridMg::vtInactive) return;

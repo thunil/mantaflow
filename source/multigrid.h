@@ -35,7 +35,7 @@ class GridMg {
 		~GridMg() {};
 
 		//! update system matrix A from symmetric 7-point stencil
-		void setA(Grid<Real>* pA0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk);
+		void setA(const Grid<Real>* pA0, const Grid<Real>* pAi, const Grid<Real>* pAj, const Grid<Real>* pAk);
 		
 		//! set right-hand side
 		void setRhs(const Grid<Real>& rhs);
@@ -65,7 +65,7 @@ class GridMg {
 		void setTrivialEquationScale(Real scale) { mTrivialEquationScale = scale; }
 
 	private:		
-Vec3i vecIdx(int   v, int l) const { return Vec3i(v%mSize[l].x, (v%(mSize[l].x*mSize[l].y))/mSize[l].x, v/(mSize[l].x*mSize[l].y)); }
+		Vec3i vecIdx(int   v, int l) const { return Vec3i(v%mSize[l].x, (v%(mSize[l].x*mSize[l].y))/mSize[l].x, v/(mSize[l].x*mSize[l].y)); }
 		int   linIdx(Vec3i V, int l) const { return V.x + V.y*mPitch[l].y + V.z*mPitch[l].z; }
 		bool  inGrid(Vec3i V, int l) const { return V.x>=0 && V.y>=0 && V.z>=0 && V.x<mSize[l].x && V.y<mSize[l].y && V.z<mSize[l].z; }
 

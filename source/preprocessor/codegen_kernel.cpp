@@ -356,8 +356,11 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 			if (!(reduceOp == "+" || reduceOp == "-" || reduceOp == "*" ||
 				  reduceOp == "/" || reduceOp == "min" || reduceOp == "max"))
 				errMsg(block.line0, "invalid 'reduce' operator. Expected reduce= +|-|*|/|min|max");
-		} else if (opt == "ompfor") {
-			ompForOpt = block.options[i].value;
+		} else if (opt == "imbalanced") {
+			// The kernels' workload is imbalanced and we need "intelligent" scheduling: 
+			// - OpenMP: use chunksize 1 to distribute threads more randomly/evenly
+			// - TBB: default (auto_partitioner) is sufficient, do nothing
+			ompForOpt.append(" schedule(static,1)"); 
 		} else
 			errMsg(block.line0, "illegal kernel option '"+ opt +
 								"' Supported options are: 'ijk', 'idx', 'bnd=x', 'reduce=x', 'st', 'pts'");

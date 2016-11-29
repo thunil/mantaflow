@@ -343,7 +343,7 @@ void solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid
 	if (pca2) delete pca2;
 	if (pca3) delete pca3;
 
-	// PcMGDynamic: always delete multigrid solver 
+	// PcMGDynamic: always delete multigrid solver after use
 	// PcMGStatic: keep multigrid solver for next solve
 	if (gmg && preconditioner==PcMGDynamic) {
 		delete gmg; 
@@ -360,12 +360,15 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     MACGrid* fractions = 0,
     Real gfClamp = 1e-04,
     Real cgMaxIterFac = 1.5,
+    bool precondition = true, // Deprecated, use preconditioner instead
 	int preconditioner = PcMIC,
 	bool enforceCompatibility = false,
     bool useL2Norm = false, 
 	bool zeroPressureFixing = false,
 	Grid<Real>* retRhs = NULL )
 {
+	if (precondition=false) preconditioner = PcNone; // for backwards compatibility
+
 	Grid<Real> rhs(vel.getParent()); 
 	solvePressureBase(vel, pressure, flags, rhs, cgAccuracy, phi, perCellCorr, fractions, gfClamp, cgMaxIterFac, preconditioner, enforceCompatibility, useL2Norm, zeroPressureFixing, retRhs);
 	
