@@ -219,8 +219,8 @@ void NKMinHeap::print()
 GridMg::GridMg(const Vec3i& gridSize)
   : mNumPreSmooth(1),
 	mNumPostSmooth(1),
-	mCoarsestLevelAccuracy(1E-8),
-	mTrivialEquationScale(1E-6),
+	mCoarsestLevelAccuracy(Real(1E-8)),
+	mTrivialEquationScale(Real(1E-6)),
 	mIsASet(false),
 	mIsRhsSet(false)
 {
@@ -293,8 +293,8 @@ GridMg::GridMg(const Vec3i& gridSize)
 				if (s>=13) {
 					CoarseningPath path;
 					path.N  = N-1;   // offset of N on coarse grid
-					path.U  = U-2*V; // offset of U on fine grid
-					path.W  = W-2*V; // offset of W on fine grid
+					path.U  = U-V*2; // offset of U on fine grid
+					path.W  = W-V*2; // offset of W on fine grid
 					path.sc = s-13;  // stencil index corresponding to V<-N on coarse grid
 					path.sf = (i+1)/2;   // stencil index corresponding to U<-W on coarse grid
 					path.inUStencil = (i%2==0); // fine grid stencil entry stored at U or W?
@@ -363,7 +363,7 @@ void knActivateVertices(std::vector<GridMg::VertexType>& type_0, std::vector<Rea
 		type_0[idx] = GridMg::vtActive;
 
 		bool isStencilSumNonZero = false, isEquationTrivial = false;
-		mg.analyzeStencil(idx, mg.mIs3D, isStencilSumNonZero, isEquationTrivial);
+		mg.analyzeStencil(int(idx), mg.mIs3D, isStencilSumNonZero, isEquationTrivial);
 			
 		// Note: nonZeroStencilSumFound and trivialEquationsFound are only 
 		// changed from false to true, and hence there are no race conditions.
@@ -434,8 +434,8 @@ void knSet(std::vector<T>& data, T value) { data[idx] = value; }
 KERNEL(pts) template<class T> 
 void knCopyToVector(std::vector<T>& dst, const Grid<T>& src) { dst[idx] = src[idx]; }
 
-KERNEL(idx) template<class T> 
-void knCopyToGrid(Grid<T>& dst, const std::vector<T>& src) { dst[idx] = src[idx]; }
+KERNEL(pts) template<class T> 
+void knCopyToGrid(const std::vector<T>& src, Grid<T>& dst) { dst[idx] = src[idx]; }
 
 KERNEL(pts) template<class T> 
 void knAddAssign(std::vector<T>& dst, const std::vector<T>& src) { dst[idx] += src[idx]; }
@@ -447,7 +447,7 @@ Real GridMg::doVCycle(Grid<Real>& dst, const Grid<Real>* src)
 
 	assertMsg(mIsASet && mIsRhsSet, "GridMg::doVCycle Error: A and/or rhs have not been set.");
 
-	const int maxLevel = mA.size() - 1;
+	const int maxLevel = int(mA.size()) - 1;
 
 	if (src) { knCopyToVector<Real>(mx[0], *src);   }
 	else     { knSet<Real>(mx[0], Real(0)); }
@@ -491,7 +491,7 @@ Real GridMg::doVCycle(Grid<Real>& dst, const Grid<Real>* src)
 	calcResidual(0);
 	Real res = calcResidualNorm(0);
 
-	knCopyToGrid<Real>(dst, mx[0]);
+	knCopyToGrid<Real>(mx[0], dst);
 
 	MG_TIMINGS(debMsg("GridMg: Finished VCycle in "<<timeTotal.update()<<" (smoothing: "<<timeSmooth<<", CG: "<<timeCG<<", R: "<<timeR<<", I: "<<timeI<<")", 1);)
 
@@ -523,7 +523,7 @@ void GridMg::genCoarseGrid(int l)
 	knSet<VertexType>(mType[l], vtFree);
 
 	// initialize min heap of (ID: fine grid vertex, key: #free interpolation vertices) pairs
-	NKMinHeap heap(mb[l-1].size(), mIs3D ? 9 : 5); // max 8 (or 4 in 2D) free interpolation vertices
+	NKMinHeap heap(int(mb[l-1].size()), mIs3D ? 9 : 5); // max 8 (or 4 in 2D) free interpolation vertices
 		
 	FOR_LVL(v,l-1) {
 		if (mType[l-1][v] != vtInactive) {
@@ -579,7 +579,7 @@ void knGenCoarseGridOperator(std::vector<Real>& sizeRef, std::vector<Real>& A, i
 
 	for (int i=0; i<mg.mStencilSize; i++) { A[idx*mg.mStencilSize+i] = Real(0); } // clear stencil
 
-	Vec3i V = mg.vecIdx(idx,l);
+	Vec3i V = mg.vecIdx(int(idx),l);
 
 	// Calculate the stencil of A_l at V by considering all vertex paths of the form:
 	// (V) <--restriction-- (U) <--A_{l-1}-- (W) <--interpolation-- (N)
@@ -664,11 +664,11 @@ KERNEL(pts,imbalanced)
 void knSmoothColor(ThreadSize& numBlocks, std::vector<Real>& x, const Vec3i& blockSize, 
 	const std::vector<Vec3i>& colorOffs, int l, const GridMg& mg)
 {
-	Vec3i blockOff (idx%blockSize.x, (idx%(blockSize.x*blockSize.y))/blockSize.x, idx/(blockSize.x*blockSize.y));
+	Vec3i blockOff (int(idx)%blockSize.x, (int(idx)%(blockSize.x*blockSize.y))/blockSize.x, int(idx)/(blockSize.x*blockSize.y));
 	
 	for (int off = 0; off < colorOffs.size(); off++) {
 				
-		Vec3i V = 2*blockOff + colorOffs[off];
+		Vec3i V = blockOff*2 + colorOffs[off];
 		if (!mg.inGrid(V,l)) continue;
 				
 		const int v = mg.linIdx(V,l);
@@ -725,7 +725,7 @@ void GridMg::smoothGS(int l, bool reversedOrder)
 	ThreadSize numBlocks(blockSize.x * blockSize.y * blockSize.z);
 	
 	for (int c = 0; c < colorOffs.size(); c++) {
-		int color = reversedOrder ? colorOffs.size()-1-c : c;
+		int color = reversedOrder ? int(colorOffs.size())-1-c : c;
 
 		knSmoothColor(numBlocks, mx[l], blockSize, colorOffs[color], l, *this);
 	}
@@ -736,15 +736,15 @@ void knCalcResidual(std::vector<Real>& r, int l, const GridMg& mg)
 {
 	if (mg.mType[l][idx] == GridMg::vtInactive) return;
 		
-	Vec3i V = mg.vecIdx(idx,l);
+	Vec3i V = mg.vecIdx(int(idx),l);
 
 	Real sum = mg.mb[l][idx];
 
 	if (l==0) {
 		int n;
 		for (int d=0; d<mg.mDim; d++) {
-			if (V[d]>0)                { n = idx-mg.mPitch[0][d]; sum -= mg.mA[0][n  *mg.mStencilSize0 + d+1] * mg.mx[0][n]; }
-			if (V[d]<mg.mSize[0][d]-1) { n = idx+mg.mPitch[0][d]; sum -= mg.mA[0][idx*mg.mStencilSize0 + d+1] * mg.mx[0][n]; }
+			if (V[d]>0)                { n = int(idx)-mg.mPitch[0][d]; sum -= mg.mA[0][n  *mg.mStencilSize0 + d+1] * mg.mx[0][n]; }
+			if (V[d]<mg.mSize[0][d]-1) { n = int(idx)+mg.mPitch[0][d]; sum -= mg.mA[0][idx*mg.mStencilSize0 + d+1] * mg.mx[0][n]; }
 		}
 		sum -= mg.mA[0][idx*mg.mStencilSize0 + 0] * mg.mx[0][idx];
 	} else {
@@ -923,7 +923,7 @@ void knRestrict(std::vector<Real>& dst, const std::vector<Real>& src, int l_dst,
 	const int l_src = l_dst - 1;
 
 	// Coarse grid vertex
-	Vec3i V = mg.vecIdx(idx,l_dst);
+	Vec3i V = mg.vecIdx(int(idx),l_dst);
 		
 	Real sum = Real(0);
 
@@ -952,7 +952,7 @@ void knInterpolate(std::vector<Real>& dst, const std::vector<Real>& src, int l_d
 
 	const int l_src = l_dst + 1;
 
-	Vec3i V = mg.vecIdx(idx,l_dst);
+	Vec3i V = mg.vecIdx(int(idx),l_dst);
 
 	Real sum = Real(0);
 

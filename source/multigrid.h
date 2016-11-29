@@ -37,7 +37,7 @@ class GridMg {
 		//! update system matrix A from symmetric 7-point stencil
 		void setA(const Grid<Real>* pA0, const Grid<Real>* pAi, const Grid<Real>* pAj, const Grid<Real>* pAk);
 		
-		//! set right-hand side
+		//! set right-hand side after setting A
 		void setRhs(const Grid<Real>& rhs);
 
 		bool isASet() const { return mIsASet; }
@@ -57,6 +57,7 @@ class GridMg {
 
 		//! Set factor for automated downscaling of trivial equations:
 		// 1*x_i = b_i  --->  trivialEquationScale*x_i = trivialEquationScale*b_i
+		// Factor should be significantly smaller than the scale of the entries in A.
 		//     Info: Trivial equations of the form x_i = b_i can have a negative 
 		//     effect on the coarse grid operators of the multigrid hierarchy (due 
 		//     to scaling mismatches), which can lead to slow multigrid convergence.
