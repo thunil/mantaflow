@@ -127,7 +127,7 @@ class GridMg {
 		friend struct knActivateVertices;
 		friend struct knActivateCoarseVertices;
 		friend struct knSetRhs;
-		friend struct knGenCoraseGridOperator;
+		friend struct knGenCoarseGridOperator;
 		friend struct knSmoothColor;
 		friend struct knCalcResidual;
 		friend struct knResidualNormSumSqr;

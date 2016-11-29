@@ -574,7 +574,7 @@ void GridMg::genCoarseGrid(int l)
 }
 
 KERNEL(pts,imbalanced)
-void knGenCoraseGridOperator(std::vector<Real>& sizeRef, std::vector<Real>& A, int l, const GridMg& mg)
+void knGenCoarseGridOperator(std::vector<Real>& sizeRef, std::vector<Real>& A, int l, const GridMg& mg)
 {
 	if (mg.mType[l][idx] == GridMg::vtInactive) return;
 
@@ -658,7 +658,7 @@ void knGenCoraseGridOperator(std::vector<Real>& sizeRef, std::vector<Real>& A, i
 void GridMg::genCoraseGridOperator(int l)
 {
 	// for each coarse grid vertex V
-	knGenCoraseGridOperator(mx[l], mA[l], l, *this);
+	knGenCoarseGridOperator(mx[l], mA[l], l, *this);
 }
 	
 KERNEL(pts,imbalanced)
