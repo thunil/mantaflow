@@ -46,7 +46,7 @@ class GridMg {
 		//! perform VCycle iteration
 		// - if src is null, then a zero vector is used instead
 		// - returns norm of residual after VCylcle
-		Real doVCycle(Grid<Real>& dst, Grid<Real>* src = nullptr); 
+		Real doVCycle(Grid<Real>& dst, const Grid<Real>* src = nullptr); 
 		
 		// access
 		void setCoarsestLevelAccuracy(Real accuracy) { mCoarsestLevelAccuracy = accuracy; }

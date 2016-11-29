@@ -440,7 +440,7 @@ void knCopyToGrid(Grid<T>& dst, const std::vector<T>& src) { dst[idx] = src[idx]
 KERNEL(pts) template<class T> 
 void knAddAssign(std::vector<T>& dst, const std::vector<T>& src) { dst[idx] += src[idx]; }
 
-Real GridMg::doVCycle(Grid<Real>& dst, Grid<Real>* src)
+Real GridMg::doVCycle(Grid<Real>& dst, const Grid<Real>* src)
 {
 	MG_TIMINGS(MuTime timeSmooth; MuTime timeCG; MuTime timeI; MuTime timeR; MuTime timeTotal; MuTime time;)
 	MG_TIMINGS(timeSmooth.clear(); timeCG.clear(); timeI.clear(); timeR.clear();)
@@ -839,6 +839,8 @@ void GridMg::solveCG(int l)
 	}
 
 	initialResidual = std::sqrt(initialResidual);
+
+	if (initialResidual < Real(1E-10)) return;
 
 	int iter = 0;
 	const int maxIter = 10000;
