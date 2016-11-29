@@ -140,44 +140,44 @@ void run() {
 );
 
 const string TmpRunTBB = STR(
-void operator() (const tbb::blocked_range<IndexInt>& r) $CONST$ {
+void operator() (const tbb::blocked_range<IndexInt>& __r) $CONST$ {
 @IF(IJK)
 	const int _maxX = maxX;
 	const int _maxY = maxY;
 	if (maxZ>1) {
-		for (int k=r.begin(); k!=(int)r.end(); k++)
+		for (int k=__r.begin(); k!=(int)__r.end(); k++)
 		for (int j=$BND$; j<_maxY; j++)
 		for (int i=$BND$; i<_maxX; i++)
 			op(i,j,k,$CALL$);
 	} else {
 		const int k=0;
-		for (int j=r.begin(); j!=(int)r.end(); j++)
+		for (int j=__r.begin(); j!=(int)__r.end(); j++)
 		for (int i=$BND$; i<_maxX; i++)
 			op(i,j,k,$CALL$);
 	}
 @ELSE
 @IF(FOURD)
 	if (maxT>1) {
-		for (int t=r.begin(); t!=(int)r.end(); t++)
+		for (int t=__r.begin(); t!=(int)__r.end(); t++)
 		for (int k=$BND$; k<maxZ; k++)
 		for (int j=$BND$; j<maxY; j++)
 		for (int i=$BND$; i<maxX; i++)
 			op(i,j,k,t,$CALL$);
 	} else if (maxZ>1) {
 		const int t=0;
-		for (int k=r.begin(); k!=(int)r.end(); k++)
+		for (int k=__r.begin(); k!=(int)__r.end(); k++)
 		for (int j=$BND$; j<maxY; j++)
 		for (int i=$BND$; i<maxX; i++)
 			op(i,j,k,t,$CALL$);
 	} else {
 		const int t=0;
 		const int k=0;
-		for (int j=r.begin(); j!=(int)r.end(); j++)
+		for (int j=__r.begin(); j!=(int)__r.end(); j++)
 		for (int i=$BND$; i<maxX; i++)
 			op(i,j,k,t,$CALL$);
 	}
 @ELSE
-	for (IndexInt idx=r.begin(); idx!=(IndexInt)r.end(); idx++)
+	for (IndexInt idx=__r.begin(); idx!=(IndexInt)__r.end(); idx++)
 		op(idx, $CALL$);
 @END
 @END
