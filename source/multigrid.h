@@ -110,7 +110,7 @@ class GridMg {
 		std::vector<std::vector<Real>> mb;
 		std::vector<std::vector<Real>> mr;
 		std::vector<std::vector<VertexType>> mType;
-		std::vector<std::vector<Real>> mCGtmp1, mCGtmp2;
+		std::vector<std::vector<double>> mCGtmp1, mCGtmp2, mCGtmp3, mCGtmp4;
 		std::vector<Vec3i> mSize, mPitch;
 		std::vector<CoarseningPath> mCoarseningPaths0;
 

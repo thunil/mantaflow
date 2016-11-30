@@ -244,8 +244,10 @@ GridMg::GridMg(const Vec3i& gridSize)
 	mb.push_back(std::vector<Real>(n));
 	mr.push_back(std::vector<Real>(n));
 	mType.push_back(std::vector<VertexType>(n));
-	mCGtmp1.push_back(std::vector<Real>());
-	mCGtmp2.push_back(std::vector<Real>());
+	mCGtmp1.push_back(std::vector<double>());
+	mCGtmp2.push_back(std::vector<double>());
+	mCGtmp3.push_back(std::vector<double>());
+	mCGtmp4.push_back(std::vector<double>());
 
 	debMsg("GridMg::GridMg level 0: "<<mSize[0].x<<" x " << mSize[0].y << " x " << mSize[0].z << " x ", 2);
 
@@ -264,17 +266,19 @@ GridMg::GridMg(const Vec3i& gridSize)
 		mb.push_back(std::vector<Real>(n));
 		mr.push_back(std::vector<Real>(n));
 		mType.push_back(std::vector<VertexType>(n));
-		mCGtmp1.push_back(std::vector<Real>());
-		mCGtmp2.push_back(std::vector<Real>());
+		mCGtmp1.push_back(std::vector<double>());
+		mCGtmp2.push_back(std::vector<double>());
+		mCGtmp3.push_back(std::vector<double>());
+		mCGtmp4.push_back(std::vector<double>());
 		
 		debMsg("GridMg::GridMg level "<<l<<": " << mSize[l].x << " x " << mSize[l].y << " x " << mSize[l].z << " x ", 2);
 	}
 
 	// Additional memory for CG on coarsest level
-	mCGtmp1.pop_back();
-	mCGtmp1.push_back(std::vector<Real>(n));
-	mCGtmp2.pop_back();
-	mCGtmp2.push_back(std::vector<Real>(n));
+	mCGtmp1.back() = std::vector<double>(n);
+	mCGtmp2.back() = std::vector<double>(n);
+	mCGtmp3.back() = std::vector<double>(n);
+	mCGtmp4.back() = std::vector<double>(n);
 
 	MG_TIMINGS(debMsg("GridMg: Allocation done in "<<time.update(), 1);)
 
@@ -786,35 +790,22 @@ Real GridMg::calcResidualNorm(int l)
 }
 
 // Standard conjugate gradients with Jacobi preconditioner
-// Note: not parallelized since coarsest level is assumed to be small
+// Notes: Always run at double precision. Not parallelized since
+//        coarsest level is assumed to be small.
 void GridMg::solveCG(int l)
 {
-	std::vector<Real>& z = mCGtmp1[l];
-	std::vector<Real>& p = mCGtmp2[l];
-
-	std::vector<Real>& x = mx[l];
-	std::vector<Real>& r = mr[l];
-
-	// Initialization:
-	Real alphaTop = Real(0);
-	Real initialResidual = Real(0);
-
-	FOR_LVL(v,l) {
-		if (mType[l][v] == vtInactive) continue;
-		
+	auto applyAStencil = [this](int v, int l, const std::vector<double>& vec) -> double {
 		Vec3i V = vecIdx(v,l);
 
-		Real sum = mb[l][v];
+		double sum = 0;
 
 		if (l==0) {
 			int n;
 			for (int d=0; d<mDim; d++) {
-				if (V[d]>0)             { n = v-mPitch[0][d]; sum -= mA[0][n*mStencilSize0 + d+1] * x[n]; }
-				if (V[d]<mSize[0][d]-1) { n = v+mPitch[0][d]; sum -= mA[0][v*mStencilSize0 + d+1] * x[n]; }
+				if (V[d]>0)             { n = v-mPitch[0][d]; sum += mA[0][n*mStencilSize0 + d+1] * vec[n]; }
+				if (V[d]<mSize[0][d]-1) { n = v+mPitch[0][d]; sum += mA[0][v*mStencilSize0 + d+1] * vec[n]; }
 			}
-			sum -= mA[0][v*mStencilSize0 + 0] * x[v];
-			
-			z[v] = sum / mA[0][v*mStencilSize0 + 0];
+			sum += mA[0][v*mStencilSize0 + 0] * vec[v];
 		} else {
 			FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
 				Vec3i N = V + S;
@@ -822,17 +813,35 @@ void GridMg::solveCG(int l)
 
 				if (inGrid(N,l) && mType[l][n]!=vtInactive) {
 					if (s < mStencilSize) {
-						sum -= mA[l][n*mStencilSize + mStencilSize-1-s] * x[n];
+						sum += mA[l][n*mStencilSize + mStencilSize-1-s] * vec[n];
 					} else {
-						sum -= mA[l][v*mStencilSize + s-mStencilSize+1] * x[n];
+						sum += mA[l][v*mStencilSize + s-mStencilSize+1] * vec[n];
 					}
 				}
 			}
-			
-			z[v] = sum / mA[l][v*mStencilSize + 0];
 		}
 
-		r[v] = sum;
+		return sum;
+	};
+
+	std::vector<double>& z = mCGtmp1[l];
+	std::vector<double>& p = mCGtmp2[l];
+	std::vector<double>& x = mCGtmp3[l];
+	std::vector<double>& r = mCGtmp4[l];
+
+	// Initialization:
+	double alphaTop = 0;
+	double initialResidual = 0;
+
+	FOR_LVL(v,l) { x[v] = mx[l][v]; }
+
+	FOR_LVL(v,l) {
+		if (mType[l][v] == vtInactive) continue;
+
+		r[v] = mb[l][v] - applyAStencil(v,l,x);
+		if (l==0) { z[v] = r[v] / mA[0][v*mStencilSize0 + 0]; }
+		else      { z[v] = r[v] / mA[l][v*mStencilSize  + 0]; }
+
 		initialResidual += r[v] * r[v];
 		p[v] = z[v];
 		alphaTop += r[v] * z[v];
@@ -840,62 +849,35 @@ void GridMg::solveCG(int l)
 
 	initialResidual = std::sqrt(initialResidual);
 
-	if (initialResidual < Real(1E-10)) return;
-
 	int iter = 0;
 	const int maxIter = 10000;
-	Real residual = Real(-1);
+	double residual = -1;
 
 	// CG iterations
-	for (; iter<maxIter; iter++)
+	for (; iter<maxIter && initialResidual>1E-12; iter++)
 	{
-		Real alphaBot = Real(0);
+		double alphaBot = 0;
 
 		FOR_LVL(v,l) {
 			if (mType[l][v] == vtInactive) continue;
-		
-			Vec3i V = vecIdx(v,l);
 
-			z[v] = Real(0);
-
-			if (l==0) {
-				int n;
-				for (int d=0; d<mDim; d++) {
-					if (V[d]>0)             { n = v-mPitch[0][d]; z[v] += mA[0][n*mStencilSize0 + d+1] * p[n]; }
-					if (V[d]<mSize[0][d]-1) { n = v+mPitch[0][d]; z[v] += mA[0][v*mStencilSize0 + d+1] * p[n]; }
-				}
-				z[v] += mA[0][v*mStencilSize0 + 0] * p[v];
-			} else {
-				FOR_VECLIN_MINMAX(S, s, mStencilMin, mStencilMax) {
-					Vec3i N = V + S;
-					int n = linIdx(N,l);
-
-					if (inGrid(N,l) && mType[l][n]!=vtInactive) {
-						if (s < mStencilSize) {
-							z[v] += mA[l][n*mStencilSize + mStencilSize-1-s] * p[n];
-						} else {
-							z[v] += mA[l][v*mStencilSize + s-mStencilSize+1] * p[n];
-						}
-					}
-				}
-			}
-
+			z[v] = applyAStencil(v,l,p);
 			alphaBot += p[v] * z[v];
 		}
 
-		Real alpha = alphaTop / alphaBot;
-		
-		Real alphaTopNew = Real(0);
-		residual = Real(0);
+		double alpha = alphaTop / alphaBot;
+
+		double alphaTopNew = 0;
+		residual = 0;
 
 		FOR_LVL(v,l) {
 			if (mType[l][v] == vtInactive) continue;
-		
+
 			x[v] += alpha * p[v];
 			r[v] -= alpha * z[v];
 			residual += r[v] * r[v];
 			if (l==0) z[v] = r[v] / mA[0][v*mStencilSize0 + 0];
-			else      z[v] = r[v] / mA[l][v*mStencilSize  + 0];			
+			else      z[v] = r[v] / mA[l][v*mStencilSize  + 0];
 			alphaTopNew += r[v] * z[v];
 		}
 
@@ -903,13 +885,15 @@ void GridMg::solveCG(int l)
 
 		if (residual / initialResidual < mCoarsestLevelAccuracy) break;
 
-		Real beta = alphaTopNew / alphaTop;
+		double beta = alphaTopNew / alphaTop;
 		alphaTop = alphaTopNew;
 
 		FOR_LVL(v,l) {
 			p[v] = z[v] + beta * p[v];
 		}
 	}
+
+	FOR_LVL(v,l) { mx[l][v] = Real(x[v]); }
 
 	if (iter == maxIter) { debMsg("GridMg::solveCG Warning: Reached maximum number of CG iterations", 1); }
 	else { debMsg("GridMg::solveCG Info: Reached residual "<<residual<<" in "<<iter<<" iterations", 2); }
