@@ -367,7 +367,7 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	bool zeroPressureFixing = false,
 	Grid<Real>* retRhs = NULL )
 {
-	if (precondition=false) preconditioner = PcNone; // for backwards compatibility
+	if (precondition==false) preconditioner = PcNone; // for backwards compatibility
 
 	Grid<Real> rhs(vel.getParent()); 
 	solvePressureBase(vel, pressure, flags, rhs, cgAccuracy, phi, perCellCorr, fractions, gfClamp, cgMaxIterFac, preconditioner, enforceCompatibility, useL2Norm, zeroPressureFixing, retRhs);
