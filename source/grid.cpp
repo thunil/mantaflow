@@ -649,10 +649,8 @@ void FlagGrid::initDomain( const int &boundaryWidth
 		}
 	}
 
-	FOR_IDX(*this)
-		mData[idx] = TypeEmpty;
-		initBoundaries(boundaryWidth, types);
-	
+	setConst(TypeEmpty); 
+	initBoundaries(boundaryWidth, types); 
 }
 
 void FlagGrid::initBoundaries(const int &boundaryWidth, const int *types) {
