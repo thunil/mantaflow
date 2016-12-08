@@ -562,14 +562,19 @@ void FlagGrid::InitMaxZWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
 }
 
 void FlagGrid::initDomain( const int &boundaryWidth
-	                     , const string &wall    
-						 , const string &open    
-						 , const string &inflow  
-						 , const string &outflow
+	                     , const string &wallIn
+						 , const string &openIn
+						 , const string &inflowIn
+						 , const string &outflowIn 
 						 , Grid<Real>* phiWalls ) {
 	
 	int  types[6] = {0};
 	bool set  [6] = {false};
+	// make sure we have at least 6 entries
+	string wall    = wallIn;    wall.append("      ");
+	string open    = openIn;    open.append("      ");
+	string inflow  = inflowIn;  inflow.append("      ");
+	string outflow = outflowIn; outflow.append("      ");
 
 	if(phiWalls) phiWalls->setConst(1000000000);
 
