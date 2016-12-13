@@ -99,7 +99,10 @@ int main(int argc,char* argv[]) {
 #ifdef GUI
 	// optionally, disable UI
 	bool doGui = true;
-	if( getenv("MANTA_DISABLE_UI") && atoi( getenv("MANTA_DISABLE_UI") )) doGui = false;
+	if( getenv("MANTA_DISABLE_UI") && atoi( getenv("MANTA_DISABLE_UI") )) {
+		debMsg("GUI disabled",0);
+		doGui = false;
+	}
 
 	if(doGui) {
 		guiMain(argc, argv);    
