@@ -256,7 +256,7 @@ void knExtrapolateMACSimple (MACGrid& vel, int distance , Grid<int>& tmp , const
 		vel(p)[c] = avgVel / nbs;
 	}
 }
-// TODO, make parallel by only modifying ijk (ie, turn push into pull)
+// NT_DEBUG, todo - test w/o single threaded, should work...
 KERNEL(bnd=0, single)
 void knExtrapolateIntoBnd (FlagGrid& flags, MACGrid& vel)
 {
@@ -288,7 +288,7 @@ void knExtrapolateIntoBnd (FlagGrid& flags, MACGrid& vel)
 		if(v[2] < 0.) v[2] = 0.;
 		c++;
 	}
-	else if( k==(flags.getSizeY()-1) ) { 
+	else if( k==(flags.getSizeZ()-1) ) { 
 		v = vel(i,j,k-1);
 		if(v[2] > 0.) v[2] = 0.;
 		c++;
