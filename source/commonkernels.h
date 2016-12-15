@@ -73,7 +73,10 @@ KERNEL(bnd=1) void GradientOp(Grid<Vec3>& gradient, const Grid<Real>& grid) {
 
 //! Kernel: Laplace operator
 KERNEL (bnd=1) void LaplaceOp(Grid<Real>& laplace, const Grid<Real>& grid) {
-	laplace(i,j,k) = -(6.0*grid(i,j,k)-grid(i+1,j,k)-grid(i-1,j,k)-grid(i,j+1,k)-grid(i,j-1,k)-grid(i,j,k+1)-grid(i,j,k-1));
+	laplace(i, j, k)  = grid(i+1, j, k) - 2.0*grid(i, j, k) + grid(i-1, j, k); 
+	laplace(i, j, k) += grid(i, j+1, k) - 2.0*grid(i, j, k) + grid(i, j-1, k); 
+	if(grid.is3D()) {
+	laplace(i, j, k) += grid(i, j, k+1) - 2.0*grid(i, j, k) + grid(i, j, k-1); }
 }
 
 //! Kernel: get component at MAC positions

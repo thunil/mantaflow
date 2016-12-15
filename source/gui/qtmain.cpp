@@ -8,6 +8,7 @@
  * http://www.gnu.org/licenses
  *
  * QT threads
+ * Note - UI can be disabled via env var MANTA_DISABLE_UI, in pymain.cpp (can speed up command line runs)
  *
  ******************************************************************************/
 
