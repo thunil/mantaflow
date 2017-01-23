@@ -48,8 +48,8 @@ setComponent(target=vel, source=density, component=1)
 density.setConst(0.)
 
 # cg solver params
-acc    = 1e-04
-cgiter = 5
+cgAcc    = 1e-04
+cgIter = 5
 
 timings = Timings()
 
@@ -72,14 +72,14 @@ for t in range(25000):
 		setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)
 
 		setInflowBcs(vel=vel,dir='xX',value=velInflow)
-		solvePressure( flags=flags, vel=vel, pressure=pressure, fractions=fractions, cgAccuracy=acc, cgMaxIterFac=cgiter)
+		solvePressure( flags=flags, vel=vel, pressure=pressure, fractions=fractions, cgAccuracy=cgAcc, cgMaxIterFac=cgIter)
 
 		extrapolateMACSimple( flags=flags, vel=vel, distance=5 , intoObs=True);
 		setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)
 	else:
 		setWallBcs(flags=flags, vel=vel)
 		setInflowBcs(vel=vel,dir='xX',value=velInflow)
-		solvePressure( flags=flags, vel=vel, pressure=pressure, cgAccuracy=acc, cgMaxIterFac=cgiter ) 
+		solvePressure( flags=flags, vel=vel, pressure=pressure, cgAccuracy=cgAcc, cgMaxIterFac=cgiter ) 
 		setWallBcs(flags=flags, vel=vel)
 
 	setInflowBcs(vel=vel,dir='xX',value=velInflow)
@@ -89,9 +89,6 @@ for t in range(25000):
 
 	inter = 10
 	if 0 and (t % inter == 0):
-		if(secOrderBc):
-			gui.screenshot( 'newbc_%04d.png' % int(t/inter) );
-		else:
-			gui.screenshot( 'oldbc_%04d.png' % int(t/inter) );
+		gui.screenshot( 'karman_%04d.png' % int(t/inter) );
 			
 
