@@ -390,7 +390,7 @@ template<> inline Vec4 nmod<Vec4>(const Vec4& a, const Vec4& b) {
 
     
 /**************************************************************************/
-// 4d interpolation
+// 4d interpolation (note only 4d here, 2d/3d interpolations are in interpol.h)
 /**************************************************************************/
 
 #define BUILD_INDEX_4D \

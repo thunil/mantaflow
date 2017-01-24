@@ -60,7 +60,7 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 	rhs(i,j,k) = set;
 }
 
-//! Kernel: Apply velocity update from poisson equation
+//! Kernel: make velocity divergence free by subtracting pressure gradient
 KERNEL(bnd = 1)
 void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
 {
@@ -152,7 +152,6 @@ void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<R
 
 
 // improve behavior of clamping for large time steps:
-
 inline static Real ghostFluidWasClamped(IndexInt idx, int offset, const Grid<Real> &phi, Real gfClamp)
 {
 	Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
@@ -354,6 +353,14 @@ void solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid
 }
 
 //! Perform pressure projection of the velocity grid
+//! perCellCorr: a divergence correction for each cell, optional
+//! fractions: for 2nd order obstacle boundaries, optional
+//! gfClamp: clamping threshold for ghost fluid method
+//! cgMaxIterFac: heuristic to determine maximal number of CG iteations, increase for more accurate solutions
+//! preconditioner: MIC, or MG (see Preconditioner enum)
+//! useL2Norm: use max norm by default, can be turned to L2 here
+//! zeroPressureFixing: remove null space by fixing a single pressure value, needed for MG 
+//! retRhs: return RHS divergence, e.g., for debugging; optional
 PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgAccuracy = 1e-3,
     Grid<Real>* phi = 0, 
     Grid<Real>* perCellCorr = 0, 
