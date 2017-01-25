@@ -73,7 +73,7 @@ for t in range(100*scale):
 
 	setWallBcs(flags=flags, vel=vel)
 	if(t%scale==0):
-		#projectPpmFull( density, output_ppm % (t/scale) , 0, 2.0 );
+		#projectPpmFull( density, output_ppm % (t/scale) , 0, 1.0 );
 		gui.screenshot(output_png % (t/scale) )
 	
 	#timings.display()

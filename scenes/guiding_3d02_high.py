@@ -17,11 +17,6 @@ factor = 2
 res2 = int(res1*factor)
 
 # solver params
-
-gs1 = vec3(res1,int(2.0*res1),res1)
-s1 = Solver(name='main', gridSize = gs1, dim=3)
-s1.timestep = timestep
-
 gs2 = vec3(res2,int(2.0*res2),res2)
 s2 = Solver(name='main', gridSize = gs2, dim=3)
 s2.timestep = timestep
@@ -47,7 +42,9 @@ density = s2.create(RealGrid)
 pressure = s2.create(RealGrid)
 W = s2.create(RealGrid)
 
-velT1 = s1.create(MACGrid)
+gsLoad = vec3(res1,int(2.0*res1),res1)
+sLoader = Solver(name='main', gridSize = gsLoad, dim=3) 
+velIn = sLoader.create(MACGrid)
 
 # noise field
 noise = s2.create(NoiseField, loadFromFile=True)
@@ -67,7 +64,7 @@ setOpenBound(flags,bWidth,'yY',FlagOutflow|FlagEmpty)
 if (GUI):
 	gui = Gui()
 	gui.show()
-	gui.nextVec3Display()
+	gui.nextVec3Display() # hide velocity display
 	gui.nextVec3Display()
 	gui.nextVec3Display()
 	#gui.pause()
@@ -81,20 +78,20 @@ for t in range(numFrames):
 	densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
 		
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-	resetOutflow(flags=flags,real=density) 
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=bWidth+1)
+	resetOutflow(flags=flags,real=density) 
 	
 	setWallBcs(flags=flags, vel=vel)
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-1e-3*factor,0), flags=flags)
 	
-	velT1.load( input_uni % (t+1) )
-	interpolateMACGrid( source=velT1, target=velT )
+	velIn.load( input_uni % (t) )
+	interpolateMACGrid( source=velIn, target=velT )
 	velT.multConst(vec3(factor))
 
 	PD_fluid_guiding(timeStep=t, vel=vel, velT=velT, flags=flags, weight=W, blurRadius=beta, pressure=pressure, tau = tau, sigma = sigma, theta = theta)	
 	
 	setWallBcs(flags=flags, vel=vel)
-	projectPpmFull( density, output_ppm % (t) , 0, 1.0 );
+	projectPpmFull( density, output_ppm % (t) , 0, 2.0 );
 	density.save(output_uni % (t))
 	
 	s2.step()
