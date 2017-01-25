@@ -11,6 +11,7 @@
  *
  ******************************************************************************/
 
+#include <string.h>
 #include "pythonInclude.h"
 #include "structmember.h"
 #include "manta.h"
@@ -467,8 +468,8 @@ void WrapperRegistry::construct(const string& scriptname, const vector<string>& 
 	registerMeta();
 	registerDummyTypes();
 	
-	// load main extension module
-	PyImport_AppendInittab(gDefaultModuleName.c_str(), PyInit_Main);
+	// work around for certain gcc versions, cast to char*
+	PyImport_AppendInittab( (char*)gDefaultModuleName.c_str(), PyInit_Main );
 }
 
 inline PyObject* castPy(PyTypeObject* p) { 
