@@ -88,7 +88,8 @@ for t in range(numFrames):
 	interpolateMACGrid( source=velIn, target=velT )
 	velT.multConst(vec3(factor))
 
-	PD_fluid_guiding(timeStep=t, vel=vel, velT=velT, flags=flags, weight=W, blurRadius=beta, pressure=pressure, tau = tau, sigma = sigma, theta = theta)	
+	PD_fluid_guiding(vel=vel, velT=velT, flags=flags, weight=W, blurRadius=beta, pressure=pressure, \
+		tau = tau, sigma = sigma, theta = theta, preconditioner = 3, zeroPressureFixing=True )
 	
 	setWallBcs(flags=flags, vel=vel)
 	projectPpmFull( density, output_ppm % (t) , 0, 2.0 );

@@ -290,7 +290,8 @@ void solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid
 		}
 		if(fixPidx>=0) {
 			fixPressure(fixPidx, Real(0), rhs, A0, Ai, Aj, Ak);
-			debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 1);
+			static bool msgOnce = false;
+			if(!msgOnce) { debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 1); msgOnce=true; }
 		}
 	}
 

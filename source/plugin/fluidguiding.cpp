@@ -21,8 +21,10 @@
 using namespace std;
 namespace Manta {
 
-bool precomputed = false;
-Matrix blurKernel;
+// only supports a single blur size for now, globals stored here
+bool gBlurPrecomputed = false;
+int  gBlurKernelRadius = -1;
+Matrix gBlurKernel;
 
 // *****************************************************************************
 // Helper functions for fluid guiding
@@ -207,33 +209,42 @@ PYTHON() void setGradientYWeight(Grid<Real> &W, const int minY, const int maxY, 
 	
 //! Apply Gaussian blur (either 2D or 3D) in a separable way
 void applySeparableGaussianBlur(MACGrid &grid, FlagGrid &flags, const Matrix &kernel1D) {
-	assert(precomputed);
+	assertMsg(gBlurPrecomputed, "Error - blue kernel not precomputed");
 	applySeparableKernel(grid, flags, kernel1D);
 }
 
 //! Precomputation performed before the first PD iteration
 void ADMM_precompute_Separable(int blurRadius) {
+	if (gBlurPrecomputed) {
+		assertMsg( gBlurKernelRadius == blurRadius, "More than a single blur radius not supported at the moment." );
+		return;
+	}
 	int kernelSize = 2 * blurRadius + 1;
-	blurKernel = get1DGaussianBlurKernel(kernelSize, kernelSize);
-	precomputed = true;
+	gBlurKernel = get1DGaussianBlurKernel(kernelSize, kernelSize);
+	gBlurPrecomputed = true;
+	gBlurKernelRadius = blurRadius;
 }
 
 //! Apply approximate multiplication of inverse(M)
 void applyApproxInvM(MACGrid& v, FlagGrid &flags, MACGrid& invA) {
 	MACGrid v_new = MACGrid(v.getParent());
-	v_new.copyFrom(v); v_new.mult(invA);
-	applySeparableGaussianBlur(v_new, flags, blurKernel); applySeparableGaussianBlur(v_new, flags, blurKernel);
-	v_new.multConst(2.0); v_new.mult(invA);
+	v_new.copyFrom(v); 
+	v_new.mult(invA);
+	applySeparableGaussianBlur(v_new, flags, gBlurKernel); 
+	applySeparableGaussianBlur(v_new, flags, gBlurKernel);
+	v_new.multConst(2.0); 
+	v_new.mult(invA);
 	v.mult(invA);
 	v.sub(v_new);
 }
 
 //! Precompute Q, a reused quantity in the PD iterations
 //! Q = 2*G*G*(velT-velC)-sigma*velC
-void precomputeQ(MACGrid &Q, FlagGrid &flags, const MACGrid &velT_region, const MACGrid &velC, const Matrix &blurKernel, const Real sigma) {
+void precomputeQ(MACGrid &Q, FlagGrid &flags, const MACGrid &velT_region, const MACGrid &velC, const Matrix &gBlurKernel, const Real sigma) {
 	Q.copyFrom(velT_region);
 	Q.sub(velC);
-	applySeparableGaussianBlur(Q, flags, blurKernel); applySeparableGaussianBlur(Q, flags, blurKernel);
+	applySeparableGaussianBlur(Q, flags, gBlurKernel); 
+	applySeparableGaussianBlur(Q, flags, gBlurKernel);
 	Q.multConst(2.0);
 	Q.addScaled(velC, -sigma);
 }
@@ -251,7 +262,7 @@ void precomputeInvA(MACGrid &invA, Grid<Real> &weight, const Real sigma) {
 	}
 }
 
-//! proximal operator of f
+//! proximal operator of f , guiding 
 void prox_f(MACGrid& v, FlagGrid &flags, MACGrid& Q, const MACGrid& velC, const Real sigma, MACGrid& invA) {
 	v.multConst(sigma);
 	v.add(Q);
@@ -261,20 +272,7 @@ void prox_f(MACGrid& v, FlagGrid &flags, MACGrid& Q, const MACGrid& velC, const 
 
 // *****************************************************************************
 
-// uses main pressure solve from pressure.cpp
-void solvePressureBase( 
-	MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Real>& rhs, Real cgAccuracy = 1e-3,
-	Grid<Real>* phi = 0,
-	Grid<Real>* perCellCorr = 0,
-	MACGrid* fractions = 0,
-	Real gfClamp = 1e-04,
-	Real cgMaxIterFac = 1.5,
-	int preconditioner = 1,
-	bool enforceCompatibility = false,
-	bool useL2Norm = false,
-	bool zeroPressureFixing = false,
-	Grid<Real>* retRhs = NULL );
-
+// re-uses main pressure solve from pressure.cpp
 void solvePressure( 
 	MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgAccuracy = 1e-3,
     Grid<Real>* phi = 0, 
@@ -290,13 +288,13 @@ void solvePressure(
 	Grid<Real>* retRhs = NULL );
 
 //! Main function for fluid guiding , includes "regular" pressure solve
-PYTHON() void PD_fluid_guiding(int timeStep, MACGrid& vel, MACGrid& velT,
+PYTHON() void PD_fluid_guiding(MACGrid& vel, MACGrid& velT,
 	Grid<Real>& pressure, FlagGrid& flags, Grid<Real>& weight, int blurRadius = 5,
 	Real theta = 1.0, Real tau = 1.0, Real sigma = 1.0,
 	Real epsRel = 1e-3, Real epsAbs = 1e-3, int maxIters = 200,
 	// duplicated for pressure solve
 	Grid<Real>* phi = 0, Grid<Real>* perCellCorr = 0, MACGrid* fractions = 0, Real gfClamp = 1e-04, Real cgMaxIterFac = 1.5, Real cgAccuracy = 1e-3,
-	int preconditioner = 1, bool enforceCompatibility = false, bool useL2Norm = false, Grid<Real>* retRhs = NULL)
+	int preconditioner = 1, bool zeroPressureFixing = false)
 {
 	FluidSolver* parent = vel.getParent();
 
@@ -305,17 +303,13 @@ PYTHON() void PD_fluid_guiding(int timeStep, MACGrid& vel, MACGrid& velT,
 	MACGrid x = MACGrid(parent);
 	MACGrid y = MACGrid(parent);
 	MACGrid z = MACGrid(parent);
-	MACGrid x_ = MACGrid(parent);
-	MACGrid y_ = MACGrid(parent);
-	MACGrid z_ = MACGrid(parent);
 	MACGrid x0 = MACGrid(parent);
-	MACGrid y0 = MACGrid(parent);
 	MACGrid z0 = MACGrid(parent);
 
 	// precomputation
-	if (timeStep == 0 || !precomputed) ADMM_precompute_Separable(blurRadius);
+	ADMM_precompute_Separable(blurRadius);
 	MACGrid Q = MACGrid(parent);
-	precomputeQ(Q, flags, velT, velC, blurKernel, sigma);
+	precomputeQ(Q, flags, velT, velC, gBlurKernel, sigma);
 	MACGrid invA = MACGrid(parent);
 	precomputeInvA(invA, weight, sigma);
 
@@ -324,17 +318,18 @@ PYTHON() void PD_fluid_guiding(int timeStep, MACGrid& vel, MACGrid& velT,
 	for (iter = 0; iter < maxIters; iter++) {
 		// x-update
 		x0.copyFrom(x);
-		x.multConst(1.0 / sigma); x.add(y); prox_f(x, flags, Q, velC, sigma, invA);
+		x.multConst(1.0 / sigma); 
+		x.add(y); 
+		prox_f(x, flags, Q, velC, sigma, invA);
 		x.multConst(-sigma); x.addScaled(y, sigma); x.add(x0);
 
 		// z-update
 		z0.copyFrom(z);
 		z.addScaled(x, -tau);
 		Real cgAccuracyAdaptive = cgAccuracy;
-		//lvePressureBase(vel, pressure, flags, rhs, cgAccuracy,       phi, perCellCorr, fractions, gfClamp, 
-		//  cgMaxIterFac, preconditioner, enforceCompatibility, useL2Norm, zeroPressureFixing, retRhs);
+
 		solvePressure (z, pressure, flags, cgAccuracyAdaptive, phi, perCellCorr, fractions, gfClamp,
-		    cgMaxIterFac, true, preconditioner, enforceCompatibility, useL2Norm, false, retRhs);
+		    cgMaxIterFac, true, preconditioner, false, false, zeroPressureFixing, NULL );
 
 		// y-update
 		y.copyFrom(z);
