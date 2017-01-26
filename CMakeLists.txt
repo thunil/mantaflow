@@ -606,9 +606,10 @@ IF(NOT NOPYTHON)
 ENDIF()
 
 IF(BUILD_STATIC)
+	SET(EXECCMD manta_static)
 	# only build static library, e.g. for nopython mode
 	ADD_LIBRARY (core OBJECT ${SOURCES} ${GITINFO})
-	ADD_LIBRARY ("${EXECCMD}_static" STATIC $<TARGET_OBJECTS:core>)
+	ADD_LIBRARY (${EXECCMD} STATIC $<TARGET_OBJECTS:core>)
 ENDIF()
 
 
@@ -616,10 +617,10 @@ ENDIF()
 IF(NOT WIN32)
 	IF(DEBUG)
 		# stricter: no optimizations and inlining, comment out if needed...
-		set_target_properties(manta PROPERTIES COMPILE_FLAGS " -O0 -fno-inline -Wall ")
+		set_target_properties(${EXECMD} PROPERTIES COMPILE_FLAGS " -O0 -fno-inline -Wall ")
 	ELSE()
 		# non-debug, optimized version
-		set_target_properties(manta PROPERTIES COMPILE_FLAGS " -O3 -Wall ")
+		set_target_properties(${EXECMD} PROPERTIES COMPILE_FLAGS " -O3 -Wall ")
 	ENDIF()
 ENDIF()
 
