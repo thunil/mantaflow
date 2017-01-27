@@ -1,13 +1,13 @@
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2011 Tobias Pfaff, Nils Thuerey 
+ * Multigrid solver
  *
  * This program is free software, distributed under the terms of the
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Multigrid solver by Florian Ferstl (florian.ferstl.ff@gmail.com)
+ * Copyright 2016, by Florian Ferstl (florian.ferstl.ff@gmail.com)
  *
  * This is an implementation of the solver developed by Dick et al. [1]
  * without topology awareness (= vertex duplication on coarser levels). This 
@@ -42,6 +42,7 @@
 using namespace std;
 namespace Manta 
 {
+
 // Helper class for calling mantaflow kernels with a specific number of threads
 class ThreadSize { 
 	IndexInt s; 
@@ -518,8 +519,8 @@ void knActivateCoarseVertices(std::vector<GridMg::VertexType>& type, int unused)
 // while ensuring a full-rank interpolation operator (see Section 3.3 in [1]).
 void GridMg::genCoarseGrid(int l)
 {
-	//    AF_Free: unused/untouched vertices
-	//    AF_Zero: vertices selected for coarser level
+	// AF_Free: unused/untouched vertices
+	// AF_Zero: vertices selected for coarser level
 	// AF_Removed: vertices removed from coarser level
 	enum activeFlags : char {AF_Removed = 0, AF_Zero = 1, AF_Free = 2};
 
@@ -891,6 +892,7 @@ void GridMg::solveCG(int l)
 		FOR_LVL(v,l) {
 			p[v] = z[v] + beta * p[v];
 		}
+		debMsg("GridMg::solveCG i="<<iter<<" rel-residual="<< (residual / initialResidual) , 5);
 	}
 
 	FOR_LVL(v,l) { mx[l][v] = Real(x[v]); }

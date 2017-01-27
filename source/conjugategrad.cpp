@@ -17,7 +17,7 @@
 using namespace std;
 namespace Manta {
 
-const int CG_DEBUGLEVEL = 4;
+const int CG_DEBUGLEVEL = 5;
 	
 //*****************************************************************************
 //  Precondition helpers
@@ -286,7 +286,7 @@ bool GridCg<APPLYMAT>::iterate() {
 	// search =  tmp + beta * search
 	UpdateSearchVec (mSearch, mTmp, beta);
 
-	debMsg("PB-Cg::iter i="<<mIterations<<" sigmaNew="<<sigmaNew<<" sigmaLast="<<mSigma<<" alpha="<<alpha<<" beta="<<beta<<" ", CG_DEBUGLEVEL);
+	debMsg("GridCg::iterate i="<<mIterations<<" sigmaNew="<<sigmaNew<<" sigmaLast="<<mSigma<<" alpha="<<alpha<<" beta="<<beta<<" ", CG_DEBUGLEVEL);
 	mSigma = sigmaNew;
 	
 	//debMsg("PB-CG-Norms::p"<<sqrt( GridOpNormNosqrt(mpDst, mpFlags).getValue() ) <<" search"<<sqrt( GridOpNormNosqrt(mpSearch, mpFlags).getValue(), CG_DEBUGLEVEL ) <<" res"<<sqrt( GridOpNormNosqrt(mpResidual, mpFlags).getValue() ) <<" tmp"<<sqrt( GridOpNormNosqrt(mpTmp, mpFlags).getValue() ), CG_DEBUGLEVEL ); // debug

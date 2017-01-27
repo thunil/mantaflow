@@ -145,19 +145,19 @@ List<Type> parseTypeList(TokenPointer& parentPtr) {
 	List<Type> list;
 	TokenPointer tk(parentPtr, &list);
 	
-	tkAssert(tk.curType() == TkTBracketL, "expect template opening bracket");
+	tkAssert(tk.curType() == TkTBracketL, "expected template opening bracket");
 	tk.next();
 	if (tk.curType() != TkTBracketR) {
 		for(;;) {
 			list.push_back(parseType(tk));
 			if (tk.curType() == TkTBracketR) 
 				break;
-			tkAssert(tk.curType() == TkComma, "expect comma or closing bracket");
+			tkAssert(tk.curType() == TkComma, "expected comma or closing bracket");
 			tk.next();
 		}
 	}
 	list.listText = list.minimal.substr(1);
-	tkAssert(tk.curType() == TkTBracketR, "expect template closing bracket");
+	tkAssert(tk.curType() == TkTBracketR, "expected template closing bracket");
 	tk.next();
 	return list;
 }
@@ -166,7 +166,7 @@ List<Argument> parseArgumentList(TokenPointer& parentPtr, bool requireName, bool
 	List<Argument> list;
 	TokenPointer tk(parentPtr, &list);
 	
-	tkAssert(tk.curType() == TkBracketL, "expect opening bracket");
+	tkAssert(tk.curType() == TkBracketL, "expected opening bracket");
 	tk.next();
 	if (tk.curType() != TkBracketR) {
 		for(int idx=0;;idx++) {
@@ -174,12 +174,12 @@ List<Argument> parseArgumentList(TokenPointer& parentPtr, bool requireName, bool
 			list.back().index = idx;
 			if (tk.curType() == TkBracketR) 
 				break;
-			tkAssert(tk.curType() == TkComma, "expect comma or closing bracket");
+			tkAssert(tk.curType() == TkComma, "expected comma or closing bracket");
 			tk.next();
 		}
 	}
 	list.listText = list.minimal.substr(1);
-	tkAssert(tk.curType() == TkBracketR, "expect closing bracket");
+	tkAssert(tk.curType() == TkBracketR, "expected closing bracket");
 	tk.next();
 	return list;
 }
@@ -269,7 +269,7 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
 			tkAssert(tk.curType() == TkBracketL, "expext opening bracket");
 			tk.next();
 			block.locals.push_back(parseArgument(tk, true, true));
-			tkAssert(tk.curType() == TkBracketR, "expect closing bracket");
+			tkAssert(tk.curType() == TkBracketR, "expected closing bracket");
 			tk.next();            
 		}
 

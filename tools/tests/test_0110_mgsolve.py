@@ -46,7 +46,7 @@ vel.setConst( vec3(0,0,0) )
 velSource.applyToGrid(grid=vel, value=vec3(1.5, 3, 2.1) )
 
 setWallBcs(flags=flags, vel=vel) 
-solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-04, zeroPressureFixing=True, preconditioner = 2)
+solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-04, zeroPressureFixing=True, preconditioner = PcMGDynamic)
 s.step()
 
 # check final state
@@ -60,12 +60,12 @@ vel.setConst( vec3(0,0,0) )
 
 velSource.applyToGrid(grid=vel, value=vec3(1.1, 2, -2.1) )
 setWallBcs(flags=flags, vel=vel) 
-solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-04, zeroPressureFixing=True, preconditioner = 3)
+solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-04, zeroPressureFixing=True, preconditioner = PcMGStatic)
 s.step()
 
 velSource.applyToGrid(grid=vel, value=vec3(-1.1, -2, 2.1) )
 setWallBcs(flags=flags, vel=vel) 
-solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-04, zeroPressureFixing=True, preconditioner = 3)
+solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=99, cgAccuracy=1e-04, zeroPressureFixing=True, preconditioner = PcMGStatic)
 s.step()
 
 # check final state

@@ -35,8 +35,7 @@ double minReduction(const Grid<Real>& v)
 		sum = v[idx];
 }
 
-
-// ... add own test code ...
+// ... add own test code here if necessary ...
 
 
 } //namespace

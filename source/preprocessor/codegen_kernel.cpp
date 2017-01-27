@@ -332,7 +332,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 
 	// process options
 	bool idxMode = false, reduce = false, pts = false, fourdMode = false;
-	bool hasLocals = !block.locals.empty(), hasRet = kernel.returnType.name != "void";
+	bool hasLocals = !block.locals.empty(), hasRetType = kernel.returnType.name != "void";
 	string bnd = "0", reduceOp="", ompForOpt="";
 
 	MType mtType = gMTType;
@@ -372,13 +372,15 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 		"KERNEL(opt): Modes 'ijk', 'idx' and 'bnd' can't be applied to particle kernels.");
 
 	// check type consistency of first 'returns' with return type
-	if (hasRet && kernel.returnType.name != "void") {
-		kernelAssert(block.locals.size() == 1, "multiple returns statement only work for 'void' kernels");
+	if (hasRetType) {
+		kernelAssert(hasLocals, "for kernels not returning void a 'returns' statement is required");
+		kernelAssert(block.locals.size() == 1, "multiple 'returns' statements only work for 'void' kernels");
 		const Type& rt = block.locals[0].type;
 		kernelAssert(rt == kernel.returnType, "return type does not match type in first 'returns' statement");
+	} else {
+		// for void kernels, any number of returns is fine...
+		//kernelAssert( block.locals.size() >= 1, "return type specified without a suitable 'returns' statement");
 	}
-	kernelAssert(kernel.returnType.name == "void" || hasRet, 
-		"return argument specified without matching 'returns' initializer");
 	
 	// figure out basegrid
 	string baseGrid;
@@ -428,12 +430,17 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 	// optional - print cmd line msg for each kernel call
 	stringstream runMsgFunc;
 	if(true) {
-		runMsgFunc << "void runMessage() { debMsg(\"Executing kernel "+ kernel.name +" \", 2); ";
-		runMsgFunc << "debMsg(\"Kernel range\" << \" x \"<<  maxX  << \" y \"<< maxY  << \" z \"<< minZ<<\" - \"<< maxZ  << \" \"  ";
-		if(fourdMode) runMsgFunc << " \" t \"<< minT<<\" - \"<< maxT ";
-		runMsgFunc << " , 3); };";
+		runMsgFunc << "void runMessage() { debMsg(\"Executing kernel "+ kernel.name +" \", 3); ";
+		runMsgFunc << "debMsg(\"Kernel range\" << ";
+		if(!pts) {
+			runMsgFunc << " \" x \"<<  maxX  << \" y \"<< maxY  << \" z \"<< minZ<<\" - \"<< maxZ  << \" \"  ";
+			if(fourdMode) runMsgFunc << " \" t \"<< minT<<\" - \"<< maxT ";
+		} else {
+			runMsgFunc << " \" size \"<<  size  << \" \"  ";
+		}
+		runMsgFunc << " , 4); };";
 	}  else { 
-		runMsgFunc << "void runMessage() { };"; // disable
+		runMsgFunc << "void runMessage() { };"; // disable run msgs
 	}
 
 	// build locals, and reduce joiners
@@ -453,7 +460,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 		}         
 	}
 	const string ompPost = reduce ? "\n#pragma omp critical\n{"+postReduce.str()+"}":"";
-	bool doubleKernel = mtType == MTTBB && hasRet && !reduce;
+	bool doubleKernel = mtType == MTTBB && hasRetType && !reduce;
 	
 	const string table[] = { "IDX", idxMode ? "Y":"",
 							 "PTS", pts ? "Y":"",
@@ -478,8 +485,8 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 							 "RUNMSG_FUNC", runMsgFunc.str(),
 							 "CONST", (!reduce && mtType==MTTBB) ? "const" : "",
 							 "CODE", code,
-							 "RET_TYPE", hasRet ? block.locals[0].type.minimal : "",
-							 "RET_NAME", hasRet ? block.locals[0].name : "",
+							 "RET_TYPE", hasRetType ? block.locals[0].type.minimal : "",
+							 "RET_NAME", hasRetType ? block.locals[0].name : "",
 							 "BND", bnd,
 							 "CALL", kernel.callString() + (hasLocals ? ","+block.locals.names() : ""),
 							 "METHOD", reduce ? "reduce" : "for",

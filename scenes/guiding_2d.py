@@ -8,6 +8,7 @@
 
 from manta import *
 import math
+setDebugLevel(20) # NT_DEBUG
 
 # solver params
 res0 = 64
@@ -70,7 +71,7 @@ for t in range(100*scale):
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,0.25*scale*-4e-3,0), flags=flags)
 
 	PD_fluid_guiding(vel=vel, velT=velT, flags=flags, weight=W, blurRadius=beta, pressure=pressure, \
-		tau = tau, sigma = sigma, theta = theta, preconditioner = 3, zeroPressureFixing=True )
+		tau = tau, sigma = sigma, theta = theta, preconditioner = PcMGStatic, zeroPressureFixing=True ) 
 
 	setWallBcs(flags=flags, vel=vel)
 	if 1 and (t%scale==0):

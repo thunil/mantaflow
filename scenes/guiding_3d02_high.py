@@ -89,7 +89,7 @@ for t in range(numFrames):
 	velT.multConst(vec3(factor))
 
 	PD_fluid_guiding(vel=vel, velT=velT, flags=flags, weight=W, blurRadius=beta, pressure=pressure, \
-		tau = tau, sigma = sigma, theta = theta, preconditioner = 3, zeroPressureFixing=True )
+		tau = tau, sigma = sigma, theta = theta, preconditioner = PcMGStatic, zeroPressureFixing=True )
 	
 	setWallBcs(flags=flags, vel=vel)
 	projectPpmFull( density, output_ppm % (t) , 0, 2.0 );

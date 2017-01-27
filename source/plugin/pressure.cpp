@@ -216,18 +216,40 @@ void fixPressure (int fixPidx, Real value, Grid<Real>& rhs, Grid<Real>& A0, Grid
 }
 
 
-void solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid<Real>& rhs, Real cgAccuracy = 1e-3,
-	Grid<Real>* phi = 0,
-	Grid<Real>* perCellCorr = 0,
-	MACGrid* fractions = 0,
-	Real gfClamp = 1e-04,
-	Real cgMaxIterFac = 1.5,
+// for "static" MG mode, keep data structure
+// leave cleanup to OS if nonzero at program termination (PcMGStatic mode)
+// alternatively, manually release in scene file with releaseMG
+static GridMg* gMG = nullptr; 
+PYTHON() void releaseMG() {
+	delete gMG; 
+	gMG = nullptr;
+}
+
+
+//! Perform pressure projection of the velocity grid
+//! perCellCorr: a divergence correction for each cell, optional
+//! fractions: for 2nd order obstacle boundaries, optional
+//! gfClamp: clamping threshold for ghost fluid method
+//! cgMaxIterFac: heuristic to determine maximal number of CG iteations, increase for more accurate solutions
+//! preconditioner: MIC, or MG (see Preconditioner enum)
+//! useL2Norm: use max norm by default, can be turned to L2 here
+//! zeroPressureFixing: remove null space by fixing a single pressure value, needed for MG 
+//! retRhs: return RHS divergence, e.g., for debugging; optional
+PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgAccuracy = 1e-3,
+    Grid<Real>* phi = 0, 
+    Grid<Real>* perCellCorr = 0, 
+    MACGrid* fractions = 0,
+    Real gfClamp = 1e-04,
+    Real cgMaxIterFac = 1.5,
+    bool precondition = true, // Deprecated, use preconditioner instead
 	int preconditioner = PcMIC,
 	bool enforceCompatibility = false,
-	bool useL2Norm = false,
+    bool useL2Norm = false, 
 	bool zeroPressureFixing = false,
-	Grid<Real>* retRhs = NULL)
+	Grid<Real>* retRhs = NULL )
 {
+	if (precondition==false) preconditioner = PcNone; // for backwards compatibility
+
 	// reserve temp grids
 	FluidSolver* parent = flags.getParent();
 	Grid<Real> residual(parent);
@@ -237,6 +259,7 @@ void solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid
 	Grid<Real> Aj(parent);
 	Grid<Real> Ak(parent);
 	Grid<Real> tmp(parent);
+	Grid<Real> rhs(parent);
 		
 	// setup matrix and boundaries 
 	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak, fractions);
@@ -291,7 +314,7 @@ void solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid
 		if(fixPidx>=0) {
 			fixPressure(fixPidx, Real(0), rhs, A0, Ai, Aj, Ak);
 			static bool msgOnce = false;
-			if(!msgOnce) { debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 1); msgOnce=true; }
+			if(!msgOnce) { debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 2); msgOnce=true; }
 		}
 	}
 
@@ -309,7 +332,6 @@ void solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid
 	int maxIter = 0;
 	
 	Grid<Real> *pca0 = nullptr, *pca1 = nullptr, *pca2 = nullptr, *pca3 = nullptr;
-	static GridMg* gmg = nullptr; // leave cleanup to OS if nonzero at program termination (PcMGStatic mode)
 
 	// optional preconditioning	
 	if (preconditioner == PcNone || preconditioner == PcMIC) {			
@@ -325,16 +347,17 @@ void solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid
 	} else if (preconditioner == PcMGDynamic || preconditioner == PcMGStatic) {
 		maxIter = 100;
 
-		if (!gmg) gmg = new GridMg(pressure.getSize());
+		if (!gMG) gMG = new GridMg(pressure.getSize());
 
-		gcg->setMGPreconditioner( GridCgInterface::PC_MGP, gmg);
+		gcg->setMGPreconditioner( GridCgInterface::PC_MGP, gMG);
 	}
 
 	// CG solve
 	for (int iter=0; iter<maxIter; iter++) {
 		if (!gcg->iterate()) iter=maxIter;
-		//debMsg("FluidSolver::solvePressureBase ResNorm: "<<gcg->getResNorm(), 1);
+		debMsg("FluidSolver::solvePressure iteration "<<iter<<", residual: "<<gcg->getResNorm(), 9);
 	} 
+	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", residual:"<<gcg->getResNorm(), 2);
 
 	// Cleanup
 	if (gcg)  delete gcg;
@@ -345,41 +368,8 @@ void solvePressureBase(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Grid
 
 	// PcMGDynamic: always delete multigrid solver after use
 	// PcMGStatic: keep multigrid solver for next solve
-	if (gmg && preconditioner==PcMGDynamic) {
-		delete gmg; 
-		gmg = nullptr;
-	}
+	if (gMG && preconditioner==PcMGDynamic) releaseMG();
 
-	//debMsg("FluidSolver::solvePressureBase iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
-}
-
-//! Perform pressure projection of the velocity grid
-//! perCellCorr: a divergence correction for each cell, optional
-//! fractions: for 2nd order obstacle boundaries, optional
-//! gfClamp: clamping threshold for ghost fluid method
-//! cgMaxIterFac: heuristic to determine maximal number of CG iteations, increase for more accurate solutions
-//! preconditioner: MIC, or MG (see Preconditioner enum)
-//! useL2Norm: use max norm by default, can be turned to L2 here
-//! zeroPressureFixing: remove null space by fixing a single pressure value, needed for MG 
-//! retRhs: return RHS divergence, e.g., for debugging; optional
-PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgAccuracy = 1e-3,
-    Grid<Real>* phi = 0, 
-    Grid<Real>* perCellCorr = 0, 
-    MACGrid* fractions = 0,
-    Real gfClamp = 1e-04,
-    Real cgMaxIterFac = 1.5,
-    bool precondition = true, // Deprecated, use preconditioner instead
-	int preconditioner = PcMIC,
-	bool enforceCompatibility = false,
-    bool useL2Norm = false, 
-	bool zeroPressureFixing = false,
-	Grid<Real>* retRhs = NULL )
-{
-	if (precondition==false) preconditioner = PcNone; // for backwards compatibility
-
-	Grid<Real> rhs(vel.getParent()); 
-	solvePressureBase(vel, pressure, flags, rhs, cgAccuracy, phi, perCellCorr, fractions, gfClamp, cgMaxIterFac, preconditioner, enforceCompatibility, useL2Norm, zeroPressureFixing, retRhs);
-	
 	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {
 		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);

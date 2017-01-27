@@ -30,13 +30,10 @@ namespace Manta {
 
 
 KERNEL(bnd=1) 
-void knCalcSecDeriv2d(const Grid<Real>& v, Grid<Real>& ret) {
-
+void knCalcSecDeriv2d(const Grid<Real>& v, Grid<Real>& ret) { 
     ret(i,j,k) = 
 		( -4. * v(i,j,k) + v(i-1,j,k) + v(i+1,j,k) + v(i,j-1,k) + v(i,j+1,k) );
-
 };
-
 
 //! calculate a second derivative for the wave equation
 PYTHON() void calcSecDeriv2d(const Grid<Real>& v, Grid<Real>& curv) {
@@ -47,7 +44,7 @@ PYTHON() void calcSecDeriv2d(const Grid<Real>& v, Grid<Real>& curv) {
 // mass conservation 
 
 KERNEL(bnd=1, reduce=+) returns(double sum=0)
-void knTotalSum(Grid<Real>& h) { sum += h(i,j,k); }
+double knTotalSum(Grid<Real>& h) { sum += h(i,j,k); }
 
 //! calculate the sum of all values in a grid (for wave equation solves)
 PYTHON() Real totalSum(Grid<Real>& height) {
