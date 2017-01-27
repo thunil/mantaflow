@@ -5,10 +5,8 @@
 # 	beta = blur radius
 #	scale = up-res factor
 #
-
 from manta import *
 import math
-setDebugLevel(20) # NT_DEBUG
 
 # solver params
 res0 = 64
