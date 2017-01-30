@@ -504,10 +504,10 @@ IF(NOT NOPYTHON)
 					COMMENT "Linking reg files")
 	list(APPEND SOURCES ${PP_REGCPP})
 	set_source_files_properties(${PP_REGCPP} PROPERTIES GENERATED 1)	
-	set(PP_REGISTER pp/source/registration.cpp)
+	set(PP_REGISTER ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/registration.cpp) # path to register, pass to prep as last argument
 	add_custom_command(OUTPUT ${PP_REGISTER}
 					COMMAND prep register ${SOURCES}
-					DEPENDS prep ${PP_REGS} ${SOURCES}
+					DEPENDS prep ${PP_REGS} ${SOURCES} ${PP_REGISTER}
 					WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 					COMMENT "Ensuring registration functions are not removed by compiler")
 	list(APPEND SOURCES ${PP_REGISTER})

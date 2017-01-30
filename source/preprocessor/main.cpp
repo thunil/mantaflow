@@ -101,12 +101,16 @@ void doGenerate(int argc, char* argv[], bool docs) {
 }
 
 void doRegister(int argc, char* argv[]) {
-	std::ofstream output("pp/source/registration.cpp");
+	if(argc<3) { 
+		cerr << "Wrong call for prep register, not enough arguments" << endl; 
+		exit(1); 
+	}
+	std::ofstream output(argv[argc-1]); // full path from call
 	std::string newl("\n"); 
 	
 	std::stringstream RegistrationsDefs;
 	std::stringstream Registrations;
-	for (int i = 2; i < argc; i++)	{
+	for (int i = 2; i < argc-1; i++) {
 		std::ifstream input(argv[i]);
 
 		for (std::string line; getline(input, line); )	{

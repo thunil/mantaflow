@@ -63,7 +63,7 @@ def getVisualSetting( ):
 	return 0
 
 
-# visual mode on? returns multiplier
+# floating point accuracy - using env var MANTA_FPACCURACY , not DOUBLEPRECISION from cmake!
 def getFloatSetting( ):
 	fp = 0
 	ret = int(os.getenv('MANTA_FPACCURACY', 0)) 
