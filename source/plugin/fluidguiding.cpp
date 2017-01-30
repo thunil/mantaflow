@@ -10,13 +10,12 @@
  * Plugins for pressure correction: solve_pressure, and ghost fluid helpers
  *
  ******************************************************************************/
+#include <math.h>
 #include "vectorbase.h"
+#include "grid.h"
 #include "kernel.h"
 #include "conjugategrad.h"
 #include "rcmatrix.h"
-#include <math.h>
-#include "fluidguiding.h"
-#include "grid.h"
 
 using namespace std;
 namespace Manta {

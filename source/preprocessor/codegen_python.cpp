@@ -414,6 +414,10 @@ void processPythonClass(const Block& block, const string& code, Sink& sink, vect
 		return;
 	}
 
+
+#	if NOPYTHON==1
+	sink.inplace << "\n";
+#	else 
 	// register class
 	const string table[] = { "CLASS", cls.name,
 							 "BASE", cls.baseClass.name,
@@ -421,11 +425,6 @@ void processPythonClass(const Block& block, const string& code, Sink& sink, vect
 							 "PYNAME", pythonName,
 							 "CTPL", cls.isTemplated() ? "CT" : "",
 							 "" };
-
-#	if NOPYTHON==1
-	sink.inplace << "\n";
-#	else 
-	// register class
 	string reg = replaceSet(TmpRegisterClass, table);
 	sink.link << '+' << cls.name << '^' << reg << '\n';
 	// instantiate directly if not templated
