@@ -506,8 +506,8 @@ IF(NOT NOPYTHON)
 	set_source_files_properties(${PP_REGCPP} PROPERTIES GENERATED 1)	
 	set(PP_REGISTER ${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/registration.cpp) # path to register, pass to prep as last argument
 	add_custom_command(OUTPUT ${PP_REGISTER}
-					COMMAND prep register ${SOURCES}
-					DEPENDS prep ${PP_REGS} ${SOURCES} ${PP_REGISTER}
+					COMMAND prep register ${SOURCES} ${PP_REGISTER}
+					DEPENDS prep ${PP_REGS} ${SOURCES}
 					WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 					COMMENT "Ensuring registration functions are not removed by compiler")
 	list(APPEND SOURCES ${PP_REGISTER})
@@ -578,17 +578,17 @@ IF(NOT NOPYTHON)
 
 	if(CUDA)
 		#cuda_include_directories(pp/source/cuda)
-		cuda_add_executable( ${EXECCMD} ${SOURCES} ${PP_REGISTRY})
+		cuda_add_executable( ${EXECCMD} ${SOURCES})
 		target_link_libraries( ${EXECCMD} ${F_LIBS} )
 		cuda_build_clean_target()
 	else()
 		if (WIN32)
 			# make nice folders for Visual Studio
 			set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} ${NOPP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
-			add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${PP_SOURCES} ${PP_HEADERS})
-			source_group(Generated FILES ${SOURCES} ${PP_REGISTRY} ${HEADERS})
+			add_executable(${EXECCMD} ${SOURCES} ${PP_SOURCES} ${PP_HEADERS})
+			source_group(Generated FILES ${SOURCES} ${HEADERS})
 		else()
-			add_executable(${EXECCMD} ${SOURCES} ${PP_REGISTRY} ${GITINFO})
+			add_executable(${EXECCMD} ${SOURCES} ${GITINFO})
 		endif()
 		target_link_libraries( ${EXECCMD} ${F_LIBS} )
 	endif()
