@@ -31,7 +31,7 @@ void InvertCheckFluid (FlagGrid& flags, Grid<Real>& grid)
 //! Kernel: Squared sum over grid
 KERNEL(idx, reduce=+) returns(double sum=0)
 double GridSumSqr (Grid<Real>& grid) {
-	sum += square((double)grid[idx]);    
+	sum += square((double)grid[idx]);
 }
 
 //! Kernel: rotation operator \nabla x v for centered vector fields
@@ -135,58 +135,58 @@ KERNEL() void FillInBoundary(Grid<Vec3>& grid, int g) {
 // MAC grids
 KERNEL() void kn_conv_mex_in_to_MAC(const double *p_lin_array, MACGrid *p_result)
 {
-   int ijk = i+j*p_result->getSizeX()+k*p_result->getSizeX()*p_result->getSizeY();
-   const int n = p_result->getSizeX() * p_result->getSizeY()*p_result->getSizeZ();
+	int ijk = i+j*p_result->getSizeX()+k*p_result->getSizeX()*p_result->getSizeY();
+	const int n = p_result->getSizeX() * p_result->getSizeY()*p_result->getSizeZ();
 
-   p_result->get(i,j,k).x = p_lin_array[ijk];
-   p_result->get(i,j,k).y = p_lin_array[ijk+n];
-   p_result->get(i,j,k).z = p_lin_array[ijk+2*n];
+	p_result->get(i,j,k).x = p_lin_array[ijk];
+	p_result->get(i,j,k).y = p_lin_array[ijk+n];
+	p_result->get(i,j,k).z = p_lin_array[ijk+2*n];
 }
 
 KERNEL() void kn_conv_MAC_to_mex_out(const MACGrid *p_mac, double *p_result)
 {
-    int ijk = i+j*p_mac->getSizeX()+k*p_mac->getSizeX()*p_mac->getSizeY();
-    const int n = p_mac->getSizeX() * p_mac->getSizeY()*p_mac->getSizeZ();
+	int ijk = i+j*p_mac->getSizeX()+k*p_mac->getSizeX()*p_mac->getSizeY();
+	const int n = p_mac->getSizeX() * p_mac->getSizeY()*p_mac->getSizeZ();
 
-    p_result[ijk]     = p_mac->get(i,j,k).x;
-    p_result[ijk+n]   = p_mac->get(i,j,k).y;
-    p_result[ijk+2*n] = p_mac->get(i,j,k).z;
+	p_result[ijk]     = p_mac->get(i,j,k).x;
+	p_result[ijk+n]   = p_mac->get(i,j,k).y;
+	p_result[ijk+2*n] = p_mac->get(i,j,k).z;
 }
 
 // Vec3 Grids
 KERNEL() void kn_conv_mex_in_to_Vec3(const double *p_lin_array, Grid<Vec3> *p_result)
 {
-   int ijk = i+j*p_result->getSizeX()+k*p_result->getSizeX()*p_result->getSizeY();
-   const int n = p_result->getSizeX() * p_result->getSizeY()*p_result->getSizeZ();
+	int ijk = i+j*p_result->getSizeX()+k*p_result->getSizeX()*p_result->getSizeY();
+	const int n = p_result->getSizeX() * p_result->getSizeY()*p_result->getSizeZ();
 
-   p_result->get(i,j,k).x = p_lin_array[ijk];
-   p_result->get(i,j,k).y = p_lin_array[ijk+n];
-   p_result->get(i,j,k).z = p_lin_array[ijk+2*n];
+	p_result->get(i,j,k).x = p_lin_array[ijk];
+	p_result->get(i,j,k).y = p_lin_array[ijk+n];
+	p_result->get(i,j,k).z = p_lin_array[ijk+2*n];
 }
 
 KERNEL() void kn_conv_Vec3_to_mex_out(const Grid<Vec3> *p_Vec3, double *p_result)
 {
-    int ijk = i+j*p_Vec3->getSizeX()+k*p_Vec3->getSizeX()*p_Vec3->getSizeY();
-    const int n = p_Vec3->getSizeX() * p_Vec3->getSizeY()*p_Vec3->getSizeZ();
+	int ijk = i+j*p_Vec3->getSizeX()+k*p_Vec3->getSizeX()*p_Vec3->getSizeY();
+	const int n = p_Vec3->getSizeX() * p_Vec3->getSizeY()*p_Vec3->getSizeZ();
 
-    p_result[ijk]     = p_Vec3->get(i,j,k).x;
-    p_result[ijk+n]   = p_Vec3->get(i,j,k).y;
-    p_result[ijk+2*n] = p_Vec3->get(i,j,k).z;
+	p_result[ijk]     = p_Vec3->get(i,j,k).x;
+	p_result[ijk+n]   = p_Vec3->get(i,j,k).y;
+	p_result[ijk+2*n] = p_Vec3->get(i,j,k).z;
 }
 
 // Real Grids
 KERNEL() void kn_conv_mex_in_to_Real(const double *p_lin_array, Grid<Real> *p_result)
 {
-   int ijk = i+j*p_result->getSizeX()+k*p_result->getSizeX()*p_result->getSizeY();
+	int ijk = i+j*p_result->getSizeX()+k*p_result->getSizeX()*p_result->getSizeY();
 
-   p_result->get(i,j,k) = p_lin_array[ijk];
+	p_result->get(i,j,k) = p_lin_array[ijk];
 }
 
 KERNEL() void kn_conv_Real_to_mex_out(const Grid<Real> *p_grid, double *p_result)
 {
-   int ijk = i+j*p_grid->getSizeX()+k*p_grid->getSizeX()*p_grid->getSizeY();
+	int ijk = i+j*p_grid->getSizeX()+k*p_grid->getSizeX()*p_grid->getSizeY();
 
-   p_result[ijk] = p_grid->get(i,j,k);
+	p_result[ijk] = p_grid->get(i,j,k);
 }
 
 

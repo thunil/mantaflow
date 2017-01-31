@@ -287,6 +287,7 @@ if (NOPYTHON)
 	set(NOPP_SOURCES
 		source/nopython/pclass.cpp
 		source/util/vectorbase.cpp
+		source/util/vector4d.cpp
 		source/util/simpleimage.cpp
 	) 
 	# update paths to use nopython versions
