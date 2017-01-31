@@ -24,6 +24,8 @@
 #include <map>
 #include <vector>
 
+//#include "numpyWrap.h"
+
 namespace Manta { 
 template<class T> class Grid; 
 
