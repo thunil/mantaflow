@@ -11,6 +11,7 @@
 # 1xxx is for 2d sims
 # 2xxx for "real" 3d sims
 # 204x ff. are liquids
+# 30xx ff. are for non-fluid related things 
 # 
 import datetime
 import platform

@@ -219,8 +219,8 @@ vector<Vec3> KnAdvectMeshInGrid(vector<Node>& nodes, const FlagGrid& flags, cons
 }
 
 // advection plugin
-void Mesh::advectInGrid(FlagGrid& flaggrid, MACGrid& vel, int integrationMode) {
-	KnAdvectMeshInGrid kernel(mNodes, flaggrid, vel, getParent()->getDt());
+void Mesh::advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode) {
+	KnAdvectMeshInGrid kernel(mNodes, flags, vel, getParent()->getDt());
 	integratePointSet( kernel, integrationMode);    
 }
 
@@ -651,7 +651,7 @@ static void SDFKernel(Grid<int>& partStart, Grid<int>& partLen, CVec3Ptr pos, CV
 	}
 }
 
-static inline int _cIndex(const Vec3& pos, const Vec3i& s) {
+static inline IndexInt _cIndex(const Vec3& pos, const Vec3i& s) {
 	Vec3i p = toVec3i(pos);
 	if (p.x < 0 || p.y < 0 || p.z < 0 || p.x >= s.x || p.y >= s.y || p.z >= s.z) return -1;
 	return p.x + s.x * (p.y + s.y * p.z);
@@ -659,7 +659,7 @@ static inline int _cIndex(const Vec3& pos, const Vec3i& s) {
 
 //! Kernel: Apply a shape to a grid, setting value inside
 KERNEL() template<class T> 
-void ApplyMeshToGrid (Grid<T>* grid, Grid<Real> sdf, T value, FlagGrid* respectFlags) {
+void ApplyMeshToGrid (Grid<T>* grid, Grid<Real>& sdf, T value, FlagGrid* respectFlags) {
 	if (respectFlags && respectFlags->isObstacle(i,j,k))
 		return;
 	if (sdf(i,j,k) < 0)
@@ -769,10 +769,9 @@ void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
 	levelset.setConst( -cutoff );
 	
 	// 1. count sources per cell
-	// NT_DEBUG todo, use IndexInt
 	Grid<int> srcPerCell(levelset.getParent());
 	for (size_t i=0; i<center.size(); i++) {
-		int idx = _cIndex(center[i], gridRes);
+		IndexInt idx = _cIndex(center[i], gridRes);
 		if (idx >= 0)
 			srcPerCell[idx]++;
 	}
@@ -781,7 +780,7 @@ void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
 	Grid<int> srcCellStart(levelset.getParent());
 	int cnt=0;
 	FOR_IJK(srcCellStart) {
-		int idx = srcCellStart.index(i,j,k);
+		IndexInt idx = srcCellStart.index(i,j,k);
 		srcCellStart[idx] = cnt;
 		cnt += srcPerCell[idx];
 	}
@@ -792,9 +791,9 @@ void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
 	{
 		Grid<int> curSrcCell(levelset.getParent());
 		for (int i=0; i<(int)center.size(); i++) {
-			int idx = _cIndex(center[i], gridRes);
+			IndexInt idx = _cIndex(center[i], gridRes);
 			if (idx < 0) continue;
-			int idx2 = srcCellStart[idx] + curSrcCell[idx];
+			IndexInt idx2 = srcCellStart[idx] + curSrcCell[idx];
 			reorderPos.set(idx2, center[i]);
 			reorderNormal.set(idx2, normals[i]);
 			curSrcCell[idx]++;

@@ -13,9 +13,18 @@
 #include "vectorbase.h"
 #include "kernel.h"
 #include "conjugategrad.h"
+#include "multigrid.h"
 
 using namespace std;
 namespace Manta {
+
+//! Preconditioner for CG solver
+// - None: Use standard CG
+// - MIC: Modified incomplete Cholesky preconditioner
+// - MGDynamic: Multigrid preconditioner, rebuilt for each solve
+// - MGStatic: Multigrid preconditioner, built only once (faster than
+//       MGDynamic, but works only if Poisson equation does not change)
+enum Preconditioner { PcNone = 0, PcMIC = 1, PcMGDynamic = 2, PcMGStatic = 3 };
 
 //! Kernel: Construct the right-hand side of the poisson equation
 KERNEL(bnd=1, reduce=+) returns(int cnt=0) returns(double sum=0)
@@ -51,11 +60,11 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 	rhs(i,j,k) = set;
 }
 
-//! Kernel: Apply velocity update from poisson equation
-KERNEL(bnd=1) 
+//! Kernel: make velocity divergence free by subtracting pressure gradient
+KERNEL(bnd = 1)
 void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
 {
-	int idx = flags.index(i,j,k);
+	IndexInt idx = flags.index(i,j,k);
 	if (flags.isFluid(idx))
 	{
 		if (flags.isFluid(i-1,j,k)) vel[idx].x -= (pressure[idx] - pressure(i-1,j,k));
@@ -91,7 +100,7 @@ inline static Real thetaHelper(Real inside, Real outside)
 }
 
 // calculate ghost fluid factor, cell at idx should be a fluid cell
-inline static Real ghostFluidHelper(int idx, int offset, const Grid<Real> &phi, Real gfClamp)
+inline static Real ghostFluidHelper(IndexInt idx, int offset, const Grid<Real> &phi, Real gfClamp)
 {
 	Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
 	if (alpha < gfClamp) return alpha = gfClamp;
@@ -103,7 +112,7 @@ KERNEL(bnd=1)
 void ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<Real> &phi, Real gfClamp)
 {
 	const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
-	int idx = flags.index(i,j,k);
+	IndexInt idx = flags.index(i,j,k);
 	if (!flags.isFluid(idx)) return;
 
 	if (flags.isEmpty(i-1,j,k)) A0[idx] -= ghostFluidHelper(idx, -X, phi, gfClamp);
@@ -120,8 +129,8 @@ void ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<R
 KERNEL(bnd=1)
 void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp)
 {
-	const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
-	const int idx = flags.index(i,j,k);
+	const IndexInt X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
+	const IndexInt idx = flags.index(i,j,k);
 	if (flags.isFluid(idx))
 	{
 		if (flags.isEmpty(i-1,j,k)) vel[idx][0] += pressure[idx] * ghostFluidHelper(idx, -X, phi, gfClamp);
@@ -143,8 +152,7 @@ void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<R
 
 
 // improve behavior of clamping for large time steps:
-
-inline static Real ghostFluidWasClamped(int idx, int offset, const Grid<Real> &phi, Real gfClamp)
+inline static Real ghostFluidWasClamped(IndexInt idx, int offset, const Grid<Real> &phi, Real gfClamp)
 {
 	Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
 	if (alpha < gfClamp) return true;
@@ -155,8 +163,8 @@ KERNEL(bnd=1)
 void ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags, 
 		const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp )
 {
-	const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
-	const int idx = flags.index(i,j,k);
+	const IndexInt idx = flags.index(i,j,k);
+	const IndexInt X   = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
 	if (!flags.isEmpty(idx)) return;
 
 	if( (flags.isFluid(i-1,j,k)) && ( ghostFluidWasClamped(idx-X, +X, phi, gfClamp) ) )
@@ -185,23 +193,65 @@ int CountEmptyCells(FlagGrid& flags) {
 // *****************************************************************************
 // Main pressure solve
 
-//! Perform pressure projection of the velocity grid
-PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
-                     Grid<Real>* phi = 0, 
-                     Grid<Real>* perCellCorr = 0,
-                     MACGrid* fractions = 0,
-                     Real gfClamp = 1e-04,
-                     Real cgMaxIterFac = 1.5,
-                     Real cgAccuracy = 1e-3,
-                     bool precondition = true,
-                     bool enforceCompatibility = false,
-                     bool useL2Norm = false, 
-                     bool zeroPressureFixing = false, 
-					 Grid<Real>* retRhs = NULL )
+//! Change 'A' and 'rhs' such that pressure at 'fixPidx' is fixed to 'value'
+void fixPressure (int fixPidx, Real value, Grid<Real>& rhs, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
 {
+	// Bring to rhs at neighbors
+	rhs[fixPidx + Ai.getStrideX()] -= Ai[fixPidx] * value;
+	rhs[fixPidx + Aj.getStrideY()] -= Aj[fixPidx] * value;
+	rhs[fixPidx - Ai.getStrideX()] -= Ai[fixPidx - Ai.getStrideX()] * value;
+	rhs[fixPidx - Aj.getStrideY()] -= Aj[fixPidx - Aj.getStrideY()] * value;
+	if (rhs.is3D()) {
+		rhs[fixPidx + Ak.getStrideZ()] -= Ak[fixPidx] * value;
+		rhs[fixPidx - Ak.getStrideZ()] -= Ak[fixPidx - Ak.getStrideZ()] * value;
+	}
+	
+	// Trivialize equation at 'fixPidx' to: pressure[fixPidx] = value
+	rhs[fixPidx] = value;
+	A0[fixPidx] = Real(1);
+	Ai[fixPidx] = Aj[fixPidx] = Ak[fixPidx] = Real(0);
+	Ai[fixPidx - Ai.getStrideX()] = Real(0);
+	Aj[fixPidx - Aj.getStrideY()] = Real(0);
+	if (rhs.is3D()) { Ak[fixPidx - Ak.getStrideZ()] = Real(0); }
+}
+
+
+// for "static" MG mode, keep data structure
+// leave cleanup to OS if nonzero at program termination (PcMGStatic mode)
+// alternatively, manually release in scene file with releaseMG
+static GridMg* gMG = nullptr; 
+PYTHON() void releaseMG() {
+	delete gMG; 
+	gMG = nullptr;
+}
+
+
+//! Perform pressure projection of the velocity grid
+//! perCellCorr: a divergence correction for each cell, optional
+//! fractions: for 2nd order obstacle boundaries, optional
+//! gfClamp: clamping threshold for ghost fluid method
+//! cgMaxIterFac: heuristic to determine maximal number of CG iteations, increase for more accurate solutions
+//! preconditioner: MIC, or MG (see Preconditioner enum)
+//! useL2Norm: use max norm by default, can be turned to L2 here
+//! zeroPressureFixing: remove null space by fixing a single pressure value, needed for MG 
+//! retRhs: return RHS divergence, e.g., for debugging; optional
+PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgAccuracy = 1e-3,
+    Grid<Real>* phi = 0, 
+    Grid<Real>* perCellCorr = 0, 
+    MACGrid* fractions = 0,
+    Real gfClamp = 1e-04,
+    Real cgMaxIterFac = 1.5,
+    bool precondition = true, // Deprecated, use preconditioner instead
+	int preconditioner = PcMIC,
+	bool enforceCompatibility = false,
+    bool useL2Norm = false, 
+	bool zeroPressureFixing = false,
+	Grid<Real>* retRhs = NULL )
+{
+	if (precondition==false) preconditioner = PcNone; // for backwards compatibility
+
 	// reserve temp grids
 	FluidSolver* parent = flags.getParent();
-	Grid<Real> rhs(parent);
 	Grid<Real> residual(parent);
 	Grid<Real> search(parent);
 	Grid<Real> A0(parent);
@@ -209,10 +259,7 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	Grid<Real> Aj(parent);
 	Grid<Real> Ak(parent);
 	Grid<Real> tmp(parent);
-	Grid<Real> pca0(parent);
-	Grid<Real> pca1(parent);
-	Grid<Real> pca2(parent);
-	Grid<Real> pca3(parent);
+	Grid<Real> rhs(parent);
 		
 	// setup matrix and boundaries 
 	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak, fractions);
@@ -229,31 +276,50 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	
 	// check whether we need to fix some pressure value...
 	// (manually enable, or automatically for high accuracy, can cause asymmetries otherwise)
-	int fixPidx = -1;
 	if(zeroPressureFixing || cgAccuracy<1e-07) 
 	{
 		if(FLOATINGPOINT_PRECISION==1) debMsg("Warning - high CG accuracy with single-precision floating point accuracy might not converge...", 2);
 
 		int numEmpty = CountEmptyCells(flags);
+		IndexInt fixPidx = -1;
 		if(numEmpty==0) {
-			FOR_IJK_BND(flags,1) {
-				if(flags.isFluid(i,j,k)) {
-					fixPidx = flags.index(i,j,k);
+			// Determine appropriate fluid cell for pressure fixing
+			// 1) First check some preferred positions for approx. symmetric zeroPressureFixing
+			Vec3i topCenter(flags.getSizeX() / 2, flags.getSizeY() - 1, flags.is3D() ? flags.getSizeZ() / 2 : 0);
+			Vec3i preferredPos [] = { topCenter, 
+				                      topCenter - Vec3i(0,1,0), 
+				                      topCenter - Vec3i(0,2,0) };
+			
+			for (Vec3i pos : preferredPos) {
+				if(flags.isFluid(pos)) {
+					fixPidx = flags.index(pos);
 					break;
+				}
+			}
+
+			// 2) Then search whole domain
+			if (fixPidx == -1) {
+				FOR_IJK_BND(flags,1) {
+					if(flags.isFluid(i,j,k)) {
+						fixPidx = flags.index(i,j,k);
+						// break FOR_IJK_BND loop
+						i = flags.getSizeX()-1; 
+						j = flags.getSizeY()-1;
+						k = __kmax;
+					}
 				}
 			}
 			//debMsg("No empty cells! Fixing pressure of cell "<<fixPidx<<" to zero",1);
 		}
 		if(fixPidx>=0) {
-			flags[fixPidx] |= FlagGrid::TypeZeroPressure;
-			rhs[fixPidx] = 0.; 
-			debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 2);
+			fixPressure(fixPidx, Real(0), rhs, A0, Ai, Aj, Ak);
+			static bool msgOnce = false;
+			if(!msgOnce) { debMsg("Pinning pressure of cell "<<fixPidx<<" to zero", 2); msgOnce=true; }
 		}
 	}
 
 	// CG setup
 	// note: the last factor increases the max iterations for 2d, which right now can't use a preconditioner 
-	const int maxIter = (int)(cgMaxIterFac * flags.getSize().max()) * (flags.is3D() ? 1 : 4);
 	GridCgInterface *gcg;
 	if (vel.is3D())
 		gcg = new GridCg<ApplyMatrix>  (pressure, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
@@ -263,24 +329,53 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	gcg->setAccuracy( cgAccuracy ); 
 	gcg->setUseL2Norm( useL2Norm );
 
-	// optional preconditioning
-	gcg->setPreconditioner( precondition ? GridCgInterface::PC_mICP : GridCgInterface::PC_None, &pca0, &pca1, &pca2, &pca3);
+	int maxIter = 0;
+	
+	Grid<Real> *pca0 = nullptr, *pca1 = nullptr, *pca2 = nullptr, *pca3 = nullptr;
 
+	// optional preconditioning	
+	if (preconditioner == PcNone || preconditioner == PcMIC) {			
+		maxIter = (int)(cgMaxIterFac * flags.getSize().max()) * (flags.is3D() ? 1 : 4);
+
+		pca0 = new Grid<Real>(parent);
+		pca1 = new Grid<Real>(parent);
+		pca2 = new Grid<Real>(parent);
+		pca3 = new Grid<Real>(parent);
+
+		gcg->setICPreconditioner( preconditioner == PcMIC ? GridCgInterface::PC_mICP : GridCgInterface::PC_None, 
+			pca0, pca1, pca2, pca3);
+	} else if (preconditioner == PcMGDynamic || preconditioner == PcMGStatic) {
+		maxIter = 100;
+
+		if (!gMG) gMG = new GridMg(pressure.getSize());
+
+		gcg->setMGPreconditioner( GridCgInterface::PC_MGP, gMG);
+	}
+
+	// CG solve
 	for (int iter=0; iter<maxIter; iter++) {
 		if (!gcg->iterate()) iter=maxIter;
+		debMsg("FluidSolver::solvePressure iteration "<<iter<<", residual: "<<gcg->getResNorm(), 9);
 	} 
-	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
-	delete gcg;
-	
+	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", residual:"<<gcg->getResNorm(), 2);
+
+	// Cleanup
+	if (gcg)  delete gcg;
+	if (pca0) delete pca0;
+	if (pca1) delete pca1;
+	if (pca2) delete pca2;
+	if (pca3) delete pca3;
+
+	// PcMGDynamic: always delete multigrid solver after use
+	// PcMGStatic: keep multigrid solver for next solve
+	if (gMG && preconditioner==PcMGDynamic) releaseMG();
+
 	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {
 		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);
 		// improve behavior of clamping for large time steps:
 		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
 	}
-
-	if(fixPidx>=0)
-		flags[fixPidx] &= ~FlagGrid::TypeZeroPressure;
 
 	// optionally , return RHS
 	if(retRhs) {

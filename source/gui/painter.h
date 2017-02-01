@@ -31,13 +31,13 @@ class Painter : public QObject {
 public:
 	enum PainterEvent { 
 		EventNone = 0, UpdateRequest, UpdateFull, UpdateStep,
-		EventScaleVecUp, EventScaleVecDown, EventNextRealDisplayMode, EventScaleRealUp, EventScaleRealDown, EventChangePlane, 
+		EventScaleVecUp, EventScaleVecDown, EventNextRealDisplayMode, EventScaleRealUp, EventScaleRealDown, EventScaleRealUpSm, EventScaleRealDownSm, EventChangePlane, 
 		EventSetPlane, EventSetDim, EventNextInt, EventNextReal, EventNextVec, EventNextVecDisplayMode,
 		EventNextMesh, EventMeshMode, EventToggleGridDisplay, EventScaleMeshUp, EventScaleMeshDown, EventMeshColorMode,
 		EventNextSystem, EventToggleParticles, EventNextParticleDisplayMode, EventToggleBackgroundMesh, EventSetMax,
 		EventScalePdataDown, EventScalePdataUp };
 
-	enum RealDisplayModes { RealDispOff=0, RealDispStd, RealDispLevelset, NumRealDispModes };
+	enum RealDisplayModes { RealDispOff=0, RealDispStd, RealDispLevelset, RealDispShadeVol, RealDispShadeSurf, NumRealDispModes };
 
 	enum VecDisplayModes { VecDispOff=0, VecDispCentered, VecDispStaggered, VecDispUv, NumVecDispModes };
 	
@@ -92,21 +92,22 @@ public:
 protected:
 	std::string getID();
 	Real getScale();
+	void setScale(Real v);
 	void update();
 	void updateText();
 	void processKeyEvent(PainterEvent e, int param);
 	void processSpecificKeyEvent(PainterEvent e, int param);
 	//void paintGridLines(bool lines, bool box);
 	
-	Real        mMaxVal;
+	Real        mMaxVal;       //! stats
 	int         mDim, mPlane, mMax;
-	Grid<T>*    mLocalGrid;
-	FlagGrid**  mFlags;
-	QLabel*     mInfo;
-	bool        mHide;       // hide all grids?
-	bool        mHideLocal;  // hide only this type?
-	int         mDispMode;   // display modes 
-	std::map<PbClass*, Real> mValScale;
+	Grid<T>*    mLocalGrid;    //! currently selected grid
+	FlagGrid**  mFlags;        //! flag grid (can influence display of selected grid)
+	QLabel*     mInfo;         //! info string
+	bool        mHide;         //! hide all grids?
+	bool        mHideLocal;    //! hide only this type?
+	int         mDispMode;     //! display modes 
+	std::map< std::pair<void*, int>, Real> mValScale;
 };
 
 }

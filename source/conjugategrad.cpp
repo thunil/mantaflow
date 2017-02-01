@@ -17,7 +17,7 @@
 using namespace std;
 namespace Manta {
 
-const int CG_DEBUGLEVEL = 4;
+const int CG_DEBUGLEVEL = 5;
 	
 //*****************************************************************************
 //  Precondition helpers
@@ -35,7 +35,7 @@ void InitPreconditionIncompCholesky(FlagGrid& flags,
 	
 	FOR_IJK(A0) {
 		if (flags.isFluid(i,j,k)) {
-			const int idx = A0.index(i,j,k);
+			const IndexInt idx = A0.index(i,j,k);
 			A0[idx] = sqrt(A0[idx]);
 			
 			// correct left and top stencil in other entries
@@ -96,6 +96,15 @@ void InitPreconditionModifiedIncompCholesky2(FlagGrid& flags,
 	}
 };
 
+//! Preconditioning using multigrid ala Dick et al.
+void InitPreconditionMultigrid(GridMg* MG, Grid<Real>&A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, Real mAccuracy) 
+{
+	// build multigrid hierarchy if necessary
+	if (!MG->isASet()) MG->setA(&A0, &Ai, &Aj, &Ak);
+	MG->setCoarsestLevelAccuracy(mAccuracy * 1E-4);
+	MG->setSmoothing(1,1);
+};
+
 //! Apply WT-style ICP
 void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid& flags,
 				Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak,
@@ -113,7 +122,7 @@ void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid
 	
 	// backward substitution
 	FOR_IJK_REVERSE(dst) {
-		const int idx = A0.index(i,j,k);
+		const IndexInt idx = A0.index(i,j,k);
 		if (!flags.isFluid(idx)) continue;
 		dst[idx] = A0[idx] * ( dst[idx] 
 			   - dst(i+1,j,k) * Ai[idx]
@@ -139,7 +148,7 @@ void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1,
 	
 	// backward substitution
 	FOR_IJK_REVERSE(dst) {            
-		const int idx = A0.index(i,j,k);
+		const IndexInt idx = A0.index(i,j,k);
 		if (!flags.isFluid(idx)) continue;
 		const Real p = Aprecond[idx];
 		dst[idx] = p * ( dst[idx] 
@@ -147,6 +156,14 @@ void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1,
 			   - dst(i,j+1,k) * Aj[idx] * p
 			   - dst(i,j,k+1) * Ak[idx] * p);
 	}
+}
+
+//! Perform one Multigrid VCycle
+void ApplyPreconditionMultigrid(GridMg* pMG, Grid<Real>& dst, Grid<Real>& Var1) 
+{
+	// one VCycle on "A*dst = Var1" with initial guess dst=0
+	pMG->setRhs(Var1);
+	pMG->doVCycle(dst); 
 }
 
 
@@ -186,7 +203,7 @@ GridCg<APPLYMAT>::GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual,
 			   Grid<Real>* pA0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk) :
 	GridCgInterface(), mInited(false), mIterations(0), mDst(dst), mRhs(rhs), mResidual(residual),
 	mSearch(search), mFlags(flags), mTmp(tmp), mpA0(pA0), mpAi(pAi), mpAj(pAj), mpAk(pAk),
-	mPcMethod(PC_None), mpPCA0(pA0), mpPCAi(pAi), mpPCAj(pAj), mpPCAk(pAk), mSigma(0.), mAccuracy(VECTOR_EPSILON), mResNorm(1e20) 
+	mPcMethod(PC_None), mpPCA0(nullptr), mpPCAi(nullptr), mpPCAj(nullptr), mpPCAk(nullptr), mMG(nullptr), mSigma(0.), mAccuracy(VECTOR_EPSILON), mResNorm(1e20) 
 {
 	dst.clear();
 	residual.clear();
@@ -208,6 +225,9 @@ void GridCg<APPLYMAT>::doInit() {
 		assertMsg(mDst.is3D(), "mICP only supports 3D grids so far");
 		InitPreconditionModifiedIncompCholesky2(mFlags, *mpPCA0, *mpA0, *mpAi, *mpAj, *mpAk);
 		ApplyPreconditionModifiedIncompCholesky2(mTmp, mResidual, mFlags, *mpPCA0, *mpA0, *mpAi, *mpAj, *mpAk);
+	} else if (mPcMethod == PC_MGP) {
+		InitPreconditionMultigrid(mMG, *mpA0, *mpAi, *mpAj, *mpAk, mAccuracy);
+		ApplyPreconditionMultigrid(mMG, mTmp, mResidual);
 	} else {
 		mTmp.copyFrom( mResidual );
 	}
@@ -241,6 +261,8 @@ bool GridCg<APPLYMAT>::iterate() {
 		ApplyPreconditionIncompCholesky(mTmp, mResidual, mFlags, *mpPCA0, *mpPCAi, *mpPCAj, *mpPCAk, *mpA0, *mpAi, *mpAj, *mpAk);
 	else if (mPcMethod == PC_mICP)
 		ApplyPreconditionModifiedIncompCholesky2(mTmp, mResidual, mFlags, *mpPCA0, *mpA0, *mpAi, *mpAj, *mpAk);
+	else if (mPcMethod == PC_MGP)
+		ApplyPreconditionMultigrid(mMG, mTmp, mResidual);
 	else
 		mTmp.copyFrom( mResidual );
 		
@@ -264,7 +286,7 @@ bool GridCg<APPLYMAT>::iterate() {
 	// search =  tmp + beta * search
 	UpdateSearchVec (mSearch, mTmp, beta);
 
-	debMsg("PB-Cg::iter i="<<mIterations<<" sigmaNew="<<sigmaNew<<" sigmaLast="<<mSigma<<" alpha="<<alpha<<" beta="<<beta<<" ", CG_DEBUGLEVEL);
+	debMsg("GridCg::iterate i="<<mIterations<<" sigmaNew="<<sigmaNew<<" sigmaLast="<<mSigma<<" alpha="<<alpha<<" beta="<<beta<<" ", CG_DEBUGLEVEL);
 	mSigma = sigmaNew;
 	
 	//debMsg("PB-CG-Norms::p"<<sqrt( GridOpNormNosqrt(mpDst, mpFlags).getValue() ) <<" search"<<sqrt( GridOpNormNosqrt(mpSearch, mpFlags).getValue(), CG_DEBUGLEVEL ) <<" res"<<sqrt( GridOpNormNosqrt(mpResidual, mpFlags).getValue() ) <<" tmp"<<sqrt( GridOpNormNosqrt(mpTmp, mpFlags).getValue() ), CG_DEBUGLEVEL ); // debug
@@ -281,11 +303,13 @@ void GridCg<APPLYMAT>::solve(int maxIter) {
 
 static bool gPrint2dWarning = true;
 template<class APPLYMAT>
-void GridCg<APPLYMAT>::setPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak) {
+void GridCg<APPLYMAT>::setICPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak) {
+	assertMsg(method==PC_ICP || method==PC_mICP, "GridCg<APPLYMAT>::setICPreconditioner: Invalid method specified.");
+
 	mPcMethod = method;
-	if( (!A0->is3D()) && (mPcMethod!=PC_None) ) {
+	if( (!A0->is3D())) {
 		if(gPrint2dWarning) {
-			debMsg("Pre-conditioning only supported in 3D for now, disabling it.", 1);
+			debMsg("ICP/mICP pre-conditioning only supported in 3D for now, disabling it.", 1);
 			gPrint2dWarning = false;
 		}
 		mPcMethod=PC_None;
@@ -294,6 +318,15 @@ void GridCg<APPLYMAT>::setPreconditioner(PreconditionType method, Grid<Real> *A0
 	mpPCAi = Ai;
 	mpPCAj = Aj;
 	mpPCAk = Ak;
+}
+
+template<class APPLYMAT>
+void GridCg<APPLYMAT>::setMGPreconditioner(PreconditionType method, GridMg* MG) {
+    assertMsg(method==PC_MGP, "GridCg<APPLYMAT>::setMGPreconditioner: Invalid method specified.");
+
+	mPcMethod = method;
+	
+	mMG = MG;
 }
 
 // explicit instantiation

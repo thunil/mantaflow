@@ -17,18 +17,28 @@
 #include "general.h"
 #include "timing.h"
 
+#ifdef GUI
+#   include <QMutex>
+#else
+class QMutex { public:
+	void lock() {};
+	void unlock() {};
+	bool tryLock() { return true; };
+};
+#endif
+
 using namespace std;
 namespace Manta {
 
 //******************************************************************************
 // Free functions
 
-void pbPreparePlugin(FluidSolver* parent, const string& name) {
-    TimingData::instance().start(parent, name);
+void pbPreparePlugin(FluidSolver* parent, const string& name, bool doTime) {
+	if(doTime) TimingData::instance().start(parent, name);
 }
 
-void pbFinalizePlugin(FluidSolver *parent, const string& name) {
-    TimingData::instance().stop(parent, name);
+void pbFinalizePlugin(FluidSolver *parent, const string& name, bool doTime) {
+    if(doTime) TimingData::instance().stop(parent, name);
 	
 	// GUI update, also print name of parent if there's more than one
 	std::ostringstream msg;
@@ -39,7 +49,7 @@ void pbFinalizePlugin(FluidSolver *parent, const string& name) {
 	}
 	updateQtGui(false, 0,0., msg.str() );
 	
-	debMsg(name<<" done", 2);
+	debMsg(name<<" done", 3);
 	// name unnamed PbClass Objects from var name
 	PbClass::renameObjects();
 }
@@ -74,12 +84,14 @@ string PbType::str() const {
 vector<PbClass*> PbClass::mInstances;
 
 PbClass::PbClass(FluidSolver* parent, const string& name, PyObject* obj)
-	: mMutex(), mParent(parent), mPyObject(obj), mName(name), mHidden(false)
+	: mMutex(NULL), mParent(parent), mPyObject(obj), mName(name), mHidden(false)
 {
+	mMutex = new QMutex();
 }
 
-PbClass::PbClass(const PbClass& a) : mMutex(), mParent(a.mParent), mPyObject(0), mName("_unnamed"), mHidden(false)
+PbClass::PbClass(const PbClass& a) : mMutex(NULL), mParent(a.mParent), mPyObject(0), mName("_unnamed"), mHidden(false)
 {
+	mMutex = new QMutex();
 }
 	
 
@@ -90,16 +102,17 @@ PbClass::~PbClass() {
 			break;
 		}
 	}
+	delete mMutex;
 }
 	
 void PbClass::lock() {
-	mMutex.lock();
+	mMutex->lock();
 }
 void PbClass::unlock() {
-	mMutex.unlock();
+	mMutex->unlock();
 }
 bool PbClass::tryLock() {
-	return mMutex.tryLock();
+	return mMutex->tryLock();
 }
 	
 PbClass* PbClass::getInstance(int idx) {

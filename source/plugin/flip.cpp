@@ -114,7 +114,7 @@ PYTHON() void markFluidCells(BasicParticleSystem& parts, FlagGrid& flags, Grid<R
 	knClearFluidFLags(flags, 0);
 	
 	// mark all particles in flaggrid as fluid
-	for(int idx=0;idx<parts.size();idx++) {
+	for(IndexInt idx=0;idx<parts.size();idx++) {
 		if (!parts.isActive(idx)) continue;
 		Vec3i p = toVec3i( parts.getPos(idx) );
 		if (flags.isInBounds(p) && flags.isEmpty(p))
@@ -153,7 +153,7 @@ PYTHON() void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& 
 	std::ostringstream out;
 
 	// count particles in cells, and delete excess particles
-	for (int idx=0; idx<(int)parts.size(); idx++) {
+	for (IndexInt idx=0; idx<(int)parts.size(); idx++) {
 		if (parts.isActive(idx)) {
 			Vec3i p = toVec3i( parts.getPos(idx) );
 			if (!tmp.isInBounds(p) ) {
@@ -221,7 +221,7 @@ PYTHON() void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem
 	// count particles in cells, and delete excess particles
 	index.clear();
 	int inactive = 0;
-	for (int idx=0; idx<(int)parts.size(); idx++) {
+	for (IndexInt idx=0; idx<(IndexInt)parts.size(); idx++) {
 		if (parts.isActive(idx)) {
 			// check index for validity...
 			Vec3i p = toVec3i( parts.getPos(idx) );
@@ -237,7 +237,7 @@ PYTHON() void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem
 	indexSys.resize( parts.size()-inactive );
 
 	// convert per cell number to continuous index
-	int idx=0;
+	IndexInt idx=0;
 	FOR_IJK( index ) {
 		int num = index(i,j,k);
 		index(i,j,k) = idx;
@@ -245,7 +245,7 @@ PYTHON() void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem
 	}
 
 	// add particles to indexed array, we still need a per cell particle counter
-	for (int idx=0; idx<(int)parts.size(); idx++) {
+	for (IndexInt idx=0; idx<(IndexInt)parts.size(); idx++) {
 		if (!parts.isActive(idx)) continue;
 		Vec3i p = toVec3i( parts.getPos(idx) );
 		if (! index.isInBounds(p)) { continue; }
@@ -274,14 +274,14 @@ void ComputeUnionLevelsetPindex(Grid<int>& index, BasicParticleSystem& parts, Pa
 		if (!phi.isInBounds(Vec3i(xj,yj,zj))) continue;
 
 		// note, for the particle indices in indexSys the access is periodic (ie, dont skip for eg inBounds(sx,10,10)
-		int isysIdxS = index.index(xj,yj,zj);
-		int pStart = index(isysIdxS), pEnd=0;
+		IndexInt isysIdxS = index.index(xj,yj,zj);
+		IndexInt pStart = index(isysIdxS), pEnd=0;
 		if(phi.isInBounds(isysIdxS+1)) pEnd = index(isysIdxS+1);
 		else                           pEnd = indexSys.size();
 
 		// now loop over particles in cell
-		for(int p=pStart; p<pEnd; ++p) {
-			const int psrc = indexSys[p].sourceIndex;
+		for(IndexInt p=pStart; p<pEnd; ++p) {
+			const IndexInt psrc = indexSys[p].sourceIndex;
 			const Vec3 pos = parts[psrc].pos; 
 			phiv = std::min( phiv , fabs( norm(gridPos-pos) )-radius );
 		}
@@ -323,12 +323,12 @@ void ComputeAveragedLevelsetWeight(BasicParticleSystem& parts,
 	for(int xj=i-r ; xj<=i+r ; xj++) {
 		if (! phi.isInBounds(Vec3i(xj,yj,zj)) ) continue;
 
-		int isysIdxS = index.index(xj,yj,zj);
-		int pStart = index(isysIdxS), pEnd=0;
+		IndexInt isysIdxS = index.index(xj,yj,zj);
+		IndexInt pStart = index(isysIdxS), pEnd=0;
 		if(phi.isInBounds(isysIdxS+1)) pEnd = index(isysIdxS+1);
 		else                           pEnd = indexSys.size();
-		for(int p=pStart; p<pEnd; ++p) {
-			int   psrc = indexSys[p].sourceIndex;
+		for(IndexInt p=pStart; p<pEnd; ++p) {
+			IndexInt   psrc = indexSys[p].sourceIndex;
 			Vec3  pos  = parts[psrc].pos; 
 			Real  s    = normSquare(gridPos-pos) * sradiusInv;
 			//Real  w = std::max(0., cubed(1.-s) );

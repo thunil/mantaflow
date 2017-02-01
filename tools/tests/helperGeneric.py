@@ -18,8 +18,11 @@ def referenceFilename( file, gridname ):
 	(name,ext) = os.path.splitext( os.path.basename(file) )
 	ddir = dataDirectory(file)
 	suffix = "uni" 
-	if getFloatSetting()==2: # double prec mode uses raw files, uni is always single prec float!
+	# double prec mode uses raw files (uni is always single prec float!)
+	# uni files can be used to test IO , but strict threshold will cause "FAILs" then
+	if getFloatSetting()==2: 
 		suffix = "raw"
+		#suffix = "uni" 
 	return ddir+"/"+ name +"_"+ gridname + "." + suffix
 
 def dataDirectory( file ):
@@ -60,7 +63,7 @@ def getVisualSetting( ):
 	return 0
 
 
-# visual mode on? returns multiplier
+# floating point accuracy - using env var MANTA_FPACCURACY , not DOUBLEPRECISION from cmake!
 def getFloatSetting( ):
 	fp = 0
 	ret = int(os.getenv('MANTA_FPACCURACY', 0)) 

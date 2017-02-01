@@ -11,6 +11,7 @@
  *
  ******************************************************************************/
 
+#include <string.h>
 #include "pythonInclude.h"
 #include "structmember.h"
 #include "manta.h"
@@ -131,9 +132,14 @@ PyObject* cbGetCName(PbObject* self, void* cl) {
 void cbDealloc(PbObject* self) {
 	//cout << "dealloc " << self->instance->getName() << " " << self->classdef->cName << endl;
 	if (self->instance) {
+	#ifndef BLENDER
 		// don't delete top-level objects
 		if (self->instance->getParent() != self->instance)
 			delete self->instance;
+	#else
+		// in Blender we *have* to delete all objects
+		delete self->instance;
+	#endif
 	}
 	Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -156,12 +162,19 @@ int cbDisableConstructor(PyObject* self, PyObject* args, PyObject* kwds) {
 }
 
 PyMODINIT_FUNC PyInit_Main(void) {
+	MantaEnsureRegistration();
 #if PY_MAJOR_VERSION >= 3
 	return WrapperRegistry::instance().initModule();   
 #else
 	WrapperRegistry::instance().initModule();   
 #endif
 }
+
+#ifdef BLENDER
+PyMODINIT_FUNC PyInit_Main_Obj(void) {
+	return PyInit_Main();	
+}
+#endif
 
 //******************************************************
 // WrapperRegistry
@@ -455,8 +468,8 @@ void WrapperRegistry::construct(const string& scriptname, const vector<string>& 
 	registerMeta();
 	registerDummyTypes();
 	
-	// load main extension module
-	PyImport_AppendInittab(gDefaultModuleName.c_str(), PyInit_Main);
+	// work around for certain gcc versions, cast to char*
+	PyImport_AppendInittab( (char*)gDefaultModuleName.c_str(), PyInit_Main );
 }
 
 inline PyObject* castPy(PyTypeObject* p) { 

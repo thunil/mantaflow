@@ -21,19 +21,18 @@
 	#include <vector>
 	#include <iostream>
 
-	#ifdef _DEBUG
+#endif
 
-		// special handling for windows
-		// disable linking with debug version of python libs
-		#undef _DEBUG
-		#define NDEBUG
-		#include <Python.h>
-		#define _DEBUG
-		#undef NDEBUG
+// the PYTHON_DEBUG_WITH_RELEASE define enables linking with python debug libraries 
+#if (defined(_DEBUG)||(DEBUG==1)) && defined(DEBUG_PYTHON_WITH_RELEASE)
 
-	#else
-		#include <Python.h>
-	#endif
+	// special handling, disable linking with debug version of python libs
+	#undef _DEBUG
+	#define NDEBUG
+	#include <Python.h>
+	#define _DEBUG
+	#undef NDEBUG
+
 #else
 	#include <Python.h>
 #endif

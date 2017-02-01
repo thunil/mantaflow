@@ -136,7 +136,7 @@ public:
 
 	enum SpecialValues { FlagInited = 1, FlagIsOnHeap = 2};
 
-	FastMarch(FlagGrid& flags, Grid<int>& fmFlags, LevelsetGrid& levelset, Real maxTime, MACGrid* velTransport = NULL);
+	FastMarch(FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& levelset, Real maxTime, MACGrid* velTransport = NULL);
 	~FastMarch() {}
 	
 	//! advect level set function with given velocity */
@@ -155,7 +155,7 @@ public:
 
 	inline Real _phi(int i, int j, int k) { return mLevelset(i,j,k); }
 protected:   
-	LevelsetGrid& mLevelset;
+	Grid<Real>&   mLevelset;
 	FlagGrid&     mFlags;
 	Grid<int>&    mFmFlags;
 	

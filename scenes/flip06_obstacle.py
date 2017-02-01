@@ -12,17 +12,17 @@ if (dim==2):
 	gs.z=1
 s = Solver(name='main', gridSize = gs, dim=dim)
 
-narrowBand   = 3
-minParticles = pow(2,dim)
-saveParts    = False
+narrowBand    = 3
+minParticles  = pow(2,dim)
+saveParts     = False
+frames        = 200
 
 # Adaptive time stepping
-s.frameLength = 0.8   # length of one frame (in "world time")
-s.timestep    = 0.8
-s.timestepMin = 0.3   # time step range
-s.timestepMax = 2.0
-s.cfl         = 5.0   # maximal velocity per cell, 0 to use fixed timesteps
-frames        = 100
+s.frameLength = 0.8                 # length of one frame (in "world time")
+s.cfl         = 3.0                 # maximal velocity per cell and timestep, 3 is fairly strict
+s.timestep    = s.frameLength 
+s.timestepMin = s.frameLength / 4.  # time step range
+s.timestepMax = s.frameLength * 4.
 
 # prepare grids and particles
 flags     = s.create(FlagGrid)

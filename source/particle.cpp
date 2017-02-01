@@ -32,11 +32,11 @@ ParticleBase::ParticleBase(FluidSolver* parent) :
 ParticleBase::~ParticleBase()
 {
 	// make sure data fields now parent system is deleted
-	for(int i=0; i<(int)mPartData.size(); ++i)
+	for(IndexInt i=0; i<(IndexInt)mPartData.size(); ++i)
 		mPartData[i]->setParticleSys(NULL);
 	
 	if(mFreePdata) {
-		for(int i=0; i<(int)mPartData.size(); ++i)
+		for(IndexInt i=0; i<(IndexInt)mPartData.size(); ++i)
 			delete mPartData[i];
 	}
 	
@@ -49,7 +49,7 @@ std::string ParticleBase::infoString() const {
 void ParticleBase::cloneParticleData(ParticleBase* nm) {
 	// clone additional data , and make sure the copied particle system deletes it
 	nm->mFreePdata = true;
-	for(int i=0; i<(int)mPartData.size(); ++i) {
+	for(IndexInt i=0; i<(IndexInt)mPartData.size(); ++i) {
 		ParticleDataBase* pdata = mPartData[i]->clone();
 		nm->registerPdata(pdata);
 	} 
@@ -58,9 +58,9 @@ void ParticleBase::cloneParticleData(ParticleBase* nm) {
 void ParticleBase::deregister(ParticleDataBase* pdata) {
 	bool done = false;
 	// remove pointer from particle data list
-	for(int i=0; i<(int)mPartData.size(); ++i) {
+	for(IndexInt i=0; i<(IndexInt)mPartData.size(); ++i) {
 		if(mPartData[i] == pdata) {
-			if(i<(int)mPartData.size()-1)
+			if(i<(IndexInt)mPartData.size()-1)
 				mPartData[i] = mPartData[mPartData.size()-1];
 			mPartData.pop_back();
 			done = true;
@@ -122,7 +122,7 @@ void ParticleBase::registerPdataVec3(ParticleDataImpl<Vec3>* pd) { mPdataVec3.pu
 void ParticleBase::registerPdataInt (ParticleDataImpl<int >* pd) { mPdataInt .push_back(pd); }
 
 void ParticleBase::addAllPdata() {
-	for(int i=0; i<(int)mPartData.size(); ++i) {
+	for(IndexInt i=0; i<(IndexInt)mPartData.size(); ++i) {
 		mPartData[i]->addEntry();
 	} 
 }
@@ -140,11 +140,11 @@ void BasicParticleSystem::writeParticlesText(string name) {
 	if (!ofs.good())
 		errMsg("can't open file!");
 	ofs << this->size()<<", pdata: "<< mPartData.size()<<" ("<<mPdataInt.size()<<","<<mPdataReal.size()<<","<<mPdataVec3.size()<<") \n";
-	for(int i=0; i<this->size(); ++i) {
+	for(IndexInt i=0; i<this->size(); ++i) {
 		ofs << i<<": "<< this->getPos(i) <<" , "<< this->getStatus(i) <<". "; 
-		for(int pd=0; pd<(int)mPdataInt.size() ; ++pd) ofs << mPdataInt [pd]->get(i)<<" ";
-		for(int pd=0; pd<(int)mPdataReal.size(); ++pd) ofs << mPdataReal[pd]->get(i)<<" ";
-		for(int pd=0; pd<(int)mPdataVec3.size(); ++pd) ofs << mPdataVec3[pd]->get(i)<<" ";
+		for(IndexInt pd=0; pd<(IndexInt)mPdataInt.size() ; ++pd) ofs << mPdataInt [pd]->get(i)<<" ";
+		for(IndexInt pd=0; pd<(IndexInt)mPdataReal.size(); ++pd) ofs << mPdataReal[pd]->get(i)<<" ";
+		for(IndexInt pd=0; pd<(IndexInt)mPdataVec3.size(); ++pd) ofs << mPdataVec3[pd]->get(i)<<" ";
 		ofs << "\n"; 
 	}
 	ofs.close();
@@ -154,7 +154,7 @@ void BasicParticleSystem::writeParticlesRawPositionsGz(string name) {
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "wb1");
 	if (!gzf) errMsg("can't open file "<<name);
-	for(int i=0; i<this->size(); ++i) {
+	for(IndexInt i=0; i<this->size(); ++i) {
 		Vector3D<float> p = toVec3f( this->getPos(i) );
 		gzwrite(gzf, &p, sizeof(float)*3);
 	}
@@ -170,7 +170,7 @@ void BasicParticleSystem::writeParticlesRawVelocityGz(string name) {
 	if (!gzf) errMsg("can't open file "<<name);
 	if( mPdataVec3.size() < 1 ) errMsg("no vec3 particle data channel found!");
 	// note , assuming particle data vec3 0 is velocity! make optional...
-	for(int i=0; i<this->size(); ++i) {		
+	for(IndexInt i=0; i<this->size(); ++i) {		
 		Vector3D<float> p = toVec3f( mPdataVec3[0]->get(i) );
 		gzwrite(gzf, &p, sizeof(float)*3);
 	}
@@ -212,20 +212,34 @@ void BasicParticleSystem::save(string name) {
 		errMsg("particle '" + name +"' filetype not supported for saving");
 }
 
-void BasicParticleSystem::printParts(int start, int stop, bool printIndex)
+void BasicParticleSystem::printParts(IndexInt start, IndexInt stop, bool printIndex)
 {
 	std::ostringstream sstr;
-	int s = (start>0 ? start : 0                 );
-	int e = (stop>0  ? stop  : (int)mData.size() );
-	s = Manta::clamp(s, 0, (int)mData.size());
-	e = Manta::clamp(e, 0, (int)mData.size());
+	IndexInt s = (start>0 ? start : 0                      );
+	IndexInt e = (stop>0  ? stop  : (IndexInt)mData.size() );
+	s = Manta::clamp(s, (IndexInt)0, (IndexInt)mData.size());
+	e = Manta::clamp(e, (IndexInt)0, (IndexInt)mData.size());
 
-	for(int i=s; i<e; ++i) {
+	for(IndexInt i=s; i<e; ++i) {
 		if(printIndex) sstr << i<<": ";
 		sstr<<mData[i].pos<<" "<<mData[i].flag<<"\n";
 	} 
 	debMsg( sstr.str() , 1 );
 }
+
+void BasicParticleSystem::readParticles(BasicParticleSystem* from) {
+	// re-allocate all data
+	this->resizeAll( from->size() ); 
+	assertMsg (from->size() == this->size() , "particle size doesn't match");
+
+	for(int i=0; i<this->size(); ++i) {
+		(*this)[i].pos  = (*from)[i].pos;
+		(*this)[i].flag = (*from)[i].flag;
+	}
+	Vec3i gridSize = from->getParent()->getGridSize();
+	this->transformPositions( Vec3i(gridSize.x,gridSize.y,gridSize.z), this->size() );
+}
+
 
 // particle data
 
@@ -259,7 +273,7 @@ ParticleDataImpl<T>::~ParticleDataImpl() {
 }
 
 template<class T>
-int ParticleDataImpl<T>::getSizeSlow() const {
+IndexInt ParticleDataImpl<T>::getSizeSlow() const {
 	return mData.size();
 }
 template<class T>
@@ -272,11 +286,11 @@ void ParticleDataImpl<T>::addEntry() {
 	return mData.push_back(tmp);
 }
 template<class T>
-void ParticleDataImpl<T>::resize(int s) {
+void ParticleDataImpl<T>::resize(IndexInt s) {
 	mData.resize(s);
 }
 template<class T>
-void ParticleDataImpl<T>::copyValueSlow(int from, int to) {
+void ParticleDataImpl<T>::copyValueSlow(IndexInt from, IndexInt to) {
 	this->copyValue(from,to);
 }
 template<class T>
@@ -293,7 +307,7 @@ void ParticleDataImpl<T>::setSource(Grid<T>* grid, bool isMAC ) {
 }
 
 template<class T>
-void ParticleDataImpl<T>::initNewValue(int idx, Vec3 pos) {
+void ParticleDataImpl<T>::initNewValue(IndexInt idx, Vec3 pos) {
 	if(!mpGridSource)
 		mData[idx] = 0; 
 	else {
@@ -302,7 +316,7 @@ void ParticleDataImpl<T>::initNewValue(int idx, Vec3 pos) {
 }
 // special handling needed for velocities
 template<>
-void ParticleDataImpl<Vec3>::initNewValue(int idx, Vec3 pos) {
+void ParticleDataImpl<Vec3>::initNewValue(IndexInt idx, Vec3 pos) {
 	if(!mpGridSource)
 		mData[idx] = 0;
 	else {
@@ -458,15 +472,15 @@ Real ParticleDataImpl<T>::getMaxValue() {
 } 
 
 template<typename T>
-void ParticleDataImpl<T>::printPdata(int start, int stop, bool printIndex)
+void ParticleDataImpl<T>::printPdata(IndexInt start, IndexInt stop, bool printIndex)
 {
 	std::ostringstream sstr;
-	int s = (start>0 ? start : 0                 );
-	int e = (stop>0  ? stop  : (int)mData.size() );
-	s = Manta::clamp(s, 0, (int)mData.size());
-	e = Manta::clamp(e, 0, (int)mData.size());
+	IndexInt s = (start>0 ? start : 0                      );
+	IndexInt e = (stop>0  ? stop  : (IndexInt)mData.size() );
+	s = Manta::clamp(s, (IndexInt)0, (IndexInt)mData.size());
+	e = Manta::clamp(e, (IndexInt)0, (IndexInt)mData.size());
 
-	for(int i=s; i<e; ++i) {
+	for(IndexInt i=s; i<e; ++i) {
 		if(printIndex) sstr << i<<": ";
 		sstr<<mData[i]<<" "<<"\n";
 	} 

@@ -19,6 +19,10 @@
 #include <iostream>
 using namespace std;
 
+// from codegen_kernel
+bool isGridType(const std::string& type);
+bool isGrid4dType(const std::string& type);
+
 #define STR(x) #x
 
 //******************************************************
@@ -29,7 +33,8 @@ $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, P
 	try {
 		PbArgs _args(_linargs, _kwds);
 		FluidSolver *parent = _args.obtainParent();
-		pbPreparePlugin(parent, "$FUNCNAME$" );
+		bool noTiming = _args.getOpt<bool>("notiming", -1, 0);
+		pbPreparePlugin(parent, "$FUNCNAME$" , !noTiming );
 		PyObject *_retval = 0;
 		{ 
 			ArgLocker _lock;
@@ -42,7 +47,7 @@ $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, P
 			@END
 			_args.check();
 		}
-		pbFinalizePlugin(parent,"$FUNCNAME$" );
+		pbFinalizePlugin(parent,"$FUNCNAME$", !noTiming );
 		return _retval;
 	} catch(std::exception& e) {
 		pbSetError("$FUNCNAME$",e.what());
@@ -56,7 +61,8 @@ $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, P
 	try {
 		PbArgs _args(_linargs, _kwds);
 		$CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(_self));
-		pbPreparePlugin(pbo->getParent(), "$CLASS$::$FUNCNAME$");
+		bool noTiming = _args.getOpt<bool>("notiming", -1, 0);
+		pbPreparePlugin(pbo->getParent(), "$CLASS$::$FUNCNAME$" , !noTiming);
 		PyObject *_retval = 0;
 		{ 
 			ArgLocker _lock;
@@ -70,7 +76,7 @@ $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, P
 			@END
 			pbo->_args.check();
 		}
-		pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$");
+		pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$" , !noTiming);
 		return _retval;
 	} catch(std::exception& e) {
 		pbSetError("$CLASS$::$FUNCNAME$",e.what());
@@ -84,7 +90,8 @@ $TEMPLATE$ static int _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObjec
 	if (obj) delete obj; 
 	try {
 		PbArgs _args(_linargs, _kwds);
-		pbPreparePlugin(0, "$CLASS$::$FUNCNAME$" );
+		bool noTiming = _args.getOpt<bool>("notiming", -1, 0);
+		pbPreparePlugin(0, "$CLASS$::$FUNCNAME$" , !noTiming );
 		{ 
 			ArgLocker _lock;
 			$ARGLOADER$
@@ -92,7 +99,7 @@ $TEMPLATE$ static int _W_$WRAPPER$ (PyObject* _self, PyObject* _linargs, PyObjec
 			obj->registerObject(_self, &_args); 
 			_args.check();
 		}
-		pbFinalizePlugin(obj->getParent(),"$CLASS$::$FUNCNAME$" );
+		pbFinalizePlugin(obj->getParent(),"$CLASS$::$FUNCNAME$" , !noTiming );
 		return 0;
 	} catch(std::exception& e) {
 		pbSetError("$CLASS$::$FUNCNAME$",e.what());
@@ -106,7 +113,8 @@ $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* o) {
 		PbArgs _args(0,0);
 		_args.addLinArg(o);
 		$CLASS$* pbo = dynamic_cast<$CLASS$*>(Pb::objFromPy(_self));
-		pbPreparePlugin(pbo->getParent(), "$CLASS$::$FUNCNAME$");
+		bool noTiming = _args.getOpt<bool>("notiming", -1, 0);
+		pbPreparePlugin(pbo->getParent(), "$CLASS$::$FUNCNAME$" , !noTiming);
 		PyObject *_retval = 0;
 		{ 
 			ArgLocker _lock;
@@ -115,7 +123,7 @@ $TEMPLATE$ static PyObject* _W_$WRAPPER$ (PyObject* _self, PyObject* o) {
 			_retval = toPy(pbo->$FUNCNAME$($CALLSTRING$));
 			pbo->_args.check();
 		}
-		pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$");
+		pbFinalizePlugin(pbo->getParent(),"$CLASS$::$FUNCNAME$" , !noTiming);
 		return _retval;
 	} catch(std::exception& e) {
 		pbSetError("$CLASS$::$FUNCNAME$",e.what());
@@ -143,6 +151,14 @@ const string TmpRegisterMethod = STR(
 	static const Pb::Register _RP_$FUNCNAME$ ("","$FUNCNAME$",_W_$REGWRAPPER$);
 @END
 );
+
+// make sure linkers don't "optimize" the registration functions and remove them
+const string TmpRegisterKeepUnused = STR(
+extern "C" { 
+	void PbRegister_$FUNCNAME$() {
+		KEEP_UNUSED(_RP_$FUNCNAME$);
+	}
+} );
 
 const string TmpRegisterGetSet = STR(
 @IF(CTPL)
@@ -218,7 +234,7 @@ string generateLoader(const Argument& arg) {
 	string optCall =  string("_args.") + (arg.value.empty() ? "get" : "getOpt");
 
 	ptrType.isConst = false;
-	if (integral) {
+	if ( (integral) && (!arg.type.isPointer) ) {
 		ptrType.isPointer = false;
 		ptrType.isRef = false;
 	} else if (arg.type.isPointer) {
@@ -279,6 +295,14 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 	return; 
 #	endif
 
+	// prevents grids being passed by value
+	for (int i=0; i<(int)func.arguments.size(); i++) {
+		const string& type = func.arguments[i].type.name;
+		if( isGridType(type) && !(func.arguments[i].type.isPointer || func.arguments[i].type.isRef) ) {
+			errMsg(block.line0, "don't pass grid objects by value!");
+		}
+	}
+
 	// generate variable loader
 	string loader = "";
 	for (int i=0; i<(int)func.arguments.size(); i++)
@@ -322,12 +346,16 @@ void processPythonFunction(const Block& block, const string& code, Sink& sink, v
 	}
 
 	// register functions
-	if (!doRegister) return;
-	const string reg = replaceSet(TmpRegisterMethod, table);
-	if (isPlugin) {
-		sink.inplace << reg;
-	} else {
-		sink.link << '+' << block.parent->name << '^' << reg << '\n';
+	if (doRegister) {
+		const string reg = replaceSet(TmpRegisterMethod, table);
+		if (isPlugin) {
+			std::string newl(" "); 
+			if(gDebugMode) newl = "\n"; 
+			sink.inplace << reg << newl;
+			sink.inplace << replaceSet(TmpRegisterKeepUnused, table) << newl;
+		} else {
+			sink.link << '+' << block.parent->name << '^' << reg << "\n";
+		}
 	}
 }
 
@@ -386,6 +414,10 @@ void processPythonClass(const Block& block, const string& code, Sink& sink, vect
 		return;
 	}
 
+
+#	if NOPYTHON==1
+	sink.inplace << "\n";
+#	else 
 	// register class
 	const string table[] = { "CLASS", cls.name,
 							 "BASE", cls.baseClass.name,
@@ -393,11 +425,6 @@ void processPythonClass(const Block& block, const string& code, Sink& sink, vect
 							 "PYNAME", pythonName,
 							 "CTPL", cls.isTemplated() ? "CT" : "",
 							 "" };
-
-#	if NOPYTHON==1
-	sink.inplace << "\n";
-#	else 
-	// register class
 	string reg = replaceSet(TmpRegisterClass, table);
 	sink.link << '+' << cls.name << '^' << reg << '\n';
 	// instantiate directly if not templated
@@ -426,7 +453,7 @@ void processPythonClass(const Block& block, const string& code, Sink& sink, vect
 	sink.inplace << "}\n";
 #	else 
 	// add secret bonus members to class and close
-	sink.inplace << "public: PbArgs _args;";
+	sink.inplace << "public: PbArgs _args; ";
 	sink.inplace << "}\n";
 	// add a define to make commenting out classes, and #ifdefs work correctly
 	sink.inplace << "#define _C_" << cls.name << '\n';

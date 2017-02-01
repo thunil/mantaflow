@@ -24,15 +24,7 @@
 #include <vector>
 #include <map>
 
-#ifdef GUI
-#   include <QMutex>
-#else
-struct QMutex {
-	void lock() {};
-	void unlock() {};
-	bool tryLock() {return true;};
-};
-#endif
+class QMutex;
 
 namespace Manta {
 struct PbClassData;
@@ -83,19 +75,19 @@ public:
 	inline bool canConvertTo(const std::string& classname) { return Pb::canConvert(mPyObject, classname); }
 	
 protected:
-	QMutex mMutex;
+	QMutex*      mMutex;
 	FluidSolver* mParent;
-	PyObject* mPyObject;
-	std::string mName;
-	bool mHidden;
+	PyObject*    mPyObject;
+	std::string  mName;
+	bool         mHidden;
 		
 	static std::vector<PbClass*> mInstances;
 };
 
 //!\cond Register
 
-void pbFinalizePlugin(FluidSolver* parent, const std::string& name);
-void pbPreparePlugin(FluidSolver* parent, const std::string& name);
+void pbFinalizePlugin(FluidSolver* parent, const std::string& name, bool doTime=true);
+void pbPreparePlugin(FluidSolver* parent, const std::string& name, bool doTime=true);
 void pbSetError(const std::string& fn, const std::string& ex);
 
 //!\endcond

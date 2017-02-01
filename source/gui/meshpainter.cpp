@@ -140,10 +140,6 @@ void MeshPainter::setupLights(bool specular) {
 	glEnable(GL_LIGHT2);
 }
 
-//static inline void glColor(const Vec3& color) {
-	//glColor3f(std::max(_0,std::min(_1,color.x)), std::max(_0,std::min(_1,color.y)), std::max(_0,std::min(_1,color.z)));
-//}
-
 static inline void glVertex(const Vec3& v, Real dx) {
 	glVertex3f(v.x * dx, v.y * dx, v.z * dx);
 }
@@ -230,7 +226,7 @@ void MeshPainter::paint() {
 			else if (mLocalMesh->tris(tri).flags & Mesh::FfMarked)
 				glColor3f(1,0,0);
 			else
-				glColor4f(0.5,0.5,0.5, isoAlpha);
+				glColor4f(0.5,0.7,1.0, isoAlpha); // blue-ish
 				
 			for (int c=0; c<3; c++) {
 				if (nodeColor) {

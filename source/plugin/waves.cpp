@@ -30,14 +30,12 @@ namespace Manta {
 
 
 KERNEL(bnd=1) 
-void knCalcSecDeriv2d(const Grid<Real>& v, Grid<Real>& ret) {
-
+void knCalcSecDeriv2d(const Grid<Real>& v, Grid<Real>& ret) { 
     ret(i,j,k) = 
 		( -4. * v(i,j,k) + v(i-1,j,k) + v(i+1,j,k) + v(i,j-1,k) + v(i,j+1,k) );
-
 };
 
-
+//! calculate a second derivative for the wave equation
 PYTHON() void calcSecDeriv2d(const Grid<Real>& v, Grid<Real>& curv) {
 	knCalcSecDeriv2d(v,curv);
 }
@@ -46,13 +44,15 @@ PYTHON() void calcSecDeriv2d(const Grid<Real>& v, Grid<Real>& curv) {
 // mass conservation 
 
 KERNEL(bnd=1, reduce=+) returns(double sum=0)
-void knTotalSum(Grid<Real>& h) { sum += h(i,j,k); }
+double knTotalSum(Grid<Real>& h) { sum += h(i,j,k); }
 
+//! calculate the sum of all values in a grid (for wave equation solves)
 PYTHON() Real totalSum(Grid<Real>& height) {
 	knTotalSum ts(height);
 	return ts.sum;
 }
 
+//! normalize all values in a grid (for wave equation solves)
 PYTHON() void normalizeSumTo(Grid<Real>& height, Real target) {
 	knTotalSum ts(height);
 	Real factor = target / ts.sum;
@@ -83,7 +83,7 @@ void MakeRhsWE(FlagGrid& flags, Grid<Real>& rhs, Grid<Real>& ut, Grid<Real>& utm
 
 
 
-//! do a CG solve (note, out grid only there for debugging... could be removed)
+//! do a CG solve for the wave equation (note, out grid only there for debugging... could be removed)
 PYTHON() void cgSolveWE(FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<Real>& out,
 						bool crankNic     = false,
 						Real cSqr         = 0.25,
@@ -100,12 +100,7 @@ PYTHON() void cgSolveWE(FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<
 	Grid<Real> Aj(parent);
 	Grid<Real> Ak(parent);
 	Grid<Real> tmp(parent);
-	//Grid<Real> pca0(parent);
-	//Grid<Real> pca1(parent);
-	//Grid<Real> pca2(parent);
-	//Grid<Real> pca3(parent);
 	// solution...
-	//Grid<Real> pressure(parent);
 	out.clear();
 		
 	// setup matrix and boundaries
@@ -139,13 +134,11 @@ PYTHON() void cgSolveWE(FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<
 	
 	gcg->setAccuracy( cgAccuracy ); 
 
-	// optional preconditioning
-	//gcg->setPreconditioner( precondition ? GridCgInterface::PC_mICP : GridCgInterface::PC_None, &pca0, &pca1, &pca2, &pca3);
-
+	// no preconditioning for now...
 	for (int iter=0; iter<maxIter; iter++) {
 		if (!gcg->iterate()) iter=maxIter;
 	} 
-	debMsg("FluidSolver::solvePressure iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
+	debMsg("cgSolveWaveEq iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), 1);
 
 	utm1.swap( ut );
 	ut.copyFrom( out );

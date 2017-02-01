@@ -170,10 +170,10 @@ template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
 	gridSafeDiv<T> (*this, a);
 	return *this;
 }
-template<class T> Grid<T>& Grid<T>::copyFrom (const Grid<T>& a) {
+template<class T> Grid<T>& Grid<T>::copyFrom (const Grid<T>& a, bool copyType ) {
 	assertMsg (a.mSize.x == mSize.x && a.mSize.y == mSize.y && a.mSize.z == mSize.z, "different grid resolutions "<<a.mSize<<" vs "<<this->mSize );
 	memcpy(mData, a.mData, sizeof(T) * mSize.x * mSize.y * mSize.z);
-	mType = a.mType; // copy type marker
+	if(copyType) mType = a.mType; // copy type marker
 	return *this;
 }
 /*template<class T> Grid<T>& Grid<T>::operator= (const Grid<T>& a) {
@@ -243,39 +243,44 @@ template<> Real Grid<int>::getMaxAbs() {
 	int amax = CompMaxInt (*this);
 	return max( fabs((Real)amin), fabs((Real)amax));
 }
+template<class T> std::string Grid<T>::getDataPointer() {
+	std::ostringstream out;
+	out << mData ;
+	return out.str();
+}
 
 // compute maximal diference of two cells in the grid
 // used for testing system
-PYTHON() Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2 )
+PYTHON() Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2)
 {
 	double maxVal = 0.;
 	FOR_IJK(g1) {
-		maxVal = std::max(maxVal, (double)fabs( g1(i,j,k)-g2(i,j,k) ));
+		maxVal = std::max(maxVal, (double)fabs(g1(i, j, k) - g2(i, j, k)));
 	}
-	return maxVal; 
+	return maxVal;
 }
-PYTHON() Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2 )
+PYTHON() Real gridMaxDiffInt(Grid<int>& g1, Grid<int>& g2)
 {
 	double maxVal = 0.;
 	FOR_IJK(g1) {
-		maxVal = std::max(maxVal, (double)fabs( (double)g1(i,j,k)-g2(i,j,k) ));
+		maxVal = std::max(maxVal, (double)fabs((double)g1(i, j, k) - g2(i, j, k)));
 	}
-	return maxVal; 
+	return maxVal;
 }
-PYTHON() Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2 )
+PYTHON() Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2)
 {
 	double maxVal = 0.;
 	FOR_IJK(g1) {
 		// accumulate differences with double precision
 		// note - don't use norm here! should be as precise as possible...
 		double d = 0.;
-		for(int c=0; c<3; ++c) { 
-			d += fabs( (double)g1(i,j,k)[c] - (double)g2(i,j,k)[c] );
+		for (int c = 0; c<3; ++c) {
+			d += fabs((double)g1(i, j, k)[c] - (double)g2(i, j, k)[c]);
 		}
-		maxVal = std::max(maxVal, d );
+		maxVal = std::max(maxVal, d);
 		//maxVal = std::max(maxVal, (double)fabs( norm(g1(i,j,k)-g2(i,j,k)) ));
 	}
-	return maxVal; 
+	return maxVal;
 }
 
 // simple helper functions to copy (convert) mac to vec3 , and levelset to real grids
@@ -286,12 +291,46 @@ PYTHON() void copyMacToVec3 (MACGrid &source, Grid<Vec3>& target)
 		target(i,j,k) = source(i,j,k);
 	}
 }
+
 PYTHON() void convertMacToVec3 (MACGrid &source , Grid<Vec3> &target) { debMsg("Deprecated - do not use convertMacToVec3... use copyMacToVec3 instead",1); copyMacToVec3(source,target); }
+
+//! vec3->mac grid conversion , but with full resampling 
+PYTHON() void resampleVec3ToMac (Grid<Vec3>& source, MACGrid &target ) {
+	FOR_IJK_BND(target,1) {
+		target(i,j,k)[0] = 0.5*(source(i-1,j,k)[0]+source(i,j,k))[0];
+		target(i,j,k)[1] = 0.5*(source(i,j-1,k)[1]+source(i,j,k))[1];
+		if(target.is3D()) {
+		target(i,j,k)[2] = 0.5*(source(i,j,k-1)[2]+source(i,j,k))[2]; }
+	}
+}
+//! mac->vec3 grid conversion , with full resampling 
+PYTHON() void resampleMacToVec3 (MACGrid &source, Grid<Vec3>& target ) {
+	FOR_IJK_BND(target,1) {
+		target(i,j,k) = source.getCentered(i,j,k);
+	}
+}
 
 PYTHON() void copyLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
 {
 	FOR_IJK(target) {
 		target(i,j,k) = source(i,j,k);
+	}
+}
+PYTHON() void copyVec3ToReal (Grid<Vec3> &source, Grid<Real> &targetX, Grid<Real> &targetY, Grid<Real> &targetZ)
+{
+	FOR_IJK(source) {
+		targetX(i,j,k) = source(i,j,k).x;
+		targetY(i,j,k) = source(i,j,k).y;
+		targetZ(i,j,k) = source(i,j,k).z;
+	}
+}
+
+PYTHON() void copyRealToVec3 (Grid<Real> &sourceX, Grid<Real> &sourceY, Grid<Real> &sourceZ, Grid<Vec3> &target)
+{
+	FOR_IJK(target) {
+		target(i,j,k).x = sourceX(i,j,k);
+		target(i,j,k).y = sourceY(i,j,k);
+		target(i,j,k).z = sourceZ(i,j,k);
 	}
 }
 PYTHON() void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertLevelsetToReal... use copyLevelsetToReal instead",1); copyLevelsetToReal(source,target); }
@@ -301,7 +340,7 @@ template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
 	out << std::endl;
 	const int bnd = 1;
 	FOR_IJK_BND(*this,bnd) {
-		int idx = (*this).index(i,j,k);
+		IndexInt idx = (*this).index(i,j,k);
 		if(zSlice>=0 && k==zSlice) { 
 			out << " ";
 			if(printIndex &&  this->is3D()) out << "  "<<i<<","<<j<<","<<k <<":";
@@ -417,6 +456,30 @@ template<class T> void Grid<T>::setBoundNeumann(int boundaryWidth) {
 	knSetBoundaryNeumann<T>( *this, boundaryWidth );
 }
 
+//! kernel to set velocity components of mac grid to value for a boundary of w cells
+KERNEL() void knSetBoundaryMAC (Grid<Vec3>& grid, Vec3 value, int w) { 
+	if (i<=w   || i>=grid.getSizeX()  -w || j<=w-1 || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w-1 || k>=grid.getSizeZ()-1-w)))
+		grid(i,j,k).x = value.x;
+	if (i<=w-1 || i>=grid.getSizeX()-1-w || j<=w   || j>=grid.getSizeY()  -w || (grid.is3D() && (k<=w-1 || k>=grid.getSizeZ()-1-w)))
+		grid(i,j,k).y = value.y;
+	if (i<=w-1 || i>=grid.getSizeX()-1-w || j<=w-1 || j>=grid.getSizeY()-1-w || (grid.is3D() && (k<=w   || k>=grid.getSizeZ()  -w)))
+		grid(i,j,k).z = value.z;
+} 
+
+//! only set normal velocity components of mac grid to value for a boundary of w cells
+KERNEL() void knSetBoundaryMACNorm (Grid<Vec3>& grid, Vec3 value, int w) { 
+	if (i<=w   || i>=grid.getSizeX()  -w ) grid(i,j,k).x = value.x;
+	if (j<=w   || j>=grid.getSizeY()  -w ) grid(i,j,k).y = value.y;
+	if ( (grid.is3D() && (k<=w   || k>=grid.getSizeZ()  -w))) grid(i,j,k).z = value.z;
+} 
+
+//! set velocity components of mac grid to value for a boundary of w cells (optionally only normal values)
+void MACGrid::setBoundMAC(Vec3 value, int boundaryWidth, bool normalOnly) { 
+	if(!normalOnly) knSetBoundaryMAC    ( *this, value, boundaryWidth ); 
+	else            knSetBoundaryMACNorm( *this, value, boundaryWidth ); 
+}
+
+
 //! helper kernels for getGridAvg
 KERNEL(idx, reduce=+) returns(double result=0.0)
 double knGridTotalSum(const Grid<Real>& a, FlagGrid* flags) {
@@ -499,14 +562,19 @@ void FlagGrid::InitMaxZWall(const int &boundaryWidth, Grid<Real>& phiWalls) {
 }
 
 void FlagGrid::initDomain( const int &boundaryWidth
-	                     , const string &wall    
-						 , const string &open    
-						 , const string &inflow  
-						 , const string &outflow
+	                     , const string &wallIn
+						 , const string &openIn
+						 , const string &inflowIn
+						 , const string &outflowIn 
 						 , Grid<Real>* phiWalls ) {
 	
 	int  types[6] = {0};
 	bool set  [6] = {false};
+	// make sure we have at least 6 entries
+	string wall    = wallIn;    wall.append("      ");
+	string open    = openIn;    open.append("      ");
+	string inflow  = inflowIn;  inflow.append("      ");
+	string outflow = outflowIn; outflow.append("      ");
 
 	if(phiWalls) phiWalls->setConst(1000000000);
 
@@ -581,10 +649,8 @@ void FlagGrid::initDomain( const int &boundaryWidth
 		}
 	}
 
-	FOR_IDX(*this)
-		mData[idx] = TypeEmpty;
-		initBoundaries(boundaryWidth, types);
-	
+	setConst(TypeEmpty); 
+	initBoundaries(boundaryWidth, types); 
 }
 
 void FlagGrid::initBoundaries(const int &boundaryWidth, const int *types) {
@@ -630,28 +696,5 @@ void FlagGrid::fillGrid(int type) {
 template class Grid<int>;
 template class Grid<Real>;
 template class Grid<Vec3>;
-
-
-//******************************************************************************
-// enable compilation of a more complicated test data type
-// enable in grid.h
-
-#if ENABLE_GRID_TEST_DATATYPE==1
-// todo fix, missing:  template<> const char* Namify<nbVector>::S = "TestDatatype";
-
-template<> Real Grid<nbVector>::getMin() { return 0.; }
-template<> Real Grid<nbVector>::getMax() { return 0.; }
-template<> Real Grid<nbVector>::getMaxAbs()      { return 0.; }
-
-KERNEL() void knNbvecTestKernel (Grid<nbVector>& target) { target(i,j,k).push_back(i+j+k); }
-
-PYTHON() void nbvecTestOp (Grid<nbVector> &target) {
-	knNbvecTestKernel nbvecTest(target); 
-}
-
-// instantiate test datatype , not really required for simulations, mostly here for demonstration purposes
-template class Grid<nbVector>;
-#endif // ENABLE_GRID_TEST_DATATYPE
-
 
 } //namespace
