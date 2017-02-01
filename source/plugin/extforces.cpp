@@ -20,7 +20,7 @@ using namespace std;
 
 namespace Manta { 
 
-//! add Forces between fl/fl and fl/em cells
+//! add Forces between fl/fl and fl/em cells (interpolate cell centered forces to MAC grid)
 KERNEL(bnd=1) void KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curEmpty = flags.isEmpty(i,j,k);
@@ -34,7 +34,7 @@ KERNEL(bnd=1) void KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& fo
 		vel(i,j,k).z += 0.5*(force(i,j,k-1).z + force(i,j,k).z);
 }
 
-//! add Forces between fl/fl and fl/em cells
+//! add constant force between fl/fl and fl/em cells
 KERNEL(bnd=1) void KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curEmpty = flags.isEmpty(i,j,k);

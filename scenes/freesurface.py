@@ -1,14 +1,13 @@
 #
 # Simple example of a free-surface simulation with level-set
 # (Optionally, demos outflow boundaries)
-#
-
+# 
 from manta import *
 
 # solver params
 dim = 3
 res = 64
-gs = vec3(res,res,res)
+gs = Vec3(res,res,res)
 if (dim==2):
 	gs.z=1
 s = Solver(name='main', gridSize = gs, dim=dim)
@@ -33,8 +32,8 @@ phiBackup = s.create(LevelsetGrid)
 # scene setup
 bWidth=1
 flags.initDomain(boundaryWidth=bWidth)
-basin = Box( parent=s, p0=gs*vec3(0,0,0), p1=gs*vec3(1,0.2,1))
-drop  = Sphere( parent=s , center=gs*vec3(0.5,0.5,0.5), radius=res*0.125)
+basin = Box( parent=s, p0=gs*Vec3(0,0,0), p1=gs*Vec3(1,0.2,1))
+drop  = Sphere( parent=s , center=gs*Vec3(0.5,0.5,0.5), radius=res*0.125)
 phi = basin.computeLevelset()
 phi.join(drop.computeLevelset())
 flags.updateFromLevelset(phi)
@@ -46,11 +45,11 @@ if doOpen:
 if (GUI):
 	gui = Gui()
 	gui.show()
-	#gui.pause()
+	gui.pause()
 	
 
 #main loop
-for t in range(2000):
+for t in range(1000):
 	mantaMsg('\nFrame %i, simulation time %f' % (s.frame, s.timeTotal))
 	
 	# update and advect levelset
@@ -69,7 +68,7 @@ for t in range(2000):
 	
 	# velocity self-advection
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, openBounds=doOpen, boundaryWidth=bWidth )
-	addGravity(flags=flags, vel=vel, gravity=vec3(0,-0.025,0))
+	addGravity(flags=flags, vel=vel, gravity=Vec3(0,-0.025,0))
 	
 	# pressure solve
 	setWallBcs(flags=flags, vel=vel)
@@ -77,7 +76,6 @@ for t in range(2000):
 		solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy, phi=phi )
 	else:
 		solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5, cgAccuracy=accuracy)
-	setWallBcs(flags=flags, vel=vel)
 	
 	# note: these meshes are created by fast marching only, should smooth
 	#       geometry and normals before rendering (only in 3D for now)
