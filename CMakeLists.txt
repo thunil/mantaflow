@@ -309,8 +309,9 @@ endif()
 # compile with numpy support?
 if(NUMPY)
 	set(NUMPY_INCLUDE_DIR "${PYTHON_INCLUDE_DIRS}/dist-packages/numpy/core/include") 
-# ? /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs//MacOSX.sdk/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/numpy/core/include/numpy/arrayobject.h
-	set(NUMPY_INCLUDE_DIR "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs//MacOSX.sdk/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/numpy/core/include/")
+	# use numpy.get_include() to find path
+	# e.g., for Macs: /System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/numpy/core/include 
+	set(NUMPY_INCLUDE_DIR "/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/numpy/core/include")
 	list(APPEND INCLUDE_PATHS ${NUMPY_INCLUDE_DIR})
 	list(APPEND NOPP_SOURCES source/pwrapper/numpyWrap.cpp)
 	list(APPEND NOPP_HEADERS source/pwrapper/numpyWrap.h)

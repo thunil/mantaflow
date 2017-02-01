@@ -24,8 +24,6 @@
 #include <map>
 #include <vector>
 
-//#include "numpyWrap.h"
-
 namespace Manta { 
 template<class T> class Grid; 
 
@@ -212,7 +210,9 @@ protected:
 	std::vector<void*> mTmpStorage;
 };
 
-
 } // namespace
+
+#include "numpyWrap.h"
+
 #endif
 #endif
