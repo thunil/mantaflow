@@ -38,5 +38,20 @@ double minReduction(const Grid<Real>& v)
 // ... add own test code here if necessary ...
 
 
+// test function and kernel with python array
+
+KERNEL(bnd=0)
+void knNumpyTest(Grid<Real>& data, PyArrayContainer pyar) 
+{
+	data(i,j,k) += (reinterpret_cast<float*>(pyar.pData))[0]; // calc access into numpy array!
+}
+
+PYTHON() void numpyTest(Grid<Real>& data, PyArrayContainer pyar) {
+	knNumpyTest(data,pyar);
+}
+
+add scene file and test...
+
+
 } //namespace
 
