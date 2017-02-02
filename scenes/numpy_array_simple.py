@@ -9,10 +9,11 @@ gs = vec3(res,res,1)
 s = Solver(name='main', gridSize = gs, dim=2)
 
 # prepare grids
-flags = s.create(FlagGrid)
-vel = s.create(MACGrid)
-density = s.create(RealGrid)
+flags    = s.create(FlagGrid)
+vel      = s.create(MACGrid)
+density  = s.create(RealGrid)
 pressure = s.create(RealGrid)
+tmp      = s.create(RealGrid)
 
 bWidth=1
 flags.initDomain(boundaryWidth=bWidth) 
@@ -38,7 +39,11 @@ for t in range(400):
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-4e-3,0), flags=flags) 
 	solvePressure(flags=flags, vel=vel, pressure=pressure)
 
+	# small example function in test.cpp
 	numpyTest( density, npArray, 0.01 ) # just adds constant value everywhere
+
+	# grid conversion from numpyconvert.cpp plugins
+	copyArrayToGridReal( target=tmp, source=npArray )
 	
 	s.step()
 

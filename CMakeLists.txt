@@ -313,6 +313,7 @@ if(NUMPY)
 	# e.g., for Macs: /System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/numpy/core/include 
 	set(NUMPY_INCLUDE_DIR "/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/numpy/core/include")
 	list(APPEND INCLUDE_PATHS ${NUMPY_INCLUDE_DIR})
+	list(APPEND   PP_SOURCES source/plugin/numpyconvert.cpp)
 	list(APPEND NOPP_SOURCES source/pwrapper/numpyWrap.cpp)
 	list(APPEND NOPP_HEADERS source/pwrapper/numpyWrap.h)
 endif()
