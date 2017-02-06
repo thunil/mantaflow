@@ -48,7 +48,7 @@ paths = {
 	'tile_high_uni': ''
 }
 
-def update_paths(simNo=None, frameNo=None, tileNo=None, tile_size_x=0, tile_size_y=0, overlapping=0, data_type=None):
+def updatePaths(simNo=None, frameNo=None, tileNo=None, tile_size_x=0, tile_size_y=0, overlapping=0, data_type=None):
 	paths['base'] = basePath
 	paths['sim'] = paths['base'] + 'sim_%04d/' % simNo
 	paths['frame'] = paths['sim'] + 'frame_%04d/' % frameNo
@@ -62,7 +62,7 @@ def update_paths(simNo=None, frameNo=None, tileNo=None, tile_size_x=0, tile_size
 	paths['tile_high_uni'] = paths['tiles'] + data_type + '_high_%04d_%04d_%04d.uni' % (simNo, frameNo, tileNo)
 
 def uniToArray(uniPath, is_vel=False):
-	head, content = uniio.readuni(uniPath)
+	head, content = uniio.readUni(uniPath)
 
 	imageHeight = head['dimX']
 	imageWidth  = head['dimY']
@@ -86,7 +86,7 @@ def uniToArray(uniPath, is_vel=False):
 	return fixedArray
 
 def arrayToUni(input, savePath, motherUniPath, imageHeight, imageWidth, is_vel=False):
-	head, _ = uniio.readuni(motherUniPath)
+	head, _ = uniio.readUni(motherUniPath)
 	head['dimX'] = imageWidth
 	head['dimY'] = imageHeight
 
@@ -183,7 +183,7 @@ def createTestData(simNo, tileSize, lowResSize, upScalingFactor, overlapping=0, 
 
 	data_type = 'density'
 
-	update_paths(simNo, frameNo, tileNo, tileSize, tileSize, overlapping, data_type)
+	updatePaths(simNo, frameNo, tileNo, tileSize, tileSize, overlapping, data_type)
 
 	# for each frame: create tiles + folders
 	# print(paths['tiles'])
@@ -219,11 +219,11 @@ def createTestData(simNo, tileSize, lowResSize, upScalingFactor, overlapping=0, 
 				createPngFromUni(paths['tile_high_uni'])
 
 			tileNo += 1
-			update_paths(simNo, frameNo, tileNo, tileSize, tileSize, overlapping, data_type)
+			updatePaths(simNo, frameNo, tileNo, tileSize, tileSize, overlapping, data_type)
 
 		frameNo += 1
 		tileNo = 0
-		update_paths(simNo, frameNo, tileNo, tileSize, tileSize, overlapping, data_type)
+		updatePaths(simNo, frameNo, tileNo, tileSize, tileSize, overlapping, data_type)
 
 def createTestDataFromTo(simFrom, simTo, tileSize, lowResSize, upScalingFactor, overlapping=0, createPngs=False):
 	for sim in range(simFrom, simTo + 1):
@@ -295,7 +295,7 @@ def loadTestData(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partT
 		frameNo = 0
 		tileNo = 0
 
-		update_paths(simNo, frameNo, tileNo, tileSizeLow, tileSizeLow, overlapping, data_type)
+		updatePaths(simNo, frameNo, tileNo, tileSizeLow, tileSizeLow, overlapping, data_type)
 		print('from ' + paths['tiles'])
 		# check if right tiles are available - create them if not
 		if load_vel:
@@ -308,7 +308,7 @@ def loadTestData(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partT
 		if not os.path.exists(paths['tiles']) or not os.path.exists(look_for_tiles_path):
 			print('Could not find tiles for sim %04d. Creating new ones.' % simNo)
 			createTestData(simNo, tileSizeLow, low_res_size, upres, overlapping, with_vel=load_vel, with_pos=load_pos)
-			update_paths(simNo, frameNo, tileNo, tileSizeLow, tileSizeLow, overlapping, data_type)
+			updatePaths(simNo, frameNo, tileNo, tileSizeLow, tileSizeLow, overlapping, data_type)
 		totalTiles = 0
 		discardedTiles = 0
 
@@ -345,11 +345,11 @@ def loadTestData(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partT
 
 				totalTiles += 1
 				tileNo += 1
-				update_paths(simNo, frameNo, tileNo, tileSizeLow, tileSizeLow, overlapping, data_type)
+				updatePaths(simNo, frameNo, tileNo, tileSizeLow, tileSizeLow, overlapping, data_type)
 
 			tileNo = 0
 			frameNo += 1
-			update_paths(simNo, frameNo, tileNo, tileSizeLow, tileSizeLow, overlapping, data_type)
+			updatePaths(simNo, frameNo, tileNo, tileSizeLow, tileSizeLow, overlapping, data_type)
 
 		print('Total Tiles: %d' % totalTiles)
 		print('Discarded Tiles: %d' % discardedTiles)
@@ -569,7 +569,7 @@ def create_png_for_sims(from_sim, to_sim, target_folder):
 	for simNo in range(from_sim, to_sim + 1):
 		frameNo = 0
 
-		update_paths(simNo, frameNo, 0, 0, 0, 0, 'density')
+		updatePaths(simNo, frameNo, 0, 0, 0, 0, 'density')
 
 		while os.path.exists(paths['frame']):
 			createPngFromUni(paths['frame_low_uni'], target_folder + 'frame_%04d_2.png' % frame_global_no)
@@ -577,7 +577,7 @@ def create_png_for_sims(from_sim, to_sim, target_folder):
 
 			frameNo += 1
 			frame_global_no += 1
-			update_paths(simNo, frameNo, 0, 0, 0, 0, 'density')
+			updatePaths(simNo, frameNo, 0, 0, 0, 0, 'density')
 
 def create_bad_mixed_data(from_sim, to_sim):
 	bad_data_array = []
@@ -585,13 +585,13 @@ def create_bad_mixed_data(from_sim, to_sim):
 	for simNo in range(from_sim, to_sim + 1):
 		frameNo = 0
 
-		update_paths(simNo, frameNo, 0, 0, 0, 0, 'density')
+		updatePaths(simNo, frameNo, 0, 0, 0, 0, 'density')
 
 		while os.path.exists(paths['frame']):
 			bad_data_array.append(uniToArray(paths['frame_high_uni']))
 
 			frameNo += 1
-			update_paths(simNo, frameNo, 0, 0, 0, 0, 'density')
+			updatePaths(simNo, frameNo, 0, 0, 0, 0, 'density')
 
 	np.random.shuffle(bad_data_array)
 	create_bad_sim_data(bad_data_array, from_sim, to_sim)
@@ -611,9 +611,9 @@ def copySimData(fromSim, toSim, to_frame=200):
 		frameNo = 0
 		tileNo = 0
 
-		update_paths(simNo, frameNo, tileNo, 0, 0, 0, dt_dens )
+		updatePaths(simNo, frameNo, tileNo, 0, 0, 0, dt_dens )
 		pathsFrom = copy.deepcopy(paths)
-		update_paths(toSim, frameNo, tileNo, 0, 0, 0, dt_dens )
+		updatePaths(toSim, frameNo, tileNo, 0, 0, 0, dt_dens )
 		pathsTo = copy.deepcopy(paths)
 		print('To ' + pathsTo['sim'])
 
@@ -621,9 +621,9 @@ def copySimData(fromSim, toSim, to_frame=200):
 			os.makedirs(pathsTo['sim'])
 
 		while frameNo < to_frame:
-			update_paths(simNo, frameNo, tileNo, 0, 0, 0, dt_dens )
+			updatePaths(simNo, frameNo, tileNo, 0, 0, 0, dt_dens )
 			pathsFrom = copy.deepcopy(paths)
-			update_paths(toSim, frameNo, tileNo, 0, 0, 0, dt_dens )
+			updatePaths(toSim, frameNo, tileNo, 0, 0, 0, dt_dens )
 			pathsTo = copy.deepcopy(paths)
 
 			if not os.path.isdir( pathsFrom['frame'] ):
@@ -640,9 +640,9 @@ def copySimData(fromSim, toSim, to_frame=200):
 				print('   copy ' + pathsFrom['frame_high_uni']+ " " + pathsTo['frame_high_uni'] )
 				shutil.copyfile( pathsFrom['frame_high_uni'], pathsTo['frame_high_uni'] )
 
-			update_paths(simNo, frameNo, tileNo, 0, 0, 0, dt_vel )
+			updatePaths(simNo, frameNo, tileNo, 0, 0, 0, dt_vel )
 			pathsFrom = copy.deepcopy(paths)
-			update_paths(toSim, frameNo, tileNo, 0, 0, 0, dt_vel )
+			updatePaths(toSim, frameNo, tileNo, 0, 0, 0, dt_vel )
 			pathsTo = copy.deepcopy(paths)
 
 			if os.path.isfile( pathsFrom['frame_low_uni'] ):
@@ -669,7 +669,7 @@ def copySimData(fromSim, toSim, to_frame=200):
 # loadTestData(fromSim=0, toSim=0, densityMinimum=0.01, tileSizeLow=16, overlapping=0, load_vel=True)
 # print(uniToArray('/home/sunija/manta_output/sim_0000/frame_0000/vel_low_0000_0000.uni', is_vel=True))
 # print(combine_density_with_vel(uniToArray('/home/sunija/manta_output/sim_0000/frame_0000/density_low_0000_0000.uni'), uniToArray('/home/sunija/manta_output/sim_0000/frame_0000/vel_low_0000_0000.uni', is_vel=True)))
-# update_paths(1, 0, 0, 8, 8, 'density')
+# updatePaths(1, 0, 0, 8, 8, 'density')
 # createTestData(0, 0, 64, 2, 4, False)
 # createTestDataFromTo(54, 56, 8, 64, 2)
 # createTestDataFromTo(simFrom=0, simTo=0, tileSize=8, lowResSize=64, overlapping=0, upScalingFactor=2, createPngs=True)

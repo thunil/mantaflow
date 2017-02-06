@@ -8,7 +8,7 @@ import tensorflow as tf
 import numpy as np
 
 sys.path.append("../tools")
-import tilecreator as tile_creator
+import tilecreator as tiCr
 from convautoenc import ConvolutionalAutoEncoder
 
 # path to sim data, trained models and output are also saved here
@@ -16,7 +16,7 @@ basePath = '../data/'
 
 output_only = True  # skip training?
 
-#tile_creator.copySimData( 2004, 2007 ); exit(1);  # debug, copy sim data to different ID
+#tiCr.copySimData( 2004, 2007 ); exit(1);  # debug, copy sim data to different ID
 
 fromSim = toSim = -1
 #imageSizeLow = 64  # smaller test
@@ -199,11 +199,11 @@ else:
 
 
 # load test data
-# tile_creator.loadTestData(fromSim, toSim, emptyTileValue, tileSizeLow, overlapping, 100, 5, 0.1, load_vel=True, low_res_size=imageSizeLow)
-# tile_creator.loadTestData(fromSim, toSim, emptyTileValue, tileSizeLow, overlapping, 100, 5, 0.1, load_vel=False, low_res_size=imageSizeLow, upres=upScale) # no vel
+# tiCr.loadTestData(fromSim, toSim, emptyTileValue, tileSizeLow, overlapping, 100, 5, 0.1, load_vel=True, low_res_size=imageSizeLow)
+# tiCr.loadTestData(fromSim, toSim, emptyTileValue, tileSizeLow, overlapping, 100, 5, 0.1, load_vel=False, low_res_size=imageSizeLow, upres=upScale) # no vel
 # Edited for cropping: Added fixed tile size and overlapping
-#tile_creator.loadTestData(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 100, 5, 0.1, load_vel=False, low_res_size=imageSizeLow, upres=upScale)
-tile_creator.loadTestData(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=False, low_res_size=imageSizeLow, upres=upScale)
+#tiCr.loadTestData(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 100, 5, 0.1, load_vel=False, low_res_size=imageSizeLow, upres=upScale)
+tiCr.loadTestData(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=False, low_res_size=imageSizeLow, upres=upScale)
 
 
 # Copy code to test folder
@@ -233,7 +233,7 @@ if not output_only:
 		last_save_since = save_step
 		last_save_cost = 1e10
 		for epoch in range(training_epochs):
-		  batch_xs, batch_ys = tile_creator.selectRandomTiles(batch_size)
+		  batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size)
 		  #print format(batch_xs[0].shape)
 		  _, cost, summary = sess.run([optimizer, cost, training_summary], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
 
@@ -253,7 +253,7 @@ if not output_only:
 			  cumulated_cost_test = 0.0
 			  test_count = 10
 			  for curr_test in range(test_count):
-				  batch_xs, batch_ys = tile_creator.selectRandomTiles(batch_size, isTraining=False)
+				  batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size, isTraining=False)
 				  cost_test, summary_test = sess.run([cost, testing_summary], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 				  cumulated_cost_test += cost_test
 			  cumulated_cost_test /= test_count
@@ -280,8 +280,8 @@ if not output_only:
 # ---------------------------------------------
 # Test against all data
 
-batch_xs, batch_ys = tile_creator.tile_inputs_all_complete, tile_creator.tile_outputs_all_complete
-# batch_xs, batch_ys = tile_creator.tile_data['inputs_val'], tile_creator.tile_data['outputs_val']
+batch_xs, batch_ys = tiCr.tile_inputs_all_complete, tiCr.tile_outputs_all_complete
+# batch_xs, batch_ys = tiCr.tile_data['inputs_val'], tiCr.tile_data['outputs_val']
 # accuracy = tf.abs(tf.add(y, -y_))
 output = y_pred
 # eval_accu = output.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
@@ -289,17 +289,17 @@ output = y_pred
 tile_size_high_for_croped = upScale * cropTileSizeLow
 tiles_in_image = (imageSizeHigh // tile_size_high_for_croped) ** 2
 
-for curr_output in range(len(tile_creator.tile_inputs_all_complete) / tiles_in_image):
+for curr_output in range(len(tiCr.tile_inputs_all_complete) / tiles_in_image):
 	batch_xs = []
 	batch_ys = []
 	for curr_tile in range(tiles_in_image):
 		curr_index = curr_output * tiles_in_image + curr_tile
-		batch_xs.append(tile_creator.tile_inputs_all_complete[curr_index])
+		batch_xs.append(tiCr.tile_inputs_all_complete[curr_index])
 		batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
 
 	eval_accu = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
-	tile_creator.debugOutputPngs_for_croping(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, imageSizeLow, imageSizeHigh, test_path, \
+	tiCr.debugOutputPngs_for_croping(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, imageSizeLow, imageSizeHigh, test_path, \
 		imageCounter=curr_output, cut_output_to=tile_size_high_for_croped, tiles_in_image=tiles_in_image)
 
 print('Test finished.')
@@ -312,6 +312,6 @@ with open(basePath + 'test_overview.txt', "a") as text_file:
 	text_file.write(test_path[-10:-1] + ': {:.2f} min, {} Epochs, cost {:.4f}, {}'.format(training_duration, training_epochs, cost, comment) + loaded_model + '\n')
 
 # debug print tiles
-# tile_creator.debugOutputPngs(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, imageSizeLow, imageSizeHigh, test_path)
+# tiCr.debugOutputPngs(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, imageSizeLow, imageSizeHigh, test_path)
 # print('Pngs finished.')
 
