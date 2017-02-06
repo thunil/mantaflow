@@ -1,3 +1,16 @@
+#******************************************************************************
+#
+# MantaFlow fluid solver framework
+# Copyright 2017 Daniel Hook, Nils Thuerey
+#
+# This program is free software, distributed under the terms of the
+# GNU General Public License (GPL) 
+# http://www.gnu.org/licenses
+#
+# Manta & tensor flow example with tiles
+#
+#******************************************************************************
+
 import time
 import os
 import shutil
@@ -7,6 +20,7 @@ import math
 import tensorflow as tf
 import numpy as np
 
+# load manta tools
 sys.path.append("../tools")
 import tilecreator as tiCr
 from convautoenc import ConvolutionalAutoEncoder
@@ -14,31 +28,31 @@ from convautoenc import ConvolutionalAutoEncoder
 # path to sim data, trained models and output are also saved here
 basePath = '../data/'
 
-output_only = True  # skip training?
+# main mode switch:
+outputOnly = True  # apply model, or run full training?
 
 #tiCr.copySimData( 2004, 2007 ); exit(1);  # debug, copy sim data to different ID
 
-fromSim = toSim = -1
-#imageSizeLow = 64  # smaller test
-imageSizeLow = 128
-#imageSizeLow = 256
+simSizeLow  = 128
 tileSizeLow = 16
-upScale = 4
-imageSizeHigh = imageSizeLow * upScale
-tileSizeHigh  = tileSizeLow  * upScale
+upScale     = 4
+simSizeHigh = simSizeLow * upScale
+tileSizeHigh= tileSizeLow  * upScale
+
+# dont use for training! for applying model, add overlap here if necessary (i.e., cropOverlap>0) 
 # note:  cropTileSizeLow + (cropOverlap * 2) = tileSizeLow
-cropOverlap = 0
-#cropOverlap = 0 # test
+cropOverlap     = 0
 cropTileSizeLow = tileSizeLow - 2*cropOverlap
 
 emptyTileValue  = 0.01
 learning_rate   = 0.00005
 training_epochs = 100000 # manualy stop...
-dropout = 0.
-batch_size   = 100
-display_step = 200
-save_step    = 1000
-comment      = '-'   # unused
+dropout         = 0.9 # slight...
+batch_size      = 100
+display_step    = 200
+save_step       = 1000
+
+fromSim = toSim = -1
 
 # ---------------------------------------------
 
@@ -49,22 +63,23 @@ comment      = '-'   # unused
 load_model_test = 101
 load_model_no = 18
 
-# run train!
-if 0:
-	dropout = 0.9 # slight...
+if not outputOnly:
+	# run train!
 	load_model_test = -1 
-	output_only = False # off , run training
-	imageSizeLow = 64
-	#fromSim = toSim   = 5081 # short
-	#toSim   = 5089 
-	fromSim = toSim   = 1000 # short, double sim
-	#toSim   = 6101 # use all
+	simSizeLow = 64
+	fromSim = toSim   = 1000 # short, use single sim
+
+	if cropOverlap>0:
+		print("Error - dont use cropOverlap != 0 for training...")
+		exit(1)
+
 else:
 	# dont train, just apply to input seq
-	# current IDs
-	# 2004: full plume128
-	# 2007: plume128, short for testing
 	fromSim = toSim = 2007
+	# available IDs
+	# 2004: full plume128
+	# 2005: full sideways plume, res 128
+	# 2007: plume128, short for testing
 
 # ---------------------------------------------
 
@@ -72,27 +87,26 @@ else:
 n_input  = tileSizeLow  ** 2 
 n_output = tileSizeHigh ** 2
 
-# Create test folder
+# create output dir
 def next_test_path():
-	folder_no = 100
+	folder_no = 1
 	test_path_addition = 'test_%04d/' % folder_no
 	while os.path.exists(basePath + test_path_addition):
 		folder_no += 1
-		test_path_addition = 'test_%04d/' % folder_no
-
+		test_path_addition = 'test_%04d/' % folder_no 
 	test_path = basePath + test_path_addition
+	print("Using test dir '%s'" % test_path)
 	os.makedirs(test_path)
 	return test_path
 
-
-test_path = next_test_path()
-# save_path = test_path + 'model.ckpt'
 if not load_model_test == -1:
 	if not os.path.exists(basePath + 'test_%04d/' % load_model_test):
 		print('ERROR: Test to load does not exist.')
 	load_path = basePath + 'test_%04d/model_%04d.ckpt' % (load_model_test, load_model_no)
 
-# Custom Logger to write Log to file
+test_path = next_test_path()
+
+# custom Logger to write Log to file
 class Logger(object):
 	def __init__(self):
 		self.terminal = sys.stdout
@@ -104,13 +118,12 @@ class Logger(object):
 
 sys.stdout = Logger()
 
-# Print Variables into log
+# print Variables to log
 def print_variables():
-	#print('Comment: {}'.format(comment))
 	print('\nUsing variables:')
 	print('FromSim: {}'.format(fromSim))
 	print('ToSim: {}'.format(toSim))
-	print('imageSizeLow: {}'.format(imageSizeLow))
+	print('simSizeLow: {}'.format(simSizeLow))
 	print('tileSizeLow: {}'.format(tileSizeLow))
 	print('cropOverlap: {}'.format(cropOverlap))
 	print('cropTileSizeLow: {}'.format(cropTileSizeLow))
@@ -130,15 +143,10 @@ x = tf.placeholder(tf.float32, shape=[None, n_input])
 y_true = tf.placeholder(tf.float32, shape=[None, n_output])
 keep_prob = tf.placeholder(tf.float32)
 
-# input: with velocity field , start small, only upconv , for vel 32x32, not a good idea...?  
-#xIn = tf.reshape(x, shape=[-1, tileSizeLow * 2, tileSizeLow * 2, 1]) # w vel 
-#xInSm = tf.image.resize_images(xIn, [16,16], 1)
-#cae = ConvolutionalAutoEncoder(xInSm) 
+xIn = tf.reshape(x, shape=[-1, tileSizeLow, tileSizeLow, 1]) 
+cae = ConvolutionalAutoEncoder(xIn) 
 
-xIn = tf.reshape(x, shape=[-1, tileSizeLow, tileSizeLow, 1]) # no vel
-cae = ConvolutionalAutoEncoder(xIn) # no vel 
-
-# --- main net ---
+# --- main graph setup ---
 
 #cae.convolutional_layer(16, [3, 3], tf.nn.relu)
 
@@ -172,18 +180,8 @@ cae.deconvolutional_layer(1, [3, 3], tf.nn.relu)
 #y_pred = cae.y() 
 y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
 print "DOFs: %d " % cae.getDOFs()
-#exit(1)
-
-#y_pred = upscale(x, dropout)
-#y_pred = full_conn
-#output_sobel = sobel(y_true)
-#padding_sobel = 'VALID'
-# cost = tf.reduce_mean(tf.pow((y_true - y_pred) + (sobel(y_true, isX=True) - sobel(y_pred, isX=True) + (sobel(y_true, isX=False) - sobel(y_pred, isX=False))), 2))
-#cost	  = tf.reduce_mean(tf.pow((y_true - y_pred), 2)) + 2 * (tf.reduce_mean(tf.pow(sobel(y_true, isX=True, padding_kind=padding_sobel) - sobel(y_pred, isX=True, padding_kind=padding_sobel), 2) + tf.pow(sobel(y_true, isX=False, padding_kind=padding_sobel) - sobel(y_pred, isX=False, padding_kind=padding_sobel), 2)))
-#cost_test = tf.reduce_mean(tf.pow((y_true - y_pred), 2)) + 2 * (tf.reduce_mean(tf.pow(sobel(y_true, isX=True, padding_kind=padding_sobel) - sobel(y_pred, isX=True, padding_kind=padding_sobel), 2) + tf.pow(sobel(y_true, isX=False, padding_kind=padding_sobel) - sobel(y_pred, isX=False, padding_kind=padding_sobel), 2)))
 
 cost = tf.nn.l2_loss(y_true-y_pred) 
-# ? cost_test = tf.nn.l2_loss(y_true-y_pred) 
 optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
 # create session and saver
@@ -199,11 +197,7 @@ else:
 
 
 # load test data
-# tiCr.loadTestData(fromSim, toSim, emptyTileValue, tileSizeLow, overlapping, 100, 5, 0.1, load_vel=True, low_res_size=imageSizeLow)
-# tiCr.loadTestData(fromSim, toSim, emptyTileValue, tileSizeLow, overlapping, 100, 5, 0.1, load_vel=False, low_res_size=imageSizeLow, upres=upScale) # no vel
-# Edited for cropping: Added fixed tile size and overlapping
-#tiCr.loadTestData(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 100, 5, 0.1, load_vel=False, low_res_size=imageSizeLow, upres=upScale)
-tiCr.loadTestData(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=False, low_res_size=imageSizeLow, upres=upScale)
+tiCr.loadTestData(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=False, low_res_size=simSizeLow, upres=upScale)
 
 
 # Copy code to test folder
@@ -224,9 +218,10 @@ training_duration = 0.0
 cost = 0.0
 save_no = 0
 
-if not output_only:
+if not outputOnly:
 	try:
 		print('\n*****TRAINING STARTED*****\n')
+		print('(stop with ctrl-c)')
 		error_per_display = 0
 		startTime = time.time()
 		epochTime = startTime
@@ -261,7 +256,7 @@ if not output_only:
 			  error_per_display /= display_step
 			  print('\nEpoch {:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), error_per_display, cumulated_cost_test))
 			  print('%d epoches took %.02f seconds.' % (display_step, (time.time() - epochTime)))
-			  print('Estimated time: %.02f minutes.' % ((training_epochs - epoch) / display_step * (time.time() - epochTime) / 60.0))
+			  #print('Estimated time: %.02f minutes.' % ((training_epochs - epoch) / display_step * (time.time() - epochTime) / 60.0))
 			  epochTime = time.time()
 			  summary_writer.add_summary(summary, epoch)
 			  summary_writer.add_summary(summary_test, epoch)
@@ -281,13 +276,8 @@ if not output_only:
 # Test against all data
 
 batch_xs, batch_ys = tiCr.tile_inputs_all_complete, tiCr.tile_outputs_all_complete
-# batch_xs, batch_ys = tiCr.tile_data['inputs_val'], tiCr.tile_data['outputs_val']
-# accuracy = tf.abs(tf.add(y, -y_))
-output = y_pred
-# eval_accu = output.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
-
-tile_size_high_for_croped = upScale * cropTileSizeLow
-tiles_in_image = (imageSizeHigh // tile_size_high_for_croped) ** 2
+tile_size_high_for_cropped = upScale * cropTileSizeLow
+tiles_in_image = (simSizeHigh // tile_size_high_for_cropped) ** 2
 
 for curr_output in range(len(tiCr.tile_inputs_all_complete) / tiles_in_image):
 	batch_xs = []
@@ -299,8 +289,8 @@ for curr_output in range(len(tiCr.tile_inputs_all_complete) / tiles_in_image):
 
 	eval_accu = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
-	tiCr.debugOutputPngs_for_croping(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, imageSizeLow, imageSizeHigh, test_path, \
-		imageCounter=curr_output, cut_output_to=tile_size_high_for_croped, tiles_in_image=tiles_in_image)
+	tiCr.debugOutputPngs_for_cropping(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, simSizeLow, simSizeHigh, test_path, \
+		imageCounter=curr_output, cut_output_to=tile_size_high_for_cropped, tiles_in_image=tiles_in_image)
 
 print('Test finished.')
 
@@ -309,9 +299,9 @@ loaded_model = ''
 if not load_model_test == -1:
 	loaded_model = ', Loaded %04d, %d' % (load_model_test , load_model_no)
 with open(basePath + 'test_overview.txt', "a") as text_file:
-	text_file.write(test_path[-10:-1] + ': {:.2f} min, {} Epochs, cost {:.4f}, {}'.format(training_duration, training_epochs, cost, comment) + loaded_model + '\n')
+	text_file.write(test_path[-10:-1] + ': {:.2f} min, {} Epochs, cost {:.4f}, {}'.format(training_duration, training_epochs, cost, " ") + loaded_model + '\n')
 
 # debug print tiles
-# tiCr.debugOutputPngs(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, imageSizeLow, imageSizeHigh, test_path)
+# tiCr.debugOutputPngs(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, simSizeLow, simSizeHigh, test_path)
 # print('Pngs finished.')
 

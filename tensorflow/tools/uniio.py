@@ -15,6 +15,7 @@
 
 import gzip
 import struct
+import sys
 from datetime import date
 from collections import namedtuple
 import numpy as np

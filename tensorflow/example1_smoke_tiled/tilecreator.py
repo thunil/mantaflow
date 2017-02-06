@@ -1,3 +1,16 @@
+#******************************************************************************
+#
+# MantaFlow fluid solver framework
+# Copyright 2017 Daniel Hook
+#
+# This program is free software, distributed under the terms of the
+# GNU General Public License (GPL) 
+# http://www.gnu.org/licenses
+#
+# Create 2d tile data
+#
+#******************************************************************************
+
 import uniio
 import numpy as np
 import scipy.misc
@@ -23,7 +36,7 @@ combined_outputs_all = []
 combined_inputs_all_complete = []
 combined_outputs_all_complete = []
 
-tile_outputs_all_croped = []
+tile_outputs_all_cropped = []
 img_inputs_all = []
 img_outputs_all = []
 
@@ -77,12 +90,11 @@ def uniToArray(uniPath, is_vel=False):
 	else:
 		if not is_vel:
 			fixedArray = np.reshape(content, [imageWidth, imageHeight])
-			fixedArray = fixedArray[::-1]
+			fixedArray = fixedArray[::-1] # make a copy of the array in reverse order
 		else:
 			fixedArray = np.reshape(content, [imageWidth, imageHeight, 3])
 			fixedArray = fixedArray[::-1]
 
-	#print("%s img size  %d %d " % (uniPath, imageWidth, imageHeight ) )
 	return fixedArray
 
 def arrayToUni(input, savePath, motherUniPath, imageHeight, imageWidth, is_vel=False):
@@ -101,7 +113,7 @@ def arrayToUni(input, savePath, motherUniPath, imageHeight, imageWidth, is_vel=F
 			for y in range(0, imageWidth):
 				fixedArray[x][y] = input[(imageHeight - 1) - x][y]
 
-	uniio.writeuni(savePath, head, fixedArray)
+	uniio.writeUni(savePath, head, fixedArray)
 
 def createTiles(input, imageHeight, imageWidth, tileHeight, tileWidth, overlapping=0):
 	if ((imageHeight % tileHeight) != 0 |
@@ -230,13 +242,13 @@ def createTestDataFromTo(simFrom, simTo, tileSize, lowResSize, upScalingFactor, 
 		createTestData(sim, tileSize, lowResSize, upScalingFactor, overlapping, createPngs)
 		print('Created test data for sim %04d' % sim)
 
-def selectRandomTiles(selectionSize, isTraining=True, is_combined=False, croped=False):
+def selectRandomTiles(selectionSize, isTraining=True, is_combined=False, cropped=False):
 	# returns #selectionsize elements of inputs_train/test and outputs_train/test
 	allInputs = tile_data['inputs_train']
-	if not croped:
+	if not cropped:
 		allOutputs = tile_data['outputs_train']
 	else:
-		allOutputs = tile_outputs_all_croped
+		allOutputs = tile_outputs_all_cropped
 
 	if not isTraining:
 		allInputs = tile_data['inputs_test']
@@ -460,8 +472,8 @@ def debugOutputPngs(input, expected, output, tileSizeLow, tileSizeHigh, imageSiz
 			outputArray = []
 			inputArray = []
 
-# Edited for croping: Added this method. Nearly the same as the original one, didn't want to ruin the original one.
-def debugOutputPngs_for_croping(input, expected, output, tileSizeLow, tileSizeHigh, imageSizeLow, imageSizeHigh, path,
+# Edited for cropping: Added this method. Nearly the same as the original one, didn't want to ruin the original one.
+def debugOutputPngs_for_cropping(input, expected, output, tileSizeLow, tileSizeHigh, imageSizeLow, imageSizeHigh, path,
 					imageCounter=0, cut_output_to=-1, tiles_in_image=-1):
 	expectedArray = []
 	outputArray = []
