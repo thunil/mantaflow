@@ -503,7 +503,7 @@ def debugOutputPngs_for_cropping(input, expected, output, tileSizeLow, tileSizeH
 			else:
 				outputImage = combineTiles(outputArray, imageSizeHigh, imageSizeHigh, cut_output_to, cut_output_to)
 
-			createPngFromArray(outputImage, path + 'full_%04d_3.png' % imageCounter)
+			createPngFromArray(outputImage, path + 'full_%04d.png' % imageCounter)
 			outputArray = []
 
 def combine_tiles_easy(input, image_size, tile_size):

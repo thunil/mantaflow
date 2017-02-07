@@ -182,8 +182,8 @@ cae.deconvolutional_layer(1, [3, 3], tf.nn.relu)
 y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
 print "DOFs: %d " % cae.getDOFs()
 
-cost = tf.nn.l2_loss(y_true-y_pred) 
-optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
+cost_func = tf.nn.l2_loss(y_true-y_pred) 
+optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost_func)
 
 # create session and saver
 sess = tf.InteractiveSession()
@@ -208,8 +208,8 @@ if len(os.path.dirname(__file__))==0:
 shutil.copy(code_path, test_path + os.path.basename(__file__))
 
 # Create a summary to monitor cost tensor
-training_summary  = tf.summary.scalar("loss", cost)
-testing_summary   = tf.summary.scalar("loss_test", cost)
+training_summary  = tf.summary.scalar("loss", cost_func)
+testing_summary   = tf.summary.scalar("loss_test", cost_func)
 merged_summary_op = tf.summary.merge_all() # tf.merge_all_summaries()
 summary_writer    = tf.summary.FileWriter(test_path, sess.graph)
 
@@ -230,8 +230,7 @@ if not outputOnly:
 		last_save_cost = 1e10
 		for epoch in range(training_epochs):
 		  batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size)
-		  #print format(batch_xs[0].shape)
-		  _, cost, summary = sess.run([optimizer, cost, training_summary], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
+		  _, cost, summary = sess.run([optimizer, cost_func, training_summary], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
 
 		  # save model
 		  if (cost < last_save_cost) & (last_save_since > save_step):
@@ -250,7 +249,7 @@ if not outputOnly:
 			  test_count = 10
 			  for curr_test in range(test_count):
 				  batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size, isTraining=False)
-				  cost_test, summary_test = sess.run([cost, testing_summary], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
+				  cost_test, summary_test = sess.run([cost_func, testing_summary], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 				  cumulated_cost_test += cost_test
 			  cumulated_cost_test /= test_count
 

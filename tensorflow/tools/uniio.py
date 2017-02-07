@@ -41,13 +41,19 @@ def RU_read_header(bytestream):
 
 	if ID=="MNT2":
 		# unpack header struct object
-		head = namedtuple('UniHeader', 'dimX, dimY, dimZ, gridType, elementType, bytesPerElement, info, timestamp')
+		head = namedtuple('HeaderV3', 'dimX, dimY, dimZ, gridType, elementType, bytesPerElement, info, timestamp')
 		# convert to namedtuple and then directly to a dict
 		head = head._asdict(head._make(struct.unpack('iiiiii256sQ', bytestream.read(288))))
 
+		# when writing, we'll need a v4 header field, re-pack...
+		head['dimT'] = 0 
+		head['info'] = head['info'][0:252]
+		head4 = namedtuple('HeaderV4', 'dimX, dimY, dimZ, gridType, elementType, bytesPerElement, info, dimT, timestamp')(**head)
+		head = head4._asdict()
+
 	elif ID=="MNT3":
 		# unpack header struct object
-		head = namedtuple('UniHeader', 'dimX, dimY, dimZ, gridType, elementType, bytesPerElement, info, dimT, timestamp')
+		head = namedtuple('HeaderV4', 'dimX, dimY, dimZ, gridType, elementType, bytesPerElement, info, dimT, timestamp')
 		# convert to namedtuple and then directly to a dict
 		# header is shorter for v3!
 		head = head._asdict(head._make(struct.unpack('iiiiii252siQ', bytestream.read(288))))
@@ -80,7 +86,7 @@ def writeUni(filename, head, content):
 		#head_tuple = namedtuple('GenericDict', head.keys())(**head)
 		#head_buffer = struct.pack('iiiiii256sQ', *head_tuple)
 		bytestream.write(b'MNT3') # new, v4
-		head_tuple = namedtuple('GenericDict', head.keys())(**head)
+		head_tuple = namedtuple('HeaderV4', head.keys())(**head)
 		head_buffer = struct.pack('iiiiii252siQ', *head_tuple)
 		bytestream.write(head_buffer)
 		# write grid content

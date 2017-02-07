@@ -308,8 +308,10 @@ endif()
 
 # compile with numpy support?
 if(NUMPY)
-	execute_process(COMMAND python -c "import numpy; print(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR)
-	list(APPEND INCLUDE_PATHS ${NUMPY_INCLUDE_DIR})
+	# if the python command below doesnt work, manually set path, e.g., use "numpy.get_include()" to find path 
+	# set(NUMPY_INCLUDE_DIR "${PYTHON_INCLUDE_DIRS}/dist-packages/numpy/core/include") 
+	execute_process(COMMAND python -c "import numpy; print(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR) 
+	list(APPEND INCLUDE_PATHS ${NUMPY_INCLUDE_DIR}) 
 	list(APPEND   PP_SOURCES source/plugin/numpyconvert.cpp)
 	list(APPEND NOPP_SOURCES source/pwrapper/numpyWrap.cpp)
 	list(APPEND NOPP_HEADERS source/pwrapper/numpyWrap.h)
