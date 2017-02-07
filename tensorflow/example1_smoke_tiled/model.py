@@ -23,13 +23,14 @@ import numpy as np
 # load manta tools
 sys.path.append("../tools")
 import tilecreator as tiCr
+import uniio
 from convautoenc import ConvolutionalAutoEncoder
 
 # path to sim data, trained models and output are also saved here
 basePath = '../data/'
 
 # main mode switch:
-outputOnly = True  # apply model, or run full training?
+outputOnly = False  # apply model, or run full training?
 
 #tiCr.copySimData( 2004, 2007 ); exit(1);  # debug, copy sim data to different ID
 
@@ -75,12 +76,8 @@ if not outputOnly:
 		exit(1)
 
 else:
-	# dont train, just apply to input seq
-	fromSim = toSim = 2007
-	# available IDs
-	# 2004: full plume128
-	# 2005: full sideways plume, res 128
-	# 2007: plume128, short for testing
+	# dont train, just apply to input seq, by default use plume (2004)
+	fromSim = toSim = 2004
 
 # ---------------------------------------------
 
@@ -149,40 +146,24 @@ cae = ConvolutionalAutoEncoder(xIn)
 
 # --- main graph setup ---
 
-#cae.convolutional_layer(16, [3, 3], tf.nn.relu)
-
 pool = 4
-cae.convolutional_layer(4, [3, 3], tf.nn.relu)
-cae.max_pool([pool,pool])
-
-#cae.convolutional_layer(8, [3, 3], tf.nn.relu)
-#cae.max_pool([pool,pool])
+cae.convolutional_layer(8, [3, 3], tf.nn.relu)
+cae.max_pool([pool,pool], [pool,pool])
 
 flat_size = cae.flatten()
 cae.fully_connected_layer(flat_size, tf.nn.relu)
 cae.unflatten()
 
-cae.max_depool([pool,pool])
-cae.deconvolutional_layer(2, [3, 3], tf.nn.relu)
+cae.max_depool([pool,pool], [pool,pool])
+cae.deconvolutional_layer(4, [3, 3], tf.nn.relu)
 
-#cae.max_depool([pool,pool])
-#cae.deconvolutional_layer(4, [3, 3], tf.nn.relu)
+cae.max_depool([pool,pool], [pool,pool])
+cae.deconvolutional_layer(2, [5, 5], tf.nn.relu)
 
-#cae.max_depool([pool,pool])  # ??? not working?
-cae.max_depool([2,2])
-cae.deconvolutional_layer(2, [3, 3], tf.nn.relu)
-
-cae.max_depool([2,2])
-cae.deconvolutional_layer(1, [3, 3], tf.nn.relu)
-
-#cae.max_depool([pool,pool])
-#cae.deconvolutional_layer(2, [5, 5], tf.nn.relu)
-
-#y_pred = cae.y() 
 y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
 print "DOFs: %d " % cae.getDOFs()
 
-cost_func = tf.nn.l2_loss(y_true-y_pred) 
+cost_func = tf.nn.l2_loss(y_true - y_pred) 
 optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost_func)
 
 # create session and saver
@@ -200,17 +181,12 @@ else:
 # load test data
 tiCr.loadTestData(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=False, low_res_size=simSizeLow, upres=upScale)
 
+#uniio.backupFile(__file__, test_path)
 
-# Copy code to test folder
-code_path = os.path.dirname(__file__) + '/' + os.path.basename(__file__)
-if len(os.path.dirname(__file__))==0:
-	code_path = ".%s" % code_path
-shutil.copy(code_path, test_path + os.path.basename(__file__))
-
-# Create a summary to monitor cost tensor
+# create a summary to monitor cost tensor
 training_summary  = tf.summary.scalar("loss", cost_func)
 testing_summary   = tf.summary.scalar("loss_test", cost_func)
-merged_summary_op = tf.summary.merge_all() # tf.merge_all_summaries()
+merged_summary_op = tf.summary.merge_all() 
 summary_writer    = tf.summary.FileWriter(test_path, sess.graph)
 
 # ---------------------------------------------
@@ -268,6 +244,7 @@ if not outputOnly:
 	print('\n*****TRAINING FINISHED*****')
 	training_duration = (time.time() - startTime) / 60.0
 	print('Training needed %.02f minutes.' % (training_duration))
+	print('To apply the trained model, set "outputOnly" to True, and insert numbers for "load_model_test", and "load_model_no" ')
 
 	exit(1) # dont continue when training....
 
@@ -279,6 +256,7 @@ batch_xs, batch_ys = tiCr.tile_inputs_all_complete, tiCr.tile_outputs_all_comple
 tile_size_high_for_cropped = upScale * cropTileSizeLow
 tiles_in_image = (simSizeHigh // tile_size_high_for_cropped) ** 2
 
+img_count = 0
 for curr_output in range(len(tiCr.tile_inputs_all_complete) / tiles_in_image):
 	batch_xs = []
 	batch_ys = []
@@ -291,8 +269,7 @@ for curr_output in range(len(tiCr.tile_inputs_all_complete) / tiles_in_image):
 
 	tiCr.debugOutputPngs_for_cropping(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, simSizeLow, simSizeHigh, test_path, \
 		imageCounter=curr_output, cut_output_to=tile_size_high_for_cropped, tiles_in_image=tiles_in_image)
-
-print('Test finished.')
+	img_count += 1
 
 # write summary to test overview
 loaded_model = ''
@@ -301,7 +278,5 @@ if not load_model_test == -1:
 with open(basePath + 'test_overview.txt', "a") as text_file:
 	text_file.write(test_path[-10:-1] + ': {:.2f} min, {} Epochs, cost {:.4f}, {}'.format(training_duration, training_epochs, cost, " ") + loaded_model + '\n')
 
-# debug print tiles
-# tiCr.debugOutputPngs(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, simSizeLow, simSizeHigh, test_path)
-# print('Pngs finished.')
+print('Test finished, %d pngs written to %s.' % (img_count, test_path) )
 

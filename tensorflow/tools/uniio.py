@@ -16,6 +16,8 @@
 import gzip
 import struct
 import sys
+import os
+import shutil
 from datetime import date
 from collections import namedtuple
 import numpy as np
@@ -102,5 +104,12 @@ def writeUni(filename, head, content):
 			bytestream.write(memoryview(content))
 		else:
 			bytestream.write(np.getbuffer(content))
+
+# backup code to test folder
+def backupFile(name, test_path):
+	code_path = os.path.dirname(name) + '/' + os.path.basename(name)
+	if len(os.path.dirname(name))==0:
+		code_path = ".%s" % code_path
+	shutil.copy(code_path, test_path + os.path.basename(name))
 
 
