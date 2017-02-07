@@ -308,10 +308,7 @@ endif()
 
 # compile with numpy support?
 if(NUMPY)
-	set(NUMPY_INCLUDE_DIR "${PYTHON_INCLUDE_DIRS}/dist-packages/numpy/core/include") 
-	# use numpy.get_include() to find path
-	# e.g., for Macs: /System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/numpy/core/include 
-	set(NUMPY_INCLUDE_DIR "/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/numpy/core/include")
+	execute_process(COMMAND python -c "import numpy; print(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR)
 	list(APPEND INCLUDE_PATHS ${NUMPY_INCLUDE_DIR})
 	list(APPEND   PP_SOURCES source/plugin/numpyconvert.cpp)
 	list(APPEND NOPP_SOURCES source/pwrapper/numpyWrap.cpp)

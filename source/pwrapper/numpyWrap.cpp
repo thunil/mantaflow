@@ -17,21 +17,9 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include "numpy/arrayobject.h"
 
-namespace Manta
-{
-    
-#if 1
-    void initNumpy()// for python 2.7
-    {
-        import_array()
-    }
-#else
-    int  initNumpy() // for python 3.4
-    {
-        import_array()
-        return 0;
-    }
-#endif
+namespace Manta {
+
+    PyMODINIT_FUNC initNumpy() { import_array(); }
     
     template<> PyArrayContainer fromPy<PyArrayContainer>(PyObject* obj) {
         if (PyArray_API == NULL){
