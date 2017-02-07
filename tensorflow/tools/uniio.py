@@ -49,7 +49,8 @@ def RU_read_header(bytestream):
 		# unpack header struct object
 		head = namedtuple('UniHeader', 'dimX, dimY, dimZ, gridType, elementType, bytesPerElement, info, dimT, timestamp')
 		# convert to namedtuple and then directly to a dict
-		head = head._asdict(head._make(struct.unpack('iiiiii256siQ', bytestream.read(288))))
+		# header is shorter for v3!
+		head = head._asdict(head._make(struct.unpack('iiiiii252siQ', bytestream.read(288))))
 
 	elif ID=="M4T2" or ID=="M4T3":
 		print("read_header error - 4D grids not yet supported")
@@ -63,6 +64,7 @@ def RU_read_header(bytestream):
 
 # use this to read the .uni file. It will return the header as dictionary and the content as np-array
 def readUni(filename):
+	#print("Reading '%s'" % filename) # debug
 	with gzip.open(filename, 'rb') as bytestream:
 		head = RU_read_header(bytestream)
 		content = RU_read_content(bytestream, head)
@@ -71,12 +73,17 @@ def readUni(filename):
 
 # use this to write a .uni file. The head has to be supplied in the same dictionary format as the output of readuni
 def writeUni(filename, head, content):
+	#print("Writing '%s'" % filename) # debug
 	with gzip.open(filename, 'wb') as bytestream:
 		# write the header of the uni file
-		bytestream.write(b'MNT2')
+		#bytestream.write(b'MNT2') # v3
+		#head_tuple = namedtuple('GenericDict', head.keys())(**head)
+		#head_buffer = struct.pack('iiiiii256sQ', *head_tuple)
+		bytestream.write(b'MNT3') # new, v4
 		head_tuple = namedtuple('GenericDict', head.keys())(**head)
-		head_buffer = struct.pack('iiiiii256sQ', *head_tuple)
+		head_buffer = struct.pack('iiiiii252siQ', *head_tuple)
 		bytestream.write(head_buffer)
+		# write grid content
 		if (head['elementType'] == 2):
 			# vec3 grid
 			content = content.reshape(head['dimX']*head['dimY']*head['dimZ']*3, order='C')

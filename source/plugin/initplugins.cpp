@@ -257,7 +257,7 @@ PYTHON() void addTestParts( BasicParticleSystem& parts, int num)
 	parts.insertBufferedParticles();
 }
 
-// calculate the difference between two pdata fields (note - slow!, not parallelized)
+//! calculate the difference between two pdata fields (note - slow!, not parallelized)
 PYTHON() Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
 {    
 	double maxVal = 0.;
@@ -295,6 +295,22 @@ PYTHON() Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
 
 	return maxVal;
 }
+
+
+//! calculate center of mass given density grid, for re-centering
+PYTHON() Vec3 calcCenterOfMass(Grid<Real>& density)
+{
+	Vec3 p(0.0f);
+	Real w = 0.0f;
+	FOR_IJK(density){
+		p += density(i, j, k) * Vec3(i + 0.5f, j + 0.5f, k + 0.5f);
+		w += density(i, j, k);
+	}
+	if (w > 1e-6f)
+		p /= w;
+	return p;
+}
+
 
 //*****************************************************************************
 // helper functions for volume fractions (which are needed for second order obstacle boundaries)
@@ -381,6 +397,7 @@ void KnUpdateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid&
 
 }
 
+//! update fill fraction values
 PYTHON() void updateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth=0) {
 	fractions.setConst( Vec3(0.) );
 	KnUpdateFractions(flags, phiObs, fractions, boundaryWidth);
@@ -445,6 +462,7 @@ KERNEL() void kninitVortexVelocity(const Grid<Real> &phiObs, MACGrid& vel, const
 PYTHON() void initVortexVelocity(Grid<Real> &phiObs, MACGrid& vel, const Vec3 &center, const Real &radius) {
 	kninitVortexVelocity(phiObs,  vel, center, radius);
 }
+
 
 } // namespace
 

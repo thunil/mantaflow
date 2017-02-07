@@ -68,6 +68,7 @@ if not outputOnly:
 	load_model_test = -1 
 	simSizeLow = 64
 	fromSim = toSim   = 1000 # short, use single sim
+	#fromSim = 1000; toSim = 1010; # full, use whole range of sims
 
 	if cropOverlap>0:
 		print("Error - dont use cropOverlap != 0 for training...")
