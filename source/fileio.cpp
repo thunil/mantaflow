@@ -40,10 +40,12 @@ static const int STR_LEN_PDATA = 256;
 typedef struct {
 	int dimX, dimY, dimZ; // grid size
 	int gridType, elementType, bytesPerElement; // data type info
-	char info[252]; // mantaflow build information
-	int dimT;       // optionally store forth dimension for 4d grids
+	char info[STR_LEN_GRID]; // mantaflow build information
+	int dimT;                // optionally store forth dimension for 4d grids
 	unsigned long long timestamp; // creation time
 } UniHeader;
+
+// note: header v4 only uses 4 bytes of the info string to store the fourth dimension, not needed for pdata
 
 //! pdata uni header, v3  (similar to grid header)
 typedef struct {
