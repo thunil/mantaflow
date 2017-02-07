@@ -60,8 +60,8 @@ fromSim = toSim = -1
 # when training , manually abort when it's good enough
 # then enter test_XXXX id and model checkpoint ID below to load
 
-load_model_test = 101
-load_model_no = 18
+load_model_test = -1 # TODO, insert trained model dir number
+load_model_no   = -1 # TODO, insert trained model checkpoint number
 
 if not outputOnly:
 	# run train!
