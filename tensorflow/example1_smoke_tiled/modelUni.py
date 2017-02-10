@@ -58,7 +58,7 @@ save_step       = 1000
 fromSim = toSim = -1
 
 # optional, add velocity as additional channels to input?
-useVelocities   = 1
+useVelocities   = 0
 
 
 # ---------------------------------------------
@@ -81,6 +81,7 @@ useVelocities   = int(ph.getParam( "useVelocities",   useVelocities  ))
 testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
 fromSim         = int(ph.getParam( "fromSim",         fromSim  ))
 toSim           = int(ph.getParam( "toSim",           toSim  ))
+useLegacyNet    = int(ph.getParam( "useLegacyNet",    False ))>0
 ph.checkUnusedParams()
 tiCr.setBasePath(basePath)
 
@@ -88,7 +89,7 @@ if not outputOnly:
 	# run train!
 	load_model_test = -1 
 	simSizeLow = 64
-	if fimSim==-1 or toSim==-1:
+	if fromSim==-1 or toSim==-1:
 		fromSim = toSim   = 1000 # short, use single sim
 		#fromSim = 1000; toSim = 1010; # full, use whole range of sims
 
@@ -98,7 +99,7 @@ if not outputOnly:
 
 else:
 	# dont train, just apply to input seq, by default use plume (2004)
-	if fimSim==-1 or toSim==-1:
+	if fromSim==-1 or toSim==-1:
 		fromSim = toSim = 2007
 
 # ---------------------------------------------
@@ -172,7 +173,6 @@ cae = ConvolutionalAutoEncoder(xIn)
 
 # --- main graph setup ---
 pool = 4
-useLegacyNet = False
 if not useLegacyNet:
 	# new, w stride
 	clFMs = 8 / n_inputChannels
@@ -190,6 +190,7 @@ if not useLegacyNet:
 	cae.deconvolutional_layer(2, [5, 5], tf.nn.relu)
 else:
 	# old org, without stride, just for loading 101:18, no vel
+	print("Warning - use legacy network, todo remove...")
 	cae.convolutional_layer(4, [3, 3], tf.nn.relu)
 	cae.max_pool([pool,pool])
 
