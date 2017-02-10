@@ -20,6 +20,7 @@ import copy
 from shutil import copyfile
 from random import randint, shuffle, random
 
+# global for tile creator
 basePath = '../data/'
 
 # arrays of tiles, excluding discarded ones
@@ -60,6 +61,10 @@ paths = {
 	'tile_low_uni': '',
 	'tile_high_uni': ''
 }
+
+def setBasePath(path):
+	global basePath
+	basePath = path
 
 def updatePaths(simNo=None, frameNo=None, tileNo=None, tile_size_x=0, tile_size_y=0, overlapping=0, data_type=None):
 	paths['base'] = basePath
