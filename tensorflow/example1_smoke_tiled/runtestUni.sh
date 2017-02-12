@@ -6,8 +6,8 @@ BPATH=/Users/name/data/
 SAFEDEL=rm
 
 # specify pre-trained model to use for testing
-MODEL=101
-MODELNO=18
+MODEL=777
+MODELNO=777
 
 echo "Warning - Input your own paths and model numbers in script before using..."
 exit 1

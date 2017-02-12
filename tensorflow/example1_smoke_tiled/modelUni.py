@@ -67,8 +67,8 @@ useVelocities   = 0
 # when training , manually abort when it's good enough
 # then enter test_XXXX id and model checkpoint ID below to load
 
-load_model_test = 101
-load_model_no   = 18
+load_model_test = -1
+load_model_no   = -1
 testPathStartNo = 1
 
 # command line params
@@ -227,7 +227,7 @@ else:
 
 
 # load test data
-tiCr.loadTestData(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=useVelocities, low_res_size=simSizeLow, upres=upScale)
+tiCr.loadTestDataUni(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=useVelocities, low_res_size=simSizeLow, upres=upScale)
 
 #uniio.backupFile(__file__, test_path)
 
@@ -315,7 +315,7 @@ for curr_output in range(len(tiCr.tile_inputs_all_complete) / tiles_in_image):
 
 	eval_accu = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
-	tiCr.debugOutputPngs_for_cropping(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, simSizeLow, simSizeHigh, test_path, \
+	tiCr.debugOutputPngsCrop(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, simSizeLow, simSizeHigh, test_path, \
 		imageCounter=curr_output, cut_output_to=tile_size_high_for_cropped, tiles_in_image=tiles_in_image)
 	img_count += 1
 
