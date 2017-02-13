@@ -212,7 +212,9 @@ protected:
 
 } // namespace
 
+#if NUMPY==1
 #include "numpyWrap.h"
+#endif
 
 #endif
 #endif

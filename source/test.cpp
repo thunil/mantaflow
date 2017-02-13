@@ -39,6 +39,7 @@ double minReduction(const Grid<Real>& v)
 
 
 // test function and kernel with python array
+#if NUMPY==1
 
 KERNEL(bnd=0)
 void knNumpyTest(Grid<Real>& grid, PyArrayContainer npAr, Real scale) 
@@ -47,9 +48,11 @@ void knNumpyTest(Grid<Real>& grid, PyArrayContainer npAr, Real scale)
 	grid(i,j,k) += scale * p[j*grid.getSizeX()+i]; // calc access into numpy array, no size check here!
 }
 
-PYTHON() void numpyTest( Grid<Real>& grid, PyArrayContainer npAr, Real scale) {
+PYT ON() void numpyTest( Grid<Real>& grid, PyArrayContainer npAr, Real scale) {
 	knNumpyTest(grid, npAr, scale);
 }
+
+#endif // NUMPY==1
 
 } //namespace
 
