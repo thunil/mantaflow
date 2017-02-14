@@ -313,9 +313,9 @@ for curr_output in range(len(tiCr.tile_inputs_all_complete) / tiles_in_image):
 		batch_xs.append(tiCr.tile_inputs_all_complete[curr_index])
 		batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
 
-	eval_accu = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
+	resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
-	tiCr.debugOutputPngsCrop(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, simSizeLow, simSizeHigh, test_path, \
+	tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, \
 		imageCounter=curr_output, cut_output_to=tile_size_high_for_cropped, tiles_in_image=tiles_in_image)
 	img_count += 1
 

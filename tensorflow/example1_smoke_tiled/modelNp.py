@@ -30,18 +30,18 @@ from convautoenc import ConvolutionalAutoEncoder
 
 # path to sim data, trained models and output are also saved here
 #basePath = '../data/'
-basePath = '/Users/sinithue/temp/flow_tf_tiled_data_/'
+basePath = '/Users/sinithue/temp/flow_tf_tiled_data_/'  # NT_DEBUG
 
 # main mode switch:
 outputOnly = True  # apply model, or run full training?
 
-#tiCr.copySimData( 2004, 2007 ); exit(1);  # debug, copy sim data to different ID
+#tiCr.setBasePath(basePath); tiCr.copySimData( 2004, 2008 ); exit(1);  # debug, copy sim data to different ID
 
 simSizeLow  = 128
 tileSizeLow = 16
-upScale     = 4
-simSizeHigh = simSizeLow * upScale
-tileSizeHigh= tileSizeLow  * upScale
+upRes       = 4
+simSizeHigh = simSizeLow * upRes
+tileSizeHigh= tileSizeLow  * upRes
 
 # dont use for training! for applying model, add overlap here if necessary (i.e., cropOverlap>0) 
 # note:  cropTileSizeLow + (cropOverlap * 2) = tileSizeLow
@@ -61,7 +61,7 @@ fromSim = toSim = -1
 useVelocities   = 0
 
 
-# NT_DEBUG defaults
+# NT_DEBUG test defaults
 useVelocities = 1
 
 
@@ -155,7 +155,7 @@ def print_variables():
 	print('tileSizeLow: {}'.format(tileSizeLow))
 	print('cropOverlap: {}'.format(cropOverlap))
 	print('cropTileSizeLow: {}'.format(cropTileSizeLow))
-	print('upScale: {}'.format(upScale))
+	print('upRes: {}'.format(upRes))
 	print('emptyTileValue: {}'.format(emptyTileValue))
 	print('learning_rate: {}'.format(learning_rate))
 	print('trainingEpochs: {}'.format(trainingEpochs))
@@ -212,7 +212,7 @@ else:
 
 
 # load test data
-tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=useVelocities, low_res_size=simSizeLow, upres=upScale, keepAll=True)
+tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=True)
 
 #uniio.backupFile(__file__, test_path)
 
@@ -283,25 +283,28 @@ if not outputOnly:
 
 
 # ---------------------------------------------
-# Test against all data
+# outputOnly: apply to a full data set, and re-create full outputs from tiles
 
 batch_xs, batch_ys = tiCr.tile_inputs_all_complete, tiCr.tile_outputs_all_complete
-tile_size_high_for_cropped = upScale * cropTileSizeLow
-tiles_in_image = (simSizeHigh // tile_size_high_for_cropped) ** 2
+tileSizeHiCrop = upRes * cropTileSizeLow
+tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
 
 img_count = 0
-for curr_output in range(len(tiCr.tile_inputs_all_complete) / tiles_in_image):
+for currOut in range(len(tiCr.tile_inputs_all_complete) / tilesPerImg):
 	batch_xs = []
 	batch_ys = []
-	for curr_tile in range(tiles_in_image):
-		curr_index = curr_output * tiles_in_image + curr_tile
-		batch_xs.append(tiCr.tile_inputs_all_complete[curr_index])
+	for curr_tile in range(tilesPerImg):
+		idx = currOut * tilesPerImg + curr_tile
+		batch_xs.append(tiCr.tile_inputs_all_complete[idx])
 		batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
 
-	eval_accu = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
+	resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
-	tiCr.debugOutputPngsCrop(batch_xs, batch_ys, eval_accu, tileSizeLow, tileSizeHigh, simSizeLow, simSizeHigh, test_path, \
-		imageCounter=curr_output, cut_output_to=tile_size_high_for_cropped, tiles_in_image=tiles_in_image)
+	tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, \
+		imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
+	# output references
+	tiCr.debugOutputPngsCrop(batch_ys, tileSizeHigh, simSizeHigh, test_path+"_ref", \
+		imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
 	img_count += 1
 
 # write summary to test overview
