@@ -122,4 +122,47 @@ def backupFile(name, test_path):
 		code_path = ".%s" % code_path
 	shutil.copy(code_path, test_path + os.path.basename(name))
 
+#******************************************************************************
+#
+
+npBuf = {} # store arrays
+npCnt = {} # filename counter
+# NT_DEBUG , todo - add byte size limit?
+
+# buffer arrays, and write multiple to single file
+def writeNumpyBuf(filename, content):
+	global npBuf,npCnt
+	if not filename in npBuf:
+		npBuf[filename] = []
+		npCnt[filename] = 0
+	npBuf[filename].append(content)
+	#print("writing buffered, arrays "+format( len(npBuf[filename]) ) + ", size "+ format(content.size) )
+	if len(npBuf[filename])>10:
+		#print("writing buffered "+filename)
+		np.savez_compressed( filename+("_%04d.npz"%(npCnt[filename])), *npBuf[filename] )
+		npCnt[filename] += 1
+		npBuf[filename] = []
+
+# write all remaining ones
+def finalizeNumpyBufs():
+	global npBuf,npCnt
+	for filename in npBuf.keys():
+		if len(npBuf[filename])>0:
+			#print("writing last buffered "+filename+ ", left " + format(len(npBuf[filename])))
+			np.savez_compressed( filename+("_%04d.npz"%(npCnt[filename])), *npBuf[filename] )
+	# reset...
+	npBuf = {} 
+	npCnt = {} 
+		
+
+# write a single numpy array into an npz file
+def writeNumpySingle(filename, content):
+	#print("writing "+filename)
+	np.savez_compressed( filename, content )
+
+def readNumpy(filename):
+	#print("reading "+filename)
+	npz = np.load( filename )
+	return npz
+
 

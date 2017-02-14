@@ -29,13 +29,10 @@ import paramhelpers as ph
 from convautoenc import ConvolutionalAutoEncoder
 
 # path to sim data, trained models and output are also saved here
-#basePath = '../data/'
-basePath = '/Users/sinithue/temp/flow_tf_tiled_data_/'  # NT_DEBUG
+basePath = '../data/'
 
 # main mode switch:
 outputOnly = True  # apply model, or run full training?
-
-#tiCr.setBasePath(basePath); tiCr.copySimData( 2004, 2008 ); exit(1);  # debug, copy sim data to different ID
 
 simSizeLow  = 128
 tileSizeLow = 16
@@ -56,13 +53,10 @@ batch_size      = 100
 display_step    = 200
 save_step       = 1000
 fromSim = toSim = -1
+keepAll         = False
 
 # optional, add velocity as additional channels to input?
 useVelocities   = 0
-
-
-# NT_DEBUG test defaults
-useVelocities = 1
 
 
 # ---------------------------------------------
@@ -86,13 +80,17 @@ testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
 fromSim         = int(ph.getParam( "fromSim",         fromSim  ))
 toSim           = int(ph.getParam( "toSim",           toSim  ))
 ph.checkUnusedParams()
+if toSim==-1:
+	toSim = fromSim
 tiCr.setBasePath(basePath)
+
+#tiCr.copySimData( fromSim, toSim ); exit(1);  # debug, copy sim data to different ID
 
 if not outputOnly:
 	# run train!
 	load_model_test = -1 
 	simSizeLow = 64
-	if fromSim==-1 or toSim==-1:
+	if fromSim==-1:
 		fromSim = toSim   = 1000 # short, use single sim
 		#fromSim = 1000; toSim = 1010; # full, use whole range of sims
 
@@ -101,8 +99,9 @@ if not outputOnly:
 		exit(1)
 
 else:
+	keepAll = True
 	# dont train, just apply to input seq, by default use plume (2004)
-	if fromSim==-1 or toSim==-1:
+	if fromSim==-1:
 		fromSim = toSim = 2007
 
 # ---------------------------------------------
@@ -212,7 +211,7 @@ else:
 
 
 # load test data
-tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=True)
+tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll)
 
 #uniio.backupFile(__file__, test_path)
 
@@ -279,33 +278,33 @@ if not outputOnly:
 	print('Training needed %.02f minutes.' % (training_duration))
 	print('To apply the trained model, set "outputOnly" to True, and insert numbers for "load_model_test", and "load_model_no" ')
 
-	exit(1) # dont continue when training....
+else: 
 
+	# ---------------------------------------------
+	# outputOnly: apply to a full data set, and re-create full outputs from tiles
 
-# ---------------------------------------------
-# outputOnly: apply to a full data set, and re-create full outputs from tiles
+	batch_xs, batch_ys = tiCr.tile_inputs_all_complete, tiCr.tile_outputs_all_complete
+	tileSizeHiCrop = upRes * cropTileSizeLow
+	tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
 
-batch_xs, batch_ys = tiCr.tile_inputs_all_complete, tiCr.tile_outputs_all_complete
-tileSizeHiCrop = upRes * cropTileSizeLow
-tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
+	img_count = 0
+	for currOut in range(len(tiCr.tile_inputs_all_complete) / tilesPerImg):
+		batch_xs = []
+		batch_ys = []
+		for curr_tile in range(tilesPerImg):
+			idx = currOut * tilesPerImg + curr_tile
+			batch_xs.append(tiCr.tile_inputs_all_complete[idx])
+			batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
 
-img_count = 0
-for currOut in range(len(tiCr.tile_inputs_all_complete) / tilesPerImg):
-	batch_xs = []
-	batch_ys = []
-	for curr_tile in range(tilesPerImg):
-		idx = currOut * tilesPerImg + curr_tile
-		batch_xs.append(tiCr.tile_inputs_all_complete[idx])
-		batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
+		resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
-	resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
+		tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, \
+			imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
+		# optionally, output references
+		#tiCr.debugOutputPngsCrop(batch_ys, tileSizeHigh, simSizeHigh, test_path+"_ref", imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
+		img_count += 1
 
-	tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, \
-		imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
-	# output references
-	tiCr.debugOutputPngsCrop(batch_ys, tileSizeHigh, simSizeHigh, test_path+"_ref", \
-		imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
-	img_count += 1
+	print('Test finished, %d pngs written to %s.' % (img_count, test_path) )
 
 # write summary to test overview
 loaded_model = ''
@@ -313,6 +312,4 @@ if not load_model_test == -1:
 	loaded_model = ', Loaded %04d, %d' % (load_model_test , load_model_no)
 with open(basePath + 'test_overview.txt', "a") as text_file:
 	text_file.write(test_path[-10:-1] + ': {:.2f} min, {} Epochs, cost {:.4f}, {}'.format(training_duration, trainingEpochs, cost, " ") + loaded_model + '\n')
-
-print('Test finished, %d pngs written to %s.' % (img_count, test_path) )
 
