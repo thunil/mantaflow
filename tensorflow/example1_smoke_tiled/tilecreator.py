@@ -85,10 +85,10 @@ def updatePaths(simNo=None, frameNo=None, tileNo=None, tile_size_x=0, tile_size_
 	paths['tile_high_uni']  = paths['tiles'] + data_type + '_high_%04d_%04d_%04d.uni' % (simNo, frameNo, tileNo)
 
 	# new numpy array filenames
-	paths['frame_low_np']  = paths['frame_low_uni'].replace('.uni', '.npz')
+	paths['frame_low_np']  = paths['frame_low_uni' ].replace('.uni', '.npz')
 	paths['frame_high_np'] = paths['frame_high_uni'].replace('.uni', '.npz')
-	paths['tile_low_np']   = paths['tile_low_uni'].replace('.uni', '.npz')  
-	paths['tile_high_np']  = paths['tile_high_uni'].replace('.uni', '.npz') 
+	paths['tile_low_np']   = paths['tile_low_uni'  ].replace('.uni', '.npz')  
+	paths['tile_high_np']  = paths['tile_high_uni' ].replace('.uni', '.npz') 
 
 	paths['tile_low_npb']  = paths['tiles'] + data_type + '_low_%04d_%04d' % (simNo, frameNo) #, tileNo)
 	paths['tile_high_npb'] = paths['tiles'] + data_type + '_high_%04d_%04d' % (simNo, frameNo) #, tileNo)
@@ -443,7 +443,7 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 	elif with_pos:                                                                                       
 		lowArray = combineChannelsFromUni(uniToArray(paths['frame_low_uni'].replace(dataType, 'density')), uniToArray(paths['frame_low_uni'].replace(dataType, 'vel'), is_vel=True), addPos=True)
 	else:
-		lowArray = uniToArray(paths['frame_low_uni']).replace(dataType, 'density')
+		lowArray = uniToArray(paths['frame_low_uni'].replace(dataType, 'density'))
 	lowArray = np.reshape(lowArray, dataShape) 
 	lowTiles = createTilesNumpy(lowArray, tileShape, overlapping)
 

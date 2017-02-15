@@ -7,6 +7,8 @@
 from manta import *
 import os, shutil, math, sys, time
 import numpy as np
+sys.path.append("../tools")
+import paramhelpers as ph
 
 # Main params  ----------------------------------------------------------------------#
 steps    = 200
@@ -19,6 +21,9 @@ basePath = '../data/'
 #steps = 50       # shorter test
 #savedata = False # debug , dont write...
 #showGui  = 1
+
+basePath        =     ph.getParam( "basePath",        basePath        )
+ph.checkUnusedParams()
 
 # Scene settings  ---------------------------------------------------------------------#
 setDebugLevel(1) 
