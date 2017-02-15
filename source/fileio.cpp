@@ -772,7 +772,7 @@ void readGridUni(const string& name, Grid<T>* grid) {
 		gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
 #		endif
 	} else {
-		debMsg( "Unknown header!" ,1);
+		errMsg( "Unknown header '"<<ID<<"' " );
 	}
 	gzclose(gzf);
 #	else
@@ -916,6 +916,8 @@ void writeGrid4dUni(const string& name, Grid4d<T>* grid) {
 #	endif
 };
 
+//! note, reading 4d uni grids is slightly more complicated than 3d ones
+//! as it optionally supports sliced reading
 template <class T>
 void readGrid4dUni(const string& name, Grid4d<T>* grid, int readTslice, Grid4d<T>* slice, void** fileHandle ) 
 {
