@@ -79,6 +79,7 @@ useVelocities   = int(ph.getParam( "useVelocities",   useVelocities  ))
 testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
 fromSim         = int(ph.getParam( "fromSim",         fromSim  ))
 toSim           = int(ph.getParam( "toSim",           toSim  ))
+alwaysSave      = int(ph.getParam( "alwaysSave",      False  )) # by default, only save when cost is lower, can be turned off here
 useLegacyNet    = int(ph.getParam( "useLegacyNet",    False ))>0
 randSeed        = int(ph.getParam( "randSeed",        randSeed )) 
 ph.checkUnusedParams()
@@ -251,44 +252,44 @@ if not outputOnly:
 	try:
 		print('\n*****TRAINING STARTED*****\n')
 		print('(stop with ctrl-c)')
-		error_per_display = 0
+		avgCost = 0
 		startTime = time.time()
 		epochTime = startTime
-		last_save_since = saveInterval
-		last_save_cost = 1e10
+		lastSave = saveInterval
+		lastCost = 1e10
 		for epoch in range(trainingEpochs):
 			batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size)
 			_, cost, summary = sess.run([optimizer, costFunc, lossTrain], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
 
 			# save model
-			if (cost < last_save_cost) & (last_save_since > saveInterval):
+			if ((cost < lastCost) or alwaysSave) and (lastSave >= saveInterval):
 				saver.save(sess, test_path + 'model_%04d.ckpt' % save_no)
 				save_no += 1
-				last_save_since = 0
-				last_save_cost = cost
+				lastSave = 1
+				lastCost = cost
 				print('Saved Model with cost %f.' % cost)
 			else:
-				last_save_since += 1
+				lastSave += 1
 
 			# display error
-			error_per_display += cost
+			avgCost += cost
 			if (epoch + 1) % testInterval == 0:
-				cumulated_cost_test = 0.0
-				test_count = 10
-				for curr_test in range(test_count):
+				accumulatedCost = 0.0
+				numTests = 10
+				for curr_test in range(numTests):
 					batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size, isTraining=False)
 					cost_test, summary_test = sess.run([costFunc, lossTest], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
-					cumulated_cost_test += cost_test
-				cumulated_cost_test /= test_count
+					accumulatedCost += cost_test
+				accumulatedCost /= numTests
 
-				error_per_display /= testInterval
-				print('\nEpoch {:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), error_per_display, cumulated_cost_test))
+				avgCost /= testInterval
+				print('\nEpoch {:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), avgCost, accumulatedCost))
 				print('%d epoches took %.02f seconds.' % (testInterval, (time.time() - epochTime)))
 				#print('Estimated time: %.02f minutes.' % ((trainingEpochs - epoch) / testInterval * (time.time() - epochTime) / 60.0))
 				epochTime = time.time()
 				summary_writer.add_summary(summary, epoch)
 				summary_writer.add_summary(summary_test, epoch)
-				error_per_display = 0
+				avgCost = 0
 
 	except KeyboardInterrupt:
 		pass

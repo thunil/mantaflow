@@ -47,8 +47,8 @@ python modelUni.py out 1 basePath ${BPATH}   useVelocities 0  testPathStartNo 82
 
 # train a model with vels
 
-${SAFEDEL} ${BPATH}/test_0720
-${SAFEDEL} ${BPATH}/test_0820
+${SAFEDEL} ${BPATH}/test_0730
+${SAFEDEL} ${BPATH}/test_0830
 
 python modelUni.py out 0 basePath ${BPATH}   useVelocities 1  trainingEpochs 1000  alwaysSave 1 testPathStartNo 730
 python modelUni.py out 1 basePath ${BPATH}   useVelocities 1  testPathStartNo 830  fromSim 2007 toSim -1  load_model_test 730 load_model_no 0
