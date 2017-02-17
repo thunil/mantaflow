@@ -11,8 +11,6 @@
 #
 #******************************************************************************
 
-# NT_DEBUG new, do up to 4d for numpy!?
-
 import uniio
 import numpy as np
 import scipy.misc
@@ -322,7 +320,7 @@ def createTestDataUni(simNo, tileSize, lowResSize, upScalingFactor, overlapping=
 
 
 
-def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partTrain=3, partTest=1, partVal=1, load_img=False, load_pos=False, load_vel=False, to_frame=200, low_res_size=64, upres=2):
+def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partTrain=3, partTest=1, load_img=False, load_pos=False, load_vel=False, to_frame=200, low_res_size=64, upres=2):
 	total_tiles_all_sim = 0
 	discarded_tiles_all_sim = 0 
 	data_type = 'density'
@@ -394,20 +392,19 @@ def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 		total_tiles_all_sim += totalTiles
 		discarded_tiles_all_sim += discardedTiles
 
-	print('Used Tiles All Sim: %d' % (total_tiles_all_sim - discarded_tiles_all_sim))
+	print('Tiles in data set: %d' % (len(tile_inputs_all)) ) 
+	if(len(tile_inputs_all)==0):
+		print("No input tiles found!")
+		exit(1)
 
 	# split into train, test und val data
 
-	parts_complete = partTrain + partTest + partVal
-	end_train = (len(tile_inputs_all) // parts_complete) * partTrain
-	end_test = end_train + (len(tile_inputs_all) // parts_complete) * partTest
-	# shuffleSeed = random()
-	# shuffle(tile_inputs_all, lambda: shuffleSeed)
-	# shuffle(tile_outputs_all, lambda: shuffleSeed)
-	# tile_data['inputs_train'] = tile_inputs_all
-	# tile_data['outputs_train'] = tile_outputs_all
+	parts_complete = partTrain + partTest 
+	end_train = int( (len(tile_inputs_all) * partTrain / parts_complete) )  
+	end_test = end_train + int( (len(tile_inputs_all) * partTest / parts_complete) )
+
 	#print( "Debug out   %f   %f  %f  " % (len(tile_inputs_all), len(tile_inputs_all) // parts_complete, parts_complete ) )
-	print( "Ranges: len tile_inputs_all %d, end_train %d, end_test %d " % (len(tile_inputs_all), end_train, end_test) )
+	#print( "Ranges: len tile_inputs_all %d, end_train %d, end_test %d " % (len(tile_inputs_all), end_train, end_test) )
 	tile_data['inputs_train'],  tile_data['inputs_test'],  tile_data['inputs_val']  = np.split(tile_inputs_all,  [end_train, end_test])
 	tile_data['outputs_train'], tile_data['outputs_test'], tile_data['outputs_val'] = np.split(tile_outputs_all, [end_train, end_test])
 	print('Training Sets: {}'.format(len(tile_data['inputs_train'])))
@@ -448,7 +445,7 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 	lowTiles = createTilesNumpy(lowArray, tileShape, overlapping)
 
 	#tilet2d = np.reshape( lowArray,(lowResSize,lowResSize,4) )
-	#createPngArrayChannel( tilet2d , "/Users/sinithue/temp/tf/tout3a_%04d.png"%frameNo) # NT_DEBUG , write inputs again
+	#createPngArrayChannel( tilet2d , "/Users/sinithue/temp/tf/tout3a_%04d.png"%frameNo) # debug, write inputs again as images
 
 	highArray = uniToArray(paths['frame_high_uni'].replace(dataType, 'density'))
 	highTiles = createTiles(highArray, lowResSize * upScalingFactor, lowResSize * upScalingFactor, tileSize * upScalingFactor, tileSize * upScalingFactor, overlapping)
@@ -465,7 +462,7 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 	uniio.finalizeNumpyBufs()
 
 
-def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partTrain=3, partTest=1, partVal=1, load_pos=False, load_vel=False, to_frame=200, low_res_size=64, upres=2, keepAll=False):
+def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partTrain=3, partTest=1, load_pos=False, load_vel=False, to_frame=200, low_res_size=64, upres=2, keepAll=False):
 	total_tiles_all_sim = 0
 	discarded_tiles_all_sim = 0 
 	dataType = 'density'
@@ -494,10 +491,6 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 			while os.path.exists(paths['tile_high_np']):
 				# check if tile is empty. If so, don't add it
 				ltPath = paths['tile_low_np']
-				#if load_vel:
-					#ltPath = paths['tile_low_np'].replace('density', 'dens_vel')
-				#elif load_pos:
-					#ltPath = paths['tile_low_np'].replace('density', 'dens_vel_pos')
 
 				lowTiles  = uniio.readNumpy(ltPath)
 				highTiles = uniio.readNumpy(paths['tile_high_np']) 
@@ -508,9 +501,6 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 					lowTile  = lowTiles[ "arr_%d"%i ]
 					highTile = highTiles[ "arr_%d"%i ]
 
-					#accumulatedDensity = 0.0
-					#for value in lowTile.flatten():
-						#accumulatedDensity += value
 					totalDens = lowTile.sum( dtype=np.float64 )
 					#print("sum %f %f " % (accumulatedDensity,totalDens) )
 					if totalDens > (densityMinimum * tileSizeLow * tileSizeLow):
@@ -538,7 +528,7 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 		total_tiles_all_sim += totalTiles
 		discarded_tiles_all_sim += discardedTiles
 
-	if 0: # NT_DEBUG
+	if 0: # NT_DEBUG , output all inputs as images
 		i =0
 		for tile in tile_inputs_all:
 			tile2d = np.reshape( tile,(tileSizeLow,tileSizeLow,4) )
@@ -547,31 +537,30 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 			i+=1
 		exit(1) # NT_DEBUG
 
-	print('Used Tiles All Sim: %d' % (total_tiles_all_sim - discarded_tiles_all_sim))
 
-	# split into train, test und val data
+	print('Tiles in data set: %d' % (len(tile_inputs_all)) ) 
+	if(len(tile_inputs_all)==0):
+		print("No input tiles found!")
+		exit(1)
 
-	parts_complete = partTrain + partTest + partVal
-	end_train = (len(tile_inputs_all) // parts_complete) * partTrain
-	end_test = end_train + (len(tile_inputs_all) // parts_complete) * partTest
-	# shuffleSeed = random()
-	# shuffle(tile_inputs_all, lambda: shuffleSeed)
-	# shuffle(tile_outputs_all, lambda: shuffleSeed)
-	# tile_data['inputs_train'] = tile_inputs_all
-	# tile_data['outputs_train'] = tile_outputs_all
+	# split into train, test und val data 
+	parts_complete = partTrain + partTest 
+	end_train = int( (len(tile_inputs_all) * partTrain / parts_complete) )  
+	end_test = end_train + int( (len(tile_inputs_all) * partTest / parts_complete) )
+
 	#print( "Debug out   %f   %f  %f  " % (len(tile_inputs_all), len(tile_inputs_all) // parts_complete, parts_complete ) )
-	print( "Ranges: len tile_inputs_all %d, end_train %d, end_test %d " % (len(tile_inputs_all), end_train, end_test) )
+	#print( "Ranges: len tile_inputs_all %d, end_train %d, end_test %d " % (len(tile_inputs_all), end_train, end_test) )
 	tile_data['inputs_train'],  tile_data['inputs_test'],  tile_data['inputs_val']  = np.split(tile_inputs_all,  [end_train, end_test])
 	tile_data['outputs_train'], tile_data['outputs_test'], tile_data['outputs_val'] = np.split(tile_outputs_all, [end_train, end_test])
-	print('Training Sets: {}'.format(len(tile_data['inputs_train'])))
-	print('Testing Sets:  {}'.format(len(tile_data['inputs_test'])))
+	print('Training set: {}'.format(len(tile_data['inputs_train'])))
+	print('Testing set:  {}'.format(len(tile_data['inputs_test'])))
 
 
 
 #******************************************************************************
 # misc smaller helpers for output
 
-def selectRandomTiles(selectionSize, isTraining=True, is_combined=False, cropped=False):
+def selectRandomTiles(selectionSize, isTraining=True, cropped=False):
 	# returns #selectionsize elements of inputs_train/test and outputs_train/test
 	allInputs = tile_data['inputs_train']
 	if not cropped:

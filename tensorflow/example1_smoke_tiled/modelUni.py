@@ -47,12 +47,13 @@ cropTileSizeLow = tileSizeLow - 2*cropOverlap
 
 emptyTileValue  = 0.01
 learning_rate   = 0.00005
-trainingEpochs = 100000 # by default, stop only manualy with ctrl-c...
+trainingEpochs  = 100000 # by default, stop only manualy with ctrl-c...
 dropout         = 0.9 # slight...
 batch_size      = 100
-display_step    = 200
-save_step       = 1000
+testInterval    = 200
+saveInterval    = 1000
 fromSim = toSim = -1
+randSeed        = 1
 
 # optional, add velocity as additional channels to input?
 useVelocities   = 0
@@ -79,12 +80,17 @@ testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
 fromSim         = int(ph.getParam( "fromSim",         fromSim  ))
 toSim           = int(ph.getParam( "toSim",           toSim  ))
 useLegacyNet    = int(ph.getParam( "useLegacyNet",    False ))>0
+randSeed        = int(ph.getParam( "randSeed",        randSeed )) 
 ph.checkUnusedParams()
+
+# initialize
+
 if toSim==-1:
 	toSim = fromSim
 tiCr.setBasePath(basePath)
 
-#tiCr.copySimData( fromSim, toSim ); exit(1);  # debug, copy sim data to different ID
+np.random.seed(randSeed)
+tf.set_random_seed(randSeed)
 
 if not outputOnly:
 	# run train!
@@ -92,7 +98,6 @@ if not outputOnly:
 	simSizeLow = 64
 	if fromSim==-1:
 		fromSim = toSim   = 1000 # short, use single sim
-		#fromSim = 1000; toSim = 1010; # full, use whole range of sims
 
 	if cropOverlap>0:
 		print("Error - dont use cropOverlap != 0 for training...")
@@ -212,8 +217,8 @@ else:
 y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
 print "DOFs: %d " % cae.getDOFs()
 
-cost_func = tf.nn.l2_loss(y_true - y_pred) 
-optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost_func)
+costFunc = tf.nn.l2_loss(y_true - y_pred) 
+optimizer = tf.train.AdamOptimizer(learning_rate).minimize(costFunc)
 
 # create session and saver
 sess = tf.InteractiveSession()
@@ -228,13 +233,11 @@ else:
 
 
 # load test data
-tiCr.loadTestDataUni(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes)
-
-#uniio.backupFile(__file__, test_path)
+tiCr.loadTestDataUni(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes)
 
 # create a summary to monitor cost tensor
-training_summary  = tf.summary.scalar("loss", cost_func)
-testing_summary   = tf.summary.scalar("loss_test", cost_func)
+lossTrain  = tf.summary.scalar("loss", costFunc)
+lossTest   = tf.summary.scalar("loss_test", costFunc)
 merged_summary_op = tf.summary.merge_all() 
 summary_writer    = tf.summary.FileWriter(test_path, sess.graph)
 
@@ -251,41 +254,41 @@ if not outputOnly:
 		error_per_display = 0
 		startTime = time.time()
 		epochTime = startTime
-		last_save_since = save_step
+		last_save_since = saveInterval
 		last_save_cost = 1e10
 		for epoch in range(trainingEpochs):
-		  batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size)
-		  _, cost, summary = sess.run([optimizer, cost_func, training_summary], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
+			batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size)
+			_, cost, summary = sess.run([optimizer, costFunc, lossTrain], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
 
-		  # save model
-		  if (cost < last_save_cost) & (last_save_since > save_step):
-			  saver.save(sess, test_path + 'model_%04d.ckpt' % save_no)
-			  save_no += 1
-			  last_save_since = 0
-			  last_save_cost = cost
-			  print('Saved Model with cost %f.' % cost)
-		  else:
-			  last_save_since += 1
+			# save model
+			if (cost < last_save_cost) & (last_save_since > saveInterval):
+				saver.save(sess, test_path + 'model_%04d.ckpt' % save_no)
+				save_no += 1
+				last_save_since = 0
+				last_save_cost = cost
+				print('Saved Model with cost %f.' % cost)
+			else:
+				last_save_since += 1
 
-		  # display error
-		  error_per_display += cost
-		  if (epoch + 1) % display_step == 0:
-			  cumulated_cost_test = 0.0
-			  test_count = 10
-			  for curr_test in range(test_count):
-				  batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size, isTraining=False)
-				  cost_test, summary_test = sess.run([cost_func, testing_summary], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
-				  cumulated_cost_test += cost_test
-			  cumulated_cost_test /= test_count
+			# display error
+			error_per_display += cost
+			if (epoch + 1) % testInterval == 0:
+				cumulated_cost_test = 0.0
+				test_count = 10
+				for curr_test in range(test_count):
+					batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size, isTraining=False)
+					cost_test, summary_test = sess.run([costFunc, lossTest], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
+					cumulated_cost_test += cost_test
+				cumulated_cost_test /= test_count
 
-			  error_per_display /= display_step
-			  print('\nEpoch {:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), error_per_display, cumulated_cost_test))
-			  print('%d epoches took %.02f seconds.' % (display_step, (time.time() - epochTime)))
-			  #print('Estimated time: %.02f minutes.' % ((trainingEpochs - epoch) / display_step * (time.time() - epochTime) / 60.0))
-			  epochTime = time.time()
-			  summary_writer.add_summary(summary, epoch)
-			  summary_writer.add_summary(summary_test, epoch)
-			  error_per_display = 0
+				error_per_display /= testInterval
+				print('\nEpoch {:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), error_per_display, cumulated_cost_test))
+				print('%d epoches took %.02f seconds.' % (testInterval, (time.time() - epochTime)))
+				#print('Estimated time: %.02f minutes.' % ((trainingEpochs - epoch) / testInterval * (time.time() - epochTime) / 60.0))
+				epochTime = time.time()
+				summary_writer.add_summary(summary, epoch)
+				summary_writer.add_summary(summary_test, epoch)
+				error_per_display = 0
 
 	except KeyboardInterrupt:
 		pass
@@ -302,22 +305,22 @@ else:
 	# Test against all data
 
 	batch_xs, batch_ys = tiCr.tile_inputs_all_complete, tiCr.tile_outputs_all_complete
-	tile_size_high_for_cropped = upRes * cropTileSizeLow
-	tiles_in_image = (simSizeHigh // tile_size_high_for_cropped) ** 2
+	tileSizeHiCrop = upRes * cropTileSizeLow
+	tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
 
 	img_count = 0
-	for curr_output in range(len(tiCr.tile_inputs_all_complete) / tiles_in_image):
+	for currOut in range(len(tiCr.tile_inputs_all_complete) / tilesPerImg):
 		batch_xs = []
 		batch_ys = []
-		for curr_tile in range(tiles_in_image):
-			curr_index = curr_output * tiles_in_image + curr_tile
-			batch_xs.append(tiCr.tile_inputs_all_complete[curr_index])
+		for curr_tile in range(tilesPerImg):
+			idx = currOut * tilesPerImg + curr_tile
+			batch_xs.append(tiCr.tile_inputs_all_complete[idx])
 			batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
 
 		resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
 		tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, \
-			imageCounter=curr_output, cut_output_to=tile_size_high_for_cropped, tiles_in_image=tiles_in_image)
+			imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
 		img_count += 1
 
 	print('Test finished, %d pngs written to %s.' % (img_count, test_path) )

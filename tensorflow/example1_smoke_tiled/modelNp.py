@@ -47,13 +47,15 @@ cropTileSizeLow = tileSizeLow - 2*cropOverlap
 
 emptyTileValue  = 0.01
 learning_rate   = 0.00005
-trainingEpochs = 100000 # by default, stop only manualy with ctrl-c...
-dropout         = 0.9 # slight...
+trainingEpochs  = 100000  # by default, stop only manualy with ctrl-c...
+dropout         = 0.9     # slight...
 batch_size      = 100
-display_step    = 200
-save_step       = 1000
+testInterval    = 200
+saveInterval    = 1000
 fromSim = toSim = -1
 keepAll         = False
+numTests 		= 10      # evaluate on 10 data points from test data
+randSeed        = 1
 
 # optional, add velocity as additional channels to input?
 useVelocities   = 0
@@ -77,12 +79,20 @@ load_model_no   = int(ph.getParam( "load_model_no",   load_model_no   ))
 basePath        =     ph.getParam( "basePath",        basePath        )
 useVelocities   = int(ph.getParam( "useVelocities",   useVelocities  ))
 testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
-fromSim         = int(ph.getParam( "fromSim",         fromSim  ))
+fromSim         = int(ph.getParam( "fromSim",         fromSim  )) # range of sim data to use
 toSim           = int(ph.getParam( "toSim",           toSim  ))
+alwaysSave      = int(ph.getParam( "alwaysSave",      False  )) # by default, only save when cost is lower, can be turned off here
+randSeed        = int(ph.getParam( "randSeed",        randSeed )) 
 ph.checkUnusedParams()
+
+# initialize
+
 if toSim==-1:
 	toSim = fromSim
 tiCr.setBasePath(basePath)
+
+np.random.seed(randSeed)
+tf.set_random_seed(randSeed)
 
 #tiCr.copySimData( fromSim, toSim ); exit(1);  # debug, copy sim data to different ID
 
@@ -92,7 +102,6 @@ if not outputOnly:
 	simSizeLow = 64
 	if fromSim==-1:
 		fromSim = toSim   = 1000 # short, use single sim
-		#fromSim = 1000; toSim = 1010; # full, use whole range of sims
 
 	if cropOverlap>0:
 		print("Error - dont use cropOverlap != 0 for training...")
@@ -195,8 +204,8 @@ cae.deconvolutional_layer(2, [5, 5], tf.nn.relu)
 y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
 print "DOFs: %d " % cae.getDOFs()
 
-cost_func = tf.nn.l2_loss(y_true - y_pred) 
-optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost_func)
+costFunc = tf.nn.l2_loss(y_true - y_pred) 
+optimizer = tf.train.AdamOptimizer(learning_rate).minimize(costFunc)
 
 # create session and saver
 sess = tf.InteractiveSession()
@@ -211,13 +220,13 @@ else:
 
 
 # load test data
-tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 20, 1, 0, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll)
+tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll)
 
 #uniio.backupFile(__file__, test_path)
 
 # create a summary to monitor cost tensor
-training_summary  = tf.summary.scalar("loss", cost_func)
-testing_summary   = tf.summary.scalar("loss_test", cost_func)
+lossTrain  = tf.summary.scalar("loss",     costFunc)
+lossTest   = tf.summary.scalar("lossTest", costFunc)
 merged_summary_op = tf.summary.merge_all() 
 summary_writer    = tf.summary.FileWriter(test_path, sess.graph)
 
@@ -231,44 +240,50 @@ if not outputOnly:
 	try:
 		print('\n*****TRAINING STARTED*****\n')
 		print('(stop with ctrl-c)')
-		error_per_display = 0
+		avgCost = 0
 		startTime = time.time()
 		epochTime = startTime
-		last_save_since = save_step
-		last_save_cost = 1e10
+		lastSave = 1
+		lastCost = 1e10
 		for epoch in range(trainingEpochs):
-		  batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size)
-		  _, cost, summary = sess.run([optimizer, cost_func, training_summary], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
+			batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size)
+			_, cost, summary = sess.run([optimizer, costFunc, lossTrain], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
 
-		  # save model
-		  if (cost < last_save_cost) & (last_save_since > save_step):
-			  saver.save(sess, test_path + 'model_%04d.ckpt' % save_no)
-			  save_no += 1
-			  last_save_since = 0
-			  last_save_cost = cost
-			  print('Saved Model with cost %f.' % cost)
-		  else:
-			  last_save_since += 1
+			# NT_DEBUG print('Save %d , %d , %f , %d' % (lastSave,saveInterval,cost, lastCost) )
+			# save model
+			if ((cost < lastCost) or alwaysSave) and (lastSave >= saveInterval):
+				saver.save(sess, test_path + 'model_%04d.ckpt' % save_no)
+				save_no += 1
+				lastSave = 1
+				lastCost = cost
+				print('Saved Model with cost %f.' % cost)
+			else:
+				lastSave += 1
 
-		  # display error
-		  error_per_display += cost
-		  if (epoch + 1) % display_step == 0:
-			  cumulated_cost_test = 0.0
-			  test_count = 10
-			  for curr_test in range(test_count):
-				  batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size, isTraining=False)
-				  cost_test, summary_test = sess.run([cost_func, testing_summary], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
-				  cumulated_cost_test += cost_test
-			  cumulated_cost_test /= test_count
+			# display error
+			avgCost += cost
+			if (epoch + 1) % testInterval == 0:
+				accumulatedCost = 0.0
+				for curr in range(numTests):
+					batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size, isTraining=False)
+					cost_test, summary_test = sess.run([costFunc, lossTest], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
+					accumulatedCost += cost_test
+				accumulatedCost /= numTests
 
-			  error_per_display /= display_step
-			  print('\nEpoch {:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), error_per_display, cumulated_cost_test))
-			  print('%d epoches took %.02f seconds.' % (display_step, (time.time() - epochTime)))
-			  #print('Estimated time: %.02f minutes.' % ((trainingEpochs - epoch) / display_step * (time.time() - epochTime) / 60.0))
-			  epochTime = time.time()
-			  summary_writer.add_summary(summary, epoch)
-			  summary_writer.add_summary(summary_test, epoch)
-			  error_per_display = 0
+				# check values of tiles , NT_DEBUG
+				if 0:
+					testTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
+					sum = testTiles.sum( dtype=np.float64 )
+					print("Test tiles, total sum :" + format( sum)) # debugging...
+
+				avgCost /= testInterval
+				print('\nEpoch {:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), avgCost, accumulatedCost))
+				print('%d epoches took %.02f seconds.' % (testInterval, (time.time() - epochTime)))
+				#print('Estimated time: %.02f minutes.' % ((trainingEpochs - epoch) / testInterval * (time.time() - epochTime) / 60.0))
+				epochTime = time.time()
+				summary_writer.add_summary(summary, epoch)
+				summary_writer.add_summary(summary_test, epoch)
+				avgCost = 0
 
 	except KeyboardInterrupt:
 		pass
