@@ -315,6 +315,7 @@ if(NUMPY)
 	list(APPEND   PP_SOURCES source/plugin/numpyconvert.cpp)
 	list(APPEND NOPP_SOURCES source/pwrapper/numpyWrap.cpp)
 	list(APPEND NOPP_HEADERS source/pwrapper/numpyWrap.h)
+	add_definitions( -DNUMPY=1 )
 endif()
 
 # Multithreading

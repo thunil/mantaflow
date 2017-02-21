@@ -48,7 +48,7 @@ void knNumpyTest(Grid<Real>& grid, PyArrayContainer npAr, Real scale)
 	grid(i,j,k) += scale * p[j*grid.getSizeX()+i]; // calc access into numpy array, no size check here!
 }
 
-PYT ON() void numpyTest( Grid<Real>& grid, PyArrayContainer npAr, Real scale) {
+PYTHON() void numpyTest( Grid<Real>& grid, PyArrayContainer npAr, Real scale) {
 	knNumpyTest(grid, npAr, scale);
 }
 
