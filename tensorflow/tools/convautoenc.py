@@ -12,7 +12,7 @@ class ConvolutionalAutoEncoder(object):
 		self.preFlatShapes = []
 		self.weight_stack = []
 		self.layer_num = 0
-		print "Input: {}".format(self.layer.get_shape()) 
+		print ("Input: {}".format(self.layer.get_shape())) 
 	
 	#---------------------------------------------------------------------------------
 	# thanks to http://robromijnders.github.io/tensorflow_basic/
@@ -23,7 +23,7 @@ class ConvolutionalAutoEncoder(object):
 		out_channels = 1
 		if int(s[3]) % 3 == 0:
 			out_channels = 3
-		print "Shape {}".format(s)
+		print ("Shape {}".format(s))
 		weight_patches = int(s[2]) * int(s[3]) / out_channels # e.g. the number of [3,3] patches in a CNN
 		side_length = int(math.ceil(math.sqrt(weight_patches))) # image side length (in patches)
 		image_patches = side_length * side_length # max number of patches that fit in the image
@@ -50,7 +50,7 @@ class ConvolutionalAutoEncoder(object):
 		image = tf.image.resize_images(image, [int(s[1] * 50), int(s[0] * 50)], 1)
 		image_tag = "l" + str(self.layer_num) + "_weight_image"
 		tf.image_summary(image_tag, image)
-		print "Image Summary: save weights as image"
+		print ("Image Summary: save weights as image")
 		
 	#---------------------------------------------------------------------------------
 	def convolutional_layer(self, _filterSpread, _patchShape, activation_function=tf.nn.tanh):
@@ -68,7 +68,7 @@ class ConvolutionalAutoEncoder(object):
 		# feed forward step
 		self.layer = activation_function(self.conv2d(self.layer, W) + b)
 		# user output
-		print "Convolutional Layer {} ({}) : {}".format(W.get_shape(), activation_function.__name__,self.layer.get_shape())
+		print ("Convolutional Layer {} ({}) : {}".format(W.get_shape(), activation_function.__name__,self.layer.get_shape()))
 		return self.layer
 
 	#---------------------------------------------------------------------------------
@@ -76,14 +76,14 @@ class ConvolutionalAutoEncoder(object):
 	def max_pool(self, window_size=[2,2], window_stride=[2,2]):
 		self.layer = tf.nn.max_pool(self.layer, ksize=[1, window_size[0], window_size[1], 1], strides=[1, window_stride[0], window_stride[1], 1], padding="VALID")
 		# user output
-		print "Max Pool {}: {}".format(window_size, self.layer.get_shape()) 
+		print ("Max Pool {}: {}".format(window_size, self.layer.get_shape())) 
 		return self.layer
 	
 	#---------------------------------------------------------------------------------
 	def avg_pool(self, window_size=[2,2], window_stride=[2,2]):
 		self.layer = tf.nn.avg_pool(self.layer, ksize=[1, window_size[0], window_size[1], 1], strides=[1, window_stride[0], window_stride[1], 1], padding="VALID")
 		# user output
-		print "Avg Pool {}: {}".format(window_size, self.layer.get_shape()) 
+		print ("Avg Pool {}: {}".format(window_size, self.layer.get_shape()))
 		return self.layer
 	
 	#---------------------------------------------------------------------------------
@@ -98,7 +98,7 @@ class ConvolutionalAutoEncoder(object):
 		# make flat
 		self.layer = tf.reshape(self.layer, [-1, flatSize])
 		# user output
-		print "Flatten: {}".format(self.layer.get_shape()) 
+		print ("Flatten: {}".format(self.layer.get_shape())) 
 		return flatSize
 	
 	#---------------------------------------------------------------------------------
@@ -114,7 +114,7 @@ class ConvolutionalAutoEncoder(object):
 		#self.layer = tf.nn.relu6(tf.matmul(self.layer, W) + b)  # ??
 		self.layer = _act(tf.matmul(self.layer, W) + b)  # ??
 		# user output
-		print "Fully Connected Layer: {}".format(self.layer.get_shape()) 
+		print ("Fully Connected Layer: {}".format(self.layer.get_shape()))
 		return self.layer
 	
 	#---------------------------------------------------------------------------------
@@ -124,7 +124,7 @@ class ConvolutionalAutoEncoder(object):
 		unflatShape = self.preFlatShapes.pop()
 		unflatShape = [-1, int(unflatShape[1]), int(unflatShape[2]), int(unflatShape[3])]
 		self.layer = tf.reshape(self.layer, unflatShape)
-		print "Unflatten: {}".format(self.layer.get_shape()) 
+		print ("Unflatten: {}".format(self.layer.get_shape()) )
 		return self.layer
 
 	#---------------------------------------------------------------------------------
@@ -133,7 +133,7 @@ class ConvolutionalAutoEncoder(object):
 		outWidth = self.layer.get_shape()[2] * window_stride[0] + window_size[0] - window_stride[0]
 		outHeight = self.layer.get_shape()[1] * window_stride[1] + window_size[1] -  window_stride[1]
 		self.layer = tf.image.resize_images(self.layer, [int(outHeight), int(outWidth)], 1)
-		print "Max Depool {}: {}".format(window_size, self.layer.get_shape())
+		print ("Max Depool {}: {}".format(window_size, self.layer.get_shape()))
 		return self.layer
 
 	#---------------------------------------------------------------------------------
@@ -141,7 +141,7 @@ class ConvolutionalAutoEncoder(object):
 		outWidth = self.layer.get_shape()[2] * window_stride[0] + window_size[0] - window_stride[0]
 		outHeight = self.layer.get_shape()[1] * window_stride[1] + window_size[1] -  window_stride[1]
 		self.layer = tf.image.resize_images(self.layer, [int(outHeight), int(outWidth)], 0)
-		print "Avg Depool {}: {}".format(window_size, self.layer.get_shape())
+		print ("Avg Depool {}: {}".format(window_size, self.layer.get_shape()))
 		return self.layer
 
 	#---------------------------------------------------------------------------------
@@ -163,7 +163,7 @@ class ConvolutionalAutoEncoder(object):
 		self.layer = activation_function(self.deconv2d(self.layer, W, [self.batch_size, xDimension, yDimension, outChannels]) + b)
 		self.layer = tf.reshape(self.layer, [-1, xDimension, yDimension, outChannels])
 		# user output
-		print "Deconvolutional Layer ({}): {}".format(activation_function.__name__, self.layer.get_shape()) 
+		print ("Deconvolutional Layer ({}): {}".format(activation_function.__name__, self.layer.get_shape())) 
 		return self.layer
 
 	#---------------------------------------------------------------------------------

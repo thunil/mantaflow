@@ -202,7 +202,7 @@ cae.max_depool([pool,pool], [pool,pool])
 cae.deconvolutional_layer(2, [5, 5], tf.nn.relu)
 
 y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
-print "DOFs: %d " % cae.getDOFs()
+print ("DOFs: %d " % cae.getDOFs())
 
 costFunc = tf.nn.l2_loss(y_true - y_pred) 
 optimizer = tf.train.AdamOptimizer(learning_rate).minimize(costFunc)
