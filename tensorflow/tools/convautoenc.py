@@ -24,12 +24,12 @@ class ConvolutionalAutoEncoder(object):
 		if int(s[3]) % 3 == 0:
 			out_channels = 3
 		print ("Shape {}".format(s))
-		weight_patches = int(s[2]) * int(s[3]) / out_channels # e.g. the number of [3,3] patches in a CNN
+		weight_patches = int( int(s[2]) * int(s[3]) / out_channels ) # e.g. the number of [3,3] patches in a CNN
 		side_length = int(math.ceil(math.sqrt(weight_patches))) # image side length (in patches)
 		image_patches = side_length * side_length # max number of patches that fit in the image
 		# split into per filter weights
 		ws = []
-		ws_dim3 = tf.split(3, s[3] / out_channels, W) # e.g. [ [3,3,3,1], [3,3,3,1], ... ]
+		ws_dim3 = tf.split(3, int(s[3] / out_channels), W) # e.g. [ [3,3,3,1], [3,3,3,1], ... ]
 		for w in ws_dim3:
 			# split these further
 			ws.extend(tf.split(2, s[2], w))  # e.g. [ [3,3,1,1], [3,3,1,1], ... ]
@@ -111,8 +111,7 @@ class ConvolutionalAutoEncoder(object):
 		b = self.bias_variable([_numHidden])
 		self.DOFs += numInput*_numHidden + _numHidden
 		# activate
-		#self.layer = tf.nn.relu6(tf.matmul(self.layer, W) + b)  # ??
-		self.layer = _act(tf.matmul(self.layer, W) + b)  # ??
+		self.layer = _act(tf.matmul(self.layer, W) + b)  
 		# user output
 		print ("Fully Connected Layer: {}".format(self.layer.get_shape()))
 		return self.layer
@@ -154,7 +153,7 @@ class ConvolutionalAutoEncoder(object):
 		inChannels = int(self.layer.get_shape()[3])
 		outChannels = int(inChannels / _filterSpread) # must always come out even
 		# create a weight matrix
-		W = self.weight_variable([_patchShape[0], _patchShape[1], outChannels, inChannels]) #tf.transpose(self.weight_stack.pop())
+		W = self.weight_variable([_patchShape[0], _patchShape[1], outChannels, inChannels]) 
 		self.DOFs += _patchShape[0]* _patchShape[1]* outChannels* inChannels
 		# create a bias vector
 		b = self.bias_variable([outChannels])
@@ -205,4 +204,6 @@ class ConvolutionalAutoEncoder(object):
 			tf.scalar_summary('max/' + name, tf.reduce_max(var))
 			tf.scalar_summary('min/' + name, tf.reduce_min(var))
 			tf.histogram_summary(name, var)
+
+
 

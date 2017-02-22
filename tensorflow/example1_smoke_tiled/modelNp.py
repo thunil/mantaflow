@@ -187,7 +187,7 @@ cae = ConvolutionalAutoEncoder(xIn)
 pool = 4
 # note - for simplicity, we always reduce the number of channels to 8 here 
 # this is probably suboptimal in general, but keeps the network structure similar and simple
-clFMs = 8 / n_inputChannels
+clFMs = int(8 / n_inputChannels)
 cae.convolutional_layer(clFMs, [3, 3], tf.nn.relu)
 cae.max_pool([pool,pool], [pool,pool])
 
