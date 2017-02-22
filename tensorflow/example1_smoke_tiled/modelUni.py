@@ -182,7 +182,7 @@ cae = ConvolutionalAutoEncoder(xIn)
 pool = 4
 if not useLegacyNet:
 	# new, w stride
-	clFMs = 8 / n_inputChannels
+	clFMs = int(8 / n_inputChannels)
 	cae.convolutional_layer(clFMs, [3, 3], tf.nn.relu)
 	cae.max_pool([pool,pool], [pool,pool])
 

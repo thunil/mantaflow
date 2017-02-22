@@ -152,7 +152,7 @@ class ConvolutionalAutoEncoder(object):
 		yDimension = int(self.layer.get_shape()[2]) #+ (int(_patchShape[1]) - 1)
 		# spread channels
 		inChannels = int(self.layer.get_shape()[3])
-		outChannels = inChannels / _filterSpread # must always come out even
+		outChannels = int(inChannels / _filterSpread) # must always come out even
 		# create a weight matrix
 		W = self.weight_variable([_patchShape[0], _patchShape[1], outChannels, inChannels]) #tf.transpose(self.weight_stack.pop())
 		self.DOFs += _patchShape[0]* _patchShape[1]* outChannels* inChannels
