@@ -152,6 +152,9 @@ class Logger(object):
 		self.terminal.write(message)
 		self.log.write(message)
 
+	def flush(self): 
+		# to avoid errormsg, " AttributeError: 'Logger' object has no attribute 'flush' "
+		pass
 sys.stdout = Logger()
 
 # print Variables to log
@@ -303,7 +306,9 @@ else:
 	tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
 
 	img_count = 0
-	for currOut in range(len(tiCr.tile_inputs_all_complete) / tilesPerImg):
+	outrange = len(tiCr.tile_inputs_all_complete) / tilesPerImg
+	# use int to avoid TypeError: 'float' object cannot be interpreted as an integer
+	for currOut in range( int(outrange) ): 
 		batch_xs = []
 		batch_ys = []
 		for curr_tile in range(tilesPerImg):

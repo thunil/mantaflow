@@ -22,6 +22,7 @@ from datetime import date
 from collections import namedtuple
 import numpy as np
 
+PY3K = sys.version_info >= (3, 0)
 
 # read content of grid
 def RU_read_content(bytestream, header):
@@ -45,7 +46,8 @@ def RU_read_content(bytestream, header):
 # read uni file header (v3)
 def RU_read_header(bytestream):
 	ID = bytestream.read(4)
-
+	# in python3, ID == b'MNT3' or b'MNT2' or ..., have to decode
+	if(PY3K): ID = ID.decode("utf-8") 
 	if ID=="MNT2":
 		# unpack header struct object
 		header = namedtuple('HeaderV3', 'dimX, dimY, dimZ, gridType, elementType, bytesPerElement, info, timestamp')

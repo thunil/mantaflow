@@ -697,6 +697,9 @@ def debugOutputPngsCrop(tiles, tileSizeHigh, imageSizeHigh, path, imageCounter=0
 		else:
 			from_value = (tileSizeHigh - cut_output_to) / 2
 			to_value = tileSizeHigh - from_value
+			# avoid error "TypeError: slice indices must be integers or None or have an __index__ method"
+			from_value = int(from_value)
+			to_value   = int(to_value)
 			output_tile = np.reshape(tiles[currTile], (tileSizeHigh, tileSizeHigh))
 			outputArray.append(output_tile[from_value: to_value, from_value: to_value])
 
