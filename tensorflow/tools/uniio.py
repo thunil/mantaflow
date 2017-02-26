@@ -103,6 +103,11 @@ def writeUni(filename, header, content):
 		head_tuple = namedtuple('HeaderV4', header.keys())(**header)
 		head_buffer = struct.pack('iiiiii252siQ', *head_tuple)
 		bytestream.write(head_buffer)
+
+		# always convert to single precision floats
+		if content.dtype!="float32":
+			content = np.asarray(content, dtype="float32") 
+
 		# write grid content
 		if (header['elementType'] == 2):
 			# vec3 grid
