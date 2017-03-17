@@ -44,6 +44,9 @@ namespace Manta {
             case NPY_DOUBLE:
                 abuf.DataType = N_DOUBLE;
                 break;
+            case NPY_INT:
+                abuf.DataType = N_INT;
+                break;
             default:
                 errMsg("unknown type of Numpy array");
                 break;

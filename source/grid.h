@@ -169,6 +169,8 @@ public:
 	PYTHON() void multConst(T s);
 	//! clamp content to range (for vec3, clamps each component separately)
 	PYTHON() void clamp(Real min, Real max);
+	//! reduce small values to zero
+	PYTHON() void stomp(const T& threshold);
 	
 	// common compound operators
 	//! get absolute max value in grid 
@@ -446,7 +448,6 @@ KERNEL(idx) template<class T, class S> void gridAddScalar (Grid<T>& me, const S&
 KERNEL(idx) template<class T, class S> void gridMultScalar(Grid<T>& me, const S& other)  { me[idx] *= other; }
 KERNEL(idx) template<class T, class S> void gridScaledAdd (Grid<T>& me, const Grid<T>& other, const S& factor) { me[idx] += factor * other[idx]; }
 
-KERNEL(idx) template<class T> void gridSafeDiv (Grid<T>& me, const Grid<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
 KERNEL(idx) template<class T> void gridSetConst(Grid<T>& grid, T value) { grid[idx] = value; }
 
 template<class T> template<class S> Grid<T>& Grid<T>::operator+= (const Grid<S>& a) {
@@ -482,7 +483,6 @@ template<class T> template<class S> Grid<T>& Grid<T>::operator/= (const S& a) {
 	gridMultScalar<T,S> (*this, rez);
 	return *this;
 }
-
 
 //******************************************************************************
 // Other helper functions

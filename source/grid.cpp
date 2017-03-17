@@ -165,11 +165,6 @@ Real CompMaxVec(Grid<Vec3>& val) {
 		maxVal = s;
 }
 
-
-template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
-	gridSafeDiv<T> (*this, a);
-	return *this;
-}
 template<class T> Grid<T>& Grid<T>::copyFrom (const Grid<T>& a, bool copyType ) {
 	assertMsg (a.mSize.x == mSize.x && a.mSize.y == mSize.y && a.mSize.z == mSize.z, "different grid resolutions "<<a.mSize<<" vs "<<this->mSize );
 	memcpy(mData, a.mData, sizeof(T) * mSize.x * mSize.y * mSize.z);
@@ -183,7 +178,20 @@ template<class T> Grid<T>& Grid<T>::copyFrom (const Grid<T>& a, bool copyType ) 
 KERNEL(idx) template<class T> void knGridSetConstReal (Grid<T>& me, T val) { me[idx]  = val; }
 KERNEL(idx) template<class T> void knGridAddConstReal (Grid<T>& me, T val) { me[idx] += val; }
 KERNEL(idx) template<class T> void knGridMultConst (Grid<T>& me, T val) { me[idx] *= val; }
-KERNEL(idx) template<class T> void knGridClamp (Grid<T>& me, T min, T max) { me[idx] = clamp( me[idx], min, max); }
+
+KERNEL(idx) template<class T> void knGridSafeDiv (Grid<T>& me, const Grid<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
+//KERNEL(idx) template<class T> void gridSafeDiv (Grid<T>& me, const Grid<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
+
+KERNEL(idx) template<class T> void knGridClamp(Grid<T>& me, const T& min, const T& max) { me[idx] = clamp(me[idx], min, max); }
+
+template<typename T> inline void stomp(T &v, const T &th) { if(v<th) v=0; }
+template<> inline void stomp<Vec3>(Vec3 &v, const Vec3 &th) { if(v[0]<th[0]) v[0]=0; if(v[1]<th[1]) v[1]=0; if(v[2]<th[2]) v[2]=0; }
+KERNEL(idx) template<class T> void knGridStomp(Grid<T>& me, const T& threshold) { stomp(me[idx], threshold); }
+
+template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
+	knGridSafeDiv<T> (*this, a);
+	return *this;
+}
 
 template<class T> void Grid<T>::add(const Grid<T>& a) {
 	gridAdd<T,T>(*this, a);
@@ -210,6 +218,9 @@ template<class T> void Grid<T>::mult(const Grid<T>& a) {
 
 template<class T> void Grid<T>::clamp(Real min, Real max) {
 	knGridClamp<T> (*this, T(min), T(max) );
+}
+template<class T> void Grid<T>::stomp(const T& threshold) {
+	knGridStomp<T>(*this, threshold);
 }
 
 template<> Real Grid<Real>::getMax() {

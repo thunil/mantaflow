@@ -48,9 +48,14 @@ KERNEL(bnd=1) void KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
 		vel(i,j,k).z += force.z;
 }
 
-//! add gravity forces to all fluid cells
+//! add gravity forces to all fluid cells, automatically adapts to different grid sizes
 PYTHON() void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {    
 	Vec3 f = gravity * flags.getParent()->getDt() / flags.getDx();
+	KnAddForce(flags, vel, f);
+}
+//! add gravity forces to all fluid cells , but dont account for changing cell size
+PYTHON() void addGravityNoScale(FlagGrid& flags, MACGrid& vel, const Vec3& gravity) {
+	const Vec3 f = gravity * flags.getParent()->getDt();
 	KnAddForce(flags, vel, f);
 }
 

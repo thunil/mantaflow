@@ -1058,12 +1058,12 @@ void readGrid4dRaw(const string& name, Grid4d<T>* grid) {
 
 
 //*****************************************************************************
-// particle data
+// particles and particle data
 //*****************************************************************************
 
 static const int PartSysSize = sizeof(Vector3D<float>)+sizeof(int);
 
-void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
+void writeParticlesUni(const std::string& name, const BasicParticleSystem* parts ) {
 	debMsg( "writing particles " << parts->getName() << " to uni file " << name ,1);
 	
 #	if NO_ZLIB!=1
@@ -1096,7 +1096,7 @@ void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 #	else
 	assertMsg( sizeof(BasicParticleData) == PartSysSize, "particle data size doesn't match" );
 	gzwrite(gzf, &head, sizeof(UniPartHeader));
-	gzwrite(gzf, &(parts->getData()[0]), PartSysSize*head.dim);
+	gzwrite(gzf, &((*parts)[0]), PartSysSize*head.dim);
 #	endif
 	gzclose(gzf);
 #	else
