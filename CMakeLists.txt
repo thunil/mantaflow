@@ -604,20 +604,13 @@ IF(NOT NOPYTHON)
 		ENDIF()
 	ENDIF()
 
-<<<<<<< HEAD
-ELSE()
+ELSEIF(BUILD_STATIC)
 	# only build static library in nopython mode
-=======
-ENDIF()
-
-IF(BUILD_STATIC)
 	SET(EXECCMD manta_static)
 	# only build static library, e.g. for nopython mode
->>>>>>> develop
 	ADD_LIBRARY (core OBJECT ${SOURCES} ${GITINFO})
 	ADD_LIBRARY (${EXECCMD} STATIC $<TARGET_OBJECTS:core>)
 ENDIF()
-
 
 # gcc compiler flags 
 IF(NOT WIN32)
