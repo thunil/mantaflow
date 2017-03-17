@@ -151,8 +151,7 @@ while (s.timeTotal<params['t_end']): # main loop
         gPhi.createMesh(mesh)
 
     setWallBcs(flags=gFlags, vel=gV)
-    #solvePressure(flags=gFlags, vel=gV, pressure=gP, cgAccuracy=params['cgaccuracy'], phi=gPhi, curv=gCurv, surfTens=params['stens'])
-    solvePressure(flags=gFlags, vel=gV, pressure=gP, cgAccuracy=params['cgaccuracy'], phi=gPhi); print("Warning - surface tension off")
+    solvePressure(flags=gFlags, vel=gV, pressure=gP, cgAccuracy=params['cgaccuracy'], phi=gPhi, curv=gCurv, surfTens=params['stens'])
     setWallBcs(flags=gFlags, vel=gV)
     extrapolateMACSimple(flags=gFlags, vel=gV)
 

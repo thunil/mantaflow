@@ -14,6 +14,7 @@
 # ----------------------------------------------------------------------------
 
 import sys, os, argparse
+if(len(sys.argv)<2): print("Call with list of data directories, at least one. E.g., 'python tf_train.py /tmp/manta-flip/training_data ' \n"); exit(1); 
 
 import numpy as np
 import tensorflow as tf
