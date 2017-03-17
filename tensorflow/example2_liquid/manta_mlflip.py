@@ -235,7 +235,7 @@ while (s.timeTotal<params['t_end']): # main loop
     flipVelocityUpdate(vel=gV, velOld=gVold, flags=gFlags, parts=pp, partVel=pV, flipRatio=0.97, ptype=pT, exclude=FlagObstacle|FlagEmpty)
 
     # update velocity; individual update for Lagrangian particles
-    updateVelocityParts(vel=pV, a=vec3(0, params['grav'], 0), dt=s.timestep, ptype=pT, exclude=FlagObstacle|FlagFluid)
+    addForcePvel(vel=pV, a=vec3(0, params['grav'], 0), dt=s.timestep, ptype=pT, exclude=FlagObstacle|FlagFluid)
 
     # 0. let's predict splash in framestep, which is the same with the training data's timestep
     pp.getPosPdata(target=pVtmp)

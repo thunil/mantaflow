@@ -217,7 +217,7 @@ for i, dir_i in enumerate(indirs):
 
         # update velocity (general update from FLIP and individual update for Lagrangian particles)
         flipVelocityUpdate(vel=gV, velOld=gVold, flags=gFlags, parts=pp, partVel=pV, flipRatio=0.97, ptype=pT, exclude=FlagObstacle|FlagEmpty)
-        updateVelocityParts(vel=pV, a=vec3(0, params['grav'], 0), dt=s.timestep, ptype=pT, exclude=FlagObstacle|FlagFluid)
+        addForcePvel(vel=pV, a=vec3(0, params['grav'], 0), dt=s.timestep, ptype=pT, exclude=FlagObstacle|FlagFluid)
 
         # update position
         pp.getPosPdata(target=pVtmp)

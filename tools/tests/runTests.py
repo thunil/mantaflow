@@ -49,6 +49,9 @@ else:
 printAllOutpus = 0
 filePrefix = "test_"
 
+# by default, disable UI (if compiled)
+os.environ["MANTA_DISABLE_UI"] = "1"
+
 if(len(sys.argv)<2):
 	print("Usage runTests.py <manta-executable>")
 	exit(1)

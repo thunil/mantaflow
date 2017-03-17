@@ -53,13 +53,16 @@ void numpyTest( Grid<Real>& grid, PyArrayContainer npAr, Real scale) {
 
 #endif // NUMPY==1
 
-// MLflip
 
-// note - requires numpy!
+
+
+// MLflip
 
 PYTHON() void getLaplacian(Grid<Real> &laplacian, const Grid<Real> &grid) {
 	LaplaceOp(laplacian, grid);
 }
+
+//! region detection functions
 
 void floodFillRegion(Grid<int> &r, const FlagGrid &flags, const IndexInt idx, const int c, const int type) {
 	r(idx) = c;
@@ -144,28 +147,29 @@ void markSmallRegions(FlagGrid &flags, const Grid<int> &rcnt, const int mark, co
 	knMarkSmallRegions(flags, rcnt, mark, exclude, th);
 }
 
+// particle helpers
 
-// TODO , rename to pvelAddForce? or so?
 KERNEL(pts)
-void KnUpdateVelocity(ParticleDataImpl<Vec3> &v, const Vec3 &da, const ParticleDataImpl<int> *ptype, const int exclude) {
+void KnAddForcePvel(ParticleDataImpl<Vec3> &v, const Vec3 &da, const ParticleDataImpl<int> *ptype, const int exclude) {
 	if(ptype && ((*ptype)[idx] & exclude)) return;
 	v[idx] += da;
 } 
-PYTHON() void updateVelocityParts(ParticleDataImpl<Vec3> &vel, const Vec3 &a, const Real dt, const ParticleDataImpl<int> *ptype, const int exclude) {
-	KnUpdateVelocity(vel, a*dt, ptype, exclude);
+//! add force to vec3 particle data (ie, a velocity)
+PYTHON() void addForcePvel(ParticleDataImpl<Vec3> &vel, const Vec3 &a, const Real dt, const ParticleDataImpl<int> *ptype, const int exclude) {
+	KnAddForcePvel(vel, a*dt, ptype, exclude);
 }
 
 KERNEL(pts) 
 void KnUpdateVelocityFromDeltaPos(const BasicParticleSystem &p, ParticleDataImpl<Vec3> &v, const ParticleDataImpl<Vec3> &x_prev, const Real over_dt, const ParticleDataImpl<int> *ptype, const int exclude) {
 	if(ptype && ((*ptype)[idx] & exclude)) return;
 	v[idx] = (p[idx].pos - x_prev[idx])*over_dt;
-}
-
+} 
+//! retrieve velocity from position change
 PYTHON() void updateVelocityFromDeltaPos(BasicParticleSystem& parts, ParticleDataImpl<Vec3> &vel, const ParticleDataImpl<Vec3> &x_prev, const Real dt, const ParticleDataImpl<int> *ptype, const int exclude) {
 	KnUpdateVelocityFromDeltaPos(parts, vel, x_prev, 1.0/dt, ptype, exclude);
 }
 
-// simple foward Euler methods
+//! simple foward Euler integration for particle system
 KERNEL(pts) 
 void KnStepEuler(BasicParticleSystem &p, const ParticleDataImpl<Vec3> &v, const Real dt, const ParticleDataImpl<int> *ptype, const int exclude) {
 	if(ptype && ((*ptype)[idx] & exclude)) return;
@@ -290,33 +294,6 @@ void extractFeatureGeo(PyArrayContainer fv, const int N_row, const int off_begin
 	knExtractFeatureGeo(p, reinterpret_cast<Real*>(fv.pData), N_row, off_begin, flag, scale, ptype, exclude, window);
 }
 
-// numpy <> pdata
-
-template<typename T>
-void numpyToParticleDataImpl(ParticleDataImpl<T> &p, const PyArrayContainer n) {
-	assertMsg(n.TotalSize == p.size(), "Sizes are different!");
-	std::copy(reinterpret_cast<const T*>(n.pData), reinterpret_cast<const T*>(n.pData)+n.TotalSize,  &(p[0]));
-}
-template<typename T>
-void particleDataImplToNumpy(PyArrayContainer n, const ParticleDataImpl<T> &p) {
-	assertMsg(n.TotalSize == p.size(), "Sizes are different!");
-	std::copy(&(p[0]), &(p[0])+n.TotalSize, reinterpret_cast<T*>(n.pData));
-}
-
-PYTHON() void numpyToParticleDataImplInt(ParticleDataImpl<int> &p, const PyArrayContainer n) { numpyToParticleDataImpl<int>(p, n); }
-PYTHON() void particleDataImplToNumpyInt(PyArrayContainer n, const ParticleDataImpl<int> &p) { particleDataImplToNumpy<int>(n, p); }
-
-PYTHON() void numpyToParticleDataImplReal(ParticleDataImpl<Real> &p, const PyArrayContainer n) { numpyToParticleDataImpl<Real>(p, n); }
-PYTHON() void particleDataImplToNumpyReal(PyArrayContainer n, const ParticleDataImpl<Real> &p) { particleDataImplToNumpy<Real>(n, p); }
-
-PYTHON() void numpyToParticleDataImplVec3(ParticleDataImpl<Vec3> &p, const PyArrayContainer n) {
-	assertMsg(n.TotalSize == p.size()*3, "Sizes are different!");
-	std::copy(reinterpret_cast<const Real*>(n.pData), reinterpret_cast<const Real*>(n.pData)+n.TotalSize,  &(p[0][0]));
-}
-PYTHON() void particleDataImplToNumpyVec3(PyArrayContainer n, const ParticleDataImpl<Vec3> &p) {
-	assertMsg(n.TotalSize == p.size()*3, "Sizes are different!");
-	std::copy(&(p[0][0]), &(p[0][0])+n.TotalSize, reinterpret_cast<Real*>(n.pData));
-}
 
 // ... add more test code here if necessary ...
 
