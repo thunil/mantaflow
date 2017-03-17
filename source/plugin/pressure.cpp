@@ -26,10 +26,14 @@ namespace Manta {
 //       MGDynamic, but works only if Poisson equation does not change)
 enum Preconditioner { PcNone = 0, PcMIC = 1, PcMGDynamic = 2, PcMGStatic = 3 };
 
+inline static Real surfTensHelper(const IndexInt idx, const int offset, const Grid<Real> &phi, const Grid<Real> &curv, const Real surfTens, const Real gfClamp);
+
 //! Kernel: Construct the right-hand side of the poisson equation
 KERNEL(bnd=1, reduce=+) returns(int cnt=0) returns(double sum=0)
 void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, 
-			  Grid<Real>* perCellCorr, MACGrid* fractions)
+			  Grid<Real>* perCellCorr, MACGrid* fractions,
+			  // note - all of the following are necessary for surface tension
+              const Grid<Real> *phi, const Grid<Real> *curv, const Real surfTens, const Real gfClamp)
 {
 	if (!flags.isFluid(i,j,k)) {
 		rhs(i,j,k) = 0;
@@ -47,6 +51,20 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 		set =               (*fractions)(i,j,k).x * vel(i,j,k).x - (*fractions)(i+1,j,k).x * vel(i+1,j,k).x + 
 							(*fractions)(i,j,k).y * vel(i,j,k).y - (*fractions)(i,j+1,k).y * vel(i,j+1,k).y; 
 		if(vel.is3D()) set+=(*fractions)(i,j,k).z * vel(i,j,k).z - (*fractions)(i,j,k+1).z * vel(i,j,k+1).z;
+	}
+
+	// compute surface tension effect (optional)
+	if(phi && curv) {
+		const IndexInt idx = flags.index(i,j,k);
+		const int X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
+		if(flags.isEmpty(i-1,j,k))     set += surfTensHelper(idx, -X, *phi, *curv, surfTens, gfClamp);
+		if(flags.isEmpty(i+1,j,k))	   set += surfTensHelper(idx, +X, *phi, *curv, surfTens, gfClamp);
+		if(flags.isEmpty(i,j-1,k))	   set += surfTensHelper(idx, -Y, *phi, *curv, surfTens, gfClamp);
+		if(flags.isEmpty(i,j+1,k))	   set += surfTensHelper(idx, +Y, *phi, *curv, surfTens, gfClamp);
+		if(vel.is3D()) {
+			if(flags.isEmpty(i,j,k-1)) set += surfTensHelper(idx, -Z, *phi, *curv, surfTens, gfClamp);
+			if(flags.isEmpty(i,j,k+1)) set += surfTensHelper(idx, +Z, *phi, *curv, surfTens, gfClamp);
+		}
 	}
 	
 	// per cell divergence correction (optional)
@@ -104,7 +122,12 @@ inline static Real ghostFluidHelper(IndexInt idx, int offset, const Grid<Real> &
 {
 	Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
 	if (alpha < gfClamp) return alpha = gfClamp;
-	return (1-(1/alpha)); 
+	return (1.-(1./alpha)); 
+}
+
+inline static Real surfTensHelper(const IndexInt idx, const int offset, const Grid<Real> &phi, const Grid<Real> &curv, const Real surfTens, const Real gfClamp)
+{
+	return surfTens*(curv[idx+offset] - ghostFluidHelper(idx, offset, phi, gfClamp) * curv[idx]);
 }
 
 //! Kernel: Adapt A0 for ghost fluid
@@ -127,17 +150,17 @@ void ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<R
 
 //! Kernel: Apply velocity update: ghost fluid contribution
 KERNEL(bnd=1)
-void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp)
+void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp,
+                               const Grid<Real> *curv, const Real surfTens)
 {
 	const IndexInt X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
 	const IndexInt idx = flags.index(i,j,k);
-	if (flags.isFluid(idx))
-	{
+	if (flags.isFluid(idx)) {
 		if (flags.isEmpty(i-1,j,k)) vel[idx][0] += pressure[idx] * ghostFluidHelper(idx, -X, phi, gfClamp);
 		if (flags.isEmpty(i,j-1,k)) vel[idx][1] += pressure[idx] * ghostFluidHelper(idx, -Y, phi, gfClamp);
 		if (flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx][2] += pressure[idx] * ghostFluidHelper(idx, -Z, phi, gfClamp);
 	}
-	else if (flags.isEmpty(idx)&&!flags.isOutflow(idx)) // do not change velocities in outflow cells
+	else if (flags.isEmpty(idx) && !flags.isOutflow(idx)) // do not change velocities in outflow cells
 	{
 		if (flags.isFluid(i-1,j,k)) vel[idx][0] -= pressure(i-1,j,k) * ghostFluidHelper(idx-X, +X, phi, gfClamp);
 		else                        vel[idx].x  = 0.f;
@@ -146,6 +169,22 @@ void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<R
 		if (flags.is3D() ) {
 		if (flags.isFluid(i,j,k-1)) vel[idx][2] -= pressure(i,j,k-1) * ghostFluidHelper(idx-Z, +Z, phi, gfClamp);
 		else                        vel[idx].z  = 0.f;
+		}
+	}
+
+	if(curv) {
+		if(flags.isFluid(idx))	{
+			if(flags.isEmpty(i-1,j,k))                 vel[idx].x += surfTensHelper(idx, -X, phi, *curv, surfTens, gfClamp);
+			if(flags.isEmpty(i,j-1,k))                 vel[idx].y += surfTensHelper(idx, -Y, phi, *curv, surfTens, gfClamp);
+			if(flags.is3D() && flags.isEmpty(i,j,k-1)) vel[idx].z += surfTensHelper(idx, -Z, phi, *curv, surfTens, gfClamp);
+		} 
+		else if (flags.isEmpty(idx) && !flags.isOutflow(idx)) // do not change velocities in outflow cells
+		{
+			vel[idx].x -= (flags.isFluid(i-1,j,k)) ? surfTensHelper(idx-X, +X, phi, *curv, surfTens, gfClamp) : 0.f;
+			vel[idx].y -= (flags.isFluid(i,j-1,k)) ? surfTensHelper(idx-Y, +Y, phi, *curv, surfTens, gfClamp) : 0.f;
+			if(flags.is3D()) {
+			vel[idx].z -= (flags.isFluid(i,j,k-1)) ? surfTensHelper(idx-Z, +Z, phi, *curv, surfTens, gfClamp) : 0.f;
+			}
 		}
 	}
 }
@@ -246,6 +285,8 @@ PYTHON() void releaseMG(FluidSolver* solver=nullptr) {
 //! preconditioner: MIC, or MG (see Preconditioner enum)
 //! useL2Norm: use max norm by default, can be turned to L2 here
 //! zeroPressureFixing: remove null space by fixing a single pressure value, needed for MG 
+//! curv: curvature for surface tension effects
+//! surfTens: surface tension coefficient
 //! retRhs: return RHS divergence, e.g., for debugging; optional
 PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgAccuracy = 1e-3,
     Grid<Real>* phi = 0, 
@@ -258,6 +299,8 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	bool enforceCompatibility = false,
     bool useL2Norm = false, 
 	bool zeroPressureFixing = false,
+	const Grid<Real> *curv = NULL,
+	const Real surfTens = 0.,
 	Grid<Real>* retRhs = NULL )
 {
 	if (precondition==false) preconditioner = PcNone; // for backwards compatibility
@@ -274,14 +317,14 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	Grid<Real> rhs(parent);
 		
 	// setup matrix and boundaries 
-	MakeLaplaceMatrix (flags, A0, Ai, Aj, Ak, fractions);
+	MakeLaplaceMatrix(flags, A0, Ai, Aj, Ak, fractions);
 
 	if (phi) {
 		ApplyGhostFluidDiagonal(A0, flags, *phi, gfClamp);
 	}
 	
 	// compute divergence and init right hand side
-	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, fractions);
+	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, fractions,  phi, curv, surfTens, gfClamp );
 	
 	if (enforceCompatibility)
 		rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
@@ -389,7 +432,7 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 
 	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {
-		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp);
+		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp,  curv, surfTens );
 		// improve behavior of clamping for large time steps:
 		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
 	}
