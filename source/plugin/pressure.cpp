@@ -122,7 +122,7 @@ inline static Real ghostFluidHelper(IndexInt idx, int offset, const Grid<Real> &
 {
 	Real alpha = thetaHelper(phi[idx], phi[idx+offset]);
 	if (alpha < gfClamp) return alpha = gfClamp;
-	return (1.-(1./alpha)); 
+	return (1-(1/alpha)); 
 }
 
 inline static Real surfTensHelper(const IndexInt idx, const int offset, const Grid<Real> &phi, const Grid<Real> &curv, const Real surfTens, const Real gfClamp)
