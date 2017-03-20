@@ -136,7 +136,7 @@ if output:
 while (s.timeTotal<params['t_end']): # main loop
 
     mapPartsToMAC(vel=gV, flags=gFlags, velOld=gVold, parts=pp, partVel=pV, ptype=pT, exclude=FlagEmpty)
-    if params['sdt'] is None: s.adaptTimestep(gV.getMaxValue())
+    if params['sdt'] is None: s.adaptTimestep(gV.getMax())
     else: s.adaptTimestepByDt(params['sdt'])
 
     addGravityNoScale(flags=gFlags, vel=gV, gravity=vec3(0, params['grav'], 0))

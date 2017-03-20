@@ -164,7 +164,7 @@ np_pTimer = np.zeros(pp.pySize(), dtype=dtype_real)
 while (s.timeTotal<params['t_end']): # main loop
 
     mapPartsToMAC(vel=gV, flags=gFlags, velOld=gVold, parts=pp, partVel=pV, ptype=pT, exclude=FlagEmpty)
-    if params['sdt'] is None: s.adaptTimestep(gV.getMaxValue())
+    if params['sdt'] is None: s.adaptTimestep(gV.getMax())
     else: s.adaptTimestepByDt(params['sdt'])
 
     addGravityNoScale(flags=gFlags, vel=gV, gravity=vec3(0, params['grav'], 0))
@@ -223,8 +223,7 @@ while (s.timeTotal<params['t_end']): # main loop
         dv_c = np.append(dv_c, np.zeros((N_candidate, 1), dtype=dtype_real), axis=1)
         if tfopt['mve']: appx_s_c = np.append(appx_s_c, np.zeros((N_candidate, 1), dtype=dtype_real), axis=1)
 
-    if tfopt['mve']: dv_c += appx_s_c*np.random.normal(size=(pp.pySize(), 3))[candidate] # FIXME: This random part needs to be replaced with the following line; but, this was used for the user studies.
-    # if tfopt['mve']: dv_c += appx_s_c*np.random.normal(size=(N_candidate, 3))
+    if tfopt['mve']: dv_c += appx_s_c*np.random.normal(size=(N_candidate, 3))
 
     dv = np.zeros((pp.pySize(), 3), dtype=dtype_real)
     dv[candidate] = dv_c

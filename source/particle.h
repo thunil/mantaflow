@@ -333,9 +333,9 @@ public:
 	PYTHON() void clampMin(const Real vmin);
 	PYTHON() void clampMax(const Real vmax);
 
-	PYTHON() Real getMaxAbsValue();
-	PYTHON() Real getMaxValue();
-	PYTHON() Real getMinValue();
+	PYTHON() Real getMaxAbs();
+	PYTHON() Real getMax();
+	PYTHON() Real getMin();
 
 	PYTHON() T    sum(const ParticleDataImpl<int> *t=NULL, const int itype=0) const;
 	PYTHON() Real sumSquare() const;

@@ -522,19 +522,19 @@ Real CompPdata_Max(const ParticleDataImpl<T>& val) {
 }
 
 template<typename T>
-Real ParticleDataImpl<T>::getMinValue() {
+Real ParticleDataImpl<T>::getMin() {
 	return CompPdata_Min<T> (*this);
 }
 
 template<typename T>
-Real ParticleDataImpl<T>::getMaxAbsValue() {
+Real ParticleDataImpl<T>::getMaxAbs() {
 	Real amin = CompPdata_Min<T> (*this);
 	Real amax = CompPdata_Max<T> (*this);
 	return max( fabs(amin), fabs(amax));
 }
 
 template<typename T>
-Real ParticleDataImpl<T>::getMaxValue() {
+Real ParticleDataImpl<T>::getMax() {
 	return CompPdata_Max<T> (*this);
 } 
 
@@ -555,7 +555,7 @@ void ParticleDataImpl<T>::printPdata(IndexInt start, IndexInt stop, bool printIn
 }
 
 // specials for vec3
-
+// work on length values, ie, always positive (in contrast to scalar versions above)
 
 KERNEL(pts, reduce=min) returns(Real minVal=-std::numeric_limits<Real>::max())
 Real CompPdata_MinVec3(const ParticleDataImpl<Vec3>& val) {
@@ -572,19 +572,17 @@ Real CompPdata_MaxVec3(const ParticleDataImpl<Vec3>& val) {
 }
 
 template<>
-Real ParticleDataImpl<Vec3>::getMinValue() {
+Real ParticleDataImpl<Vec3>::getMin() {
 	return sqrt(CompPdata_MinVec3 (*this));
 }
 
 template<>
-Real ParticleDataImpl<Vec3>::getMaxAbsValue() {
-	Real amin = CompPdata_MinVec3 (*this);
-	Real amax = CompPdata_MaxVec3 (*this);
-	return max( fabs(amin), fabs(amax));
+Real ParticleDataImpl<Vec3>::getMaxAbs() {
+	return sqrt(CompPdata_MaxVec3 (*this));  // no minimum necessary here
 }
 
 template<>
-Real ParticleDataImpl<Vec3>::getMaxValue() {
+Real ParticleDataImpl<Vec3>::getMax() {
 	return sqrt(CompPdata_MaxVec3 (*this));
 }
 
