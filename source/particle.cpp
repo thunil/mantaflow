@@ -13,7 +13,6 @@
 
 #include <fstream>
 #include  <cstring>
-#include  <limits>
 #if NO_ZLIB!=1
 #include <zlib.h>
 #endif

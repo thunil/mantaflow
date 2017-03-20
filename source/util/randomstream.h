@@ -20,10 +20,8 @@
 namespace Manta {
 
 #include <iostream>
-#include <limits.h>
 #include <stdio.h>
 #include <time.h>
-#include <math.h>
 #include "vectorbase.h"
 
 class MTRand {

@@ -21,7 +21,7 @@
 
 #include <stdio.h>
 #include <string>
-#include <cmath>
+#include <limits>
 #include <iostream>
 #include "general.h"
 
@@ -49,30 +49,11 @@
 // value as a threshold.
 #if FLOATINGPOINT_PRECISION==1
 	typedef float Real;
-#   define FP_REAL_MAX __FLT_MAX__
 #   define VECTOR_EPSILON (1e-6f)
 #else
 	typedef double Real;
-#   define FP_REAL_MAX __DBL_MAX__
 #   define VECTOR_EPSILON (1e-10)
 #endif
-
-// windos, hardcoded limits for now (e.g. MSVC compiler)
-// some of these defines can be needed for linux systems as well (e.g. FLT_MAX)
-#ifndef __FLT_MAX__
-#   ifdef FLT_MAX  // try to use it instead
-#       define __FLT_MAX__ FLT_MAX
-#   else 
-#       define __FLT_MAX__ 3.402823466e+38f
-#   endif // FLT_MAX
-#endif 
-#ifndef __DBL_MAX__
-#   ifdef DBL_MAX // try to use it instead
-#       define __DBL_MAX__ DBL_MAX
-#   else 
-#       define __DBL_MAX__ 1.7976931348623158e+308
-#   endif // DBL_MAX
-#endif 
 
 #ifndef M_PI
 #   define M_PI 3.1415926536

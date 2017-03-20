@@ -10,7 +10,6 @@
  * Plugins for pressure correction: solve_pressure, and ghost fluid helpers
  *
  ******************************************************************************/
-#include <math.h>
 #include "vectorbase.h"
 #include "grid.h"
 #include "kernel.h"

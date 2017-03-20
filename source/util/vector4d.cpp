@@ -12,8 +12,6 @@
  ******************************************************************************/
 
 #include "vector4d.h"
-#include <limits>
-#include <math.h>
 
 using namespace std;
 

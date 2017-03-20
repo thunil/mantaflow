@@ -16,8 +16,6 @@
 #include "grid.h"
 #include "levelset.h"
 
-#include <math.h>
-
 using namespace std;
 namespace Manta
 {
