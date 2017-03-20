@@ -270,7 +270,7 @@ bool GridCg<APPLYMAT>::iterate() {
 	if(this->mUseL2Norm) { 
 		mResNorm = GridSumSqr(mResidual).sum; 
 	} else {
-		mResNorm = mResidual.getMaxAbsValue();        
+		mResNorm = mResidual.getMaxAbs();        
 	}
 	//if(mIterations % 10 == 9) debMsg("GridCg::Iteration i="<<mIterations<<", resNorm="<<mResNorm<<" accuracy="<<mAccuracy, 1);
 

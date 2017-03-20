@@ -121,7 +121,7 @@ public:
 	PYTHON() Vec3 getPos(IndexInt idx) const                  { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].pos; }
 	//! copy all positions into pdata vec3 field
 	PYTHON() void getPosPdata(ParticleDataImpl<Vec3>& target) const;
-	PYTHON() void setPosPdata(ParticleDataImpl<Vec3>& source);
+	PYTHON() void setPosPdata(const ParticleDataImpl<Vec3>& source);
 	//! transform coordinate system from one grid size to another (usually upon load)
 	void transformPositions( Vec3i dimOld, Vec3i dimNew );
 
@@ -320,7 +320,7 @@ public:
 
 	//! python interface (similar to grid data)
 	PYTHON() void setConst(T s);
-	PYTHON() void setConstRange(const T& s, const int begin, const int end);
+	PYTHON() void setConstRange(T s, const int begin, const int end);
 	PYTHON() ParticleDataImpl<T>& copyFrom(const ParticleDataImpl<T>& a);
 	PYTHON() void add(const ParticleDataImpl<T>& a);
 	PYTHON() void sub(const ParticleDataImpl<T>& a);
@@ -329,9 +329,9 @@ public:
 	PYTHON() void mult( const ParticleDataImpl<T>& a);
 	PYTHON() void multConst(T s);
 	PYTHON() void safeDiv(const ParticleDataImpl<T>& a);
-	PYTHON() void clamp(const Real min, const Real max);
-	PYTHON() void clampMin(const Real vmin);
-	PYTHON() void clampMax(const Real vmax);
+	PYTHON() void clamp(Real min, Real max);
+	PYTHON() void clampMin(Real vmin);
+	PYTHON() void clampMax(Real vmax);
 
 	PYTHON() Real getMaxAbs();
 	PYTHON() Real getMax();
@@ -342,7 +342,7 @@ public:
 	PYTHON() Real sumMagnitude() const;
 
 	//! special, set if int flag in t has "flag"
-	PYTHON() void setConstIntFlag(const T& s, const ParticleDataImpl<int>& t, const int flag);
+	PYTHON() void setConstIntFlag(T s, const ParticleDataImpl<int>& t, const int flag);
 
 	PYTHON() void printPdata(IndexInt start=-1, IndexInt stop=-1, bool printIndex=false); 
 	
@@ -402,7 +402,7 @@ void ParticleSystem<S>::getPosPdata(ParticleDataImpl<Vec3>& target) const {
 	}
 }
 template<class S>
-void ParticleSystem<S>::setPosPdata(ParticleDataImpl<Vec3>& source) {
+void ParticleSystem<S>::setPosPdata(const ParticleDataImpl<Vec3>& source) {
 	for(IndexInt i=0; i<(IndexInt)this->size(); ++i) {
 		this->setPos(i, source[i]);
 	}

@@ -165,13 +165,13 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 
 		# debug info , print min/max
 		if 0:
-			minVal1 = grid.getMinValue()
-			maxVal1 = grid.getMaxValue()
-			minVal2 = compareTmpGrid.getMinValue()
-			maxVal2 = compareTmpGrid.getMaxValue()
+			minVal1 = grid.getMin()
+			maxVal1 = grid.getMax()
+			minVal2 = compareTmpGrid.getMin()
+			maxVal2 = compareTmpGrid.getMax()
 			print( "Test "+name+" min/max curr "+str(minVal1)+" to "+str(maxVal1)+" min/max ref "+str(minVal2)+" to "+str(maxVal2) );
 
-		maxVal = grid.getMaxAbsValue() + 1e-15
+		maxVal = grid.getMaxAbs() + 1e-15
 		errValRel = errVal/maxVal
 
 		# finally, compare max error to allowed threshold, and return result

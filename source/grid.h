@@ -178,16 +178,11 @@ public:
 	//! get max value in grid 
 	PYTHON() Real getMax();
 	//! get min value in grid 
-	PYTHON() Real getMin();    
+	PYTHON() Real getMin();
 	//! set all boundary cells to constant value (Dirichlet)
 	PYTHON() void setBound(T value, int boundaryWidth=1);
 	//! set all boundary cells to last inner value (Neumann)
 	PYTHON() void setBoundNeumann(int boundaryWidth=1);
-
-	//! for compatibility, old names:
-	PYTHON() Real getMaxAbsValue() { return getMaxAbs(); }
-	PYTHON() Real getMaxValue()    { return getMax(); }
-	PYTHON() Real getMinValue()    { return getMin(); }
 
 	//! get data pointer of grid
 	PYTHON() std::string getDataPointer();

@@ -128,7 +128,7 @@ void GridPainter<T>::update() {
 	mLocalGrid->copyFrom( *src , true ); // copy grid data and type marker
 	mLocalGrid->setName(src->getName());
 	mLocalGrid->setParent(src->getParent());    
-	mMaxVal = mLocalGrid->getMaxAbsValue();
+	mMaxVal = mLocalGrid->getMaxAbs();
 	
 	mPlane = clamp(mPlane, 0, mLocalGrid->getSize()[mDim]-1);
 	

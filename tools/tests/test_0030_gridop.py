@@ -54,7 +54,7 @@ else:
 	rlg3.copyFrom( rlg1 )  # 1.1
 	rlg3.add(rlg2)  # 2.3
 	rlg3.addScaled(rlg2, 0.5) # 2.9
-	#print "r1 %f , r2 %f , r3 %f " % ( rlg1.getMaxAbsValue() , rlg2.getMaxAbsValue() , rlg3.getMaxAbsValue() )
+	#print "r1 %f , r2 %f , r3 %f " % ( rlg1.getMaxAbs() , rlg2.getMaxAbs() , rlg3.getMaxAbs() )
 
 	vcg1.setConst( vec3(1.0, 1.0, 1.0) )
 	vcg2.setConst( vec3(1.0, 1.0, 1.0) )
@@ -68,7 +68,7 @@ else:
 	vcg3.copyFrom( vcgTmp )  # 1.2
 	vcg3.add(vcg2) # 1.7
 	vcg3.addScaled(vcg2, vec3(0.5, 0.5, 0.5) ) # 1.95
-	#print "v1 %s , v2 %s , v3 %s " % ( vcg1.getMaxAbsValue() , vcg2.getMaxAbsValue(), vcg3.getMaxAbsValue() )
+	#print "v1 %s , v2 %s , v3 %s " % ( vcg1.getMaxAbs() , vcg2.getMaxAbs(), vcg3.getMaxAbs() )
 
 	int1.setConst( 123 )
 	int2.setConst( 2 )
@@ -78,7 +78,7 @@ else:
 	int3.copyFrom( int1 ) # 125
 	int3.add(int2)  # 131
 	int3.addScaled(int2, 2) # 143
-	#print "i1 %s , i2 %s , i3 %s " % ( int1.getMaxAbsValue() , int2.getMaxAbsValue() , int3.getMaxAbsValue() )
+	#print "i1 %s , i2 %s , i3 %s " % ( int1.getMaxAbs() , int2.getMaxAbs() , int3.getMaxAbs() )
 
 
 # verify

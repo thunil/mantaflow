@@ -419,7 +419,7 @@ void ParticleDataImpl<T>::setConst(T s) {
 }
 
 template<typename T>
-void ParticleDataImpl<T>::setConstRange(const T& s, const int begin, const int end) {
+void ParticleDataImpl<T>::setConstRange(T s, const int begin, const int end) {
 	for(int i=begin; i<end; ++i) (*this)[i] = s;
 }
 
@@ -428,7 +428,7 @@ KERNEL(pts) template<class T, class S> void knPdataSetScalarIntFlag(ParticleData
 	if(t[idx]&itype) me[idx] = other; 
 } 
 template<typename T>
-void ParticleDataImpl<T>::setConstIntFlag(const T& s, const ParticleDataImpl<int>& t, const int itype) {
+void ParticleDataImpl<T>::setConstIntFlag(T s, const ParticleDataImpl<int>& t, const int itype) {
 	knPdataSetScalarIntFlag<T,T> op(*this, s, t, itype);
 }
 
@@ -468,25 +468,25 @@ void ParticleDataImpl<T>::multConst(T s) {
 
 
 template<typename T>
-void ParticleDataImpl<T>::clamp(const Real vmin, const Real vmax) {
+void ParticleDataImpl<T>::clamp(Real vmin, Real vmax) {
 	knPdataClamp<T> op( *this, vmin, vmax );
 }
 
 template<typename T>
-void ParticleDataImpl<T>::clampMin(const Real vmin) {
+void ParticleDataImpl<T>::clampMin(Real vmin) {
 	knPdataClampMin<T> op( *this, vmin );
 }
 template<typename T>
-void ParticleDataImpl<T>::clampMax(const Real vmax) {
+void ParticleDataImpl<T>::clampMax(Real vmax) {
 	knPdataClampMax<T> op( *this, vmax );
 }
 
 template<>
-void ParticleDataImpl<Vec3>::clampMin(const Real vmin) {
+void ParticleDataImpl<Vec3>::clampMin(Real vmin) {
 	knPdataClampMinVec3 op( *this, vmin );
 }
 template<>
-void ParticleDataImpl<Vec3>::clampMax(const Real vmax) {
+void ParticleDataImpl<Vec3>::clampMax(Real vmax) {
 	knPdataClampMaxVec3 op( *this, vmax );
 }
 
