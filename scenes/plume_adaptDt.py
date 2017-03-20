@@ -53,7 +53,7 @@ source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*v
 lastFrame = -1
 while s.frame < frames:
 	
-	maxvel = vel.getMaxValue()
+	maxvel = vel.getMax()
 	s.adaptTimestep(maxvel)
 	mantaMsg('\nFrame %i, time-step size %f' % (s.frame, s.timestep))
 

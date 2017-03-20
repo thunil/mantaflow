@@ -86,7 +86,7 @@ step = -1
 while s.frame < 200:
 	step = step + 1
 	
-	maxVel = vel.getMaxValue()
+	maxVel = vel.getMax()
 	s.adaptTimestep( maxVel )
 	mantaMsg( '\nFrame %i, step %i, time-step size %f' % (s.frame, step, s.timestep) )
 

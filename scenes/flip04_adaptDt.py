@@ -109,7 +109,7 @@ if 1 and (GUI):
 
 #main loop
 while s.frame < frames:
-	maxVel = vel.getMaxValue()
+	maxVel = vel.getMax()
 	s.adaptTimestep( maxVel )
 	mantaMsg('\nFrame %i, time-step size %f' % (s.frame, s.timestep))
 
