@@ -216,13 +216,25 @@ void fixPressure (int fixPidx, Real value, Grid<Real>& rhs, Grid<Real>& A0, Grid
 }
 
 
-// for "static" MG mode, keep data structure
-// leave cleanup to OS if nonzero at program termination (PcMGStatic mode)
+// for "static" MG mode, keep one MG data structure per fluid solver
+// leave cleanup to OS/user if nonzero at program termination (PcMGStatic mode)
 // alternatively, manually release in scene file with releaseMG
-static GridMg* gMG = nullptr; 
-PYTHON() void releaseMG() {
-	delete gMG; 
-	gMG = nullptr;
+static std::map<FluidSolver*, GridMg*> gMapMG;
+
+PYTHON() void releaseMG(FluidSolver* solver=nullptr) {
+	// release all?
+	if(!solver) {
+		for( std::map<FluidSolver*, GridMg*>::iterator it = gMapMG.begin(); it != gMapMG.end(); it++) {
+			if(it->first != nullptr) releaseMG(it->first);
+		}
+		return;
+	}
+
+	GridMg* mg = gMapMG[solver];
+	if(mg) {
+		delete mg; 
+		gMapMG[solver] = nullptr;
+	}
 }
 
 
@@ -332,6 +344,7 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	int maxIter = 0;
 	
 	Grid<Real> *pca0 = nullptr, *pca1 = nullptr, *pca2 = nullptr, *pca3 = nullptr;
+	GridMg* pmg = nullptr;
 
 	// optional preconditioning	
 	if (preconditioner == PcNone || preconditioner == PcMIC) {			
@@ -347,9 +360,13 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	} else if (preconditioner == PcMGDynamic || preconditioner == PcMGStatic) {
 		maxIter = 100;
 
-		if (!gMG) gMG = new GridMg(pressure.getSize());
+		pmg = gMapMG[parent];
+		if (!pmg) {
+			pmg = new GridMg(pressure.getSize());
+			gMapMG[parent] = pmg;
+		}
 
-		gcg->setMGPreconditioner( GridCgInterface::PC_MGP, gMG);
+		gcg->setMGPreconditioner( GridCgInterface::PC_MGP, pmg);
 	}
 
 	// CG solve
@@ -368,7 +385,7 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 
 	// PcMGDynamic: always delete multigrid solver after use
 	// PcMGStatic: keep multigrid solver for next solve
-	if (gMG && preconditioner==PcMGDynamic) releaseMG();
+	if (pmg && preconditioner==PcMGDynamic) releaseMG(parent);
 
 	CorrectVelocity(flags, vel, pressure ); 
 	if (phi) {
