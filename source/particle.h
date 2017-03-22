@@ -166,6 +166,9 @@ protected:
 //******************************************************************************
 
 //! Simplest data class for particle systems
+//! contains a position and an int flag; note that these are deprectated, and will at
+//! some point be replaced by the more flexible pdata fields. For now manually copy with
+//! getPosPdata / setPosPdata.
 struct BasicParticleData {
 public:
 	BasicParticleData() : pos(0.), flag(0) {}

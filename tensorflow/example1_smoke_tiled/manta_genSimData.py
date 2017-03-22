@@ -13,9 +13,11 @@ import paramhelpers as ph
 # Main params  ----------------------------------------------------------------------#
 steps    = 200
 savedata = True
+saveppm  = False
 simNo    = 1000  # start ID
 showGui  = 0
 basePath = '../data/'
+npSeedstr   = "-1"
 
 # debugging
 #steps = 50       # shorter test
@@ -23,11 +25,12 @@ basePath = '../data/'
 #showGui  = 1
 
 basePath        =     ph.getParam( "basePath",        basePath        )
+npSeedstr       =     ph.getParam( "npSeed"  ,        npSeedstr       )
+npSeed          =     int(npSeedstr)
 ph.checkUnusedParams()
 
 # Scene settings  ---------------------------------------------------------------------#
-setDebugLevel(1) 
-useSavedGrid = 0 
+setDebugLevel(1)
 
 # Solver params  ----------------------------------------------------------------------#
 res   = 64
@@ -35,9 +38,9 @@ dim    = 2
 offset = 20
 
 scaleFactor = 4
-ratio       = 1.2
+#ratio       = 1.2
 
-sm_gs = vec3(res,res,res)
+sm_gs = vec3(res,res,res) # vec3(res,res*ratio,res)
 xl_gs = sm_gs * float(scaleFactor)
 if (dim==2):  xl_gs.z = sm_gs.z = 1  # 2D
 
@@ -86,17 +89,20 @@ setOpenBound(flags,    bWidth,'yY',FlagOutflow|FlagEmpty)
 setOpenBound(xl_flags, bWidth,'yY',FlagOutflow|FlagEmpty) 
 
 # inflow sources ----------------------------------------------------------------------#
+if(npSeed>0): np.random.seed(npSeed)
 
+# init random density
 noise    = []
 sources  = []
-nseeds   = [265, 485, 672, 11, 143, 53, 320, 519, 84, 26, 398, 592]
 
-noiseN   = len(nseeds)
+noiseN = 12
+nseeds = np.random.randint(10000,size=noiseN)
+
 cpos = vec3(0.5,0.5,0.5)
 
 randoms = np.random.rand(noiseN, 8)
 for nI in range(noiseN):
-	noise.append( sm.create(NoiseField, fixedSeed=nseeds[nI], loadFromFile=True) )
+	noise.append( sm.create(NoiseField, fixedSeed= int(nseeds[nI]), loadFromFile=True) )
 	noise[nI].posScale = vec3( res * 0.1 * (randoms[nI][7] + 1) )
 	noise[nI].clamp = True
 	noise[nI].clampNeg = 0
@@ -123,15 +129,33 @@ for nI in range(noiseN):
 	
 	densityInflow( flags=xl_flags, density=xl_density, noise=noise[nI], shape=sources[nI], scale=1.0, sigma=1.0 )
 
-v1pos = vec3(0.6)
-v2pos = vec3(0.35)
+# init random velocity
+Vrandom = np.random.rand(3)
+v1pos = vec3(0.7 + 0.4 *(Vrandom[0] - 0.5) ) #range(0.5,0.9) 
+v2pos = vec3(0.3 + 0.4 *(Vrandom[1] - 0.5) ) #range(0.1,0.5)
+vtheta = Vrandom[2] * math.pi * 0.5
+velInflow = 0.04 * vec3(math.sin(vtheta), math.cos(vtheta), 0)
+
 if(dim == 2):
 	v1pos.z = v2pos.z = 0.5
-velInflow = vec3(0.04, 0.01, 0)
-xl_sourcV1 = xl.create(Sphere, center=xl_gs*v1pos, radius=xl_gs.x*0.1, scale=vec3(1))
-xl_sourcV2 = xl.create(Sphere, center=xl_gs*v2pos, radius=xl_gs.x*0.1, scale=vec3(1))
-xl_sourcV1.applyToGrid( grid=xl_vel , value=(-velInflow*float(xl_gs.x)) )
-xl_sourcV2.applyToGrid( grid=xl_vel , value=( velInflow*float(xl_gs.x)) )
+	xl_sourcV1 = xl.create(Sphere, center=xl_gs*v1pos, radius=xl_gs.x*0.1, scale=vec3(1))
+	xl_sourcV2 = xl.create(Sphere, center=xl_gs*v2pos, radius=xl_gs.x*0.1, scale=vec3(1))
+	xl_sourcV1.applyToGrid( grid=xl_vel , value=(-velInflow*float(xl_gs.x)) )
+	xl_sourcV2.applyToGrid( grid=xl_vel , value=( velInflow*float(xl_gs.x)) )
+elif(dim == 3):
+	VrandomMore = np.random.rand(3)
+	vtheta2 = VrandomMore[0] * math.pi * 0.5
+	vtheta3 = VrandomMore[1] * math.pi * 0.5
+	vtheta4 = VrandomMore[2] * math.pi * 0.5
+	for dz in range(1,10,1):
+		v1pos.z = v2pos.z = (0.1*dz)
+		vtheta_xy = vtheta *(1.0 - 0.1*dz ) + vtheta2 * (0.1*dz)
+		vtheta_z  = vtheta3 *(1.0 - 0.1*dz ) + vtheta4 * (0.1*dz)
+		velInflow = 0.04 * vec3( math.cos(vtheta_z) * math.sin(vtheta_xy), math.cos(vtheta_z) * math.cos(vtheta_xy),  math.sin(vtheta_z))
+		xl_sourcV1 = xl.create(Sphere, center=xl_gs*v1pos, radius=xl_gs.x*0.1, scale=vec3(1))
+		xl_sourcV2 = xl.create(Sphere, center=xl_gs*v2pos, radius=xl_gs.x*0.1, scale=vec3(1))
+		xl_sourcV1.applyToGrid( grid=xl_vel , value=(-velInflow*float(xl_gs.x)) )
+		xl_sourcV2.applyToGrid( grid=xl_vel , value=( velInflow*float(xl_gs.x)) )
 
 blurSig = float(scaleFactor) / 3.544908 # 3.544908 = 2 * sqrt( PI )
 xl_blurden.copyFrom( xl_density )
@@ -173,105 +197,74 @@ while t < steps+offset:
 	curt = t * sm.timestep
 	sys.stdout.write( "Current time t: " + str(curt) +" \n" )
 	
-	readFlag = ( (useSavedGrid == 1) \
-		and os.path.isfile( '%ssourceVelX_%04d.uni' %(gridSavePath, t)) \
-		and os.path.isfile( '%ssourceVelS_%04d.uni' %(gridSavePath, t)) \
-		and os.path.isfile( '%ssourceX_%04d.uni' %(gridSavePath, t)) \
-		and os.path.isfile( '%ssourceS_%04d.uni' %(gridSavePath, t)) )
-
-	#newCentre = xl_gs*float(0.5) # re-centering off
 	newCentre = calcCenterOfMass(xl_density)
 	xl_velOffset = xl_gs*float(0.5) - newCentre
 	xl_velOffset = xl_velOffset * (1./ xl.timestep)
 	velOffset = xl_velOffset * (1./ float(scaleFactor))
 	
-	#velOffset = xl_velOffset = vec3(0.0)
+	#velOffset = xl_velOffset = vec3(0.0) # re-centering off
 	if(dim == 2):
 		xl_velOffset.z = velOffset.z = 0.0
 	
-	if (not readFlag):
-		# high res fluid
-		advectSemiLagrange(flags=xl_flags, vel=xl_velTmp, grid=xl_vel, order=2, openBounds=True, boundaryWidth=bWidth)
-		setWallBcs(flags=xl_flags, vel=xl_vel)
-		addBuoyancy(density=xl_density, vel=xl_vel, gravity=buoy , flags=xl_flags)
-		if 1 and ( t< offset ): 
-			vorticityConfinement( vel=xl_vel, flags=xl_flags, strength=0.05 )
-		solvePressure(flags=xl_flags, vel=xl_vel, pressure=xl_pressure ,  cgMaxIterFac=1.0, cgAccuracy=0.01 )
-		setWallBcs(flags=xl_flags, vel=xl_vel)
-		xl_velTmp.copyFrom( xl_vel )
-		xl_velTmp.addConst( xl_velOffset )
-		if( dim == 2 ):
-			xl_vel.multConst( vec3(1.0,1.0,0.0) )
-			xl_velTmp.multConst( vec3(1.0,1.0,0.0) )
-		advectSemiLagrange(flags=xl_flags, vel=xl_velTmp, grid=xl_density, order=2, openBounds=True, boundaryWidth=bWidth)
-		xl_density.clamp(0.0, 2.0)
+	# high res fluid
+	advectSemiLagrange(flags=xl_flags, vel=xl_velTmp, grid=xl_vel, order=2, openBounds=True, boundaryWidth=bWidth)
+	setWallBcs(flags=xl_flags, vel=xl_vel)
+	addBuoyancy(density=xl_density, vel=xl_vel, gravity=buoy , flags=xl_flags)
+	if 1 and ( t< offset ): 
+		vorticityConfinement( vel=xl_vel, flags=xl_flags, strength=0.05 )
+	solvePressure(flags=xl_flags, vel=xl_vel, pressure=xl_pressure ,  cgMaxIterFac=1.0, cgAccuracy=0.01 )
+	setWallBcs(flags=xl_flags, vel=xl_vel)
+	xl_velTmp.copyFrom( xl_vel )
+	xl_velTmp.addConst( xl_velOffset )
+	if( dim == 2 ):
+		xl_vel.multConst( vec3(1.0,1.0,0.0) )
+		xl_velTmp.multConst( vec3(1.0,1.0,0.0) )
+	advectSemiLagrange(flags=xl_flags, vel=xl_velTmp, grid=xl_density, order=2, openBounds=True, boundaryWidth=bWidth)
+	xl_density.clamp(0.0, 2.0)
 
-		# low res fluid, velocity
-		if( t % resetN == 0) :
-			xl_blurvel.copyFrom( xl_vel )
-			# todo blurMacGrid( xl_vel, xl_blurvel, blurSig)
-			interpolateMACGrid( target=vel, source=xl_blurvel )
-			vel.multConst( vec3(1./scaleFactor) )
-		else:
-			advectSemiLagrange(flags=flags, vel=velTmp, grid=vel, order=2, openBounds=True, boundaryWidth=bWidth)
-			setWallBcs(flags=flags, vel=vel)
-			addBuoyancy(density=density, vel=vel, gravity=xl_buoy , flags=flags)
-			if 1 and ( t< offset ): 
-				vorticityConfinement( vel=vel, flags=flags, strength=0.05/scaleFactor )
-			solvePressure(flags=flags, vel=vel, pressure=pressure , cgMaxIterFac=1.0, cgAccuracy=0.01 )
-			setWallBcs(flags=flags, vel=vel)
-
-		velTmp.copyFrom(vel)
-		velTmp.addConst( velOffset )
-		#if( dim == 2 ):
-			#vel.multConst( vec3(1.0,1.0,0.0) )
-			#velTmp.multConst( vec3(1.0,1.0,0.0) )
-
-		# low res fluid, density
-		if( t % resetN == 0) :
-			xl_blurden.copyFrom( xl_density )
-			# todo blurRealGrid( xl_density, xl_blurden, blurSig)
-			interpolateGrid( target=density, source=xl_blurden )
-		else:
-			advectSemiLagrange(flags=flags, vel=velTmp, grid=density, order=2, openBounds=True, boundaryWidth=bWidth)
-			density.clamp(0.0, 2.0)
-		
-		# save
-		if(useSavedGrid == 1):
-			print("SP %s "%gridSavePath)
-			xl_density.save('%ssourceX_%04d.uni' % (gridSavePath,t))
-			xl_vel.save('%ssourceVelX_%04d.uni' % (gridSavePath,t))
-			projectPpmFull( xl_density, '%ssourceX_%04d.ppm' % (gridSavePath,t), 0, 1.0 )
-			density.save('%ssourceS_%04d.uni' % (gridSavePath,t))
-			vel.save('%ssourceVelS_%04d.uni' % (gridSavePath,t))
-			projectPpmFull( density, '%ssourceS_%04d.ppm' % (gridSavePath,t), 0, 1.0 )
-			if( dim == 2 ):
-				xl_density.save('%ssourceX_%04d.png' % (gridSavePath,t))
-				density.save('%ssourceS_%04d.png' % (gridSavePath,t))
+	# low res fluid, velocity
+	if( t % resetN == 0) :
+		xl_blurvel.copyFrom( xl_vel )
+		# todo blurMacGrid( xl_vel, xl_blurvel, blurSig)
+		interpolateMACGrid( target=vel, source=xl_blurvel )
+		vel.multConst( vec3(1./scaleFactor) )
 	else:
-		if (t < bgt): 
-			t = t + 1
-			continue
-		
-		xl_density.load('%ssourceX_%04d.uni' % (gridSavePath,t))
-		xl_vel.load('%ssourceVelX_%04d.uni' % (gridSavePath,t))
-		density.load('%ssourceS_%04d.uni' % (gridSavePath,t))
-		vel.load('%ssourceVelS_%04d.uni' % (gridSavePath,t))
-		xl_velTmp.copyFrom( xl_vel )
-		xl_velTmp.addConst( xl_velOffset )
-		velTmp.copyFrom(vel)
-		velTmp.addConst( velOffset )
+		advectSemiLagrange(flags=flags, vel=velTmp, grid=vel, order=2, openBounds=True, boundaryWidth=bWidth)
+		setWallBcs(flags=flags, vel=vel)
+		addBuoyancy(density=density, vel=vel, gravity=xl_buoy , flags=flags)
+		if 1 and ( t< offset ): 
+			vorticityConfinement( vel=vel, flags=flags, strength=0.05/scaleFactor )
+		solvePressure(flags=flags, vel=vel, pressure=pressure , cgMaxIterFac=1.0, cgAccuracy=0.01 )
+		setWallBcs(flags=flags, vel=vel)
+
+	velTmp.copyFrom(vel)
+	velTmp.addConst( velOffset )
+	#if( dim == 2 ):
+		#vel.multConst( vec3(1.0,1.0,0.0) )
+		#velTmp.multConst( vec3(1.0,1.0,0.0) )
+
+	# low res fluid, density
+	if( t % resetN == 0) :
+		xl_blurden.copyFrom( xl_density )
+		# todo blurRealGrid( xl_density, xl_blurden, blurSig)
+		interpolateGrid( target=density, source=xl_blurden )
+	else:
+		advectSemiLagrange(flags=flags, vel=velTmp, grid=density, order=2, openBounds=True, boundaryWidth=bWidth)
+		density.clamp(0.0, 2.0)
 
 	# save low and high res
-	if 1: # save all frames
-		if savedata and tcnt>=offset:
-			tf = tcnt-offset
-			framePath = simPath + 'frame_%04d/' % tf
-			os.makedirs(framePath)
-			density.save(framePath + 'density_low_%04d_%04d.uni' % (simNo, tf))
-			vel.save(framePath + 'vel_low_%04d_%04d.uni' % (simNo, tf))
-			xl_density.save(framePath + 'density_high_%04d_%04d.uni' % (simNo, tf))
-		tcnt += 1
+	# save all frames
+	if savedata and tcnt>=offset:
+		tf = tcnt-offset
+		framePath = simPath + 'frame_%04d/' % tf
+		os.makedirs(framePath)
+		density.save(framePath + 'density_low_%04d_%04d.uni' % (simNo, tf))
+		vel.save(framePath + 'vel_low_%04d_%04d.uni' % (simNo, tf))
+		xl_density.save(framePath + 'density_high_%04d_%04d.uni' % (simNo, tf))
+		if(saveppm):
+			projectPpmFull( xl_density, simPath + 'density_high_%04d_%04d.ppm' % (simNo, tf), 0, 1.0 )
+			projectPpmFull( density, simPath + 'density_low_%04d_%04d.ppm' % (simNo, tf), 0, 1.0 )
+	tcnt += 1
 
 	sm.step()
 	#gui.screenshot( 'outLibt1_%04d.png' % t )

@@ -12,6 +12,7 @@
 # ----------------------------------------------------------------------------
 
 import os, argparse, operator, math, random, pickle
+assertNumpy() # make sure mantaflow is compiled with the NUMPY option, ie, "cmake ... -DNUNPY=1"
 
 def path_to_frame(outdir, frame):
     return '{}/{:05d}/'.format(outdir, frame)
@@ -31,7 +32,7 @@ def normalize(v):
     return [ v[i]/vmag for i in range(len(v)) ]
 
 parser = argparse.ArgumentParser(description='FLIP', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('-o', '--output', default='/tmp/manta-flip',  help='path to the simulation output')
+parser.add_argument('-o', '--output', default='../data/manta-flip',  help='path to the simulation output')
 parser.add_argument('-s', '--seed',   default=1, type=int, help='random seed; used for randomizing initialization')
 pargs = parser.parse_known_args()[0]
 

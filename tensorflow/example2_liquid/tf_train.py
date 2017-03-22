@@ -14,7 +14,7 @@
 # ----------------------------------------------------------------------------
 
 import sys, os, argparse
-if(len(sys.argv)<2): print("Call with list of data directories, at least one. E.g., 'python tf_train.py /tmp/manta-flip/training_data ' \n"); exit(1); 
+if(len(sys.argv)<2): print("Call with list of data directories, at least one. E.g., 'python tf_train.py ../data/manta-flip/training_data ' \n"); exit(1); 
 
 import numpy as np
 import tensorflow as tf
@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 parser = argparse.ArgumentParser(description='Generate Training Data', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('-o', '--output', default='/tmp/tf/',        help='output directory')
+parser.add_argument('-o', '--output', default='../data/tf/',        help='output directory')
 parser.add_argument('-s', '--steps',  default=10000, type=int,   help='maximum training steps')
 parser.add_argument('-b', '--batch',  default=100,   type=int,   help='batch size for one step training')
 parser.add_argument('-d', '--dnet',   default='27-34-2',         help='detection networks int-int-...')
@@ -42,7 +42,7 @@ parser.add_argument(      '--nosmax', action="store_true",       help='do not us
 parser.add_argument('-r', '--decay',  default=0.1,   type=float, help='regularization coefficient')
 parser.add_argument(      '--ddrop',  default=0.1,   type=float, help='dropout rate (detection)')
 parser.add_argument(      '--mdrop',  default=0.1,   type=float, help='dropout rate (modification)')
-parser.add_argument('datadirs', action="store", nargs="+",       help='path(s) to the training data (e.g., /tmp/manta-flip/training_data)')
+parser.add_argument('datadirs', action="store", nargs="+",       help='path(s) to the training data (e.g., ../data/manta-flip/training_data)')
 pargs = parser.parse_args()
 
 pargs.output = os.path.normpath(pargs.output)
@@ -187,7 +187,7 @@ for i in range(pargs.steps):
     if (i%10==0):           # test
         summary, acc, loss_i = sess.run([merged, accuracy, losses_fetch], feed_dict=feed_data_test)
         test_writer.add_summary(summary, i)
-        print('At step {}: accuracy={:.5f}, {}'.format(i, acc, ', '.join('{}={:.5f}'.format(*t) for t in zip(losses_key, loss_i))))
+        print('Step {}/{}: accuracy={:.5f}, {}'.format(i,pargs.steps, acc, ', '.join('{}={:.5f}'.format(*t) for t in zip(losses_key, loss_i))))
 
     else:                   # train
         batch = data_sets.train.next_batch(pargs.batch)

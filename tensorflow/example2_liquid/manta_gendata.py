@@ -13,6 +13,7 @@
 # ----------------------------------------------------------------------------
 
 from __future__ import print_function # for calling print(..., end='') in python2
+assertNumpy()
 
 import os, glob, sys, argparse, pickle
 parser = argparse.ArgumentParser(description='Generate Training Data', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -23,8 +24,8 @@ parser.add_argument('-w', '--window', default=1, type=int,           help='windo
 parser.add_argument('-p', '--pfile',  default='particles.uni',       help='file name for particle data')
 parser.add_argument('-v', '--vfile',  default='particlesVel.uni',    help='file name for particle velocity data')
 parser.add_argument('-t', '--tfile',  default='particlesType.uni',   help='file name for particle type data')
-parser.add_argument('-i', '--simdir', default='/tmp/manta-flip',     help='input path for simulation example; will search for simdir/params.pickle')
-parser.add_argument('-o', '--output', default='/tmp/manta-flip/training_data',  help='output path for training data')
+parser.add_argument('-i', '--simdir', default='../data/manta-flip',     help='input path for simulation example; will search for simdir/params.pickle')
+parser.add_argument('-o', '--output', default='../data/manta-flip/training_data',  help='output path for training data')
 parser.add_argument(      '--prefv',  default='fv',                  help='output path prefix for feature vector data (e.g. 00001/fv/)')
 pargs = parser.parse_args()
 pargs.output = os.path.normpath(pargs.output)
@@ -145,7 +146,7 @@ def save_new_splashing_particles(o_path, o_t_path, i_t_curr, i_p_curr, i_p_next)
     if o_t_path: xl_pT.save(o_t_path)
 
     np_arr = np.zeros(xl_pp.pySize(), dtype=dtype_int)
-    particleDataImplToNumpyInt(n=np_arr, p=xl_pT)
+    copyPdataToArrayInt(n=np_arr, p=xl_pT)
     np.savez_compressed(o_path, labels=np_arr.reshape((-1, 1)))
 
 def save_velocity_modification(o_path, i_t_gt, i_p_next, i_p_curr, i_v_next):
@@ -156,7 +157,7 @@ def save_velocity_modification(o_path, i_t_gt, i_p_next, i_p_curr, i_v_next):
     pVtmp.sub(pV); pVtmp.multConst(vec3(pargs.dscale)); pVtmp.multConst(vec3(1.0/s.frameLength))
     pV.load(i_v_next); pVtmp.sub(pV) # dv = (x(n+1) - x(n))/dt - v(n+1)
     np_arr = np.zeros(pp.pySize()*3, dtype=dtype_real)
-    particleDataImplToNumpyVec3(n=np_arr, p=pVtmp)
+    copyPdataToArrayVec3(n=np_arr, p=pVtmp)
     np_arr = np_arr.reshape((-1, 3)) if params['dim']==3 else uni.drop_zdim(np_arr.reshape((-1, 3)))
 
     # clear for non-splashing particles
