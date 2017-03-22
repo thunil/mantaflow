@@ -23,6 +23,7 @@ python tf_model_np.py out 0 basePath ${BPATH}  useVelocities 0  trainingEpochs 1
 
 # and apply to small data set
 python tf_model_np.py out 1 basePath ${BPATH}  useVelocities 0  testPathStartNo 800  fromSim ${SCENE1} toSim -1  load_model_test 700 load_model_no 0
+exit
 
 # same for a model using velocities
 
