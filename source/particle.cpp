@@ -586,36 +586,6 @@ Real ParticleDataImpl<Vec3>::getMax() {
 	return sqrt(CompPdata_MaxVec3 (*this));
 }
 
-// numpy <> pdata conversion functions
-#if NUMPY==1
-
-template<typename T>
-void numpyToParticleDataImpl(ParticleDataImpl<T> &p, const PyArrayContainer n) {
-	assertMsg(n.TotalSize == p.size(), "Sizes are different!");
-	std::copy(reinterpret_cast<const T*>(n.pData), reinterpret_cast<const T*>(n.pData)+n.TotalSize,  &(p[0]));
-}
-template<typename T>
-void particleDataImplToNumpy(PyArrayContainer n, const ParticleDataImpl<T> &p) {
-	assertMsg(n.TotalSize == p.size(), "Sizes are different!");
-	std::copy(&(p[0]), &(p[0])+n.TotalSize, reinterpret_cast<T*>(n.pData));
-}
-
-PYTHON() void numpyToParticleDataImplInt(ParticleDataImpl<int> &p, const PyArrayContainer n) { numpyToParticleDataImpl<int>(p, n); }
-PYTHON() void particleDataImplToNumpyInt(PyArrayContainer n, const ParticleDataImpl<int> &p) { particleDataImplToNumpy<int>(n, p); }
-
-PYTHON() void numpyToParticleDataImplReal(ParticleDataImpl<Real> &p, const PyArrayContainer n) { numpyToParticleDataImpl<Real>(p, n); }
-PYTHON() void particleDataImplToNumpyReal(PyArrayContainer n, const ParticleDataImpl<Real> &p) { particleDataImplToNumpy<Real>(n, p); }
-
-PYTHON() void numpyToParticleDataImplVec3(ParticleDataImpl<Vec3> &p, const PyArrayContainer n) {
-	assertMsg(n.TotalSize == p.size()*3, "Sizes are different!");
-	std::copy(reinterpret_cast<const Real*>(n.pData), reinterpret_cast<const Real*>(n.pData)+n.TotalSize,  &(p[0][0]));
-}
-PYTHON() void particleDataImplToNumpyVec3(PyArrayContainer n, const ParticleDataImpl<Vec3> &p) {
-	assertMsg(n.TotalSize == p.size()*3, "Sizes are different!");
-	std::copy(&(p[0][0]), &(p[0][0])+n.TotalSize, reinterpret_cast<Real*>(n.pData));
-}
-
-#endif // NUMPY==1
 
 // explicit instantiation
 template class ParticleDataImpl<int>;

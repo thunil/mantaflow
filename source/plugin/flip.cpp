@@ -14,6 +14,7 @@
 
 #include "particle.h"
 #include "grid.h"
+#include "commonkernels.h"
 #include "randomstream.h"
 #include "levelset.h"
 #include "shapes.h"
@@ -625,6 +626,11 @@ void knCombineVels(MACGrid& vel, Grid<Vec3>& w, MACGrid& combineVel, LevelsetGri
 PYTHON() void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel, LevelsetGrid* phi=NULL,
     Real narrowBand=0.0, Real thresh=0.0) {
 	knCombineVels(vel, weight, combineVel, phi, narrowBand, thresh);
+}
+
+//! surface tension helper
+PYTHON() void getLaplacian(Grid<Real> &laplacian, const Grid<Real> &grid) {
+	LaplaceOp(laplacian, grid);
 }
 
 

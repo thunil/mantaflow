@@ -157,11 +157,6 @@ void FluidSolver::step() {
 	updateQtGui(true, mFrame,mTimeTotal, "FluidSolver::step");
 }
 
-//! helper to unify printing from python scripts and printing internal messages (optionally pass debug level to control amount of output)
-PYTHON() void mantaMsg(const std::string& out, int level=1) {
-	debMsg( out, level );
-}
-
 void FluidSolver::printMemInfo() {
 	std::ostringstream msg;
 	msg << "Allocated grids: int " << mGridsInt.used  <<"/"<< mGridsInt.grids.size()  <<", ";
@@ -174,16 +169,6 @@ void FluidSolver::printMemInfo() {
 	msg << "                    vec3 "<< mGrids4dVec.used  <<"/"<< mGrids4dVec.grids.size()  <<". ";
 	msg << "                    vec4 "<< mGrids4dVec4.used <<"/"<< mGrids4dVec4.grids.size() <<". "; }
 	printf("%s\n", msg.str().c_str() );
-}
-
-PYTHON() std::string printBuildInfo() {
-	string infoString = buildInfoString();
-	debMsg( "Build info: "<<infoString.c_str()<<" ",1);
-	return infoString;
-}
-
-PYTHON() void setDebugLevel(int level=1) {
-	gDebugLevel = level; 
 }
 
 //! warning, uses 10^-4 epsilon values, thus only use around "regular" FPS time scales, e.g. 30 frames per time unit
@@ -208,6 +193,34 @@ void FluidSolver::adaptTimestep(Real maxVel)
 
 	// sanity check
 	assertMsg( (mDt > (mDtMin/2.) ) , "Invalid dt encountered! Shouldnt happen..." );
+}
+
+//******************************************************************************
+// Generic helpers (no PYTHON funcs in general.cpp, thus they're here...)
+
+//! helper to unify printing from python scripts and printing internal messages (optionally pass debug level to control amount of output)
+PYTHON() void mantaMsg(const std::string& out, int level=1) {
+	debMsg( out, level );
+}
+
+PYTHON() std::string printBuildInfo() {
+	string infoString = buildInfoString();
+	debMsg( "Build info: "<<infoString.c_str()<<" ",1);
+	return infoString;
+}
+
+//! helper function to check for numpy compilation
+PYTHON() void assertNumpy() {
+#if NUMPY==1
+	// all good, nothing to do...
+#else
+	errMsg("This scene requires numpy support. Enable compilation in cmake with \"-DNUMPY=1\" ");
+#endif
+}
+
+//! set debug level for messages (0 off, 1 regular, higher = more, up to 10)
+PYTHON() void setDebugLevel(int level=1) {
+	gDebugLevel = level; 
 }
 
 } // manta
