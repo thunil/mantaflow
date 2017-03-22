@@ -72,7 +72,7 @@ for t in range(100*scale):
 		tau = tau, sigma = sigma, theta = theta, preconditioner = PcMGStatic, zeroPressureFixing=True ) 
 
 	setWallBcs(flags=flags, vel=vel)
-	if 1 and (t%scale==0):
+	if 0 and (t%scale==0):
 		projectPpmFull( density, output_ppm % (t/scale) , 0, 1.0 );
 		#gui.screenshot(output_png % (t/scale) )
 	
