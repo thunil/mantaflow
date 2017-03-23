@@ -36,7 +36,6 @@ import numpy as np
 dtype_real = np.float32         # NOTE: if double precision, use float64
 dtype_int  = np.int32           # NOTE: if int in C is 64bits, use int64
 
-import tf_uniio as uni
 onphi  = True
 ongeom = False
 
@@ -149,6 +148,9 @@ def save_new_splashing_particles(o_path, o_t_path, i_t_curr, i_p_curr, i_p_next)
     copyPdataToArrayInt(n=np_arr, p=xl_pT)
     np.savez_compressed(o_path, labels=np_arr.reshape((-1, 1)))
 
+def drop_zdim(data):
+    return np.delete(data, -1, 1)
+
 def save_velocity_modification(o_path, i_t_gt, i_p_next, i_p_curr, i_v_next):
     # i_p_next and i_p_curr: ground truth (high-res) scale
     # i_v_next: target (low-res) scale
@@ -158,7 +160,7 @@ def save_velocity_modification(o_path, i_t_gt, i_p_next, i_p_curr, i_v_next):
     pV.load(i_v_next); pVtmp.sub(pV) # dv = (x(n+1) - x(n))/dt - v(n+1)
     np_arr = np.zeros(pp.pySize()*3, dtype=dtype_real)
     copyPdataToArrayVec3(n=np_arr, p=pVtmp)
-    np_arr = np_arr.reshape((-1, 3)) if params['dim']==3 else uni.drop_zdim(np_arr.reshape((-1, 3)))
+    np_arr = np_arr.reshape((-1, 3)) if params['dim']==3 else drop_zdim(np_arr.reshape((-1, 3)))
 
     # clear for non-splashing particles
     lb = np.reshape(np.load(i_t_gt)['labels'], (-1))

@@ -12,6 +12,7 @@
 # ----------------------------------------------------------------------------
 
 import os, sys, argparse, pickle
+assertNumpy() # make sure mantaflow is compiled with the NUMPY option, ie, "cmake ... -DNUNPY=1"
 
 def path_to_frame(outdir, frame):
     return '{}/{:05d}/'.format(outdir, frame)
@@ -77,15 +78,14 @@ savingFuncs = []
 # default solver parameters
 params                = {}
 params['dim']         = 2                  # dimension
-params['sres']        = 2                  # sub-resolution per cell
+params['sres']        = 2                  # particle sampling resolution per cell
 params['dx']          = 1.0/params['sres'] # particle spacing (= 2 x radius)
 params['res']         = 50                 # reference resolution
 params['len']         = 1.0                # reference length
 params['bnd']         = 2                  # boundary cells
 params['grav']        = 0                  # applied gravity (mantaflow scale); recomputed later
 params['gref']        = -9.8               # real-world gravity
-params['jitter']      = 0.1                # jittering particles
-#params['stref']       = 0.073              # surface tension (reference scale [m]; e.g., 0.073)
+params['jitter']      = 0.2                # jittering particles
 params['cgaccuracy']  = 1e-3               # cg solver's threshold
 params['fps']         = 30
 params['t_end']       = 6.0
@@ -96,6 +96,8 @@ params['frame_last']  = -1
 scaleToManta = float(params['res'])/params['len']
 params['gs']    = [params['res']*1.5+params['bnd']*2, params['res']+params['bnd']*2, params['res']+params['bnd']*2 if params['dim']==3 else 1]
 params['grav']  = params['gref']*scaleToManta
+
+#params['stref'] = 0.073 # surface tension (reference scale [m]; e.g., 0.073)
 #params['stens'] = params['stref']*scaleToManta
 
 s             = Solver(name='MLFLIP', gridSize=vec3(params['gs'][0], params['gs'][1], params['gs'][2]), dim=params['dim'])
@@ -117,12 +119,12 @@ pp      = s.create(BasicParticleSystem)
 gIdxSys = s.create(ParticleIndexSystem)
 gIdx    = s.create(IntGrid)
 
-pT    = pp.create(PdataInt)
-pV    = pp.create(PdataVec3)
+pT    = pp.create(PdataInt)    # main particle flags
+pV    = pp.create(PdataVec3)   # particle velocity
 pVtmp = pp.create(PdataVec3)
 pVtm2 = pp.create(PdataVec3)
 pVtm3 = pp.create(PdataVec3)
-pItmp = pp.create(PdataInt)
+pItmp = pp.create(PdataInt)   # typically used for temporary flags
 
 mesh = s.create(name='mesh', type=Mesh) if (params['dim']==3 and not nogui) else None
 
@@ -187,7 +189,8 @@ while (s.timeTotal<params['t_end']): # main loop
     setPartType(parts=pp, ptype=pItmp, mark=FlagEmpty, stype=FlagFluid, flags=gFlagTmp, cflag=FlagEmpty)   # mark surface particles
     candidate = np.zeros(pp.pySize(), dtype=dtype_int)
     copyPdataToArrayInt(n=candidate, p=pItmp)
-    candidate = (candidate==FlagEmpty)
+
+    candidate = (candidate==FlagEmpty) # turn into bool array
     N_candidate = np.count_nonzero(candidate)
     stats['candidate'] += N_candidate
 
@@ -208,17 +211,22 @@ while (s.timeTotal<params['t_end']): # main loop
     # approximate using tf: detection and modification
     if tfopt['mve']:    dtct_c, dv_c, appx_s_c = tf_sess.run([y, y2, sd], feed_dict={x: inputs_c})
     else:               dtct_c, dv_c           = tf_sess.run([y, y2],     feed_dict={x: inputs_c})
-    if tfopt['nosmax']: dtct_c = (np.random.random(size=(N_candidate, 1))<dtct_c).reshape(-1)
-    else:               dtct_c = (np.argmax(dtct_c, axis=1)==0) # NOTE: when 0th value is larger, it means splashing
+
+	# classify splashes, compute bool array from probabilities
+	# when 0th value is larger, it means splashing
+    dtct_bool = (np.argmax(dtct_c, axis=1)==0) 
+    #dtct_bool = np.zeros(dtct_bool.size, dtype=dtype_int) # uncomment to turn the splash model off (for testing)
 
     # mark new decision for the splashing particles (as FlagEmpty)
-    N_splashing = np.count_nonzero(dtct_c)
+    N_splashing = np.count_nonzero(dtct_bool)
     decision = np.zeros(pp.pySize(), dtype=dtype_int)
-    decision[candidate] = dtct_c
+	# dtct_bool only contains info for surface particles, map back to full particle system, and convert bool to manta flag
+    decision[candidate] = dtct_bool
     decision[(decision==1)] = FlagEmpty
     decision[(decision!=FlagEmpty)] = FlagFluid
     stats['decision'] += N_splashing
 
+	# calculate velocity modification
     if params['dim']==2:
         dv_c = np.append(dv_c, np.zeros((N_candidate, 1), dtype=dtype_real), axis=1)
         if tfopt['mve']: appx_s_c = np.append(appx_s_c, np.zeros((N_candidate, 1), dtype=dtype_real), axis=1)

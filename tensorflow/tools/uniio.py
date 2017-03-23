@@ -130,11 +130,44 @@ def backupFile(name, test_path):
 	shutil.copy(code_path, test_path + os.path.basename(name))
 
 #******************************************************************************
-#
+# particle data
+
+def RP_read_header(bytestream):
+    ID = bytestream.read(4)     # NOTE: useless
+    # unpack header struct object
+    head = namedtuple('UniPartHeader', 'dim, dimX, dimY, dimZ, elementType, bytesPerElement, info, timestamp')
+    # convert to namedtuple and then directly to a dict
+    head = head._asdict(head._make(struct.unpack('iiiiii256sQ', bytestream.read(288))))
+
+    return head
+
+def RP_read_content(bytestream, head, data_type=None): # data_type = {None: BasicParticleSystem; "float32": Real; "int32": Int}
+    assert(head['bytesPerElement']==16 or head['bytesPerElement']==12 or head['bytesPerElement']==4)
+
+    if(head['elementType']==0): # BasicParticleSystem
+        print('(BasicParticleSystem) ', end='')
+        data = np.frombuffer(bytestream.read(), dtype=np.dtype([('f1',(np.float32,3)),('f2',(np.int32,1))]))['f1']
+    else:                       # head['elementType']==1: ParticleDataImpl<T>, where T = {float32: Real(4) or Vec3(12); int32: Int(4)}
+        print('(ParticleDataImpl<T={}{}>) '.format(data_type, 'x3' if (head['bytesPerElement']==12) else ''), end='')
+        data = np.reshape(np.frombuffer(bytestream.read(), dtype=data_type), (-1, 3 if (head['bytesPerElement']==12) else 1))
+
+    return data
+
+def readParticles(filename, data_type=None):
+    print('Reading {} ... '.format(filename), end='')
+    with gzip.open(filename, 'rb') as bytestream:
+        head = RP_read_header(bytestream)
+        data = RP_read_content(bytestream, head, data_type)
+
+        print('Done.')
+        return head, data
+
+#******************************************************************************
+# numpy array files
 
 npBuf = {} # store arrays
 npCnt = {} # filename counter
-# NT_DEBUG , todo - add byte size limit?
+# FIXME , todo - add byte size limit per file at some point, to prevent them from getting too large
 
 # buffer arrays, and write multiple to single file
 def writeNumpyBuf(filename, content):
