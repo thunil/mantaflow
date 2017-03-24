@@ -33,7 +33,7 @@ ph.checkUnusedParams()
 setDebugLevel(1)
 
 # Solver params  ----------------------------------------------------------------------#
-res   = 64
+res    = 64
 dim    = 2 
 offset = 20
 

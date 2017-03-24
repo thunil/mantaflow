@@ -22,7 +22,7 @@ ${SAFEDEL} ${BPATH}/test_0800
 python tf_model_np.py out 0 basePath ${BPATH}  useVelocities 0  trainingEpochs 1000   alwaysSave 1  testPathStartNo 700 fromSim ${SCENE1}
 
 # and apply to small data set
-python tf_model_np.py out 1 basePath ${BPATH}  useVelocities 0  testPathStartNo 800  fromSim ${SCENE1} toSim -1  load_model_test 700 load_model_no 0
+python tf_model_np.py out 1 basePath ${BPATH}  useVelocities 0  testPathStartNo 800  fromSim ${SCENE1} toSim -1  loadModelTest 700 loadModelNo 0
 exit
 
 # same for a model using velocities
@@ -32,7 +32,7 @@ ${SAFEDEL} ${BPATH}/test_0810
 
 python tf_model_np.py out 0 basePath ${BPATH}  useVelocities 1  trainingEpochs 1000  alwaysSave 1  testPathStartNo 710 fromSim ${SCENE1}
 
-python tf_model_np.py out 1 basePath ${BPATH}  useVelocities 1  testPathStartNo 810  fromSim ${SCENE1} toSim -1  load_model_test 710 load_model_no 0
+python tf_model_np.py out 1 basePath ${BPATH}  useVelocities 1  testPathStartNo 810  fromSim ${SCENE1} toSim -1  loadModelTest 710 loadModelNo 0
 
 # --- uni file tests ---
 
@@ -46,7 +46,7 @@ ${SAFEDEL} ${BPATH}/test_0720
 ${SAFEDEL} ${BPATH}/test_0820
 
 python tf_model_uni.py out 0 basePath ${BPATH}   useVelocities 0  trainingEpochs 1000  alwaysSave 1 testPathStartNo 720 fromSim ${SCENE2}
-python tf_model_uni.py out 1 basePath ${BPATH}   useVelocities 0  testPathStartNo 820  fromSim ${SCENE2} toSim -1  load_model_test 720 load_model_no 0
+python tf_model_uni.py out 1 basePath ${BPATH}   useVelocities 0  testPathStartNo 820  fromSim ${SCENE2} toSim -1  loadModelTest 720 loadModelNo 0
 
 # train a model with vels
 
@@ -54,6 +54,6 @@ ${SAFEDEL} ${BPATH}/test_0730
 ${SAFEDEL} ${BPATH}/test_0830
 
 python tf_model_uni.py out 0 basePath ${BPATH}   useVelocities 1  trainingEpochs 1000  alwaysSave 1 testPathStartNo 730 fromSim ${SCENE2}
-python tf_model_uni.py out 1 basePath ${BPATH}   useVelocities 1  testPathStartNo 830  fromSim ${SCENE2} toSim -1  load_model_test 730 load_model_no 0
+python tf_model_uni.py out 1 basePath ${BPATH}   useVelocities 1  testPathStartNo 830  fromSim ${SCENE2} toSim -1  loadModelTest 730 loadModelNo 0
 
 

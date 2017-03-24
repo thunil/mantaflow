@@ -456,7 +456,7 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 		elif with_pos:
 			uniio.writeNumpyBuf( paths['tile_low_npb'].replace(dataType, 'dens_vel_pos'), lowTiles[currTile] )
 		else:
-			uniio.writeNumpyBuf( paths['tile_low_npb']                                   , lowTiles[currTile] )
+			uniio.writeNumpyBuf( paths['tile_low_npb']                                  , lowTiles[currTile] )
 		uniio.writeNumpyBuf( paths['tile_high_npb'], highTiles[currTile] )
 
 	uniio.finalizeNumpyBufs()
@@ -473,7 +473,7 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 
 	for simNo in range(fromSim, toSim + 1):
 		frameNo  = 0
-		bufferNo = 0 # note, replaces tile-number here
+		bufferNo = 0  # note, replaces tile-number here
 
 		updatePaths(simNo, frameNo, bufferNo, tileSizeLow, tileSizeLow, overlapping, dataType)
 		print('\nLoading sim %04d from %s' % (simNo, paths['tiles']) )
@@ -512,7 +512,7 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 
 					if keepAll:
 						tile_inputs_all_complete.append(lowTile.flatten()) 
-						tile_outputs_all_complete.append(highTile.flatten()) 
+						tile_outputs_all_complete.append(highTile.flatten())
 					totalTiles += 1
 
 				bufferNo   += 1

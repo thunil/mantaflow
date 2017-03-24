@@ -34,11 +34,11 @@ basePath = '../data/'
 # main mode switch:
 outputOnly = True  # apply model, or run full training?
 
-simSizeLow  = 128
-tileSizeLow = 16
-upRes       = 4
-simSizeHigh = simSizeLow * upRes
-tileSizeHigh= tileSizeLow  * upRes
+simSizeLow   = 64
+tileSizeLow  = 16
+upRes        = 4
+simSizeHigh  = simSizeLow   * upRes
+tileSizeHigh = tileSizeLow  * upRes
 
 # dont use for training! for applying model, add overlap here if necessary (i.e., cropOverlap>0) 
 # note:  cropTileSizeLow + (cropOverlap * 2) = tileSizeLow
@@ -46,15 +46,15 @@ cropOverlap     = 0
 cropTileSizeLow = tileSizeLow - 2*cropOverlap
 
 emptyTileValue  = 0.01
-learning_rate   = 0.00005
-trainingEpochs  = 100000  # by default, stop only manualy with ctrl-c...
+learningRate    = 0.00005
+trainingEpochs  = 100000  # by default, stop only manually with ctrl-c...
 dropout         = 0.9     # slight...
-batch_size      = 100
+batchSize       = 100
 testInterval    = 200
 saveInterval    = 1000
 fromSim = toSim = -1
 keepAll         = False
-numTests 		= 10      # evaluate on 10 data points from test data
+numTests        = 10      # evaluate on 10 data points from test data
 randSeed        = 1
 
 # optional, add velocity as additional channels to input?
@@ -67,15 +67,15 @@ useVelocities   = 0
 # when training , manually abort when it's good enough
 # then enter test_XXXX id and model checkpoint ID below to load
 
-load_model_test = -1
-load_model_no   = -1
+loadModelTest = -1
+loadModelNo   = -1
 testPathStartNo = 1
 
 # command line params
 outputOnly      = int(ph.getParam( "out",             outputOnly ))>0
 trainingEpochs  = int(ph.getParam( "trainingEpochs",  trainingEpochs ))
-load_model_test = int(ph.getParam( "load_model_test", load_model_test ))
-load_model_no   = int(ph.getParam( "load_model_no",   load_model_no   ))
+loadModelTest   = int(ph.getParam( "loadModelTest",   loadModelTest))
+loadModelNo     = int(ph.getParam( "loadModelNo",     loadModelNo))
 basePath        =     ph.getParam( "basePath",        basePath        )
 useVelocities   = int(ph.getParam( "useVelocities",   useVelocities  ))
 testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
@@ -98,8 +98,8 @@ tf.set_random_seed(randSeed)
 
 if not outputOnly:
 	# run train!
-	load_model_test = -1 
-	simSizeLow = 64
+	loadModelTest = -1
+	# simSizeLow = 64
 	if fromSim==-1:
 		fromSim = toSim   = 1000 # short, use single sim
 
@@ -135,10 +135,10 @@ def next_test_path(folder_no = 1):
 	os.makedirs(test_path)
 	return test_path
 
-if not load_model_test == -1:
-	if not os.path.exists(basePath + 'test_%04d/' % load_model_test):
+if not loadModelTest == -1:
+	if not os.path.exists(basePath + 'test_%04d/' % loadModelTest):
 		print('ERROR: Test to load does not exist.')
-	load_path = basePath + 'test_%04d/model_%04d.ckpt' % (load_model_test, load_model_no)
+	load_path = basePath + 'test_%04d/model_%04d.ckpt' % (loadModelTest, loadModelNo)
 
 test_path = next_test_path(testPathStartNo)
 
@@ -160,18 +160,18 @@ sys.stdout = Logger()
 # print Variables to log
 def print_variables():
 	print('\nUsing variables:')
-	print('FromSim: {}'.format(fromSim))
-	print('ToSim: {}'.format(toSim))
+	print('fromSim: {}'.format(fromSim))
+	print('toSim: {}'.format(toSim))
 	print('simSizeLow: {}'.format(simSizeLow))
 	print('tileSizeLow: {}'.format(tileSizeLow))
 	print('cropOverlap: {}'.format(cropOverlap))
 	print('cropTileSizeLow: {}'.format(cropTileSizeLow))
 	print('upRes: {}'.format(upRes))
 	print('emptyTileValue: {}'.format(emptyTileValue))
-	print('learning_rate: {}'.format(learning_rate))
+	print('learningRate: {}'.format(learningRate))
 	print('trainingEpochs: {}'.format(trainingEpochs))
 	print('dropout: {}'.format(dropout))
-	print('batch_size: {}'.format(batch_size))
+	print('batchSize: {}'.format(batchSize))
 	print('\n')
 
 print_variables()
@@ -208,14 +208,14 @@ y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
 print ("DOFs: %d " % cae.getDOFs())
 
 costFunc = tf.nn.l2_loss(y_true - y_pred) 
-optimizer = tf.train.AdamOptimizer(learning_rate).minimize(costFunc)
+optimizer = tf.train.AdamOptimizer(learningRate).minimize(costFunc)
 
 # create session and saver
 sess = tf.InteractiveSession()
 saver = tf.train.Saver()
 
 # init vars or load model
-if load_model_test == -1:
+if loadModelTest == -1:
 	sess.run(tf.global_variables_initializer())
 else:
 	saver.restore(sess, load_path)
@@ -249,7 +249,7 @@ if not outputOnly:
 		lastSave = 1
 		lastCost = 1e10
 		for epoch in range(trainingEpochs):
-			batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size)
+			batch_xs, batch_ys = tiCr.selectRandomTiles(batchSize)
 			_, cost, summary = sess.run([optimizer, costFunc, lossTrain], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
 
 			# NT_DEBUG print('Save %d , %d , %f , %d' % (lastSave,saveInterval,cost, lastCost) )
@@ -268,7 +268,7 @@ if not outputOnly:
 			if (epoch + 1) % testInterval == 0:
 				accumulatedCost = 0.0
 				for curr in range(numTests):
-					batch_xs, batch_ys = tiCr.selectRandomTiles(batch_size, isTraining=False)
+					batch_xs, batch_ys = tiCr.selectRandomTiles(batchSize, isTraining=False)
 					cost_test, summary_test = sess.run([costFunc, lossTest], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 					accumulatedCost += cost_test
 				accumulatedCost /= numTests
@@ -307,6 +307,7 @@ else:
 
 	img_count = 0
 	outrange = len(tiCr.tile_inputs_all_complete) / tilesPerImg
+
 	# use int to avoid TypeError: 'float' object cannot be interpreted as an integer
 	for currOut in range( int(outrange) ): 
 		batch_xs = []
@@ -328,8 +329,8 @@ else:
 
 # write summary to test overview
 loaded_model = ''
-if not load_model_test == -1:
-	loaded_model = ', Loaded %04d, %d' % (load_model_test , load_model_no)
+if not loadModelTest == -1:
+	loaded_model = ', Loaded %04d, %d' % (loadModelTest , loadModelNo)
 with open(basePath + 'test_overview.txt', "a") as text_file:
 	text_file.write(test_path[-10:-1] + ': {:.2f} min, {} Epochs, cost {:.4f}, {}'.format(training_duration, trainingEpochs, cost, " ") + loaded_model + '\n')
 
