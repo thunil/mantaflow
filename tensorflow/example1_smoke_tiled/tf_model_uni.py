@@ -37,8 +37,6 @@ outputOnly = True  # apply model, or run full training?
 simSizeLow  = 64
 tileSizeLow = 16
 upRes       = 4
-simSizeHigh = simSizeLow * upRes
-tileSizeHigh= tileSizeLow  * upRes
 
 # dont use for training! for applying model, add overlap here if necessary (i.e., cropOverlap>0) 
 # note:  cropTileSizeLow + (cropOverlap * 2) = tileSizeLow
