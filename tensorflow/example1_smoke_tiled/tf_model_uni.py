@@ -34,7 +34,7 @@ basePath = '../data/'
 # main mode switch:
 outputOnly = True  # apply model, or run full training?
 
-simSizeLow  = 128
+simSizeLow  = 64
 tileSizeLow = 16
 upRes       = 4
 simSizeHigh = simSizeLow * upRes
@@ -47,8 +47,8 @@ cropTileSizeLow = tileSizeLow - 2*cropOverlap
 
 emptyTileValue  = 0.01
 learning_rate   = 0.00005
-trainingEpochs  = 100000 # by default, stop only manualy with ctrl-c...
-dropout         = 0.9 # slight...
+trainingEpochs  = 10000 # for large values, stop manualy with ctrl-c...
+dropout         = 0.9   # slight...
 batch_size      = 100
 testInterval    = 200
 saveInterval    = 1000
@@ -72,8 +72,8 @@ testPathStartNo = 1
 # command line params
 outputOnly      = int(ph.getParam( "out",             outputOnly ))>0
 trainingEpochs  = int(ph.getParam( "trainingEpochs",  trainingEpochs ))
-load_model_test = int(ph.getParam( "load_model_test", load_model_test ))
-load_model_no   = int(ph.getParam( "load_model_no",   load_model_no   ))
+load_model_test = int(ph.getParam( "loadModelTest",   load_model_test ))
+load_model_no   = int(ph.getParam( "loadModelNo",     load_model_no   ))
 basePath        =     ph.getParam( "basePath",        basePath        )
 useVelocities   = int(ph.getParam( "useVelocities",   useVelocities  ))
 testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
@@ -82,9 +82,15 @@ toSim           = int(ph.getParam( "toSim",           toSim  ))
 alwaysSave      = int(ph.getParam( "alwaysSave",      False  )) # by default, only save when cost is lower, can be turned off here
 useLegacyNet    = int(ph.getParam( "useLegacyNet",    False ))>0
 randSeed        = int(ph.getParam( "randSeed",        randSeed )) 
+simSizeLow      = int(ph.getParam( "simSizeLow",      simSizeLow )) 
+upRes           = int(ph.getParam( "upRes",           upRes )) 
 ph.checkUnusedParams()
 
 # initialize
+simSizeHigh  = simSizeLow   * upRes
+tileSizeHigh = tileSizeLow  * upRes
+if outputOnly: # dont discard
+	emptyTileValue = -1.
 
 if toSim==-1:
 	toSim = fromSim
@@ -286,8 +292,8 @@ if not outputOnly:
 				accumulatedCost /= numTests
 
 				avgCost /= testInterval
-				print('\nEpoch {:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), avgCost, accumulatedCost))
-				print('%d epoches took %.02f seconds.' % (testInterval, (time.time() - epochTime)))
+				print('\nEpoch {:04d}/{:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), trainingEpochs, avgCost, accumulatedCost))
+				print('%d epochs took %.02f seconds.' % (testInterval, (time.time() - epochTime)))
 				#print('Estimated time: %.02f minutes.' % ((trainingEpochs - epoch) / testInterval * (time.time() - epochTime) / 60.0))
 				epochTime = time.time()
 				summary_writer.add_summary(summary, epoch)
@@ -304,9 +310,8 @@ if not outputOnly:
 
 else:
 
-
 	# ---------------------------------------------
-	# Test against all data
+	# outputOnly: apply to a full data set, and re-create full outputs from tiles
 
 	batch_xs, batch_ys = tiCr.tile_inputs_all_complete, tiCr.tile_outputs_all_complete
 	tileSizeHiCrop = upRes * cropTileSizeLow
@@ -314,6 +319,7 @@ else:
 
 	img_count = 0
 	outrange = len(tiCr.tile_inputs_all_complete) / tilesPerImg
+
 	# use int to avoid TypeError: 'float' object cannot be interpreted as an integer
 	for currOut in range( int(outrange) ): 
 		batch_xs = []

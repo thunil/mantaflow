@@ -37,8 +37,6 @@ outputOnly = True  # apply model, or run full training?
 simSizeLow   = 64
 tileSizeLow  = 16
 upRes        = 4
-simSizeHigh  = simSizeLow   * upRes
-tileSizeHigh = tileSizeLow  * upRes
 
 # dont use for training! for applying model, add overlap here if necessary (i.e., cropOverlap>0) 
 # note:  cropTileSizeLow + (cropOverlap * 2) = tileSizeLow
@@ -47,8 +45,8 @@ cropTileSizeLow = tileSizeLow - 2*cropOverlap
 
 emptyTileValue  = 0.01
 learningRate    = 0.00005
-trainingEpochs  = 100000  # by default, stop only manually with ctrl-c...
-dropout         = 0.9     # slight...
+trainingEpochs  = 10000 # for large values, stop manualy with ctrl-c...
+dropout         = 0.9   # slight...
 batchSize       = 100
 testInterval    = 200
 saveInterval    = 1000
@@ -83,9 +81,15 @@ fromSim         = int(ph.getParam( "fromSim",         fromSim  )) # range of sim
 toSim           = int(ph.getParam( "toSim",           toSim  ))
 alwaysSave      = int(ph.getParam( "alwaysSave",      False  )) # by default, only save when cost is lower, can be turned off here
 randSeed        = int(ph.getParam( "randSeed",        randSeed )) 
+simSizeLow      = int(ph.getParam( "simSizeLow",      simSizeLow )) 
+upRes           = int(ph.getParam( "upRes",           upRes )) 
 ph.checkUnusedParams()
 
 # initialize
+simSizeHigh  = simSizeLow   * upRes
+tileSizeHigh = tileSizeLow  * upRes
+if outputOnly: # dont discard
+	emptyTileValue = -1.
 
 if toSim==-1:
 	toSim = fromSim
@@ -280,8 +284,8 @@ if not outputOnly:
 					print("Test tiles, total sum :" + format( sum)) # debugging...
 
 				avgCost /= testInterval
-				print('\nEpoch {:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), avgCost, accumulatedCost))
-				print('%d epoches took %.02f seconds.' % (testInterval, (time.time() - epochTime)))
+				print('\nEpoch {:04d}/{:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), trainingEpochs, avgCost, accumulatedCost))
+				print('%d epochs took %.02f seconds.' % (testInterval, (time.time() - epochTime)))
 				#print('Estimated time: %.02f minutes.' % ((trainingEpochs - epoch) / testInterval * (time.time() - epochTime) / 60.0))
 				epochTime = time.time()
 				summary_writer.add_summary(summary, epoch)
