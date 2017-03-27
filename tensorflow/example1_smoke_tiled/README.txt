@@ -4,6 +4,7 @@ primarily developed for Unix systems (Windows will work, but require path modifi
 
 - first generate data by calling
 	>>> manta manta_genSimData.py
+	# windows: ../../build/Release/manta.exe manta_genSimData.py
 - you can also use the tf_genManySims.py script to generate 10 data sets in one go.
 
 - then use it to train a first model with tensorflow. This will take ca. 2 min. E.g., with: 
