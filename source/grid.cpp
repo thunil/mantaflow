@@ -675,7 +675,7 @@ void FlagGrid::initBoundaries(const int &boundaryWidth, const int *types) {
 
 void FlagGrid::updateFromLevelset(LevelsetGrid& levelset) {
 	FOR_IDX(*this) {
-		if (!isObstacle(idx)) {
+		if (!isObstacle(idx) && !isOutflow(idx)) {
 			const Real phi = levelset[idx];
 			if (phi <= levelset.invalidTimeValue()) continue;
 			

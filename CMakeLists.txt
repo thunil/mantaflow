@@ -34,7 +34,7 @@ ENDIF()
 
 IF(APPLE)
 	IF(NOT CMAKE_PREFIX_PATH)
-		SET(CMAKE_PREFIX_PATH "/usr/local/Cellar/qt5/5.5/") #  mac/homebrew
+		SET(CMAKE_PREFIX_PATH "/usr/local/opt/qt5/") #  mac/homebrew (version independent)
 		#SET(CMAKE_PREFIX_PATH "/home/myname/qt/5.5/clang_64") #  other...
 	ENDIF()
 ENDIF()
