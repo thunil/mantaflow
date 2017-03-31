@@ -671,7 +671,6 @@ IF(APPLE)
 	ENDIF()
 ENDIF()
 
-
 # python debugging
 IF(DEBUG_PYTHON_WITH_RELEASE) 
 	add_definitions(-DDEBUG_PYTHON_WITH_RELEASE=1)
