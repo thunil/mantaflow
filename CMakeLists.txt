@@ -629,21 +629,25 @@ ENDIF()
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+SET(CPP11_FLAG " ")
 if(COMPILER_SUPPORTS_CXX11)
-	set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS " -std=c++11 " )
+	SET(CPP11_FLAG " -std=c++11 ")
+	set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS ${CPP11_FLAG})
 	add_definitions(-DMANTA_WITHCPP11=1)
 elseif(COMPILER_SUPPORTS_CXX0X)
-	set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS " -std=c++0x " )
+	SET(CPP11_FLAG " -std=c++0x ")
+	set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS  ${CPP11_FLAG})
 	add_definitions(-DMANTA_WITHCPP11=1)
 endif()
 
-# necessary for newer LLVM clang versions, to prevent abundance of "Namify" template warnings...
+# necessary for newer LLVM clang versions, to prevent abundance of "Namify" template warnings... for compatibility disable unknown warnings
 IF(APPLE)
-	set_source_files_properties(${PP_REGCPP} ${PREPPED_SOURCES} ${NOPP_SOURCES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  " )
+	set_source_files_properties(${PP_REGCPP} ${PREPPED_SOURCES} ${NOPP_SOURCES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  -Wno-unknown-warning-option ${CPP11_FLAG}" )
 	if(GUI)
-		set_source_files_properties(${MOC_OUTFILES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  " )
+		set_source_files_properties(${MOC_OUTFILES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  -Wno-unknown-warning-option ${CPP11_FLAG}" )
 	ENDIF()
 ENDIF()
+
 
 # python debugging
 IF(DEBUG_PYTHON_WITH_RELEASE) 
