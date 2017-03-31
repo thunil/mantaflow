@@ -414,7 +414,7 @@ if (0)
 	add_definitions(-DNO_ZLIB=1)
 endif()
 
-# CUDA
+# CUDA , warning - deprecated...
 if(CUDA)
 	add_definitions( -DCUDA=1 )
 	find_package(CUDA QUIET REQUIRED)
@@ -617,7 +617,7 @@ ENDIF()
 # gcc compiler flags 
 IF(NOT WIN32)
 	IF(DEBUG)
-		# stricter: no optimizations and inlining, comment out if needed...
+		# stricter: no optimizations and inlining
 		set_target_properties(${EXECMD} PROPERTIES COMPILE_FLAGS " -O0 -fno-inline -Wall ")
 	ELSE()
 		# non-debug, optimized version
@@ -637,10 +637,15 @@ elseif(COMPILER_SUPPORTS_CXX0X)
 	add_definitions(-DMANTA_WITHCPP11=1)
 endif()
 
+# necessary for newer LLVM clang versions, to prevent abundance of "Namify" template warnings...
+IF(APPLE)
+	set_source_files_properties(${PP_REGCPP} ${PREPPED_SOURCES} ${NOPP_SOURCES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  " )
+	if(GUI)
+		set_source_files_properties(${MOC_OUTFILES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  " )
+	ENDIF()
+ENDIF()
+
 # python debugging
-#IF(NOT WIN32 AND DEBUG)
-	#add_definitions(-D_DEBUG)
-#ENDIF()
 IF(DEBUG_PYTHON_WITH_RELEASE) 
 	add_definitions(-DDEBUG_PYTHON_WITH_RELEASE=1)
 ENDIF()
@@ -662,10 +667,10 @@ IF(WIN32)
 	add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )
 
 	if (BLENDER)
-		set(CMAKE_CXX_FLAGS_DEBUG          "/D_DEBUG /D PLATFORM_WINDOWS /MTd /Zi /Ob0 /Od /RTC1 " )
-		set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1 /D NDEBUG  /D PLATFORM_WINDOWS ")
-		set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2 /D NDEBUG /D PLATFORM_WINDOWS " )
-		set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1 /D NDEBUG /D PLATFORM_WINDOWS " )
+		set(CMAKE_CXX_FLAGS_DEBUG          "/MTd /Od /Ob0 /D_DEBUG /D PLATFORM_WINDOWS /Zi /RTC1  " )
+		set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1 /D NDEBUG /D PLATFORM_WINDOWS            " )
+		set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2 /D NDEBUG /D PLATFORM_WINDOWS            " )
+		set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /O2 /Ob1 /D NDEBUG /D PLATFORM_WINDOWS /Zi        " )
 	endif()
 
 	# enable when using Qt creator:
