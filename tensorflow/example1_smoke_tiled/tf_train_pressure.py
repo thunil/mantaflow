@@ -36,7 +36,7 @@ outputOnly = True  # apply model, or run full training?
 
 simSizeLow   = 64
 tileSizeLow  = 16
-upRes        = 4
+upRes        = 1
 
 # dont use for training! for applying model, add overlap here if necessary (i.e., cropOverlap>0) 
 # note:  cropTileSizeLow + (cropOverlap * 2) = tileSizeLow
@@ -204,22 +204,17 @@ cae = ConvolutionalAutoEncoder(xIn)
 
 # --- main graph setup ---
 
-pool = 4
+pool = 2
 # note - for simplicity, we always reduce the number of channels to 8 here 
 # this is probably suboptimal in general, but keeps the network structure similar and simple
 clFMs = int(8 / n_inputChannels)
-cae.convolutional_layer(clFMs, [3, 3], tf.nn.relu)
+cae.convolutional_layer(clFMs, [3, 3], tf.nn.tanh)
 cae.max_pool([pool,pool], [pool,pool])
 
-flat_size = cae.flatten()
-cae.fully_connected_layer(flat_size, tf.nn.relu)
+flat_size = cae.flatten() / 2 # half, to get the right output size
+cae.fully_connected_layer(flat_size, tf.nn.tanh)
+cae.fully_connected_layer(flat_size, tf.nn.tanh)
 cae.unflatten()
-
-cae.max_depool([pool,pool], [pool,pool])
-cae.deconvolutional_layer(4, [3, 3], tf.nn.relu)
-
-cae.max_depool([pool,pool], [pool,pool])
-cae.deconvolutional_layer(2, [5, 5], tf.nn.relu)
 
 y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
 print ("DOFs: %d " % cae.getDOFs())
@@ -317,7 +312,7 @@ if not outputOnly:
 	print('\n*****TRAINING FINISHED*****')
 	training_duration = (time.time() - startTime) / 60.0
 	print('Training needed %.02f minutes.' % (training_duration))
-	print('To apply the trained model, set "outputOnly" to True, and insert numbers for "loadModelTest", and "loadModelNo" (optional). E.g. "out 1 loadModelTest 42".')
+	print('To apply the trained model, set "outputOnly" to True, and insert numbers for "load_model_test", and "load_model_no" ')
 
 else: 
 
