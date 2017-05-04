@@ -418,7 +418,7 @@ def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 
 # create npy data for a single frame; reads uni, writes numpy files
 # note, supports 3d... not really tested so far
-def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=0, createPngs=False, with_vel=False, with_pos=False, dims=2):
+def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=0, createPngs=False, with_vel=False, with_pos=False, pressure_output=False, dims=2):
 	dataShape  = [lowResSize,lowResSize,lowResSize,1]
 	if with_vel:
 		dataShape[3] = 4
@@ -448,8 +448,13 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 	#tilet2d = np.reshape( lowArray,(lowResSize,lowResSize,4) )
 	#createPngArrayChannel( tilet2d , "/Users/sinithue/temp/tf/tout3a_%04d.png"%frameNo) # debug, write inputs again as images
 
-	highArray = uniToArray(paths['frame_high_uni'].replace(dataType, 'density'))
-	highTiles = createTiles(highArray, lowResSize * upScalingFactor, lowResSize * upScalingFactor, tileSize * upScalingFactor, tileSize * upScalingFactor, overlapping)
+	# Debug: hacky pressure
+	if pressure_output:
+		highArray = uniToArray(paths['frame_high_uni'].replace('pressure', 'density').replace('low', 'high'))
+		highTiles = createTiles(highArray, lowResSize * upScalingFactor, lowResSize * upScalingFactor, tileSize * upScalingFactor, tileSize * upScalingFactor, overlapping)
+	else:
+		highArray = uniToArray(paths['frame_high_uni'].replace(dataType, 'density'))
+		highTiles = createTiles(highArray, lowResSize * upScalingFactor, lowResSize * upScalingFactor, tileSize * upScalingFactor, tileSize * upScalingFactor, overlapping)
 
 	for currTile in range(0, len(lowTiles)):
 		if with_vel:
@@ -649,6 +654,97 @@ def addPosToDensVelSpace(low_tile_density, low_tile_vel):
 	#createPngFromArray(output_tile, basePath + 'debugOutP.png')
 	return output_tile
 
+def splitTileData(partTrain=3, partTest=1):
+	parts_complete = partTrain + partTest
+	end_train = int((len(tile_inputs_all) * partTrain / parts_complete))
+	end_test = end_train + int((len(tile_inputs_all) * partTest / parts_complete))
+
+	tile_data['inputs_train'], tile_data['inputs_test'], tile_data['inputs_val'] = np.split(tile_inputs_all, [end_train, end_test])
+	tile_data['outputs_train'], tile_data['outputs_test'], tile_data['outputs_val'] = np.split(tile_outputs_all, [end_train, end_test])
+
+def normalizeInputTestData():
+	# moves tile data to mean zero
+	calc_tile = np.array(tile_inputs_all[0])
+	tileSize = calc_tile.size
+
+	new_tile_inputs_all = []
+	for tile in tile_inputs_all:
+		new_tile_inputs_all.append(tile)
+	for tile in new_tile_inputs_all:
+		average_value = np.average(tile)
+		for curr_value in range(tileSize):
+			tile[curr_value] = tile[curr_value] - average_value
+
+	del tile_inputs_all[:]
+	for tile in new_tile_inputs_all:
+		tile_inputs_all.append(tile)
+
+	# TODO: Remove copy code
+	new_tile_inputs_all_complete = []
+	for tile in tile_inputs_all_complete:
+		new_tile_inputs_all_complete.append(tile)
+	for tile in new_tile_inputs_all_complete:
+		average_value = np.average(tile)
+		for curr_value in range(tileSize):
+			tile[curr_value] = tile[curr_value] - average_value
+
+	del tile_inputs_all_complete[:]
+	for tile in new_tile_inputs_all_complete:
+		tile_inputs_all_complete.append(tile)
+
+	# output (also copy code)
+	calc_tile = np.array(tile_outputs_all[0])
+	tileSize = calc_tile.size
+
+	new_tile_outputs_all = []
+	for tile in tile_outputs_all:
+		new_tile_outputs_all.append(tile)
+	for tile in new_tile_outputs_all:
+		average_value = np.average(tile)
+		for curr_value in range(tileSize):
+			tile[curr_value] = tile[curr_value] - average_value
+
+	del tile_outputs_all[:]
+	for tile in new_tile_outputs_all:
+		tile_outputs_all.append(tile)
+
+	new_tile_outputs_all_complete = []
+	for tile in tile_outputs_all_complete:
+		new_tile_outputs_all_complete.append(tile)
+	for tile in new_tile_outputs_all_complete:
+		average_value = np.average(tile)
+		for curr_value in range(tileSize):
+			tile[curr_value] = tile[curr_value] - average_value
+
+	del tile_outputs_all_complete[:]
+	for tile in new_tile_outputs_all_complete:
+		tile_outputs_all_complete.append(tile)
+
+def reduceTo2DVelocity(tile, tileSizeLow):
+	# dont use this, use reduceInputsTo2DVelocity
+	# reduces one tile with density and velocity to the x and y of the velocity
+	curr_tile = np.reshape(tile, (4, tileSizeLow * tileSizeLow), order='F')
+	tile = [curr_tile[1], curr_tile[2]]
+	return np.array(tile).flatten()
+
+def reduceInputsTo2DVelocity():
+	# reduces tile inputs with density and velocity to the x and y of the velocity
+	calc_tile = np.array(tile_inputs_all[0])
+	tileSizeLow = int(scipy.sqrt(calc_tile.shape[0] / 4))
+
+	new_tile_inputs_all_complete = []
+	for curr_tile in tile_inputs_all_complete:
+		new_tile_inputs_all_complete.append(reduceTo2DVelocity(curr_tile, tileSizeLow))
+	del tile_inputs_all_complete[:]
+	for curr_tile in new_tile_inputs_all_complete:
+		tile_inputs_all_complete.append(curr_tile)
+
+	new_tile_inputs_all = []
+	for curr_tile in tile_inputs_all:
+		new_tile_inputs_all.append(reduceTo2DVelocity(curr_tile, tileSizeLow))
+	del tile_inputs_all[:]
+	for curr_tile in new_tile_inputs_all:
+		tile_inputs_all.append(curr_tile)
 
 def shuffleInputs(a, b):
 	rng_state = np.random.get_state()
@@ -684,6 +780,25 @@ def debugOutputPngs(input, expected, output, tileSizeLow, tileSizeHigh, imageSiz
 
 			expectedArray = []
 			outputArray = []
+			inputArray = []
+
+def debugOutputPngsSingle(input, tileSize, imageSize, path, imageCounter=0, name='input'):
+	# creates output png from tiles (that form an image)
+	inputArray = []
+
+	tileCounter = 0
+	for currTile in range(0, len(input)):
+		inputArray.append(np.reshape(input[currTile], (tileSize, tileSize)))
+
+		tileCounter += 1
+
+		if tileCounter == ((imageSize // tileSize) ** 2):
+			imageCounter += 1
+			tileCounter = 0
+
+			inputImage = combineTiles(inputArray, imageSize, imageSize, tileSize, tileSize)
+			createPngFromArray(inputImage, path + name + '_%04d.png' % imageCounter)
+
 			inputArray = []
 
 # Edited for cropping: Added this method. Nearly the same as the original one, didn't want to ruin the original one.
