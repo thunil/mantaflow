@@ -671,9 +671,13 @@ def normalizeInputTestData():
 	for tile in tile_inputs_all:
 		new_tile_inputs_all.append(tile)
 	for tile in new_tile_inputs_all:
-		average_value = np.average(tile)
-		for curr_value in range(tileSize):
-			tile[curr_value] = tile[curr_value] - average_value
+		tile_x, tile_y = np.reshape(tile, (2, tileSize / 2), order='F')
+		average_value_x = np.average(tile_x)
+		average_value_y = np.average(tile_y)
+		for curr_value in range(tileSize / 2):
+			tile[curr_value] = tile[curr_value] - average_value_x
+		for curr_value in range(tileSize / 2, tileSize):
+			tile[curr_value] = tile[curr_value] - average_value_y
 
 	del tile_inputs_all[:]
 	for tile in new_tile_inputs_all:
@@ -684,41 +688,17 @@ def normalizeInputTestData():
 	for tile in tile_inputs_all_complete:
 		new_tile_inputs_all_complete.append(tile)
 	for tile in new_tile_inputs_all_complete:
-		average_value = np.average(tile)
-		for curr_value in range(tileSize):
-			tile[curr_value] = tile[curr_value] - average_value
+		tile_x, tile_y = np.reshape(tile, (2, tileSize / 2), order='F')
+		average_value_x = np.average(tile_x)
+		average_value_y = np.average(tile_y)
+		for curr_value in range(tileSize / 2):
+			tile[curr_value] = tile[curr_value] - average_value_x
+		for curr_value in range(tileSize / 2, tileSize):
+			tile[curr_value] = tile[curr_value] - average_value_y
 
 	del tile_inputs_all_complete[:]
 	for tile in new_tile_inputs_all_complete:
 		tile_inputs_all_complete.append(tile)
-
-	# output (also copy code)
-	calc_tile = np.array(tile_outputs_all[0])
-	tileSize = calc_tile.size
-
-	new_tile_outputs_all = []
-	for tile in tile_outputs_all:
-		new_tile_outputs_all.append(tile)
-	for tile in new_tile_outputs_all:
-		average_value = np.average(tile)
-		for curr_value in range(tileSize):
-			tile[curr_value] = tile[curr_value] - average_value
-
-	del tile_outputs_all[:]
-	for tile in new_tile_outputs_all:
-		tile_outputs_all.append(tile)
-
-	new_tile_outputs_all_complete = []
-	for tile in tile_outputs_all_complete:
-		new_tile_outputs_all_complete.append(tile)
-	for tile in new_tile_outputs_all_complete:
-		average_value = np.average(tile)
-		for curr_value in range(tileSize):
-			tile[curr_value] = tile[curr_value] - average_value
-
-	del tile_outputs_all_complete[:]
-	for tile in new_tile_outputs_all_complete:
-		tile_outputs_all_complete.append(tile)
 
 def reduceTo2DVelocity(tile, tileSizeLow):
 	# dont use this, use reduceInputsTo2DVelocity
