@@ -241,7 +241,7 @@ def createTilesNumpy(data, tileShape, overlapping=0):
 
 	return tiles
 
-# concatenate an ordererd list of tiles to forma a single image
+# concatenate an ordered list of tiles to form a single image
 def combineTiles(tiles, imageHeight, imageWidth, tileHeight, tileWidth):
 	if ((imageHeight % tileHeight) != 0 |
 			imageWidth % tileWidth != 0):
@@ -264,7 +264,38 @@ def combineTiles(tiles, imageHeight, imageWidth, tileHeight, tileWidth):
 
 	return resultArray
 
+# combines velocity tiles (bad, close copy from combineTiles)
+def combineTilesVelocity(tiles, imageHeight, imageWidth, tileHeight, tileWidth):
+	if ((imageHeight % tileHeight) != 0 |
+			imageWidth % tileWidth != 0):
+		print('Error: Image and tile size do not match.')
 
+	tilesVertical = imageHeight // tileHeight
+	tilesHorizontal = imageWidth // tileWidth
+
+	resultArray = np.zeros((imageHeight, imageWidth, 3), dtype='f')
+
+	# for currTileVert in range(0, tilesVertical):
+	# 	for currTileHor in range(0, tilesHorizontal):
+    #
+	# 		for currPixelVert in range(0, tileHeight):
+	# 			for currPixelHor in range(0, tileWidth):
+	# 				indexX = currPixelHor + (currTileHor * tileHeight)
+	# 				indexY = currPixelVert + (currTileVert * tileWidth)
+    #
+	# 				resultArray[indexX][indexY] = (tiles[currTileHor * tilesHorizontal + currTileVert])[currPixelHor][currPixelVert]
+
+	for currTileVert in range(0, tilesVertical):
+		for currTileHor in range(0, tilesHorizontal):
+
+			for currPixelVert in range(0, tileHeight):
+				for currPixelHor in range(0, tileWidth):
+					indexX = currPixelHor + (currTileHor * tileHeight)
+					indexY = currPixelVert + (currTileVert * tileWidth)
+
+					resultArray[indexX][indexY] = (tiles[currTileVert * tilesVertical + currTileHor])[currPixelHor][currPixelVert]
+
+	return resultArray
 
 #******************************************************************************
 # higher level functions to organize test data
@@ -418,7 +449,8 @@ def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 
 # create npy data for a single frame; reads uni, writes numpy files
 # note, supports 3d... not really tested so far
-def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=0, createPngs=False, with_vel=False, with_pos=False, pressure_output=False, dims=2):
+def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=0, createPngs=False, with_vel=False, with_pos=False, special_output_type='', dims=2, bWidth=-1):
+
 	dataShape  = [lowResSize,lowResSize,lowResSize,1]
 	if with_vel:
 		dataShape[3] = 4
@@ -442,19 +474,48 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 		lowArray = combineChannelsFromUni(uniToArray(paths['frame_low_uni'].replace(dataType, 'density')), uniToArray(paths['frame_low_uni'].replace(dataType, 'vel'), is_vel=True), addPos=True)
 	else:
 		lowArray = uniToArray(paths['frame_low_uni'].replace(dataType, 'density'))
-	lowArray = np.reshape(lowArray, dataShape) 
+	if bWidth >= 0:
+		boundrySize = bWidth + 1
+		dataShapeWithBoundry = [lowResSize + 2*boundrySize, lowResSize + 2*boundrySize, lowResSize + 2*boundrySize, dataShape[3]]
+		if not lowArray.shape[0] == dataShapeWithBoundry[0] or \
+		   not lowArray.shape[1] == dataShapeWithBoundry[1]:
+			print('ERROR: Simulation sizes are incorrect. Are: %d and %d, should be %d and %d.' % (lowArray.shape[0], lowArray.shape[1], dataShapeWithBoundry[0], dataShapeWithBoundry[1]))
+			exit()
+
+		if dims==2:
+			dataShapeWithBoundry[0] = 1
+		lowArray = np.reshape(lowArray, dataShapeWithBoundry)
+		from_value = boundrySize
+		to_value = lowResSize + boundrySize
+		# avoid error "TypeError: slice indices must be integers or None or have an __index__ method"
+		from_value = int(from_value)
+		to_value = int(to_value)
+		# output_tile = np.reshape(tiles[currTile], (tileSizeHigh, tileSizeHigh))
+		lowArray = lowArray[dataShapeWithBoundry[0] - 1, from_value: to_value, from_value: to_value]
+		lowArray = np.reshape(lowArray, dataShape)
+		# print(lowArray)
+	else:
+		lowArray = np.reshape(lowArray, dataShape)
 	lowTiles = createTilesNumpy(lowArray, tileShape, overlapping)
 
 	#tilet2d = np.reshape( lowArray,(lowResSize,lowResSize,4) )
 	#createPngArrayChannel( tilet2d , "/Users/sinithue/temp/tf/tout3a_%04d.png"%frameNo) # debug, write inputs again as images
 
-	# Debug: hacky pressure
-	if pressure_output:
-		highArray = uniToArray(paths['frame_high_uni'].replace('pressure', 'density').replace('low', 'high'))
-		highTiles = createTiles(highArray, lowResSize * upScalingFactor, lowResSize * upScalingFactor, tileSize * upScalingFactor, tileSize * upScalingFactor, overlapping)
-	else:
+
+	if special_output_type == '':
 		highArray = uniToArray(paths['frame_high_uni'].replace(dataType, 'density'))
-		highTiles = createTiles(highArray, lowResSize * upScalingFactor, lowResSize * upScalingFactor, tileSize * upScalingFactor, tileSize * upScalingFactor, overlapping)
+	else:
+		# Hack to load load input data which is names e.g. "pressure"
+		highArray = uniToArray(paths['frame_high_uni'].replace(dataType + '_high', special_output_type))
+	if bWidth >= 0:
+		boundrySize = bWidth + 1
+		from_value = bWidth + 1
+		to_value = (lowResSize * upScalingFactor) + boundrySize
+		# avoid error "TypeError: slice indices must be integers or None or have an __index__ method"
+		from_value = int(from_value)
+		to_value = int(to_value)
+		highArray = highArray[from_value: to_value, from_value: to_value]
+	highTiles = createTiles(highArray, lowResSize * upScalingFactor, lowResSize * upScalingFactor, tileSize * upScalingFactor, tileSize * upScalingFactor, overlapping)
 
 	for currTile in range(0, len(lowTiles)):
 		if with_vel:
@@ -463,12 +524,17 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 			uniio.writeNumpyBuf( paths['tile_low_npb'].replace(dataType, 'dens_vel_pos'), lowTiles[currTile] )
 		else:
 			uniio.writeNumpyBuf( paths['tile_low_npb']                                  , lowTiles[currTile] )
-		uniio.writeNumpyBuf( paths['tile_high_npb'], highTiles[currTile] )
+
+		if special_output_type == '':
+			uniio.writeNumpyBuf( paths['tile_high_npb'], highTiles[currTile] )
+		else:
+			# Hack to load load input data which is names e.g. "pressure"
+			uniio.writeNumpyBuf( paths['tile_high_npb'].replace(dataType + '_high', special_output_type), highTiles[currTile] )
 
 	uniio.finalizeNumpyBufs()
 
 
-def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partTrain=3, partTest=1, load_pos=False, load_vel=False, to_frame=200, low_res_size=64, upres=2, keepAll=False):
+def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partTrain=3, partTest=1, load_pos=False, load_vel=False, special_output_type='', to_frame=200, low_res_size=64, upres=2, keepAll=False, bWidth=-1):
 	total_tiles_all_sim = 0
 	discarded_tiles_all_sim = 0 
 	dataType = 'density'
@@ -490,16 +556,19 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 			# recreate per frame
 			if os.path.exists(paths['frame']) and ( not os.path.exists(paths['tiles']) or not os.path.exists( paths['tile_low_np'] ) ):
 				print('Could not find tiles for sim %04d, frame %d. Creating new ones.' % (simNo,frameNo) )
-				createTestDataNpz(paths, tileSizeLow, low_res_size, upres, overlapping, with_vel=load_vel, with_pos=load_pos)
+				createTestDataNpz(paths, tileSizeLow, low_res_size, upres, overlapping, with_vel=load_vel, with_pos=load_pos, special_output_type=special_output_type, bWidth=bWidth)
 
 			#print('Loading np buffers for frame %04d' % frameNo)
 			#print(paths['tile_high_np'])
-			while os.path.exists(paths['tile_high_np']):
+			while os.path.exists(paths['tile_low_np']):
 				# check if tile is empty. If so, don't add it
 				ltPath = paths['tile_low_np']
 
 				lowTiles  = uniio.readNumpy(ltPath)
-				highTiles = uniio.readNumpy(paths['tile_high_np']) 
+				if special_output_type == '':
+					highTiles = uniio.readNumpy(paths['tile_high_np'])
+				else:
+					highTiles = uniio.readNumpy(paths['tile_high_np'].replace(dataType + '_high', special_output_type))
 				if len(lowTiles.files) != len(highTiles.files):
 					print("Error - tile file entries don't match! %d vs %d" % (len(lowTiles) , len(highTiles)) )
 
@@ -733,6 +802,32 @@ def shuffleInputs(a, b):
 	np.random.shuffle(b)
 	return a, b
 
+def debugOutputPressureVelocityUni(tiles, tileSize, imageSize, path, imageCounter=0, name='pressure'):
+	# Outputs uni files that can be loaded into mantaflow as velocity grid
+	# WARNING: Currently buggy
+
+	# split pressure
+	inputArray = []
+
+	tileCounter = 0
+	for currTile in range(0, len(tiles)):
+		tile = tiles[currTile]
+		tile = np.concatenate((tile, np.zeros(256, order='F')), axis=0)
+		tile = np.reshape(tile, (tileSize, tileSize, 3), order='F')
+		inputArray.append(tile)
+
+		tileCounter += 1
+
+		if tileCounter == ((imageSize // tileSize) ** 2):
+			imageCounter += 1
+			tileCounter = 0
+
+			inputImage = combineTilesVelocity(inputArray, imageSize, imageSize, tileSize, tileSize)
+			# TODO: get dynamic, real path
+			arrayToUni(inputImage, path + name + '_%04d.uni' % imageCounter, '../data/sim_1000/frame_0000/vel_low_1000_0000.uni', imageSize, imageSize, is_vel=True)
+
+			inputArray = []
+
 def debugOutputPngs(input, expected, output, tileSizeLow, tileSizeHigh, imageSizeLow, imageSizeHigh, path, imageCounter=0):
 	expectedArray = []
 	outputArray = []
@@ -782,7 +877,7 @@ def debugOutputPngsSingle(input, tileSize, imageSize, path, imageCounter=0, name
 			inputArray = []
 
 # Edited for cropping: Added this method. Nearly the same as the original one, didn't want to ruin the original one.
-def debugOutputPngsCrop(tiles, tileSizeHigh, imageSizeHigh, path, imageCounter=0, cut_output_to=-1, tiles_in_image=-1):
+def debugOutputPngsCrop(tiles, tileSizeHigh, imageSizeHigh, path, imageCounter=0, cut_output_to=-1, tiles_in_image=-1, name=''):
 	expectedArray = []
 	outputArray = []
 	tileCounter = 0
@@ -809,7 +904,10 @@ def debugOutputPngsCrop(tiles, tileSizeHigh, imageSizeHigh, path, imageCounter=0
 			else:
 				outputImage = combineTiles(outputArray, imageSizeHigh, imageSizeHigh, cut_output_to, cut_output_to)
 
-			createPngFromArray(outputImage, path + 'full_%04d.png' % imageCounter)
+			if not name == '':
+				createPngFromArray(outputImage, path + name + '_%04d.png' % imageCounter)
+			else:
+				createPngFromArray(outputImage, path + 'full_%04d.png' % imageCounter)
 			outputArray = []
 
 

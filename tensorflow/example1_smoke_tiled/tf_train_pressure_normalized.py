@@ -48,7 +48,7 @@ emptyTileValue  = 0.01
 learningRate    = 0.00005
 trainingEpochs  = 10000 # for large values, stop manualy with ctrl-c...
 dropout         = 0.9   # slight...
-batchSize       = 100
+batchSize       = 96
 testInterval    = 200
 saveInterval    = 1000
 fromSim = toSim = -1
@@ -56,6 +56,9 @@ keepAll         = False
 numTests        = 10      # evaluate on 10 data points from test data
 randSeed        = 1
 fileFormat      = "npz"
+brightenOutput  = -1
+outputDataName  = '' # default, does nothing
+bWidth          = -1 # boundryWidth to be cut away. 0 means 1 cell, 1 means two cells. See "bWidth" in manta scene file
 
 # optional, add velocity as additional channels to input?
 useVelocities   = 0
@@ -87,6 +90,9 @@ simSizeLow      = int(ph.getParam( "simSizeLow",      simSizeLow ))
 upRes           = int(ph.getParam( "upRes",           upRes ))
 fileFormat      =     ph.getParam( "fileFormat",      fileFormat) # either npz or uni
 outputInputs    = int(ph.getParam( "outInputs",       outputInputs)) # create pngs for inputs
+brightenOutput  = int(ph.getParam( "brightenOutput",  brightenOutput)) # multiplied with output to brighten it up
+outputDataName  =    (ph.getParam( "outName",         outputDataName)) # e.g. if output data is named "pressure"
+bWidth			= int(ph.getParam( "bWidth",          bWidth))
 ph.checkUnusedParams()
 
 # initialize
@@ -130,6 +136,7 @@ n_inputChannels = 1
 
 if useVelocities:
 	n_inputChannels = 2
+# TODO: Use shortened velocities = 2 else 4
 n_input *= n_inputChannels
 
 # create output dir
@@ -205,7 +212,10 @@ xIn = tf.reshape(x, shape=[-1, tileSizeLow, tileSizeLow, n_inputChannels])
 cae = ConvolutionalAutoEncoder(xIn)
 
 # --- main graph setup ---
+# for conv_trans nets, the output tiles have to be created in the same batch size
+is_convolution_transpose_network = False
 
+################## BEGIN 1FC MODEL #################################
 # layer_1_size = 512
 #
 # fc_1_weight = tf.Variable(tf.random_normal([tileSizeLow*tileSizeLow * 2, layer_1_size], stddev=0.01))
@@ -215,28 +225,228 @@ cae = ConvolutionalAutoEncoder(xIn)
 # fc1 = tf.nn.tanh(fc1)
 # fc1 = tf.nn.dropout(fc1, dropout)
 #
-# fc_2_weight = tf.Variable(tf.random_normal([tileSizeLow*tileSizeLow * 2, tileSizeHigh * tileSizeHigh], stddev=0.01))
-# fc_2_bias   = tf.Variable(tf.random_normal([tileSizeHigh * tileSizeHigh], stddev=0.01))
+# fc_out_weight = tf.Variable(tf.random_normal([tileSizeLow*tileSizeLow * 2, tileSizeHigh * tileSizeHigh], stddev=0.01))
+# fc_out_bias   = tf.Variable(tf.random_normal([tileSizeHigh * tileSizeHigh], stddev=0.01))
 #
-# y_pred = tf.add(tf.matmul(fc1, fc_2_weight), fc_2_bias)
+# y_pred = tf.add(tf.matmul(fc1, fc_out_weight), fc_out_bias)
+################## END 1FC MODEL #################################
 
-pool = 2
-# note - for simplicity, we always reduce the number of channels to 8 here
-# this is probably suboptimal in general, but keeps the network structure similar and simple
+################## BEGIN CONV DECONV MODEL #################################
+is_convolution_transpose_network = True
+
+# Create some wrappers for simplicity
+def conv2d(x, W, b, strides=1):
+	# Conv2D wrapper, with bias and relu activation
+	x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
+	x = tf.nn.bias_add(x, b)
+	return tf.nn.tanh(x)
+
+def conv2d_trans(x, W, b, output_shape, strides=1):
+	x = tf.nn.conv2d_transpose(x, W, output_shape, [1, strides, strides, 1], padding='SAME', name=None)
+	# x = tf.nn.bias_add(x, b)
+	return tf.nn.tanh(x)
+
+
+def maxpool2d(x, k=2):
+	# MaxPool2D wrapper
+	return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
+						  padding='SAME')
+
+
+# Create model
+def conv_net(x, weights, biases, dropout):
+	# Reshape input picture
+	x = tf.reshape(x, shape=[-1, 16, 16, 2])
+
+	# Convolution Layer
+	conv1 = conv2d(x, weights['wc1'], biases['bc1'])
+	# Max Pooling (down-sampling)
+	conv1 = maxpool2d(conv1, k=2)
+
+	# Convolution Layer
+	conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
+	# Max Pooling (down-sampling)
+	conv2 = maxpool2d(conv2, k=2)
+
+	# Fully connected layer
+	# Reshape conv2 output to fit fully connected layer input (flatten)
+	fc1 = tf.reshape(conv2, [-1, weights['wd1'].get_shape().as_list()[0]])
+	fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
+	fc1 = tf.nn.tanh(fc1)
+	# Apply Dropout
+	fc1 = tf.nn.dropout(fc1, dropout)
+	fc1 = tf.reshape(fc1, shape=[-1, 4, 4, 8])
+
+	# Deconv Layer
+	deconv1 = conv2d_trans(fc1, weights['wc3'], biases['bc3'], [batchSize, 8, 8, 4], strides=2)
+	deconv2 = conv2d_trans(deconv1, weights['wc4'], biases['bc4'], [batchSize, 16, 16, 1], strides=2)
+	out = tf.reshape(deconv2, [-1, n_output])
+
+	# Additional, optional fc layer
+	# out = tf.add(tf.matmul(out, weights['out']), biases['out'])
+	return out
+
+# Store layers weight & bias
+weights = {
+	# 5x5 conv, 2 inputs, 4 outputs
+	'wc1': tf.Variable(tf.random_normal([5, 5, 2, 4], stddev=0.01)),
+	# 3x3 conv, 4 inputs, 8 outputs
+	'wc2': tf.Variable(tf.random_normal([3, 3, 4, 8], stddev=0.01)),
+	# fully connected, 4*4*8 inputs, 256 outputs
+	'wd1': tf.Variable(tf.random_normal([4*4*8, 4*4*8], stddev=0.01)),
+	'wd2': tf.Variable(tf.random_normal([4*4*8, 4*4*8], stddev=0.01)),
+	# 5x5 conv, 2 inputs, 4 outputs
+	'wc3': tf.Variable(tf.random_normal([5, 5, 4, 8], stddev=0.01)),
+	# 3x3 conv, 4 inputs, 8 outputs
+	'wc4': tf.Variable(tf.random_normal([3, 3, 1, 4], stddev=0.01)),
+	# 256 inputs, 256 outputs
+	'out': tf.Variable(tf.random_normal([256, n_output], stddev=0.01))
+}
+
+biases = {
+	'bc1': tf.Variable(tf.zeros([4])),
+	'bc2': tf.Variable(tf.zeros([8])),
+	'bd1': tf.Variable(tf.random_normal([128], stddev=0.01)),
+	'bc3': tf.Variable(tf.zeros([8])),
+	'bc4': tf.Variable(tf.zeros([4])),
+	'out': tf.Variable(tf.random_normal([n_output], stddev=0.01))
+}
+
+y_pred = conv_net(x, weights, biases, dropout)
+################## END CONV DECONV MODEL #################################
+
+################## BEGIN CONV MODEL #################################
+#
+# # Create some wrappers for simplicity
+# def conv2d(x, W, b, strides=1):
+#     # Conv2D wrapper, with bias and relu activation
+#     x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
+#     x = tf.nn.bias_add(x, b)
+#     return tf.nn.tanh(x)
+#
+#
+# def maxpool2d(x, k=2):
+#     # MaxPool2D wrapper
+#     return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
+#                           padding='SAME')
+#
+#
+# # Create model
+# def conv_net(x, weights, biases, dropout):
+#     # Reshape input picture
+#     x = tf.reshape(x, shape=[-1, 16, 16, 2])
+#
+#     # Convolution Layer
+#     conv1 = conv2d(x, weights['wc1'], biases['bc1'])
+#     # Max Pooling (down-sampling)
+#     conv1 = maxpool2d(conv1, k=2)
+#
+#     # Convolution Layer
+#     conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
+#     # Max Pooling (down-sampling)
+#     conv2 = maxpool2d(conv2, k=2)
+#
+#     # Fully connected layer
+#     # Reshape conv2 output to fit fully connected layer input (flatten)
+#     fc1 = tf.reshape(conv2, [-1, weights['wd1'].get_shape().as_list()[0]])
+#     fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
+#     fc1 = tf.nn.tanh(fc1)
+#     # Apply Dropout
+#     fc1 = tf.nn.dropout(fc1, dropout)
+#
+#     # Output
+#     out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
+#     return out
+#
+# # Store layers weight & bias
+# weights = {
+#     # 5x5 conv, 2 inputs, 4 outputs
+#     'wc1': tf.Variable(tf.random_normal([5, 5, 2, 4], stddev=0.01)),
+#     # 3x3 conv, 4 inputs, 8 outputs
+#     'wc2': tf.Variable(tf.random_normal([3, 3, 4, 8], stddev=0.01)),
+#     # fully connected, 4*4*8 inputs, 256 outputs
+#     'wd1': tf.Variable(tf.random_normal([4*4*8, 256], stddev=0.01)),
+#     # 256 inputs, 256 outputs
+#     'out': tf.Variable(tf.random_normal([256, n_output], stddev=0.01))
+# }
+#
+# biases = {
+#     'bc1': tf.Variable(tf.zeros([4])),
+#     'bc2': tf.Variable(tf.zeros([8])),
+#     'bd1': tf.Variable(tf.random_normal([256], stddev=0.01)),
+#     'out': tf.Variable(tf.random_normal([n_output], stddev=0.01))
+# }
+#
+# y_pred = conv_net(x, weights, biases, dropout)
+################## END CONV MODEL #################################
+
+################## BEGIN CONV CAE MODEL #################################
+# pool = 2
 # clFMs = int(8 / n_inputChannels)
 # cae.convolutional_layer(clFMs, [3, 3], tf.nn.tanh)
 # cae.max_pool([pool,pool], [pool,pool])
 #
-flat_size = cae.flatten() / 2 # half, to get the right output size
-cae.fully_connected_layer(flat_size, tf.nn.tanh)
-cae.fully_connected_layer(flat_size, tf.nn.tanh)
-cae.unflatten()
+# flat_size = cae.flatten()
+# cae.fully_connected_layer(flat_size, tf.nn.tanh)
+# cae.fully_connected_layer(flat_size, tf.nn.tanh)
+# cae.unflatten()
+#
+# cae.max_depool([pool,pool], [pool,pool])
+# cae.deconvolutional_layer(8, [3, 3], tf.nn.relu)
+#
+# # cae.max_depool([pool,pool], [pool,pool])
+# # cae.deconvolutional_layer(2, [5, 5], tf.nn.relu)
+#
+# y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
+# print ("DOFs: %d " % cae.getDOFs())
+################## END CONV CAE MODEL #################################
 
-y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
-print ("DOFs: %d " % cae.getDOFs())
+################## BEGIN 1FC CAE MODEL #################################
+# cae.flatten()
+# cae.fully_connected_layer(512, tf.nn.tanh)
+# cae.fully_connected_layer(256, tf.nn.tanh)
+# cae.unflatten()
+#
+# y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
+# print ("DOFs: %d " % cae.getDOFs())
+################## END 1FC CAE MODEL #################################
 
+################## BEGIN 2FC CAE MODEL #################################
+# cae.flatten()
+# cae.fully_connected_layer(256, tf.nn.tanh)
+# cae.fully_connected_layer(256, tf.nn.tanh)
+# cae.fully_connected_layer(256, tf.nn.tanh)
+# cae.unflatten()
+#
+# y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
+# print ("DOFs: %d " % cae.getDOFs())
+################## END 2FC CAE MODEL #################################
 
-costFunc = tf.nn.l2_loss(y_true - y_pred) 
+################## BEGIN 2FC CAE MODEL BIG TILES #################################
+# cae.flatten()
+# cae.fully_connected_layer(512, tf.nn.tanh)
+# cae.fully_connected_layer(512, tf.nn.tanh)
+# cae.fully_connected_layer(1024, tf.nn.tanh)
+# cae.unflatten()
+#
+# y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
+# print ("DOFs: %d " % cae.getDOFs())
+################## END 2FC CAE MODEL BIG TILES #################################
+
+################## BEGIN 4FC CAE MODEL #################################
+# cae.flatten()
+# cae.fully_connected_layer(256, tf.nn.tanh)
+# cae.fully_connected_layer(256, tf.nn.tanh)
+# cae.fully_connected_layer(256, tf.nn.tanh)
+# cae.fully_connected_layer(256, tf.nn.tanh)
+# cae.fully_connected_layer(256, tf.nn.tanh)
+# cae.unflatten()
+#
+# y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
+# print ("DOFs: %d " % cae.getDOFs())
+################## END 4FC CAE MODEL #################################
+
+costFunc = tf.nn.l2_loss(y_true - y_pred)
 optimizer = tf.train.AdamOptimizer(learningRate).minimize(costFunc)
 
 # create session and saver
@@ -253,17 +463,19 @@ else:
 
 # load test data
 if (fileFormat == "npz"):
-	tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll)
+	tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll, special_output_type=outputDataName, bWidth=bWidth)
 elif (fileFormat == "uni"):
 	tiCr.loadTestDataUni(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes)
 else:
 	print("\n ERROR: Unknown file format \"" + fileFormat + "\". Use \"npz\" or \"uni\".")
 	exit()
 
+
 print('Reducing data to 2D velocity...')
 tiCr.reduceInputsTo2DVelocity()
-print('Normalizing tile values...')
-tiCr.normalizeInputTestData()
+# TODO: Remove this from final code
+# print('Normalizing tile values...')
+# tiCr.normalizeInputTestData()
 tiCr.splitTileData(0.95, 0.05)
 
 #uniio.backupFile(__file__, test_path)
@@ -357,11 +569,16 @@ else:
 		batch_velocity_x = []
 		batch_velocity_y = []
 
-		for curr_tile in range(tilesPerImg):
+		combine_tiles_amount = tilesPerImg
+		if is_convolution_transpose_network:
+			combine_tiles_amount = batchSize
+		for curr_tile in range(combine_tiles_amount):
+		# for curr_tile in range(tilesPerImg):
 			idx = currOut * tilesPerImg + curr_tile
+			if is_convolution_transpose_network and idx > len(tiCr.tile_inputs_all_complete) - 1:
+				exit()
 			batch_xs.append(tiCr.tile_inputs_all_complete[idx])
 			# batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
-			# only use this without croping
 			batch_ys.append(tiCr.tile_outputs_all_complete[idx])
 
 			# to output velocity inputs
@@ -371,8 +588,14 @@ else:
 
 		resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
+		if brightenOutput > 0:
+			for curr_value in range(len(resultTiles)):
+				resultTiles[curr_value] *= brightenOutput
+			for curr_value in range(len(batch_ys)):
+				batch_ys[curr_value] *= brightenOutput
 		tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
-		tiCr.debugOutputPngsSingle(batch_ys, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='expected_out')
+		tiCr.debugOutputPngsCrop(batch_ys, tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg, name='expected_out')
+		# tiCr.debugOutputPngsSingle(batch_ys, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='expected_out')
 
 		if outputInputs:
 			if not useVelocities:
@@ -380,6 +603,10 @@ else:
 			else:
 				tiCr.debugOutputPngsSingle(batch_velocity_x, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='vel_x')
 				tiCr.debugOutputPngsSingle(batch_velocity_y, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='vel_y')
+
+		# TODO: Remove this from final code
+		# Debug: Outputs uni files that can be loaded into mantaflow (currently buggy)
+		# tiCr.debugOutputPressureVelocityUni(batch_xs, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='pressure')
 
 		# optionally, output references
 		#tiCr.debugOutputPngsCrop(batch_ys, tileSizeHigh, simSizeHigh, test_path+"_ref", imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)

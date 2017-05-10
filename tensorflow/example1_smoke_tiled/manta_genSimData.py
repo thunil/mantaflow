@@ -33,11 +33,12 @@ ph.checkUnusedParams()
 setDebugLevel(1)
 
 # Solver params  ----------------------------------------------------------------------#
-res    = 64
+res    = 68
 dim    = 2 
 offset = 20
+interval = 10
 
-scaleFactor = 4
+scaleFactor = 1
 #ratio       = 1.2
 
 sm_gs = vec3(res,res,res) # vec3(res,res*ratio,res)
@@ -212,7 +213,7 @@ while t < steps+offset:
 	addBuoyancy(density=xl_density, vel=xl_vel, gravity=buoy , flags=xl_flags)
 	if 1 and ( t< offset ): 
 		vorticityConfinement( vel=xl_vel, flags=xl_flags, strength=0.05 )
-	solvePressure(flags=xl_flags, vel=xl_vel, pressure=xl_pressure ,  cgMaxIterFac=1.0, cgAccuracy=0.01 )
+	solvePressure(flags=xl_flags, vel=xl_vel, pressure=xl_pressure ,  cgMaxIterFac=10.0, cgAccuracy=0.0001 )
 	setWallBcs(flags=xl_flags, vel=xl_vel)
 	xl_velTmp.copyFrom( xl_vel )
 	xl_velTmp.addConst( xl_velOffset )
@@ -234,7 +235,7 @@ while t < steps+offset:
 		addBuoyancy(density=density, vel=vel, gravity=xl_buoy , flags=flags)
 		if 1 and ( t< offset ): 
 			vorticityConfinement( vel=vel, flags=flags, strength=0.05/scaleFactor )
-		solvePressure(flags=flags, vel=vel, pressure=pressure , cgMaxIterFac=1.0, cgAccuracy=0.01 )
+		solvePressure(flags=flags, vel=vel, pressure=pressure , cgMaxIterFac=10.0, cgAccuracy=0.0001 )
 		setWallBcs(flags=flags, vel=vel)
 
 	velTmp.copyFrom(vel)
@@ -254,13 +255,17 @@ while t < steps+offset:
 
 	# save low and high res
 	# save all frames
-	if savedata and tcnt>=offset:
-		tf = tcnt-offset
+	if savedata and tcnt>=offset and (tcnt-offset)%interval==0:
+		tf = (tcnt-offset)/interval
 		framePath = simPath + 'frame_%04d/' % tf
 		os.makedirs(framePath)
 		density.save(framePath + 'density_low_%04d_%04d.uni' % (simNo, tf))
 		vel.save(framePath + 'vel_low_%04d_%04d.uni' % (simNo, tf))
-		xl_density.save(framePath + 'density_high_%04d_%04d.uni' % (simNo, tf))
+		# save pressure instead of xl_density
+		mean = getGridAvg(pressure)
+		pressure.addConst(-mean)
+		pressure.save(framePath + 'pressure_%04d_%04d.uni' % (simNo, tf))
+		#xl_density.save(framePath + 'density_high_%04d_%04d.uni' % (simNo, tf))
 		if(saveppm):
 			projectPpmFull( xl_density, simPath + 'density_high_%04d_%04d.ppm' % (simNo, tf), 0, 1.0 )
 			projectPpmFull( density, simPath + 'density_low_%04d_%04d.ppm' % (simNo, tf), 0, 1.0 )
