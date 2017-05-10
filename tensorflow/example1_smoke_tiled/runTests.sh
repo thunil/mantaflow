@@ -12,7 +12,8 @@ SCENE_UNI=2007
 
 echo Using data path ${BPATH}
 
-# --- uni file tests ---
+# --- numpy npz file tests ---
+# (fileFormat npz is default)
 
 # optionally, clear all tiles
 #find ${BPATH}/sim_${SCENE_TRAIN}/ -iname "tiles*" -exec rm -fr \{\} \;

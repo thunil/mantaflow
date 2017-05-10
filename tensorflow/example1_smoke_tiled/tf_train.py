@@ -275,7 +275,6 @@ if not outputOnly:
 			batch_xs, batch_ys = tiCr.selectRandomTiles(batchSize)
 			_, cost, summary = sess.run([optimizer, costFunc, lossTrain], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
 
-			# NT_DEBUG print('Save %d , %d , %f , %d' % (lastSave,saveInterval,cost, lastCost) )
 			# save model
 			if ((cost < lastCost) or alwaysSave) and (lastSave >= saveInterval):
 				saver.save(sess, test_path + 'model_%04d.ckpt' % save_no)
@@ -295,12 +294,6 @@ if not outputOnly:
 					cost_test, summary_test = sess.run([costFunc, lossTest], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 					accumulatedCost += cost_test
 				accumulatedCost /= numTests
-
-				# check values of tiles , NT_DEBUG
-				if 0:
-					testTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
-					sum = testTiles.sum( dtype=np.float64 )
-					print("Test tiles, total sum :" + format( sum)) # debugging...
 
 				avgCost /= testInterval
 				print('\nEpoch {:04d}/{:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), trainingEpochs, avgCost, accumulatedCost))
