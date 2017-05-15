@@ -118,7 +118,7 @@ if not outputOnly:
 		fromSim = toSim   = 1000 # short, use single sim
 
 	if cropOverlap>0:
-		print("Error - dont use cropOverlap != 0 for training...")
+		print("ERROR: dont use cropOverlap != 0 for training...")
 		exit(1)
 
 else:
@@ -158,7 +158,7 @@ if not loadModelTest == -1:
 			if os.path.isfile(basePath + 'test_%04d/model_%04d.ckpt.index' % (loadModelTest, currModel)):
 				loadModelNo = currModel
 		if loadModelNo == -1:
-			print('ERROR: Model with id below 200 does not exist. Please specify model id as "loadModelNo".')
+			print('ERROR: No checkpoint found. Either wrong model directory, or no checkpoint with an id below 200. Please specify correct "loadModelTest" directory number, or a manual checkpoint number with "loadModelNo".')
 			exit()
 		# print('Latest model: %d.' % loadModelNo)
 
@@ -286,18 +286,18 @@ def conv_net(x, weights, biases, dropout):
 
 # Store layers weight & bias
 weights = {
-	# 5x5 conv, 2 inputs, 4 outputs
+	# 5x5 conv, 2 features in, 4 out
 	'wc1': tf.Variable(tf.random_normal([5, 5, 2, 4], stddev=0.01)),
-	# 3x3 conv, 4 inputs, 8 outputs
+	# 3x3 conv, 4 features in, 8 out
 	'wc2': tf.Variable(tf.random_normal([3, 3, 4, 8], stddev=0.01)),
-	# fully connected, 4*4*8 inputs, 256 outputs
+	# fully connected, 4*4*8 nodes
 	'wd1': tf.Variable(tf.random_normal([4*4*8, 4*4*8], stddev=0.01)),
 	'wd2': tf.Variable(tf.random_normal([4*4*8, 4*4*8], stddev=0.01)),
-	# 5x5 conv, 2 inputs, 4 outputs
+	# 5x5 conv, 2 features in, 4 out
 	'wc3': tf.Variable(tf.random_normal([5, 5, 4, 8], stddev=0.01)),
-	# 3x3 conv, 4 inputs, 8 outputs
+	# 3x3 conv, 4 features in, 8 out
 	'wc4': tf.Variable(tf.random_normal([3, 3, 1, 4], stddev=0.01)),
-	# 256 inputs, 256 outputs
+	# output size 256 , ie 16x16
 	'out': tf.Variable(tf.random_normal([256, n_output], stddev=0.01))
 }
 
@@ -399,50 +399,6 @@ y_pred = conv_net(x, weights, biases, dropout)
 # print ("DOFs: %d " % cae.getDOFs())
 ################## END CONV CAE MODEL #################################
 
-################## BEGIN 1FC CAE MODEL #################################
-# cae.flatten()
-# cae.fully_connected_layer(512, tf.nn.tanh)
-# cae.fully_connected_layer(256, tf.nn.tanh)
-# cae.unflatten()
-#
-# y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
-# print ("DOFs: %d " % cae.getDOFs())
-################## END 1FC CAE MODEL #################################
-
-################## BEGIN 2FC CAE MODEL #################################
-# cae.flatten()
-# cae.fully_connected_layer(256, tf.nn.tanh)
-# cae.fully_connected_layer(256, tf.nn.tanh)
-# cae.fully_connected_layer(256, tf.nn.tanh)
-# cae.unflatten()
-#
-# y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
-# print ("DOFs: %d " % cae.getDOFs())
-################## END 2FC CAE MODEL #################################
-
-################## BEGIN 2FC CAE MODEL BIG TILES #################################
-# cae.flatten()
-# cae.fully_connected_layer(512, tf.nn.tanh)
-# cae.fully_connected_layer(512, tf.nn.tanh)
-# cae.fully_connected_layer(1024, tf.nn.tanh)
-# cae.unflatten()
-#
-# y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
-# print ("DOFs: %d " % cae.getDOFs())
-################## END 2FC CAE MODEL BIG TILES #################################
-
-################## BEGIN 4FC CAE MODEL #################################
-# cae.flatten()
-# cae.fully_connected_layer(256, tf.nn.tanh)
-# cae.fully_connected_layer(256, tf.nn.tanh)
-# cae.fully_connected_layer(256, tf.nn.tanh)
-# cae.fully_connected_layer(256, tf.nn.tanh)
-# cae.fully_connected_layer(256, tf.nn.tanh)
-# cae.unflatten()
-#
-# y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
-# print ("DOFs: %d " % cae.getDOFs())
-################## END 4FC CAE MODEL #################################
 
 costFunc = tf.nn.l2_loss(y_true - y_pred)
 optimizer = tf.train.AdamOptimizer(learningRate).minimize(costFunc)
@@ -503,7 +459,6 @@ if not outputOnly:
 			batch_xs, batch_ys = tiCr.selectRandomTiles(batchSize)
 			_, cost, summary = sess.run([optimizer, costFunc, lossTrain], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
 
-			# NT_DEBUG print('Save %d , %d , %f , %d' % (lastSave,saveInterval,cost, lastCost) )
 			# save model
 			if ((cost < lastCost) or alwaysSave) and (lastSave >= saveInterval):
 				saver.save(sess, test_path + 'model_%04d.ckpt' % save_no)
@@ -523,12 +478,6 @@ if not outputOnly:
 					cost_test, summary_test = sess.run([costFunc, lossTest], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 					accumulatedCost += cost_test
 				accumulatedCost /= numTests
-
-				# check values of tiles , NT_DEBUG
-				if 0:
-					testTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
-					sum = testTiles.sum( dtype=np.float64 )
-					print("Test tiles, total sum :" + format( sum)) # debugging...
 
 				avgCost /= testInterval
 				print('\nEpoch {:04d}/{:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), trainingEpochs, avgCost, accumulatedCost))

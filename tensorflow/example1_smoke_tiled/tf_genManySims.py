@@ -1,8 +1,8 @@
 import os
 from subprocess import call
 
-scenefile = "./manta_genSimData.py" # windows: "manta_genSimData.py"
-mantaexe = "../../build/manta" # windows: "../../build/Release/manta"
+scenefile = "manta_genSimData.py" 
+mantaexe = "../../build/manta"      # windows: "../../build/Release/manta"
 my_env = os.environ.copy()
 my_env["MANTA_DISABLE_UI"]="1"
 
