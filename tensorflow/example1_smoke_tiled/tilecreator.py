@@ -316,8 +316,7 @@ def createTestDataUni(simNo, tileSize, lowResSize, upScalingFactor, overlapping=
 			if not os.path.exists(paths['tiles']):
 				os.makedirs(paths['tiles'])
 
-			# create tiles
-
+			# create tiles 
 			if with_vel:
 				lowArray = combineDensVelSpace(uniToArray(paths['frame_low_uni']), uniToArray(paths['frame_low_uni'].replace('density', 'vel'), is_vel=True))
 				lowTiles = createTiles(lowArray, lowResSize * 2, lowResSize * 2, tileSize * 2, tileSize * 2, overlapping * 2)
@@ -447,6 +446,12 @@ def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 #******************************************************************************
 # higher level functions to organize test data , npz format
 
+def assertShape3D(shape1, shape2, msg):
+	#print("Comparing %s and %s " % (format(shape1),format(shape2)) )
+	if not shape1[0] == shape2[0] or not shape1[1] == shape2[1] or not shape1[2] == shape2[2]:
+		print('ERROR: Shape sizes for %s are incorrect. %s vs %s ' % (msg, format(shape1), format(shape2)) )
+		exit()
+
 # create npy data for a single frame; reads uni, writes numpy files
 # note, supports 3d... not really tested so far
 def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=0, createPngs=False, with_vel=False, with_pos=False, special_output_type='', dims=2, bWidth=-1):
@@ -474,16 +479,26 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 		lowArray = combineChannelsFromUni(uniToArray(paths['frame_low_uni'].replace(dataType, 'density')), uniToArray(paths['frame_low_uni'].replace(dataType, 'vel'), is_vel=True), addPos=True)
 	else:
 		lowArray = uniToArray(paths['frame_low_uni'].replace(dataType, 'density'))
+		if len(lowArray.shape)==2: # add channels dimension if necessary
+			lowArray = np.reshape(lowArray, [lowArray.shape[0], lowArray.shape[1], 1])
+
+	# right now, all of the above return 2D (+channels) arrays, turn into 3D ...
+	if dims==2:
+		lowArray = np.reshape(lowArray, [1, lowArray.shape[0], lowArray.shape[1], lowArray.shape[2]])
+
 	if bWidth >= 0:
 		boundrySize = bWidth + 1
 		dataShapeWithBoundry = [lowResSize + 2*boundrySize, lowResSize + 2*boundrySize, lowResSize + 2*boundrySize, dataShape[3]]
-		if not lowArray.shape[0] == dataShapeWithBoundry[0] or \
-		   not lowArray.shape[1] == dataShapeWithBoundry[1]:
-			print('ERROR: Simulation sizes are incorrect. Are: %d and %d, should be %d and %d.' % (lowArray.shape[0], lowArray.shape[1], dataShapeWithBoundry[0], dataShapeWithBoundry[1]))
-			exit()
-
 		if dims==2:
 			dataShapeWithBoundry[0] = 1
+
+		#if not lowArray.shape[0] == dataShapeWithBoundry[0] or \
+		   #not lowArray.shape[1] == dataShapeWithBoundry[1] or \
+		   #not lowArray.shape[2] == dataShapeWithBoundry[2]:
+			#print('ERROR: Simulation sizes are incorrect. Are: %s, should be %s.' % (format(lowArray.shape), format(dataShapeWithBoundry)) )
+			#exit()
+		assertShape3D(lowArray.shape, dataShapeWithBoundry, "simulation with boundary")
+
 		lowArray = np.reshape(lowArray, dataShapeWithBoundry)
 		from_value = boundrySize
 		to_value = lowResSize + boundrySize
@@ -495,12 +510,18 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 		lowArray = np.reshape(lowArray, dataShape)
 		# print(lowArray)
 	else:
+		#if not lowArray.shape[0] == dataShape[0] or \
+		   #not lowArray.shape[1] == dataShape[1] or \
+		   #not lowArray.shape[2] == dataShape[2]:
+			##print('ERROR: Simulation sizes are incorrect. Are: %d and %d, should be %d and %d.' % (lowArray.shape[0], lowArray.shape[1], dataShape[0], dataShape[1]))
+			#print('ERROR: Simulation sizes are incorrect. Are: %s, should be %s.' % (format(lowArray.shape), format(dataShape)) )
+			#exit()
+		assertShape3D(lowArray.shape, dataShape, "simulation with boundary")
 		lowArray = np.reshape(lowArray, dataShape)
 	lowTiles = createTilesNumpy(lowArray, tileShape, overlapping)
 
 	#tilet2d = np.reshape( lowArray,(lowResSize,lowResSize,4) )
 	#createPngArrayChannel( tilet2d , "/Users/sinithue/temp/tf/tout3a_%04d.png"%frameNo) # debug, write inputs again as images
-
 
 	if special_output_type == '':
 		highArray = uniToArray(paths['frame_high_uni'].replace(dataType, 'density'))

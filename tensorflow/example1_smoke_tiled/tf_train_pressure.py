@@ -419,10 +419,9 @@ else:
 if (fileFormat == "npz"):
 	tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll, special_output_type=outputDataName, bWidth=bWidth)
 elif (fileFormat == "uni"):
-	tiCr.loadTestDataUni(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes)
+	print("\n ERROR: only npz file format supported for pressure tests."); exit()
 else:
-	print("\n ERROR: Unknown file format \"" + fileFormat + "\". Use \"npz\" or \"uni\".")
-	exit()
+	print("\n ERROR: Unknown file format \"" + fileFormat + "\". Use \"npz\" or \"uni\"."); exit()
 
 
 print('Reducing data to 2D velocity...')
