@@ -103,7 +103,7 @@ def uniToArray(uniPath, is_vel=False):
 
 	imageHeight = head['dimX']
 	imageWidth  = head['dimY']
-	#print(format(uniPath) + " " + format(head)) # debug
+	#print(format(uniPath) + " " + format(head)) # debug info
 	if not is_vel:
 		fixedArray = np.zeros((imageHeight, imageWidth, 1), dtype='f')
 	else:
@@ -492,11 +492,6 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 		if dims==2:
 			dataShapeWithBoundry[0] = 1
 
-		#if not lowArray.shape[0] == dataShapeWithBoundry[0] or \
-		   #not lowArray.shape[1] == dataShapeWithBoundry[1] or \
-		   #not lowArray.shape[2] == dataShapeWithBoundry[2]:
-			#print('ERROR: Simulation sizes are incorrect. Are: %s, should be %s.' % (format(lowArray.shape), format(dataShapeWithBoundry)) )
-			#exit()
 		assertShape3D(lowArray.shape, dataShapeWithBoundry, "simulation with boundary")
 
 		lowArray = np.reshape(lowArray, dataShapeWithBoundry)
@@ -505,18 +500,10 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 		# avoid error "TypeError: slice indices must be integers or None or have an __index__ method"
 		from_value = int(from_value)
 		to_value = int(to_value)
-		# output_tile = np.reshape(tiles[currTile], (tileSizeHigh, tileSizeHigh))
 		lowArray = lowArray[dataShapeWithBoundry[0] - 1, from_value: to_value, from_value: to_value]
 		lowArray = np.reshape(lowArray, dataShape)
-		# print(lowArray)
 	else:
-		#if not lowArray.shape[0] == dataShape[0] or \
-		   #not lowArray.shape[1] == dataShape[1] or \
-		   #not lowArray.shape[2] == dataShape[2]:
-			##print('ERROR: Simulation sizes are incorrect. Are: %d and %d, should be %d and %d.' % (lowArray.shape[0], lowArray.shape[1], dataShape[0], dataShape[1]))
-			#print('ERROR: Simulation sizes are incorrect. Are: %s, should be %s.' % (format(lowArray.shape), format(dataShape)) )
-			#exit()
-		assertShape3D(lowArray.shape, dataShape, "simulation with boundary")
+		assertShape3D(lowArray.shape, dataShape, "regular simulation")
 		lowArray = np.reshape(lowArray, dataShape)
 	lowTiles = createTilesNumpy(lowArray, tileShape, overlapping)
 
@@ -537,6 +524,9 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 		to_value = int(to_value)
 		highArray = highArray[from_value: to_value, from_value: to_value]
 	highTiles = createTiles(highArray, lowResSize * upScalingFactor, lowResSize * upScalingFactor, tileSize * upScalingFactor, tileSize * upScalingFactor, overlapping)
+
+	if 0: # debug info
+		print('Sim dimensions low %s, high %s' % (format(lowArray.shape), format(highArray.shape)) )
 
 	for currTile in range(0, len(lowTiles)):
 		if with_vel:
@@ -618,6 +608,8 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 			frameNo += 1
 			updatePaths(simNo, frameNo, bufferNo, tileSizeLow, tileSizeLow, overlapping, dataType)
 
+		if 0 and len(lowTiles.files)>0:
+			print('Tile dimensions low %s high %s' % (format(lowTiles["arr_%d"%0].shape), format(highTiles["arr_%d"%0].shape)) )
 		print('Total Tiles: %d' % totalTiles)
 		print('Discarded Tiles: %d' % discardedTiles)
 		print('Used Tiles: %d' % (totalTiles - discardedTiles))

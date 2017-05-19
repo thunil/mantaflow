@@ -310,7 +310,7 @@ if not outputOnly:
 	print('\n*****TRAINING FINISHED*****')
 	training_duration = (time.time() - startTime) / 60.0
 	print('Training needed %.02f minutes.' % (training_duration))
-	print('To apply the trained model, set "outputOnly" to True, and insert numbers for "loadModelTest", and "loadModelNo" (optional). E.g. "out 1 loadModelTest 42".')
+	print('To apply the trained model, set "outputOnly" to True, and insert id for "loadModelTest". E.g. "out 1 loadModelTest 42".')
 
 else: 
 
