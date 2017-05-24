@@ -95,94 +95,123 @@ template<> inline void getMinMax<Vec3>(Vec3& minv, Vec3& maxv, const Vec3& val) 
 	getMinMax(minv.z, maxv.z, val.z);
 }
 
+//! detect out of bounds value
+template<class T> inline bool cmpMinMax(T& minv, T& maxv, const T& val) { 
+	if (val < minv) return true;
+	if (val > maxv) return true;
+	return false;
+}
+template<> inline bool cmpMinMax<Vec3>(Vec3& minv, Vec3& maxv, const Vec3& val) { 
+	return( cmpMinMax(minv.x, maxv.x, val.x) | cmpMinMax(minv.y, maxv.y, val.y) | cmpMinMax(minv.z, maxv.z, val.z));
+}
+
 	
-//! Helper function for clamping non-mac grids
+//! Helper function for clamping non-mac grids (those have specialized per component version below)
+//  Note - 2 clamp modes, a sharper one (default, clampMode 1, also uses backward step), 
+//         and a softer version (clampMode 2) that is recommended in Andy's paper
 template<class T>
-inline T doClampComponent(const Vec3i& gridSize, T dst, Grid<T>& orig, T fwd, const Vec3& pos, const Vec3& vel ) 
+inline T doClampComponent(const Vec3i& gridSize, FlagGrid& flags, T dst, Grid<T>& orig, T fwd, const Vec3& pos, const Vec3& vel, const int clampMode ) 
 {
 	T minv( std::numeric_limits<Real>::max()), maxv( -std::numeric_limits<Real>::max());
+	bool haveFl = false;
 
 	// forward (and optionally) backward
 	Vec3i positions[2];
+	int numPos = 1;
 	positions[0] = toVec3i(pos - vel);
-	positions[1] = toVec3i(pos + vel);
+	if(clampMode==1) { numPos = 2;
+	positions[1] = toVec3i(pos + vel); }
 
-	for(int l=0; l<2; ++l) {
+	for(int l=0; l<numPos; ++l) {
 		Vec3i& currPos = positions[l];
 
 		// clamp forward lookup to grid
-		const int i0 = clamp(currPos.x, 0, gridSize.x-1);
-		const int j0 = clamp(currPos.y, 0, gridSize.y-1);
-		const int k0 = clamp(currPos.z, 0, (orig.is3D() ? (gridSize.z-1) : 1) );
+		const int i0 = clamp(currPos.x, 0, gridSize.x-0); // gridsize already has -1 !
+		const int j0 = clamp(currPos.y, 0, gridSize.y-0);
+		const int k0 = clamp(currPos.z, 0, (orig.is3D() ? (gridSize.z-0) : 1) );
 		const int i1 = i0+1, j1 = j0+1, k1= (orig.is3D() ? (k0+1) : k0);
 		if( (!orig.isInBounds(Vec3i(i0,j0,k0),0)) || (!orig.isInBounds(Vec3i(i1,j1,k1),0)) )
 			return fwd; 
 
 		// find min/max around source pos
-		getMinMax(minv, maxv, orig(i0,j0,k0));
-		getMinMax(minv, maxv, orig(i1,j0,k0));
-		getMinMax(minv, maxv, orig(i0,j1,k0));
-		getMinMax(minv, maxv, orig(i1,j1,k0));
+		if(flags.isFluid(i0,j0,k0)) { getMinMax(minv, maxv, orig(i0,j0,k0));  haveFl=true; }
+		if(flags.isFluid(i1,j0,k0)) { getMinMax(minv, maxv, orig(i1,j0,k0));  haveFl=true; }
+		if(flags.isFluid(i0,j1,k0)) { getMinMax(minv, maxv, orig(i0,j1,k0));  haveFl=true; }
+		if(flags.isFluid(i1,j1,k0)) { getMinMax(minv, maxv, orig(i1,j1,k0));  haveFl=true; }
 
 		if(orig.is3D()) {
-		getMinMax(minv, maxv, orig(i0,j0,k1));
-		getMinMax(minv, maxv, orig(i1,j0,k1));
-		getMinMax(minv, maxv, orig(i0,j1,k1));
-		getMinMax(minv, maxv, orig(i1,j1,k1)); } 
+		if(flags.isFluid(i0,j0,k1)) { getMinMax(minv, maxv, orig(i0,j0,k1)); haveFl=true; }
+		if(flags.isFluid(i1,j0,k1)) { getMinMax(minv, maxv, orig(i1,j0,k1)); haveFl=true; }
+		if(flags.isFluid(i0,j1,k1)) { getMinMax(minv, maxv, orig(i0,j1,k1)); haveFl=true; }
+		if(flags.isFluid(i1,j1,k1)) { getMinMax(minv, maxv, orig(i1,j1,k1)); haveFl=true; } } 
 	}
 
-	dst = clamp(dst, minv, maxv);
+	if(!haveFl) return fwd;
+	if(clampMode==1) {
+		dst = clamp(dst, minv, maxv); // hard clamp
+	} else {
+		if(cmpMinMax(minv,maxv,dst)) dst = fwd; // recommended in paper, "softer"
+	}
 	return dst;
 }
 	
 //! Helper function for clamping MAC grids
+//  identical to scalar version, just uses single component c of vec3 values
 template<int c> 
-inline Real doClampComponentMAC(const Vec3i& gridSize, Real dst, MACGrid& orig, Real fwd, const Vec3& pos, const Vec3& vel ) 
+inline Real doClampComponentMAC(FlagGrid& flags, const Vec3i& gridSize, Real dst, MACGrid& orig, Real fwd, const Vec3& pos, const Vec3& vel, const int clampMode ) 
 {
 	Real minv = std::numeric_limits<Real>::max(), maxv = -std::numeric_limits<Real>::max();
+	bool haveFl = false;
 
 	// forward (and optionally) backward
 	Vec3i positions[2];
+	int numPos = 1;
 	positions[0] = toVec3i(pos - vel);
-	positions[1] = toVec3i(pos + vel);
+	if(clampMode==1) { numPos = 2;
+	positions[1] = toVec3i(pos + vel); }
 
-	for(int l=0; l<2; ++l) {
+	for(int l=0; l<numPos; ++l) {
 		Vec3i& currPos = positions[l];
 
 		// clamp forward lookup to grid
-		const int i0 = clamp(currPos.x, 0, gridSize.x-1);
-		const int j0 = clamp(currPos.y, 0, gridSize.y-1);
-		const int k0 = clamp(currPos.z, 0, (orig.is3D() ? (gridSize.z-1) : 1) );
+		const int i0 = clamp(currPos.x, 0, gridSize.x-0);
+		const int j0 = clamp(currPos.y, 0, gridSize.y-0);
+		const int k0 = clamp(currPos.z, 0, (orig.is3D() ? (gridSize.z-0) : 1) );
 		const int i1 = i0+1, j1 = j0+1, k1= (orig.is3D() ? (k0+1) : k0);
 		if( (!orig.isInBounds(Vec3i(i0,j0,k0),0)) || (!orig.isInBounds(Vec3i(i1,j1,k1),0)) )
 			return fwd; 
 
 		// find min/max around source pos
-		getMinMax(minv, maxv, orig(i0,j0,k0)[c]);
-		getMinMax(minv, maxv, orig(i1,j0,k0)[c]);
-		getMinMax(minv, maxv, orig(i0,j1,k0)[c]);
-		getMinMax(minv, maxv, orig(i1,j1,k0)[c]);
+		if(flags.isFluid(i0,j0,k0)) { getMinMax(minv, maxv, orig(i0,j0,k0)[c]); haveFl=true; }
+		if(flags.isFluid(i1,j0,k0)) { getMinMax(minv, maxv, orig(i1,j0,k0)[c]); haveFl=true; }
+		if(flags.isFluid(i0,j1,k0)) { getMinMax(minv, maxv, orig(i0,j1,k0)[c]); haveFl=true; }
+		if(flags.isFluid(i1,j1,k0)) { getMinMax(minv, maxv, orig(i1,j1,k0)[c]); haveFl=true; }
 
 		if(orig.is3D()) {
-		getMinMax(minv, maxv, orig(i0,j0,k1)[c]);
-		getMinMax(minv, maxv, orig(i1,j0,k1)[c]);
-		getMinMax(minv, maxv, orig(i0,j1,k1)[c]);
-		getMinMax(minv, maxv, orig(i1,j1,k1)[c]); } 
+		if(flags.isFluid(i0,j0,k1)) { getMinMax(minv, maxv, orig(i0,j0,k1)[c]); haveFl=true; }
+		if(flags.isFluid(i1,j0,k1)) { getMinMax(minv, maxv, orig(i1,j0,k1)[c]); haveFl=true; }
+		if(flags.isFluid(i0,j1,k1)) { getMinMax(minv, maxv, orig(i0,j1,k1)[c]); haveFl=true; }
+		if(flags.isFluid(i1,j1,k1)) { getMinMax(minv, maxv, orig(i1,j1,k1)[c]); haveFl=true; } } 
 	}
 
-	dst = clamp(dst, minv, maxv);
+	if(!haveFl) return fwd;
+	if(clampMode==1) {
+		dst = clamp(dst, minv, maxv); // hard clamp
+	} else {
+		if(cmpMinMax(minv,maxv,dst)) dst = fwd; // recommended in paper, "softer"
+	}
 	return dst;
 }
 
 //! Kernel: Clamp obtained value to min/max in source area, and reset values that point out of grid or into boundaries
 //          (note - MAC grids are handled below)
 KERNEL(bnd=1) template<class T>
-void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig, Grid<T>& fwd, Real dt)
+void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig, Grid<T>& fwd, Real dt, const int clampMode)
 {
 	T     dval       = dst(i,j,k);
 	Vec3i gridUpper  = flags.getSize() - 1;
 	
-	dval = doClampComponent<T>(gridUpper, dval, orig, fwd(i,j,k), Vec3(i,j,k), vel.getCentered(i,j,k) * dt );
+	dval = doClampComponent<T>(gridUpper, flags, dval, orig, fwd(i,j,k), Vec3(i,j,k), vel.getCentered(i,j,k) * dt, clampMode );
 
 	// lookup forward/backward , round to closest NB
 	Vec3i posFwd = toVec3i( Vec3(i,j,k) + Vec3(0.5,0.5,0.5) - vel.getCentered(i,j,k) * dt );
@@ -202,16 +231,16 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
 
 //! Kernel: same as MacCormackClamp above, but specialized version for MAC grids
 KERNEL(bnd=1) 
-void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& orig, MACGrid& fwd, Real dt)
+void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& orig, MACGrid& fwd, Real dt, const int clampMode)
 {
 	Vec3  pos(i,j,k);
 	Vec3  dval       = dst(i,j,k);
 	Vec3  dfwd       = fwd(i,j,k);
 	Vec3i gridUpper  = flags.getSize() - 1;
 	
-	dval.x = doClampComponentMAC<0>(gridUpper, dval.x, orig, dfwd.x, pos, vel.getAtMACX(i,j,k) * dt);
-	dval.y = doClampComponentMAC<1>(gridUpper, dval.y, orig, dfwd.y, pos, vel.getAtMACY(i,j,k) * dt);
-	dval.z = doClampComponentMAC<2>(gridUpper, dval.z, orig, dfwd.z, pos, vel.getAtMACZ(i,j,k) * dt);
+	dval.x = doClampComponentMAC<0>(flags, gridUpper, dval.x, orig, dfwd.x, pos, vel.getAtMACX(i,j,k) * dt, clampMode );
+	dval.y = doClampComponentMAC<1>(flags, gridUpper, dval.y, orig, dfwd.y, pos, vel.getAtMACY(i,j,k) * dt, clampMode );
+	dval.z = doClampComponentMAC<2>(flags, gridUpper, dval.z, orig, dfwd.z, pos, vel.getAtMACZ(i,j,k) * dt, clampMode );
 
 	// note - the MAC version currently does not check whether source points were inside an obstacle! (unlike centered version)
 	// this would need to be done for each face separately to stay symmetric...
@@ -223,7 +252,7 @@ void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& o
 //! template function for performing SL advection
 //! (Note boundary width only needed for specialization for MAC grids below)
 template<class GridType> 
-void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, GridType& orig, int order, Real strength, int orderSpace, bool openBounds, int bWidth) {
+void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, GridType& orig, int order, Real strength, int orderSpace, bool openBounds, int bWidth, int clampMode) {
 	typedef typename GridType::BASETYPE T;
 	
 	Real dt = parent->getDt();
@@ -247,7 +276,7 @@ void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, Gr
 		MacCormackCorrect<T> (flags, newGrid, orig, fwd, bwd, strength, levelset);
 		
 		// clamp values
-		MacCormackClamp<T> (flags, vel, newGrid, orig, fwd, dt);
+		MacCormackClamp<T> (flags, vel, newGrid, orig, fwd, dt, clampMode);
 		
 		orig.swap(newGrid);
 	}
@@ -334,7 +363,7 @@ PYTHON() void resetPhiInObs (FlagGrid& flags, Grid<Real>& sdf) { knResetPhiInObs
 
 //! template function for performing SL advection: specialized version for MAC grids
 template<> 
-void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, MACGrid& orig, int order, Real strength, int orderSpace, bool openBounds, int bWidth) {
+void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, MACGrid& orig, int order, Real strength, int orderSpace, bool openBounds, int bWidth, int clampMode) {
 	Real dt = parent->getDt();
 	
 	// forward step
@@ -358,7 +387,7 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 		MacCormackCorrectMAC<Vec3> (flags, newGrid, orig, fwd, bwd, strength, false, true);
 		
 		// clamp values
-		MacCormackClampMAC (flags, vel, newGrid, orig, fwd, dt); 
+		MacCormackClampMAC (flags, vel, newGrid, orig, fwd, dt, clampMode); 
 		
 		if (openBounds) applyOutflowBC(flags, newGrid, orig, dt, bWidth);
 		orig.swap(newGrid);
@@ -368,20 +397,21 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 
 //! Perform semi-lagrangian advection of target Real- or Vec3 grid
 //! Open boundary handling needs information about width of border
+//! Clamping modes: 1 regular clamp leading to more overshoot and sharper results, 2 revert to 1st order slightly smoother less overshoot (enable when 1 gives artifacts)
 PYTHON() void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid,
-						   int order = 1, Real strength = 1.0, int orderSpace = 1, bool openBounds = false, int boundaryWidth = 1)
+						   int order = 1, Real strength = 1.0, int orderSpace = 1, bool openBounds = false, int boundaryWidth = 1, int clampMode = 1)
 {    
 	assertMsg(order==1 || order==2, "AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");
 	
 	// determine type of grid    
 	if (grid->getType() & GridBase::TypeReal) {
-		fnAdvectSemiLagrange< Grid<Real> >(flags->getParent(), *flags, *vel, *((Grid<Real>*) grid), order, strength, orderSpace, openBounds, boundaryWidth);
+		fnAdvectSemiLagrange< Grid<Real> >(flags->getParent(), *flags, *vel, *((Grid<Real>*) grid), order, strength, orderSpace, openBounds, boundaryWidth, clampMode);
 	}
 	else if (grid->getType() & GridBase::TypeMAC) {    
-		fnAdvectSemiLagrange< MACGrid >(flags->getParent(), *flags, *vel, *((MACGrid*) grid), order, strength, orderSpace, openBounds, boundaryWidth);
+		fnAdvectSemiLagrange< MACGrid >(flags->getParent(), *flags, *vel, *((MACGrid*) grid), order, strength, orderSpace, openBounds, boundaryWidth, clampMode);
 	}
 	else if (grid->getType() & GridBase::TypeVec3) {    
-		fnAdvectSemiLagrange< Grid<Vec3> >(flags->getParent(), *flags, *vel, *((Grid<Vec3>*) grid), order, strength, orderSpace, openBounds, boundaryWidth);
+		fnAdvectSemiLagrange< Grid<Vec3> >(flags->getParent(), *flags, *vel, *((Grid<Vec3>*) grid), order, strength, orderSpace, openBounds, boundaryWidth, clampMode);
 	}
 	else
 		errMsg("AdvectSemiLagrange: Grid Type is not supported (only Real, Vec3, MAC, Levelset)");    
