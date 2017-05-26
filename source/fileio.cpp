@@ -1220,13 +1220,20 @@ void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 // helper functions
 
 
-KERNEL(idx) void knQuantize(Grid<Real>& grid, Real step)
-{
-	int    q  = int(grid(idx) / step + step*0.5);
+void quantizeReal(Real& v, const Real step) { 
+	int    q  = int(v / step + step*0.5);
 	double qd = q * (double)step;
-	grid(idx) = (Real)qd;
+	v = (Real)qd;
+}
+KERNEL(idx) void knQuantize(Grid<Real>& grid, Real step) {
+	quantizeReal( grid(idx), step );
 } 
 PYTHON() void quantizeGrid(Grid<Real>& grid, Real step) { knQuantize(grid,step); }
+
+KERNEL(idx) void knQuantizeVec3(Grid<Vec3>& grid, Real step) {
+	for(int c=0; c<3; ++c) quantizeReal( grid(idx)[c], step );
+} 
+PYTHON() void quantizeGridVec3(Grid<Vec3>& grid, Real step) { knQuantizeVec3(grid,step); }
 
 
 

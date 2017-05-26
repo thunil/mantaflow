@@ -260,6 +260,51 @@ template<class T> std::string Grid<T>::getDataPointer() {
 	return out.str();
 }
 
+// L1 / L2 functions
+
+//! calculate L1 norm for whole grid with non-parallelized loop
+template<class GRID>
+Real loop_calcL1Grid (const GRID &grid, int bnd)
+{
+	double accu = 0., cnt = 0.;
+	FOR_IJKT_BND(grid, bnd) { accu += norm(grid(i,j,k,t)); }
+	return (Real)accu;
+}
+
+//! calculate L2 norm for whole grid with non-parallelized loop
+// TODO , use kernel instead! slow... , also move to grid.h add 4D versions
+template<class GRID>
+Real loop_calcL2Grid(const GRID &grid, int bnd)
+{
+	double accu = 0.;
+	FOR_IJKT_BND(grid, bnd) {
+		accu += normSquare(grid(i,j,k,t)); // supported for real and vec3,4 types
+	}
+	return (Real)sqrt(accu);
+}
+
+
+template<class T> Real Grid<T>::getL1(int bnd) {
+	return loop_calcL1Grid<Grid<T> >(*this, bnd);
+}
+template<class T> Real Grid<T>::getL2(int bnd) {
+	return loop_calcL2Grid<Grid<T> >(*this, bnd);
+}
+
+KERNEL(reduce=+) returns(int cnt=0)
+int knCountCells(const FlagGrid& flags, int flag, int bnd, Grid<Real>* mask) { 
+	if(mask) (*mask)(i,j,k) = 0.;
+	if( bnd>0 && (!flags.isInBounds(Vec3i(i,j,k))) ) return;
+	if (flags(i,j,k) & flag ) {
+		cnt++; 
+		if(mask) (*mask)(i,j,k) = 1.;
+	}
+}
+
+int FlagGrid::countCells(int flag, int bnd, Grid<Real>* mask) {
+	return knCountCells(*this, flag, bnd, mask);
+}
+
 // compute maximal diference of two cells in the grid
 // used for testing system
 PYTHON() Real gridMaxDiff(Grid<Real>& g1, Grid<Real>& g2)

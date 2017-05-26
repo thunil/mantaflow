@@ -380,9 +380,11 @@ inline S normSquare ( const Vector3D<S>& v ) {
 	return v.x*v.x + v.y*v.y + v.z*v.z;
 }
 
-//! compatibility, allow use of Real and Vec inputs with norm/normSquare
+//! compatibility, allow use of int, Real and Vec inputs with norm/normSquare
 inline Real norm(const Real v) { return fabs(v); }
 inline Real normSquare(const Real v) { return square(v); }
+inline Real norm(const int v) { return abs(v); }
+inline Real normSquare(const int v) { return square(v); }
 
 //! Returns a normalized vector
 template<class S>

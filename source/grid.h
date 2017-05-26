@@ -179,6 +179,11 @@ public:
 	PYTHON() Real getMax();
 	//! get min value in grid 
 	PYTHON() Real getMin();
+	//! calculate L1 norm of grid content
+	PYTHON() Real getL1(int bnd=0);
+	//! calculate L2 norm of grid content
+	PYTHON() Real getL2(int bnd=0);
+
 	//! set all boundary cells to constant value (Dirichlet)
 	PYTHON() void setBound(T value, int boundaryWidth=1);
 	//! set all boundary cells to last inner value (Neumann)
@@ -325,9 +330,15 @@ public:
 
 	void initBoundaries( const int &boundaryWidth, const int *types );
 
+	//! set fluid flags inside levelset (liquids)
 	PYTHON() void updateFromLevelset(LevelsetGrid& levelset);    
+	//! set all cells (except obs/in/outflow) to type (fluid by default)
 	PYTHON() void fillGrid(int type=TypeFluid);
 
+	//! count no. of cells matching flags via "AND"
+	//! warning for large grids! only regular int returned (due to python interface)
+	//! optionally creates mask in RealGrid (1 where flag matches, 0 otherwise)
+	PYTHON() int countCells(int flag, int bnd=0, Grid<Real>* mask=NULL);
 };
 
 //! helper to compute grid conversion factor between local coordinates of two grids
