@@ -28,8 +28,7 @@ import paramhelpers as ph
 from convautoenc import ConvolutionalAutoEncoder
 
 import keras
-#import tensorflow.contrib.keras as keras
-#from transposed_convolution import *
+#import tf.keras as keras  # TODO, for v1.2 
 
 # path to sim data, trained models and output are also saved here
 basePath = '../data/'
@@ -53,12 +52,15 @@ dropout         = 0.9   # slight...
 batchSize       = 100
 testInterval    = 200
 saveInterval    = 10
-#saveInterval    = 50 # NT_DEBUG , for long runs...
+#saveInterval    = 50 # increase for long runs...
 fromSim = toSim = -1
 keepAll         = False
 numTests        = 10      # evaluate on 10 data points from test data
 randSeed        = 1
 fileFormat      = "npz"
+
+# run this many iterations per keras fit call
+kerasChunk = 100
 
 # optional, add velocity as additional channels to input?
 useVelocities   = 0
@@ -148,6 +150,7 @@ if not loadModelTest == -1:
 	load_path = basePath + 'test_%04d/model_%04d.kkpt' % (loadModelTest, loadModelNo)
 
 (test_path,test_folder_no) = next_test_path(testPathStartNo)
+if not outputOnly: uniio.backupFile(__file__, test_path)
 
 # custom Logger to write Log to file
 class Logger(object):
@@ -215,10 +218,8 @@ model.add( keras.layers.convolutional.Conv2DTranspose(1,       (4,4), activation
 
 model.compile( loss='mse', optimizer='adam') #, metrics=['accuracy'] )
 
-# load test data, note no split into train & test/validation set here, done by keras during fit
-#tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll)
+# load test data, note no split into train & test/validation set necessary here, done by keras during fit
 tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 1.0, 0.0, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll)
-#uniio.backupFile(__file__, test_path)
 
 # manually reshape data
 #print( format( tiCr.tile_data['inputs_train'].shape) + " " + format( tiCr.tile_data['outputs_train'].shape) ) # 16x16, 64x64
@@ -231,7 +232,6 @@ if not outputOnly:
 	if 1:
 		lastCost   = 1e10
 		lastSave   = 1
-		kerasChunk = 100
 		save_no    = 0
 		trainingEpochs = int(trainingEpochs/kerasChunk)
 		for epoch in range(trainingEpochs):
@@ -246,12 +246,16 @@ if not outputOnly:
 			# NT_DEBUG print(format(hist))
 
 			# save model
-			if ((cost < lastCost) or alwaysSave) and (lastSave >= saveInterval):
+			doSave = False
+			if ((cost < lastCost) or alwaysSave) and (lastSave >= saveInterval): doSave = True
+			if epoch == (trainingEpochs-1): doSave = True # save last state
+
+			if doSave:
 				model.save_weights(test_path + 'model_%04d.kkpt' % save_no)
+				print('Saved Model with cost %f.' % cost)
 				save_no += 1
 				lastSave = 1
 				lastCost = cost
-				print('Saved Model with cost %f.' % cost)
 			else:
 				lastSave += 1
 			print('\nEpoch {:04d}/{:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), trainingEpochs, 0., 0.))
@@ -276,8 +280,6 @@ else:
 	# simply concat tiles into images...
 	tileSizeHiCrop = upRes * cropTileSizeLow
 	tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
-	print( format( tilesPerImg ) )
-	print( format( tileSizeHiCrop ) )
 	img_count = len(tiCr.tile_inputs_all_complete) / tilesPerImg
 	tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, \
 		imageCounter=1, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)

@@ -165,6 +165,7 @@ if not loadModelTest == -1:
 	load_path = basePath + 'test_%04d/model_%04d.ckpt' % (loadModelTest, loadModelNo)
 
 test_path = next_test_path(testPathStartNo)
+uniio.backupFile(__file__, test_path)
 
 # custom Logger to write Log to file
 class Logger(object):
@@ -430,8 +431,6 @@ tiCr.reduceInputsTo2DVelocity()
 # print('Normalizing tile values...')
 # tiCr.normalizeInputTestData()
 tiCr.splitTileData(0.95, 0.05)
-
-#uniio.backupFile(__file__, test_path)
 
 # create a summary to monitor cost tensor
 lossTrain  = tf.summary.scalar("loss",     costFunc)

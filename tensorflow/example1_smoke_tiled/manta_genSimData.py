@@ -60,9 +60,6 @@ xl.timestep = sm.timestep
 
 timings = Timings()
 
-# Insta params  -----------------------------------------------------------------------#
-bgt     = 60 #60
-
 # Simulation Grids  -------------------------------------------------------------------#
 flags    = sm.create(FlagGrid)
 vel      = sm.create(MACGrid)
