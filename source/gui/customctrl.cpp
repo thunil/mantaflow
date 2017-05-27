@@ -135,6 +135,7 @@ extern GuiThread* gGuiThread;
 
 Gui::Gui() : 
 	PbClass(NULL), mGuiPtr(gGuiThread), mMainPtr(gMainThread) {     
+	if( getenv("MANTA_DISABLE_UI") && atoi( getenv("MANTA_DISABLE_UI") )) { errMsg("Cannot create GUI object, GUI disabled"); }
 }
 
 void Gui::setBackgroundMesh(Mesh* m) {
