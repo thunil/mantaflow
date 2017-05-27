@@ -56,7 +56,7 @@ printVersion = 1
 #	- the "strict" one for double precision compiles (detected automatically)
 #   - the "grid" object can be either a Grid<T>, or a ParticleDataImpl<T> ; parent is either FluidSolver or ParticleSystem
 #
-def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, invertResult=False ):
+def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, invertResult=False, debugShowDifference=False ):
 	global printVersion
 
 	# both always have to given together (if not default)
@@ -75,11 +75,15 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 	if ( type(grid).__name__ == "MACGrid" ):
 		gridTmpMac = parent.create(VecGrid)
 		copyMacToVec3(grid , gridTmpMac )
-		return doTestGrid( file, name, parent, gridTmpMac , threshold, thresholdStrict)
+		ret = doTestGrid( file, name, parent, gridTmpMac , threshold, thresholdStrict, invertResult, debugShowDifference)
+		if debugShowDifference: grid.copyFrom( gridTmpMac )
+		return ret
 	if ( type(grid).__name__ == "LevelsetGrid" ):
 		gridTmpLs = parent.create(RealGrid)
 		copyLevelsetToReal(grid , gridTmpLs )
-		return doTestGrid( file, name, parent, gridTmpLs  , threshold, thresholdStrict)
+		ret = doTestGrid( file, name, parent, gridTmpLs  , threshold, thresholdStrict, invertResult, debugShowDifference)
+		if debugShowDifference: grid.copyFrom( gridTmpLs )
+		return ret
 
 	# now we should only have real & vec3 grids
 
@@ -162,6 +166,12 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 		else:
 			print( "Error doTestGrid - error calculation missing" )
 			return 1
+
+		# debug mode to return difference in source grid, warning - no error measurements possible anymore
+		if debugShowDifference: 
+			print("Warning debugShowDifference active, test data invalidated for UI display")
+			grid.sub( compareTmpGrid )
+			return 0
 
 		# debug info , print min/max
 		if 0:
