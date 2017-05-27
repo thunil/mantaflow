@@ -105,7 +105,9 @@ template<> inline bool cmpMinMax<Vec3>(Vec3& minv, Vec3& maxv, const Vec3& val) 
 	return( cmpMinMax(minv.x, maxv.x, val.x) | cmpMinMax(minv.y, maxv.y, val.y) | cmpMinMax(minv.z, maxv.z, val.z));
 }
 
-	
+
+#define checkFlag(x,y,z) (flags((x),(y),(z)) & (FlagGrid::TypeFluid|FlagGrid::TypeEmpty))
+
 //! Helper function for clamping non-mac grids (those have specialized per component version below)
 //  Note - 2 clamp modes, a sharper one (default, clampMode 1, also uses backward step), 
 //         and a softer version (clampMode 2) that is recommended in Andy's paper
@@ -125,25 +127,23 @@ inline T doClampComponent(const Vec3i& gridSize, FlagGrid& flags, T dst, Grid<T>
 	for(int l=0; l<numPos; ++l) {
 		Vec3i& currPos = positions[l];
 
-		// clamp forward lookup to grid
-		const int i0 = clamp(currPos.x, 0, gridSize.x-0); // gridsize already has -1 !
+		// clamp lookup to grid
+		const int i0 = clamp(currPos.x, 0, gridSize.x-0); // note! gridsize already has -1 from call 
 		const int j0 = clamp(currPos.y, 0, gridSize.y-0);
 		const int k0 = clamp(currPos.z, 0, (orig.is3D() ? (gridSize.z-0) : 1) );
 		const int i1 = i0+1, j1 = j0+1, k1= (orig.is3D() ? (k0+1) : k0);
-		if( (!orig.isInBounds(Vec3i(i0,j0,k0),0)) || (!orig.isInBounds(Vec3i(i1,j1,k1),0)) )
-			return fwd; 
 
 		// find min/max around source pos
-		if(flags.isFluid(i0,j0,k0)) { getMinMax(minv, maxv, orig(i0,j0,k0));  haveFl=true; }
-		if(flags.isFluid(i1,j0,k0)) { getMinMax(minv, maxv, orig(i1,j0,k0));  haveFl=true; }
-		if(flags.isFluid(i0,j1,k0)) { getMinMax(minv, maxv, orig(i0,j1,k0));  haveFl=true; }
-		if(flags.isFluid(i1,j1,k0)) { getMinMax(minv, maxv, orig(i1,j1,k0));  haveFl=true; }
+		if(checkFlag(i0,j0,k0)) { getMinMax(minv, maxv, orig(i0,j0,k0));  haveFl=true; }
+		if(checkFlag(i1,j0,k0)) { getMinMax(minv, maxv, orig(i1,j0,k0));  haveFl=true; }
+		if(checkFlag(i0,j1,k0)) { getMinMax(minv, maxv, orig(i0,j1,k0));  haveFl=true; }
+		if(checkFlag(i1,j1,k0)) { getMinMax(minv, maxv, orig(i1,j1,k0));  haveFl=true; }
 
 		if(orig.is3D()) {
-		if(flags.isFluid(i0,j0,k1)) { getMinMax(minv, maxv, orig(i0,j0,k1)); haveFl=true; }
-		if(flags.isFluid(i1,j0,k1)) { getMinMax(minv, maxv, orig(i1,j0,k1)); haveFl=true; }
-		if(flags.isFluid(i0,j1,k1)) { getMinMax(minv, maxv, orig(i0,j1,k1)); haveFl=true; }
-		if(flags.isFluid(i1,j1,k1)) { getMinMax(minv, maxv, orig(i1,j1,k1)); haveFl=true; } } 
+		if(checkFlag(i0,j0,k1)) { getMinMax(minv, maxv, orig(i0,j0,k1)); haveFl=true; }
+		if(checkFlag(i1,j0,k1)) { getMinMax(minv, maxv, orig(i1,j0,k1)); haveFl=true; }
+		if(checkFlag(i0,j1,k1)) { getMinMax(minv, maxv, orig(i0,j1,k1)); haveFl=true; }
+		if(checkFlag(i1,j1,k1)) { getMinMax(minv, maxv, orig(i1,j1,k1)); haveFl=true; } } 
 	}
 
 	if(!haveFl) return fwd;
@@ -155,13 +155,14 @@ inline T doClampComponent(const Vec3i& gridSize, FlagGrid& flags, T dst, Grid<T>
 	return dst;
 }
 	
-//! Helper function for clamping MAC grids
-//  identical to scalar version, just uses single component c of vec3 values
+//! Helper function for clamping MAC grids, slight differences in flag checks
+//  similar to scalar version, just uses single component c of vec3 values
+//  for symmetry, reverts to first order near boundaries for clampMode 2
 template<int c> 
 inline Real doClampComponentMAC(FlagGrid& flags, const Vec3i& gridSize, Real dst, MACGrid& orig, Real fwd, const Vec3& pos, const Vec3& vel, const int clampMode ) 
 {
 	Real minv = std::numeric_limits<Real>::max(), maxv = -std::numeric_limits<Real>::max();
-	bool haveFl = false;
+	//bool haveFl = false;
 
 	// forward (and optionally) backward
 	Vec3i positions[2];
@@ -170,31 +171,31 @@ inline Real doClampComponentMAC(FlagGrid& flags, const Vec3i& gridSize, Real dst
 	if(clampMode==1) { numPos = 2;
 	positions[1] = toVec3i(pos + vel); }
 
+	Vec3i oPos = toVec3i(pos); 
+	Vec3i nbPos = oPos; nbPos[c] -= 1;
+	if(clampMode==2 && (! (checkFlag(oPos.x,oPos.y,oPos.z) && checkFlag(nbPos.x,nbPos.y,nbPos.z)) )) return fwd; // replaces haveFl check
+
 	for(int l=0; l<numPos; ++l) {
 		Vec3i& currPos = positions[l];
 
-		// clamp forward lookup to grid
-		const int i0 = clamp(currPos.x, 0, gridSize.x-0);
+		const int i0 = clamp(currPos.x, 0, gridSize.x-0); // note! gridsize already has -1 from call 
 		const int j0 = clamp(currPos.y, 0, gridSize.y-0);
-		const int k0 = clamp(currPos.z, 0, (orig.is3D() ? (gridSize.z-0) : 1) );
+		const int k0 = clamp(currPos.z, 0, (orig.is3D() ? (gridSize.z-1) : 0) );
 		const int i1 = i0+1, j1 = j0+1, k1= (orig.is3D() ? (k0+1) : k0);
-		if( (!orig.isInBounds(Vec3i(i0,j0,k0),0)) || (!orig.isInBounds(Vec3i(i1,j1,k1),0)) )
-			return fwd; 
 
 		// find min/max around source pos
-		if(flags.isFluid(i0,j0,k0)) { getMinMax(minv, maxv, orig(i0,j0,k0)[c]); haveFl=true; }
-		if(flags.isFluid(i1,j0,k0)) { getMinMax(minv, maxv, orig(i1,j0,k0)[c]); haveFl=true; }
-		if(flags.isFluid(i0,j1,k0)) { getMinMax(minv, maxv, orig(i0,j1,k0)[c]); haveFl=true; }
-		if(flags.isFluid(i1,j1,k0)) { getMinMax(minv, maxv, orig(i1,j1,k0)[c]); haveFl=true; }
+		getMinMax(minv, maxv, orig(i0,j0,k0)[c]); 
+		getMinMax(minv, maxv, orig(i1,j0,k0)[c]); 
+		getMinMax(minv, maxv, orig(i0,j1,k0)[c]); 
+		getMinMax(minv, maxv, orig(i1,j1,k0)[c]); 
 
 		if(orig.is3D()) {
-		if(flags.isFluid(i0,j0,k1)) { getMinMax(minv, maxv, orig(i0,j0,k1)[c]); haveFl=true; }
-		if(flags.isFluid(i1,j0,k1)) { getMinMax(minv, maxv, orig(i1,j0,k1)[c]); haveFl=true; }
-		if(flags.isFluid(i0,j1,k1)) { getMinMax(minv, maxv, orig(i0,j1,k1)[c]); haveFl=true; }
-		if(flags.isFluid(i1,j1,k1)) { getMinMax(minv, maxv, orig(i1,j1,k1)[c]); haveFl=true; } } 
+		getMinMax(minv, maxv, orig(i0,j0,k1)[c]); 
+		getMinMax(minv, maxv, orig(i1,j0,k1)[c]); 
+		getMinMax(minv, maxv, orig(i0,j1,k1)[c]); 
+		getMinMax(minv, maxv, orig(i1,j1,k1)[c]); }
 	}
 
-	if(!haveFl) return fwd;
 	if(clampMode==1) {
 		dst = clamp(dst, minv, maxv); // hard clamp
 	} else {
@@ -202,6 +203,8 @@ inline Real doClampComponentMAC(FlagGrid& flags, const Vec3i& gridSize, Real dst
 	}
 	return dst;
 }
+
+#undef checkFlag
 
 //! Kernel: Clamp obtained value to min/max in source area, and reset values that point out of grid or into boundaries
 //          (note - MAC grids are handled below)
@@ -213,19 +216,23 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
 	
 	dval = doClampComponent<T>(gridUpper, flags, dval, orig, fwd(i,j,k), Vec3(i,j,k), vel.getCentered(i,j,k) * dt, clampMode );
 
-	// lookup forward/backward , round to closest NB
-	Vec3i posFwd = toVec3i( Vec3(i,j,k) + Vec3(0.5,0.5,0.5) - vel.getCentered(i,j,k) * dt );
-	Vec3i posBwd = toVec3i( Vec3(i,j,k) + Vec3(0.5,0.5,0.5) + vel.getCentered(i,j,k) * dt );
-	
-	// test if lookups point out of grid or into obstacle (note doClampComponent already checks sides, below is needed for valid flags access)
-	if (posFwd.x < 0 || posFwd.y < 0 || posFwd.z < 0 ||
-		posBwd.x < 0 || posBwd.y < 0 || posBwd.z < 0 ||
-		posFwd.x > gridUpper.x || posFwd.y > gridUpper.y || ((posFwd.z > gridUpper.z)&&flags.is3D()) ||
-		posBwd.x > gridUpper.x || posBwd.y > gridUpper.y || ((posBwd.z > gridUpper.z)&&flags.is3D()) ||
-		flags.isObstacle(posFwd) || flags.isObstacle(posBwd) ) 
-	{
-		dval = fwd(i,j,k);
+	if(1 && clampMode==1) {
+		// lookup forward/backward , round to closest NB
+		Vec3i posFwd = toVec3i( Vec3(i,j,k) + Vec3(0.5,0.5,0.5) - vel.getCentered(i,j,k) * dt );
+		Vec3i posBwd = toVec3i( Vec3(i,j,k) + Vec3(0.5,0.5,0.5) + vel.getCentered(i,j,k) * dt );
+		
+		// test if lookups point out of grid or into obstacle (note doClampComponent already checks sides, below is needed for valid flags access)
+		if (posFwd.x < 0 || posFwd.y < 0 || posFwd.z < 0 ||
+			posBwd.x < 0 || posBwd.y < 0 || posBwd.z < 0 ||
+			posFwd.x > gridUpper.x || posFwd.y > gridUpper.y || ((posFwd.z > gridUpper.z)&&flags.is3D()) ||
+			posBwd.x > gridUpper.x || posBwd.y > gridUpper.y || ((posBwd.z > gridUpper.z)&&flags.is3D()) ||
+			flags.isObstacle(posFwd) || flags.isObstacle(posBwd) ) 
+		{
+			dval = fwd(i,j,k);
+		}
 	}
+	// clampMode 2 handles flags in doClampComponent call
+
 	dst(i,j,k) = dval;
 }
 
