@@ -46,6 +46,9 @@ class GridCgInterface {
 		virtual void setAccuracy(Real set) = 0;
 		virtual Real getAccuracy() const = 0;
 
+		//! force reinit upon next iterate() call, can be used for doing multiple solves
+		virtual void forceReinit() = 0;
+
 		void setUseL2Norm(bool set) { mUseL2Norm = set; }
 
 	protected:
@@ -73,6 +76,7 @@ class GridCg : public GridCgInterface {
 		//! init pointers, and copy values from "normal" matrix
 		void setICPreconditioner(PreconditionType method, Grid<Real> *A0, Grid<Real> *Ai, Grid<Real> *Aj, Grid<Real> *Ak);
 		void setMGPreconditioner(PreconditionType method, GridMg* MG);
+		void forceReinit() { mInited = false; }
 		
 		// Accessors        
 		Real getSigma() const { return mSigma; }

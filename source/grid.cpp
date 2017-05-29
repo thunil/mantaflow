@@ -262,6 +262,31 @@ template<class T> std::string Grid<T>::getDataPointer() {
 
 // L1 / L2 functions
 
+/* NT_DEBUG merge 
+// L1
+KERNEL(idx, reduce=+) returns(double result=0.0)
+double knGridL1(const    Grid<Real>& a) { result += fabs(a[idx]); }
+
+KERNEL(idx, reduce=+) returns(double result=0.0)
+double knVecGridL1(const Grid<Vec3>& v) { result += norm(v[idx]); }
+
+//! compute L1 norm of whole grid content 
+PYTHON() Real getGridL1(Grid<Real>&    source) { return ( knGridL1   (source) ); }
+PYTHON() Real getVecGridL1(Grid<Vec3>& source) { return ( knVecGridL1(source) ); }
+
+// L2
+KERNEL(idx, reduce=+) returns(double result=0.0)
+double knGridL2(const    Grid<Real>& a) { result += a[idx]*a[idx]; }
+
+KERNEL(idx, reduce=+) returns(double result=0.0)
+double knVecGridL2(const Grid<Vec3>& v) { result += normSquare(v[idx]); }
+
+//! compute L2 norm of whole grid content 
+PYTHON() Real getGridL2(Grid<Real>&    source) { return sqrt( knGridL2   (source) ); }
+PYTHON() Real getVecGridL2(Grid<Vec3>& source) { return sqrt( knVecGridL2(source) ); }
+
+*/
+
 //! calculate L1 norm for whole grid with non-parallelized loop
 template<class GRID>
 Real loop_calcL1Grid (const GRID &grid, int bnd)
@@ -562,15 +587,15 @@ PYTHON() Real getGridAvg(Grid<Real>& source, FlagGrid* flags=NULL)
 
 //! transfer data between real and vec3 grids
 
-KERNEL(idx) void knGetComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { 
+KERNEL(idx) void knGetComponent(const Grid<Vec3>& source, Grid<Real>& target, int component) { 
 	target[idx] = source[idx][component]; 
 }
-PYTHON() void getComponent(Grid<Vec3>& source, Grid<Real>& target, int component) { knGetComponent(source, target, component); }
+PYTHON() void getComponent(const Grid<Vec3>& source, Grid<Real>& target, int component) { knGetComponent(source, target, component); }
 
-KERNEL(idx) void knSetComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { 
+KERNEL(idx) void knSetComponent(const Grid<Real>& source, Grid<Vec3>& target, int component) { 
 	target[idx][component] = source[idx]; 
 }
-PYTHON() void setComponent(Grid<Real>& source, Grid<Vec3>& target, int component) { knSetComponent(source, target, component); }
+PYTHON() void setComponent(const Grid<Real>& source, Grid<Vec3>& target, int component) { knSetComponent(source, target, component); }
 
 //******************************************************************************
 // Specialization classes

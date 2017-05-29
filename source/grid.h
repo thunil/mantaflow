@@ -351,8 +351,9 @@ void copyMacToVec3(MACGrid &source, Grid<Vec3>& target);
 void convertMacToVec3(MACGrid &source, Grid<Vec3>& target);
 void resampleVec3ToMac(Grid<Vec3>& source, MACGrid &target);
 void resampleMacToVec3 (MACGrid &source, Grid<Vec3>& target );
-void getComponent(const Grid<Vec3>& src, Grid<Real>& dst, int c);
-void setComponent(const Grid<Real>& src, Grid<Vec3>& dst, int c);
+
+void getComponent(const Grid<Vec3>& source, Grid<Real>& target, int component);
+void setComponent(const Grid<Real>& source, Grid<Vec3>& target, int component);
 
 
 

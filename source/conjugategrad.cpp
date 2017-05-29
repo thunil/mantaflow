@@ -17,7 +17,7 @@
 using namespace std;
 namespace Manta {
 
-const int CG_DEBUGLEVEL = 5;
+const int CG_DEBUGLEVEL = 2;
 	
 //*****************************************************************************
 //  Precondition helpers
@@ -205,16 +205,18 @@ GridCg<APPLYMAT>::GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual,
 	mSearch(search), mFlags(flags), mTmp(tmp), mpA0(pA0), mpAi(pAi), mpAj(pAj), mpAk(pAk),
 	mPcMethod(PC_None), mpPCA0(nullptr), mpPCAi(nullptr), mpPCAj(nullptr), mpPCAk(nullptr), mMG(nullptr), mSigma(0.), mAccuracy(VECTOR_EPSILON), mResNorm(1e20) 
 {
-	dst.clear();
-	residual.clear();
-	search.clear();
-	tmp.clear();            
+	//dst.clear();
+	//residual.clear();
+	//search.clear();
+	//tmp.clear();            
 }
 
 template<class APPLYMAT>
 void GridCg<APPLYMAT>::doInit() {
 	mInited = true;
+	mIterations = 0;
 
+	mDst.clear();
 	mResidual.copyFrom( mRhs ); // p=0, residual = b
 	
 	if (mPcMethod == PC_ICP) {
@@ -332,5 +334,93 @@ void GridCg<APPLYMAT>::setMGPreconditioner(PreconditionType method, GridMg* MG) 
 // explicit instantiation
 template class GridCg<ApplyMatrix>;
 template class GridCg<ApplyMatrix2D>;
+
+
+
+//*****************************************************************************
+
+// diffusion , for viscosity
+
+
+//! do a CG solve for diffusion; note: diffusion coefficient alpha given in grid space, 
+//  rescale in python file for discretization independence (or physical correspondence)
+//  see lidDrivenCavity.py for an example
+PYTHON() void cgSolveDiffusion(FlagGrid& flags, GridBase& grid, 
+						Real alpha = 0.25, Real cgMaxIterFac = 1.0, Real cgAccuracy   = 1e-4 )
+{
+	// reserve temp grids
+	FluidSolver* parent = flags.getParent();
+	Grid<Real> rhs(parent);
+	Grid<Real> residual(parent), search(parent), tmp(parent);
+	Grid<Real> A0(parent), Ai(parent), Aj(parent), Ak(parent);
+		
+	// setup matrix and boundaries
+	FlagGrid flagsDummy(parent);
+	flagsDummy.setConst(FlagGrid::TypeFluid);
+	MakeLaplaceMatrix (flagsDummy, A0, Ai, Aj, Ak);
+
+	FOR_IJK(flags) {
+		if(flags.isObstacle(i,j,k)) {
+			Ai(i,j,k)  = Aj(i,j,k)  = Ak(i,j,k)  = 0.0;
+			A0(i,j,k)  = 1.0;
+		} else {
+			Ai(i,j,k) *= alpha;
+			Aj(i,j,k) *= alpha;
+			Ak(i,j,k) *= alpha;
+			A0(i,j,k) *= alpha;
+			A0(i,j,k) += 1.;
+		}
+	}
+
+	GridCgInterface *gcg;
+	// note , no preconditioning for now...
+	const int maxIter = (int)(cgMaxIterFac * flags.getSize().max()) * (flags.is3D() ? 1 : 4);
+	
+	if (grid.getType() & GridBase::TypeReal) {
+		Grid<Real>& u = ((Grid<Real>&) grid);
+		rhs.copyFrom(u); 
+		if (flags.is3D())
+			gcg = new GridCg<ApplyMatrix  >(u, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
+		else
+			gcg = new GridCg<ApplyMatrix2D>(u, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak ); 
+
+		gcg->setAccuracy( cgAccuracy ); 
+		gcg->solve(maxIter);
+
+		debMsg("FluidSolver::solveDiffusion iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), CG_DEBUGLEVEL);
+	}
+	else 
+	if( (grid.getType() & GridBase::TypeVec3) || (grid.getType() & GridBase::TypeVec3) ) 
+	{    
+		Grid<Vec3>& vec = ((Grid<Vec3>&) grid);
+		Grid<Real> u(parent);
+
+		// core solve is same as for a regular real grid 
+		if (flags.is3D())
+			gcg = new GridCg<ApplyMatrix  >(u, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak );
+		else
+			gcg = new GridCg<ApplyMatrix2D>(u, rhs, residual, search, flags, tmp, &A0, &Ai, &Aj, &Ak ); 
+		gcg->setAccuracy( cgAccuracy ); 
+
+		// diffuse every component separately
+		for(int component = 0; component< (grid.is3D() ? 3:2); ++component) {
+			getComponent( vec, u, component );
+			gcg->forceReinit(); 
+
+			rhs.copyFrom(u); 
+			gcg->solve(maxIter);
+			debMsg("FluidSolver::solveDiffusion vec3, iterations:"<<gcg->getIterations()<<", res:"<<gcg->getSigma(), CG_DEBUGLEVEL);
+
+			setComponent( u, vec, component );
+		}
+	} else {
+		errMsg("cgSolveDiffusion: Grid Type is not supported (only Real, Vec3, MAC, or Levelset)");
+	}
+
+	delete gcg;
+}
+
+
+
 
 }; // DDF
