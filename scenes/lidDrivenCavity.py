@@ -43,6 +43,7 @@ s.timestep    = s.frameLength
 if doQuickstart:
 	# cfl reduction, start high, reduce over time
 	s.cfl         = 10.0 
+	mantaMsg("Note - quickstart active, starting with high CFL number, reduced later on",0)
 
 density  = s.create(RealGrid)
 # prepare grids
@@ -69,11 +70,6 @@ lid = s.create(Box, p0=gs*vec3(0.0,1.0-(1./float(gs.x)*3.1),0.0), p1=gs*vec3(1.0
 source = s.create(Cylinder, center=gs*vec3(0.5,0.5,0.5), radius=res*0.10, z=gs*vec3(0, 0.10, 0))
 
 
-# diffusion param for solve = const * dt / dx^2
-alphaV = visc * s.timestep * float(res*res)
-
-mantaMsg("Visc %f , a=%f , Re=%f " %(visc, alphaV, Re), 0 )
-
 	
 #main loop
 lastFrame = -1
@@ -99,22 +95,22 @@ for t in range(98765):
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, clampMode=2)
 	resetOutflow(flags=flags,real=density) 
 
-	setWallBcs(flags=flags, vel=vel)    
-
-	# viscosity test 
-	density.setBound(0.0, 1)
-
 	# vel diffusion / viscosity!
 	if visc>0.:
-		cgSolveDiffusion( flags, vel, alphaV )
+		# diffusion param for solve = const * dt / dx^2
+		alphaV = visc * s.timestep * float(res*res)
 
+		mantaMsg("Viscosity: %f , alpha=%f , Re=%f " %(visc, alphaV, Re), 0 )
+
+		setWallBcs(flags=flags, vel=vel)    
+		cgSolveDiffusion( flags, vel, alphaV )
 
 	# solve pressure
 	setWallBcs(flags=flags, vel=vel)    
 	solvePressure(flags=flags, vel=vel, pressure=pressure)
 
 	if 0 and (GUI) and (lastFrame!=s.frame) and (s.frame%1==0):
-		gui.screenshot( 'ldc06re%05d_%04d.jpg' % (int(Re), s.frame) );
+		gui.screenshot( 'ldc_re%05d_%04d.jpg' % (int(Re), s.frame) );
 	
 	lastFrame = s.frame
 	s.step()

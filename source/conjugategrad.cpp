@@ -7,7 +7,7 @@
  * GNU General Public License (GPL) 
  * http://www.gnu.org/licenses
  *
- * Conjugate gradient solver
+ * Conjugate gradient solver, for pressure and viscosity
  *
  ******************************************************************************/
 
@@ -204,12 +204,7 @@ GridCg<APPLYMAT>::GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual,
 	GridCgInterface(), mInited(false), mIterations(0), mDst(dst), mRhs(rhs), mResidual(residual),
 	mSearch(search), mFlags(flags), mTmp(tmp), mpA0(pA0), mpAi(pAi), mpAj(pAj), mpAk(pAk),
 	mPcMethod(PC_None), mpPCA0(nullptr), mpPCAi(nullptr), mpPCAj(nullptr), mpPCAk(nullptr), mMG(nullptr), mSigma(0.), mAccuracy(VECTOR_EPSILON), mResNorm(1e20) 
-{
-	//dst.clear();
-	//residual.clear();
-	//search.clear();
-	//tmp.clear();            
-}
+{ }
 
 template<class APPLYMAT>
 void GridCg<APPLYMAT>::doInit() {
@@ -274,7 +269,6 @@ bool GridCg<APPLYMAT>::iterate() {
 	} else {
 		mResNorm = mResidual.getMaxAbs();        
 	}
-	//if(mIterations % 10 == 9) debMsg("GridCg::Iteration i="<<mIterations<<", resNorm="<<mResNorm<<" accuracy="<<mAccuracy, 1);
 
 	// abort here to safe some work...
 	if(mResNorm<mAccuracy) {
@@ -337,9 +331,8 @@ template class GridCg<ApplyMatrix2D>;
 
 
 
-//*****************************************************************************
-
-// diffusion , for viscosity
+//***************************************************************************** 
+// diffusion for real and vec grids, e.g. for viscosity
 
 
 //! do a CG solve for diffusion; note: diffusion coefficient alpha given in grid space, 

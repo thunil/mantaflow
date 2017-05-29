@@ -131,6 +131,12 @@ elif platform==2:
 	files = os.popen("ls "+basedir+str(filePrefix)+"????_*.py").read() # some cygwin under windows
 #print ("Debug - using test scene files: "+files)
 
+# for graphs in visual mode only
+gnuplotExe = "/usr/bin/gnuplot"
+if len( os.getenv('MANTA_GNUPLOT', "") )>0:
+	gnuplotExe = os.getenv('MANTA_GNUPLOT', "")
+	print("Using gnuplot at %s" % gnuplotExe);
+
 # ready to go...
 num = 0
 numOks = 0
@@ -177,9 +183,9 @@ for file in files:
 		print("Full output: " + result);
 		print(" ");
 
-	# store benchmarking results (if theres any output) , and generate plot
+	# store benchmarking results (if theres any output) , and generate plots
 	timefile = "%s/runtimes/%s_v%d" % (basedir, os.path.basename(file), getVisualSetting()) 
-	if getVisualSetting() and ( os.path.isfile( "%s_0001.ppm"%(file) ) or os.path.isfile(timefile+".time") ):
+	if getVisualSetting() and ( os.path.isfile( "%s_0001.ppm"%(file) ) or os.path.isfile(timefile+".time") ) and os.path.isfile( gnuplotExe ):
 		runtime = elapsed_time2-elapsed_time1 
 		if runtime>0.0:
 			text_file = open(timefile+".time", "a");
@@ -188,10 +194,6 @@ for file in files:
 		else:
 			print("Zero runtime! Something went wrong...");
 		
-		gnuplotExe = "/usr/bin/gnuplot"
-		if len( os.getenv('MANTA_GNUPLOT', "") )>0:
-			gnuplotExe = os.getenv('MANTA_GNUPLOT', "")
-		print("Using %s" % gnuplotExe);
 		if os.path.isfile(gnuplotExe):
 			plot = Popen(gnuplotExe, stdin=PIPE)
 			plot.stdin.write("unset key\n")

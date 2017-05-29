@@ -5,13 +5,16 @@
 from manta import *
 
 # solver params
-dim = 3
+dim = 2
 res = 64
+res = 128 # NT_DEBUG
+#res = 200
 gs = Vec3(res,res,res)
 if (dim==2):
 	gs.z=1
 s = Solver(name='main', gridSize = gs, dim=dim)
 s.timestep  = 0.25
+s.timestep  = 0.125 # NT_DEBUG
 
 # scene file params
 ghostFluid  = True
@@ -27,12 +30,12 @@ flags = s.create(FlagGrid)
 vel = s.create(MACGrid)
 pressure = s.create(RealGrid)
 mesh = s.create(Mesh)
-phiBackup = s.create(LevelsetGrid)
 
 # scene setup
 bWidth=1
 flags.initDomain(boundaryWidth=bWidth)
-basin = Box( parent=s, p0=gs*Vec3(0,0,0), p1=gs*Vec3(1,0.2,1))
+#basin = Box( parent=s, p0=gs*Vec3(0,0,0), p1=gs*Vec3(1,0.2,1))
+basin = Box( parent=s, p0=gs*Vec3(0,0,0), p1=gs*Vec3(0.2,1,1)) # Y
 drop  = Sphere( parent=s , center=gs*Vec3(0.5,0.5,0.5), radius=res*0.125)
 phi = basin.computeLevelset()
 phi.join(drop.computeLevelset())
@@ -60,7 +63,11 @@ for t in range(1000):
 		extrapolateLsSimple(phi=phi, distance=5, inside=True )
 		extrapolateMACSimple( flags=flags, vel=vel, distance=5 )
 
-	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=lsOrder) 
+	#advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=lsOrder) 
+	#advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1)  # NT_DEBUG
+	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2, clampMode=1) 
+	#advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2, clampMode=2) 
+
 	phi.setBoundNeumann(bWidth)
 	if doOpen:
 		resetOutflow(flags=flags,phi=phi) # open boundaries
@@ -68,7 +75,8 @@ for t in range(1000):
 	
 	# velocity self-advection
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, openBounds=doOpen, boundaryWidth=bWidth )
-	addGravity(flags=flags, vel=vel, gravity=Vec3(0,-0.025,0))
+	#addGravity(flags=flags, vel=vel, gravity=Vec3(0,-0.025,0))
+	addGravity(flags=flags, vel=vel, gravity=Vec3(-0.025,0,0)) # Y
 	
 	# pressure solve
 	setWallBcs(flags=flags, vel=vel)
