@@ -47,7 +47,6 @@ setGradientYWeight(W=W, minY=0,     maxY=res/2, valAtMin=valAtMin, valAtMax=valA
 setGradientYWeight(W=W, minY=res/2, maxY=res,   valAtMin=valAtMax, valAtMax=valAtMax)
 
 #main loop
-#for t in range(999):
 for t in range(5):
 	resetOutflow(flags=flags,real=density)
 
@@ -64,6 +63,11 @@ for t in range(5):
 
 	setWallBcs(flags=flags, vel=vel)
 	s.step()
+
+# this scene runs through with doubles, but not supported for tests so far
+if getFloatSetting()==2:
+	print("Note: test disabled for now for double precision!")
+	exit(1)
 
 # check final state
 doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.0001 , thresholdStrict=1e-10 )

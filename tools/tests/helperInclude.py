@@ -5,7 +5,13 @@
 from manta import *
 import os
 import shutil
+import re
 from helperGeneric import *
+
+
+# ------------------------------------------------------------------------------------------
+# test result checking
+
 
 def checkResult( name, result, resultRel , thresh, threshStrict, invertResult=False ):
 	curr_thresh = thresh
@@ -188,6 +194,10 @@ def doTestGrid( file , name, parent , grid, threshold=0, thresholdStrict=0, inve
 		return checkResult( name, errVal , errValRel, threshold , thresholdStrict, invertResult )
 
 
+# ------------------------------------------------------------------------------------------
+# smaller helpers (directories, global settings)
+
+
 # for xl test, load test data afterwards to keep sims in sync
 def doTestDataLoad( file , name, solver , grid ):
 	genRefFiles = getGenRefFileSetting()
@@ -234,4 +244,5 @@ def tryToLoad( grid, basename, suffix, number , appendNumber , buildInfo ):
 	else:
 		grid.clear()
 	return 1
+
 
