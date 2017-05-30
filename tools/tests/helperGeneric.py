@@ -1,5 +1,6 @@
 #
 # Helper functions independent of mantaflow 
+# (exception: getFloatSetting, see below)
 # 
 
 import os
@@ -71,7 +72,7 @@ def dataDirectory( file ):
 # floating point accuracy , used throughout
 
 
-# floating point accuracy setting - using env var MANTA_FPACCURACY , not DOUBLEPRECISION from cmake!
+# floating point accuracy setting - using settings in executable
 # note, this "can" use manta python functions (if extCall is disabled)
 globalFpAcc = -1
 def getFloatSetting(extCall = False, platform = -1, mantaExe = ""):
@@ -106,19 +107,5 @@ def getFloatSetting(extCall = False, platform = -1, mantaExe = ""):
 		print("Error: Unable to determine floating point accuracy from running executable; Output: \n"+buildInfo +"\n")
 		exit(1);
 	return globalFpAcc
-
-
-# old env var MANTA_FPACCURACY , DO NOT USE!
-def __DEPRECATED__getFloatSetting( ):  # NT_DEBUG , remove
-	fp = 0
-	ret = int(os.getenv('MANTA_FPACCURACY', 0)) 
-	if(ret==2): # check for double prec compile
-		fp = 2 
-	else:
-		# default is single precision
-		fp = 1 
-
-	# note - manta scenes can use the DOUBLEPRECISION variable, but it's not available in the runTests script
-	return fp
 
 

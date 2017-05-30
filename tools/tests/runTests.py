@@ -59,31 +59,6 @@ if(len(sys.argv)<2):
 manta = sys.argv[1]
 print ("Using mantaflow executable '" + manta + "' " )
 
-# try to get build info (and floating point accuracy) to adapt test data directory
-# floatPrecision = 0
-# if 1:
-# 	# note - this call actually prints the info twice, once from the manta call, then from the buildInfo call...
-# 	# hence, check for count of 2 here
-# 	bifile = "helperBuildInfo.py"
-# 	if   platform == 0:
-# 		result = os.popen(manta + " " + bifile).read() 
-# 	else:
-# 		result = os.popen('"'+ manta + '" '+ bifile).read() 
-# 	fp1 = re.findall(r" fp1 ", result)
-# 	fp2 = re.findall(r" fp2 ", result)
-# 	#print( "FP '"+result+"'  strings: " + str(len(fp1)) + " " + str(len(fp2)) ) # debug
-# 	if len(fp1) >= 2:
-# 		floatPrecision = 1
-# 	elif len(fp2) >= 2:
-# 		print("Double precision build detected")
-# 		floatPrecision = 2
-# 	else:
-# 		print("Unable to determine floating point accuracy with executable '"+manta+"'; Output: \n"+result +"\n")
-# 		exit(1);
-# 
-# 	# export to following manta calls
-# 	os.environ["MANTA_FPACCURACY"] = str(floatPrecision)
-
 
 # extract path from script call
 basedir  = os.path.dirname (sys.argv[0])
