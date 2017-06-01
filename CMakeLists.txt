@@ -101,6 +101,8 @@ IF(NOT DEBUG)
 	ENDIF()
 ENDIF()
 
+add_definitions ( -DMANTAVERSION="${MANTAVERSION}" )
+
 IF(DEBUG)
 	SET(CMAKE_BUILD_TYPE "Debug")
 	add_definitions ( -DDEBUG=1 )
