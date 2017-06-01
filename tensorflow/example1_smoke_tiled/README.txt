@@ -24,16 +24,3 @@ modifications)..
   sets 2007, 2008
 
 ---
-
-This example also contains scripts to train networks for pressure instead of
-density.  To run these tests, use manta_genSimData_pressure.py and
-tf_train_pressure.py instead of the corresponding scritps above. Note that the
-data gen script outputs frames in intervals, and thus definitely should be run
-multiple times. The examples below assume 6 times. (Also note that density and
-pressure data directories are not interchangeable.)
-
-tf_train_pressure needs to be called with additional parameters, e.g. for training:
-	>>>python tf_train_pressure.py  out 0 fromSim 1000 toSim 1005 useVelocities 1 outName pressure bWidth 1 trainingEpochs 10000
-and for generating outputs:
-	>>>python tf_train_pressure.py  out 1 fromSim 1006 toSim -1   useVelocities 1 outName pressure bWidth 1 loadModelTest 1 brightenOutput 10
-

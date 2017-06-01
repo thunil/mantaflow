@@ -35,6 +35,7 @@ basePath = '../data/'
 
 # main mode switch:
 outputOnly = True  # apply model, or run full training?
+outputInputs = False							 
 
 simSizeLow   = 64
 tileSizeLow  = 16
@@ -49,15 +50,18 @@ emptyTileValue  = 0.01
 learningRate    = 0.00005
 trainingEpochs  = 10000 # for large values, stop manualy with ctrl-c...
 dropout         = 0.9   # slight...
-batchSize       = 100
+batchSize       = 96
 testInterval    = 200
-saveInterval    = 10
+saveInterval    = 1000
 #saveInterval    = 50 # increase for long runs...
 fromSim = toSim = -1
 keepAll         = False
 numTests        = 10      # evaluate on 10 data points from test data
 randSeed        = 1
 fileFormat      = "npz"
+brightenOutput  = -1 # multiplied with output to brighten it up
+outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
+bWidth          = -1 # boundaryWidth to be cut away. 0 means 1 cell, 1 means two cells. In line with "bWidth" in manta scene files																																  
 
 # run this many iterations per keras fit call
 kerasChunk = 100
@@ -70,13 +74,13 @@ useVelocities   = 0
 
 # load an existing model when load_ values > -1
 # when training , manually abort when it's good enough
-# then enter test_XXXX id below to load
+# then enter test_XXXX id and model checkpoint ID below to load
 
 loadModelTest = -1
 loadModelNo   = -1
 testPathStartNo = 1
 
-# command line params
+# command line params, explanations mostly above with variables
 outputOnly      = int(ph.getParam( "out",             outputOnly ))>0
 trainingEpochs  = int(ph.getParam( "trainingEpochs",  trainingEpochs ))
 loadModelTest   = int(ph.getParam( "loadModelTest",   loadModelTest))
@@ -84,13 +88,16 @@ loadModelNo     = int(ph.getParam( "loadModelNo",     loadModelNo))
 basePath        =     ph.getParam( "basePath",        basePath        )
 useVelocities   = int(ph.getParam( "useVelocities",   useVelocities  ))
 testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
-fromSim         = int(ph.getParam( "fromSim",         fromSim  )) # range of sim data to use
+fromSim         = int(ph.getParam( "fromSim",         fromSim  )) 
 toSim           = int(ph.getParam( "toSim",           toSim  ))
-alwaysSave      = int(ph.getParam( "alwaysSave",      False  )) # by default, only save when cost is lower, can be turned off here
+alwaysSave      = int(ph.getParam( "alwaysSave",      False  )) # by default, only save checkpoint when cost is lower, can be turned off here
 randSeed        = int(ph.getParam( "randSeed",        randSeed )) 
 simSizeLow      = int(ph.getParam( "simSizeLow",      simSizeLow )) 
 upRes           = int(ph.getParam( "upRes",           upRes ))
-#fileFormat     =     ph.getParam( "fileFormat",      fileFormat) # fixed to npz here
+#fileFormat     =     ph.getParam( "fileFormat",      fileFormat) # create pngs for inputs
+outputInputs    = int(ph.getParam( "outInputs",       outputInputs)) 
+brightenOutput  = int(ph.getParam( "brightenOutput",  brightenOutput)) 
+outputDataName  =    (ph.getParam( "outName",         outputDataName))
 ph.checkUnusedParams()
 
 # initialize

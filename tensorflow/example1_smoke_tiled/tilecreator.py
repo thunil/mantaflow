@@ -744,44 +744,6 @@ def splitTileData(partTrain=3, partTest=1):
 	tile_data['inputs_train'], tile_data['inputs_test'], tile_data['inputs_val'] = np.split(tile_inputs_all, [end_train, end_test])
 	tile_data['outputs_train'], tile_data['outputs_test'], tile_data['outputs_val'] = np.split(tile_outputs_all, [end_train, end_test])
 
-def normalizeInputTestData():
-	# moves tile data to mean zero
-	calc_tile = np.array(tile_inputs_all[0])
-	tileSize = calc_tile.size
-
-	new_tile_inputs_all = []
-	for tile in tile_inputs_all:
-		new_tile_inputs_all.append(tile)
-	for tile in new_tile_inputs_all:
-		tile_x, tile_y = np.reshape(tile, (2, tileSize / 2), order='F')
-		average_value_x = np.average(tile_x)
-		average_value_y = np.average(tile_y)
-		for curr_value in range(tileSize / 2):
-			tile[curr_value] = tile[curr_value] - average_value_x
-		for curr_value in range(tileSize / 2, tileSize):
-			tile[curr_value] = tile[curr_value] - average_value_y
-
-	del tile_inputs_all[:]
-	for tile in new_tile_inputs_all:
-		tile_inputs_all.append(tile)
-
-	# TODO: Remove copy code
-	new_tile_inputs_all_complete = []
-	for tile in tile_inputs_all_complete:
-		new_tile_inputs_all_complete.append(tile)
-	for tile in new_tile_inputs_all_complete:
-		tile_x, tile_y = np.reshape(tile, (2, tileSize / 2), order='F')
-		average_value_x = np.average(tile_x)
-		average_value_y = np.average(tile_y)
-		for curr_value in range(tileSize / 2):
-			tile[curr_value] = tile[curr_value] - average_value_x
-		for curr_value in range(tileSize / 2, tileSize):
-			tile[curr_value] = tile[curr_value] - average_value_y
-
-	del tile_inputs_all_complete[:]
-	for tile in new_tile_inputs_all_complete:
-		tile_inputs_all_complete.append(tile)
-
 def reduceTo2DVelocity(tile, tileSizeLow):
 	# dont use this, use reduceInputsTo2DVelocity
 	# reduces one tile with density and velocity to the x and y of the velocity

@@ -33,6 +33,7 @@ basePath = '../data/'
 
 # main mode switch:
 outputOnly = True  # apply model, or run full training?
+outputInputs = False					
 
 simSizeLow   = 64
 tileSizeLow  = 16
@@ -47,18 +48,22 @@ emptyTileValue  = 0.01
 learningRate    = 0.00005
 trainingEpochs  = 10000 # for large values, stop manualy with ctrl-c...
 dropout         = 0.9   # slight...
-batchSize       = 100
+batchSize       = 96
 testInterval    = 200
 saveInterval    = 1000
-fromSim = toSim = -1
+fromSim = toSim = -1 # range of sim data directories to use
 keepAll         = False
 numTests        = 10      # evaluate on 10 data points from test data
 randSeed        = 1
 fileFormat      = "npz"
-
+brightenOutput  = -1 # multiplied with output to brighten it up
+outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
+bWidth          = -1 # boundaryWidth to be cut away. 0 means 1 cell, 1 means two cells. In line with "bWidth" in manta scene files																																  
 # optional, add velocity as additional channels to input?
 useVelocities   = 0
 
+# for conv_trans nets, the output tiles have to be created in the same batch size
+is_convolution_transpose_network = False									
 
 # ---------------------------------------------
 
@@ -70,7 +75,7 @@ loadModelTest = -1
 loadModelNo   = -1
 testPathStartNo = 1
 
-# command line params
+# command line params, explanations mostly above with variables
 outputOnly      = int(ph.getParam( "out",             outputOnly ))>0
 trainingEpochs  = int(ph.getParam( "trainingEpochs",  trainingEpochs ))
 loadModelTest   = int(ph.getParam( "loadModelTest",   loadModelTest))
@@ -78,13 +83,17 @@ loadModelNo     = int(ph.getParam( "loadModelNo",     loadModelNo))
 basePath        =     ph.getParam( "basePath",        basePath        )
 useVelocities   = int(ph.getParam( "useVelocities",   useVelocities  ))
 testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
-fromSim         = int(ph.getParam( "fromSim",         fromSim  )) # range of sim data to use
+fromSim         = int(ph.getParam( "fromSim",         fromSim  )) 
 toSim           = int(ph.getParam( "toSim",           toSim  ))
-alwaysSave      = int(ph.getParam( "alwaysSave",      False  )) # by default, only save when cost is lower, can be turned off here
+alwaysSave      = int(ph.getParam( "alwaysSave",      False  )) # by default, only save checkpoint when cost is lower, can be turned off here
 randSeed        = int(ph.getParam( "randSeed",        randSeed )) 
 simSizeLow      = int(ph.getParam( "simSizeLow",      simSizeLow )) 
 upRes           = int(ph.getParam( "upRes",           upRes ))
-fileFormat      =     ph.getParam( "fileFormat",      fileFormat) # either npz or uni
+fileFormat      =     ph.getParam( "fileFormat",      fileFormat) # create pngs for inputs
+outputInputs    = int(ph.getParam( "outInputs",       outputInputs)) 
+brightenOutput  = int(ph.getParam( "brightenOutput",  brightenOutput)) 
+outputDataName  =    (ph.getParam( "outName",         outputDataName))
+bWidth			= int(ph.getParam( "bWidth",          bWidth))
 ph.checkUnusedParams()
 
 # initialize
@@ -121,13 +130,12 @@ else:
 
 # ---------------------------------------------
 
-#n_input = ((tileSizeLow + overlapping * 2) * 2) ** 2
 n_input  = tileSizeLow  ** 2 
 n_output = tileSizeHigh ** 2
 n_inputChannels = 1
 
 if useVelocities:
-	n_inputChannels = 4
+	n_inputChannels = 2
 n_input *= n_inputChannels
 
 # create output dir
@@ -242,13 +250,17 @@ else:
 
 # load test data
 if (fileFormat == "npz"):
-	tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll)
+	tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll, special_output_type=outputDataName, bWidth=bWidth)
 elif (fileFormat == "uni"):
 	tiCr.loadTestDataUni(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes)
 else:
 	print("\n ERROR: Unknown file format \"" + fileFormat + "\". Use \"npz\" or \"uni\".")
 	exit()
 
+if useVelocities:
+	print('Reducing data to 2D velocity...')
+	tiCr.reduceInputsTo2DVelocity()
+	tiCr.splitTileData(0.95, 0.05)									 
 # create a summary to monitor cost tensor
 lossTrain  = tf.summary.scalar("loss",     costFunc)
 lossTest   = tf.summary.scalar("lossTest", costFunc)
@@ -309,13 +321,13 @@ if not outputOnly:
 	print('\n*****TRAINING FINISHED*****')
 	training_duration = (time.time() - startTime) / 60.0
 	print('Training needed %.02f minutes.' % (training_duration))
-	print('To apply the trained model, set "outputOnly" to True, and insert id for "loadModelTest". E.g. "out 1 loadModelTest 42".')
+	print('To apply the trained model, set "outputOnly" to True, and insert numbers for "load_model_test", and "load_model_no" ')
 
 else: 
 
 	# ---------------------------------------------
 	# outputOnly: apply to a full data set, and re-create full outputs from tiles
-
+	print('Creating outputs...')
 	batch_xs, batch_ys = tiCr.tile_inputs_all_complete, tiCr.tile_outputs_all_complete
 	tileSizeHiCrop = upRes * cropTileSizeLow
 	tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
