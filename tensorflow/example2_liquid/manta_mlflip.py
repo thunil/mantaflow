@@ -28,7 +28,7 @@ def save_frame(outdir, frame, saving_funcs):
     print('Frame #{} was saved in {}\n'.format(frame, path))
 
 parser = argparse.ArgumentParser(description='FLIP with ML', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument(      '--load',   default='../data/tf/',  help='path to the trained tensorflow model directory')
+parser.add_argument(      '--load',   default='../data/mlflip-tf/',  help='path to the trained tensorflow model directory')
 parser.add_argument('-w', '--window', default=1, type=int, help='window size for sampling features; 1 (default) means 3x3, 2 means 5x5, so on.')
 pargs = parser.parse_known_args()[0]
 
@@ -80,21 +80,21 @@ params                = {}
 params['dim']         = 2                  # dimension
 params['sres']        = 2                  # particle sampling resolution per cell
 params['dx']          = 1.0/params['sres'] # particle spacing (= 2 x radius)
-params['res']         = 50                 # reference resolution
+params['res']         = 75                 # reference resolution
 params['len']         = 1.0                # reference length
 params['bnd']         = 2                  # boundary cells
 params['grav']        = 0                  # applied gravity (mantaflow scale); recomputed later
 params['gref']        = -9.8               # real-world gravity
 params['jitter']      = 0.2                # jittering particles
 params['cgaccuracy']  = 1e-3               # cg solver's threshold
-params['fps']         = 30
+params['fps']         = 24
 params['t_end']       = 6.0
 params['sdt']         = None
 params['frame_saved'] = -1
 params['frame_last']  = -1
 
 scaleToManta = float(params['res'])/params['len']
-params['gs']    = [params['res']*1.5+params['bnd']*2, params['res']+params['bnd']*2, params['res']+params['bnd']*2 if params['dim']==3 else 1]
+params['gs']    = [ int(params['res']*1.5+params['bnd']*2), int(params['res']+params['bnd']*2), int(params['res']+params['bnd']*2 if params['dim']==3 else 1) ]
 params['grav']  = params['gref']*scaleToManta
 
 #params['stref'] = 0.073 # surface tension (reference scale [m]; e.g., 0.073)
@@ -109,6 +109,9 @@ s.timestep    = s.frameLength
 
 # prepare grids and particles
 gFlags   = s.create(FlagGrid)
+_dummyV_ = s.create(MACGrid) # hide velocities for UI...
+_dummyR_ = s.create(RealGrid) # hide pressure for UI...
+
 gV       = s.create(MACGrid)
 gVold    = s.create(MACGrid)
 gP       = s.create(RealGrid)
@@ -155,6 +158,8 @@ gui = None
 if not nogui:
     gui = Gui()
     gui.show()
+    gui.setCamPos(0,0.1,-1.2)
+    #gui.toggleHideGrids()
     if pause: gui.pause()
 
 if output:
@@ -309,6 +314,7 @@ while (s.timeTotal<params['t_end']): # main loop
     s.step()
 
     if output: save_frame(output, s.frame, savingFuncs)
+    if 1: gui.screenshot("mlflip_%04d.jpg" % s.frame)
     
 tf_sess.close()
 

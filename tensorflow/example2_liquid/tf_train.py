@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 parser = argparse.ArgumentParser(description='Generate Training Data', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('-o', '--output', default='../data/tf/',        help='output directory')
+parser.add_argument('-o', '--output', default='../data/mlflip-tf/',        help='output directory')
 parser.add_argument('-s', '--steps',  default=10000, type=int,   help='maximum training steps')
 parser.add_argument('-b', '--batch',  default=100,   type=int,   help='batch size for one step training')
 parser.add_argument('-d', '--dnet',   default='27-34-2',         help='detection networks int-int-...')
@@ -125,7 +125,7 @@ with tf.name_scope('accuracy'):
 
         with tf.name_scope('detector'):
             if pargs.nosmax: loss_detector = tf.nn.l2_loss(y - y_)
-            else:            loss_detector = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y, y_))
+            else:            loss_detector = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=y, labels=y_))
             log_dict['detector/loss'] = loss_detector*loss_normalizer if pargs.nosmax else loss_detector
 
         with tf.name_scope('modifier'):

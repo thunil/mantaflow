@@ -80,6 +80,8 @@ s.timestepMax = xl_s.frameLength
 s.timestep    = xl_s.frameLength
 
 gFlags  = s.create(FlagGrid)
+_dummyV_ = s.create(MACGrid) # show smaller velocities for UI...
+_dummyR_ = s.create(RealGrid) # hide
 gR      = s.create(IntGrid)
 gV      = s.create(MACGrid)
 gVold   = s.create(MACGrid)
@@ -236,6 +238,9 @@ for i, dir_i in enumerate(indirs):
         setPartType(parts=pp, ptype=pT, mark=FlagFluid, stype=FlagEmpty, flags=gFlags, cflag=FlagFluid)
         markIsolatedFluidCell(flags=gFlags, mark=FlagEmpty)
         setPartType(parts=pp, ptype=pT, mark=FlagEmpty, stype=FlagFluid, flags=gFlags, cflag=FlagEmpty)
+
+        _dummyV_.copyFrom(gV) 
+        _dummyV_.multConst(Vec3(0.02)) 
 
         s.step()
 

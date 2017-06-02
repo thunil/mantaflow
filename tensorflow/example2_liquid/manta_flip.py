@@ -37,7 +37,7 @@ parser.add_argument('-s', '--seed',   default=1, type=int, help='random seed; us
 pargs = parser.parse_known_args()[0]
 
 nogui       = False
-pause       = True
+pause       = False
 output      = os.path.normpath(pargs.output)
 savingFuncs = []
 
@@ -75,6 +75,8 @@ s.timestep    = s.frameLength
 
 # prepare grids and particles
 gFlags  = s.create(FlagGrid)
+_dummyV_ = s.create(MACGrid) # show smaller velocities for UI...
+_dummyR_ = s.create(RealGrid) # hide
 gV      = s.create(MACGrid)
 gVold   = s.create(MACGrid)
 gP      = s.create(RealGrid)
@@ -174,6 +176,9 @@ while (s.timeTotal<params['t_end']): # main loop
     setPartType(parts=pp, ptype=pT, mark=FlagFluid, stype=FlagEmpty, flags=gFlags, cflag=FlagFluid)
     markIsolatedFluidCell(flags=gFlags, mark=FlagEmpty)
     setPartType(parts=pp, ptype=pT, mark=FlagEmpty, stype=FlagFluid, flags=gFlags, cflag=FlagEmpty)
+
+    _dummyV_.copyFrom(gV) 
+    _dummyV_.multConst(Vec3(0.02)) 
 
     s.step()
 
