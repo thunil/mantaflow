@@ -1,6 +1,7 @@
 #!/bin/bash
 # 
-# run liquid (MLFLIP) test
+# Run liquid (MLFLIP) test
+#
 
 BPATH=../data/
 MANTAEXE=../build/manta
@@ -15,11 +16,11 @@ echo "************** MLFLIP Test **************"
 #${SAFEDEL} ${BPATH}manta-flip
 #${SAFEDEL} ${BPATH}mlflip-tf
 
-#${MANTAEXE} manta_flip.py
+${MANTAEXE} manta_flip.py
 
-#${MANTAEXE} manta_gendata.py
+${MANTAEXE} manta_gendata.py
 
-#python tf_train.py ${BPATH}manta-flip/training_data/ 
+python tf_train.py ${BPATH}manta-flip/training_data/ 
 
 ${MANTAEXE} manta_mlflip.py 
 

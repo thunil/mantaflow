@@ -59,21 +59,21 @@ for i in data_sets.train.get_data(): scale[i] = max(abs(data_sets.train.get_data
 with open(pargs.output+'/scale.pickle', 'wb') as f: pickle.dump(scale, f)
 logging.info(pargs)
 logging.info('{} tuples have been loaded; randomly selected {} for the training set and {} for the test set'.format(
-    N_tuple, data_sets.train._num_examples, data_sets.test._num_examples))
+	N_tuple, data_sets.train._num_examples, data_sets.test._num_examples))
 logging.info(scale)
 
 # statistics
 with PdfPages(pargs.output+'/histogram.pdf') as pdf:
-    l = data_sets.train.get_data()['labels']
-    if not pargs.nosmax: l = l[:,0]
-    for i in data_sets.train.get_data():
-        d = data_sets.train.get_data()[i][(l==1).reshape(-1)]
-        for j in range(d.shape[1]):
-            plt.figure()
-            plt.hist(d[:,j].reshape(-1), bins='auto')
-            plt.title('Histogram of {}[{}]'.format(i, j))
-            plt.savefig(pdf, format='pdf')
-            plt.close()
+	l = data_sets.train.get_data()['labels']
+	if not pargs.nosmax: l = l[:,0]
+	for i in data_sets.train.get_data():
+		d = data_sets.train.get_data()[i][(l==1).reshape(-1)]
+		for j in range(d.shape[1]):
+			plt.figure()
+			plt.hist(d[:,j].reshape(-1), bins='auto')
+			plt.title('Histogram of {}[{}]'.format(i, j))
+			plt.savefig(pdf, format='pdf')
+			plt.close()
 
 sess = tf.InteractiveSession()
 
@@ -91,81 +91,81 @@ keep_prob2 = tf.placeholder(tf.float32, name='keep_prob_modifier') if pargs.mdro
 y_,  y     = tf_network.build_network(dlayers, dact, init_weights=init_w, input_x_holder=x, dropout_holder=keep_prob,  bn=pargs.bn, scope='detector/')[1:]
 y2_, y2    = tf_network.build_network(mlayers, mact, init_weights=init_w, input_x_holder=x, dropout_holder=keep_prob2, bn=pargs.bn, scope='modifier/')[1:]
 if pargs.mve:
-    s      = tf_network.build_network(mlayers, mact, init_weights=init_w, input_x_holder=x, input_y_holder=y2_, dropout_holder=keep_prob2, bn=pargs.bn, scope='modifier_var/')[2]
+	s      = tf_network.build_network(mlayers, mact, init_weights=init_w, input_x_holder=x, input_y_holder=y2_, dropout_holder=keep_prob2, bn=pargs.bn, scope='modifier_var/')[2]
 
 ################################################################################
 # evaluation functions
 log_dict = {}
 with tf.name_scope('accuracy'):
-    with tf.name_scope('correct_prediction'):
-        if pargs.nosmax: corr, appx = tf.cast(tf.less(y_, 0.5), tf.int64), tf.cast(tf.less(y, 0.5), tf.int64) # f: splashing, t: non-splashing
-        else:            corr, appx = tf.argmax(y_, 1), tf.argmax(y, 1)                                       # 0: splashing, 1: non-splashing
+	with tf.name_scope('correct_prediction'):
+		if pargs.nosmax: corr, appx = tf.cast(tf.less(y_, 0.5), tf.int64), tf.cast(tf.less(y, 0.5), tf.int64) # f: splashing, t: non-splashing
+		else:            corr, appx = tf.argmax(y_, 1), tf.argmax(y, 1)                                       # 0: splashing, 1: non-splashing
 
-        correct_prediction = tf.equal(corr, appx)
-        accuracy           = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-        y_b_appx           = tf.equal(appx, 0) # true: splashing, false: non-splashing
-        y_b_corr           = tf.equal(corr, 0)
+		correct_prediction = tf.equal(corr, appx)
+		accuracy           = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+		y_b_appx           = tf.equal(appx, 0) # true: splashing, false: non-splashing
+		y_b_corr           = tf.equal(corr, 0)
 
-        N_corr_non_splas    = tf.reduce_sum(corr)
-        N_corr_splashing    = tf.cast(tf.shape(y_)[0], tf.int64) - N_corr_non_splas
-        diff_appx_corr      = tf.logical_xor(y_b_appx, y_b_corr)
-        N_corr_spl_appx_non = tf.reduce_sum(tf.cast(tf.logical_and(y_b_corr, diff_appx_corr), tf.float32))
-        N_corr_non_appx_spl = tf.reduce_sum(tf.cast(tf.logical_and(y_b_appx, diff_appx_corr), tf.float32))
-        false_negative      = N_corr_spl_appx_non/tf.cast(N_corr_splashing, tf.float32)
-        false_positive      = N_corr_non_appx_spl/tf.cast(N_corr_non_splas, tf.float32)
+		N_corr_non_splas    = tf.reduce_sum(corr)
+		N_corr_splashing    = tf.cast(tf.shape(y_)[0], tf.int64) - N_corr_non_splas
+		diff_appx_corr      = tf.logical_xor(y_b_appx, y_b_corr)
+		N_corr_spl_appx_non = tf.reduce_sum(tf.cast(tf.logical_and(y_b_corr, diff_appx_corr), tf.float32))
+		N_corr_non_appx_spl = tf.reduce_sum(tf.cast(tf.logical_and(y_b_appx, diff_appx_corr), tf.float32))
+		false_negative      = N_corr_spl_appx_non/tf.cast(N_corr_splashing, tf.float32)
+		false_positive      = N_corr_non_appx_spl/tf.cast(N_corr_non_splas, tf.float32)
 
-        log_dict['accuracy']                     = accuracy
-        log_dict['false_negative_corr_T_appx_F'] = false_negative
-        log_dict['false_positive_corr_F_appx_T'] = false_positive
-        log_dict['splashes/corr']                = 1.0 - tf.reduce_mean(tf.cast(corr, tf.float32))
-        log_dict['splashes/appx']                = 1.0 - tf.reduce_mean(tf.cast(appx, tf.float32))
+		log_dict['accuracy']                     = accuracy
+		log_dict['false_negative_corr_T_appx_F'] = false_negative
+		log_dict['false_positive_corr_F_appx_T'] = false_positive
+		log_dict['splashes/corr']                = 1.0 - tf.reduce_mean(tf.cast(corr, tf.float32))
+		log_dict['splashes/appx']                = 1.0 - tf.reduce_mean(tf.cast(appx, tf.float32))
 
-    with tf.name_scope('loss'):
-        loss_normalizer = 1.0/tf.cast(tf.shape(y2_)[0], tf.float32)
+	with tf.name_scope('loss'):
+		loss_normalizer = 1.0/tf.cast(tf.shape(y2_)[0], tf.float32)
 
-        with tf.name_scope('detector'):
-            if pargs.nosmax: loss_detector = tf.nn.l2_loss(y - y_)
-            else:            loss_detector = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=y, labels=y_))
-            log_dict['detector/loss'] = loss_detector*loss_normalizer if pargs.nosmax else loss_detector
+		with tf.name_scope('detector'):
+			if pargs.nosmax: loss_detector = tf.nn.l2_loss(y - y_)
+			else:            loss_detector = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=y, labels=y_))
+			log_dict['detector/loss'] = loss_detector*loss_normalizer if pargs.nosmax else loss_detector
 
-        with tf.name_scope('modifier'):
-            loss_modifier = tf.nn.l2_loss(y2 - y2_)
-            log_dict['modifier/loss'] = loss_modifier*loss_normalizer
-            if pargs.mve:
-                loss_modifier_mve = 0.5*tf.reduce_sum(((y2 - y2_)**2)/(s**2 + 1e-4)) + 0.5*tf.reduce_sum(tf.log(s**2 + 1e-4)) # mean variance estimate
-                log_dict['modifier_mve/loss'] = loss_modifier_mve*loss_normalizer
+		with tf.name_scope('modifier'):
+			loss_modifier = tf.nn.l2_loss(y2 - y2_)
+			log_dict['modifier/loss'] = loss_modifier*loss_normalizer
+			if pargs.mve:
+				loss_modifier_mve = 0.5*tf.reduce_sum(((y2 - y2_)**2)/(s**2 + 1e-4)) + 0.5*tf.reduce_sum(tf.log(s**2 + 1e-4)) # mean variance estimate
+				log_dict['modifier_mve/loss'] = loss_modifier_mve*loss_normalizer
 
-        loss = loss_detector + loss_modifier
-        log_dict['sum_loss'] = log_dict['detector/loss'] + log_dict['modifier/loss']
-        if pargs.mve:
-            loss_mve = loss_detector + loss_modifier_mve
-            log_dict['sum_loss_mve'] = log_dict['detector/loss'] + log_dict['modifier_mve/loss']
+		loss = loss_detector + loss_modifier
+		log_dict['sum_loss'] = log_dict['detector/loss'] + log_dict['modifier/loss']
+		if pargs.mve:
+			loss_mve = loss_detector + loss_modifier_mve
+			log_dict['sum_loss_mve'] = log_dict['detector/loss'] + log_dict['modifier_mve/loss']
 
-        if pargs.decay>0.0:
-            w_detector     = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "detector/")
-            w_modifier     = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "modifier/")
-            decay_detector = tf.add_n([tf.nn.l2_loss(v) for v in w_detector])*pargs.decay
-            decay_modifier = tf.add_n([tf.nn.l2_loss(v) for v in w_modifier])*pargs.decay
+		if pargs.decay>0.0:
+			w_detector     = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "detector/")
+			w_modifier     = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "modifier/")
+			decay_detector = tf.add_n([tf.nn.l2_loss(v) for v in w_detector])*pargs.decay
+			decay_modifier = tf.add_n([tf.nn.l2_loss(v) for v in w_modifier])*pargs.decay
 
-            loss += decay_detector + decay_modifier
+			loss += decay_detector + decay_modifier
 
-            log_dict['detector/decay'] = decay_detector
-            log_dict['modifier/decay'] = decay_modifier
-            log_dict['sum_loss'] += decay_detector + decay_modifier
+			log_dict['detector/decay'] = decay_detector
+			log_dict['modifier/decay'] = decay_modifier
+			log_dict['sum_loss'] += decay_detector + decay_modifier
 
-            if pargs.mve:
-                w_modifier_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "modifier_var/")
-                decay_modifier_var = tf.add_n([tf.nn.l2_loss(v) for v in w_modifier_var])*pargs.decay
-                loss_mve += decay_modifier_var
-                log_dict['modifier_var/decay'] = decay_modifier_var
-                log_dict['sum_loss_mve'] += decay_modifier_var
+			if pargs.mve:
+				w_modifier_var = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "modifier_var/")
+				decay_modifier_var = tf.add_n([tf.nn.l2_loss(v) for v in w_modifier_var])*pargs.decay
+				loss_mve += decay_modifier_var
+				log_dict['modifier_var/decay'] = decay_modifier_var
+				log_dict['sum_loss_mve'] += decay_modifier_var
 
-    for i in log_dict:
-        tf.summary.scalar(name=i, tensor=log_dict[i])
+	for i in log_dict:
+		tf.summary.scalar(name=i, tensor=log_dict[i])
 
 with tf.name_scope('train'):
-    train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
-    if pargs.mve: train_step_mve = tf.train.AdamOptimizer(1e-4).minimize(loss_mve)
+	train_step = tf.train.AdamOptimizer(1e-4).minimize(loss)
+	if pargs.mve: train_step_mve = tf.train.AdamOptimizer(1e-4).minimize(loss_mve)
 
 merged = tf.summary.merge_all()
 train_writer = tf.summary.FileWriter(pargs.output + '/summary/train', sess.graph)
@@ -184,38 +184,38 @@ if pargs.mdrop>0.0: feed_data_test.update({keep_prob2: 1.0})
 losses_key = sorted([k for k in log_dict if 'loss' in k])
 losses_fetch = [log_dict[k] for k in losses_key]
 for i in range(pargs.steps):
-    if (i%10==0):           # test
-        summary, acc, loss_i = sess.run([merged, accuracy, losses_fetch], feed_dict=feed_data_test)
-        test_writer.add_summary(summary, i)
-        print('Step {}/{}: accuracy={:.5f}, {}'.format(i,pargs.steps, acc, ', '.join('{}={:.5f}'.format(*t) for t in zip(losses_key, loss_i))))
+	if (i%10==0):           # test
+		summary, acc, loss_i = sess.run([merged, accuracy, losses_fetch], feed_dict=feed_data_test)
+		test_writer.add_summary(summary, i)
+		print('Step {}/{}: accuracy={:.5f}, {}'.format(i,pargs.steps, acc, ', '.join('{}={:.5f}'.format(*t) for t in zip(losses_key, loss_i))))
 
-    else:                   # train
-        batch = data_sets.train.next_batch(pargs.batch)
+	else:                   # train
+		batch = data_sets.train.next_batch(pargs.batch)
 
-        fetches = [merged, train_step]
-        feed_data = { x: batch['inputs'], y_: batch['labels'], y2_: batch['modvel']/scale['modvel'] }
+		fetches = [merged, train_step]
+		feed_data = { x: batch['inputs'], y_: batch['labels'], y2_: batch['modvel']/scale['modvel'] }
 
-        if pargs.mve and i>int(pargs.steps/2):
-            fetches = [merged, train_step_mve]
-            if pargs.mdrop>0.0: y2_appx = sess.run(y2, feed_dict={ x: batch['inputs'], keep_prob2: 1.0 })
-            else:               y2_appx = sess.run(y2, feed_dict={ x: batch['inputs'] })
-            feed_data = { x: batch['inputs'], y_: batch['labels'], y2_: batch['modvel']/scale['modvel'], y2: y2_appx }
+		if pargs.mve and i>int(pargs.steps/2):
+			fetches = [merged, train_step_mve]
+			if pargs.mdrop>0.0: y2_appx = sess.run(y2, feed_dict={ x: batch['inputs'], keep_prob2: 1.0 })
+			else:               y2_appx = sess.run(y2, feed_dict={ x: batch['inputs'] })
+			feed_data = { x: batch['inputs'], y_: batch['labels'], y2_: batch['modvel']/scale['modvel'], y2: y2_appx }
 
-        if pargs.ddrop>0.0: feed_data.update({keep_prob : 1.0-pargs.ddrop})
-        if pargs.mdrop>0.0: feed_data.update({keep_prob2: 1.0-pargs.mdrop})
+		if pargs.ddrop>0.0: feed_data.update({keep_prob : 1.0-pargs.ddrop})
+		if pargs.mdrop>0.0: feed_data.update({keep_prob2: 1.0-pargs.mdrop})
 
-        params_sess_run = dict(fetches=fetches, feed_dict=feed_data)
-        if (i%100==99):
-            run_metadata = tf.RunMetadata()
-            params_sess_run.update(options=tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE), run_metadata=run_metadata)
+		params_sess_run = dict(fetches=fetches, feed_dict=feed_data)
+		if (i%100==99):
+			run_metadata = tf.RunMetadata()
+			params_sess_run.update(options=tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE), run_metadata=run_metadata)
 
-        summary = sess.run(**params_sess_run)[0]
+		summary = sess.run(**params_sess_run)[0]
 
-        if (i%100==99):
-            print('Adding run metadata for step {}'.format(i))
-            train_writer.add_run_metadata(run_metadata, 'step{:03d}'.format(i))
+		if (i%100==99):
+			print('Adding run metadata for step {}'.format(i))
+			train_writer.add_run_metadata(run_metadata, 'step{:03d}'.format(i))
 
-        train_writer.add_summary(summary, i)
+		train_writer.add_summary(summary, i)
 
 # the last test
 summary, acc_summary = sess.run([merged, list(log_dict.values())], feed_dict=feed_data_test)

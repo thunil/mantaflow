@@ -15,21 +15,21 @@ import os, argparse, operator, math, random, pickle
 assertNumpy() # make sure mantaflow is compiled with the NUMPY option, ie, "cmake ... -DNUNPY=1"
 
 def path_to_frame(outdir, frame):
-    return '{}/{:05d}/'.format(outdir, frame)
+	return '{}/{:05d}/'.format(outdir, frame)
 
 def save_frame(outdir, frame, saving_funcs):
-    if (outdir is None) or (params['frame_saved']==frame): return
+	if (outdir is None) or (params['frame_saved']==frame): return
 
-    path = path_to_frame(outdir, frame)
-    os.path.isdir(path) or os.makedirs(path)
-    for save, name in saving_funcs: save(path+name, notiming=True)
+	path = path_to_frame(outdir, frame)
+	os.path.isdir(path) or os.makedirs(path)
+	for save, name in saving_funcs: save(path+name, notiming=True)
 
-    params['frame_saved'] = frame
-    print('Frame #{} was saved in {}\n'.format(frame, path))
+	params['frame_saved'] = frame
+	print('Frame #{} was saved in {}\n'.format(frame, path))
 
 def normalize(v):
-    vmag = math.sqrt(sum(v[i]*v[i] for i in range(len(v))))
-    return [ v[i]/vmag for i in range(len(v)) ]
+	vmag = math.sqrt(sum(v[i]*v[i] for i in range(len(v))))
+	return [ v[i]/vmag for i in range(len(v)) ]
 
 parser = argparse.ArgumentParser(description='FLIP', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-o', '--output', default='../data/manta-flip',  help='path to the simulation output')
@@ -104,82 +104,82 @@ gFlags.initDomain(params['bnd']-1)
 balls, vels = [], []
 N_pairs = random.randint(1, 3)
 for i in range(N_pairs):
-    balls.append([0.5+random.uniform(-0.25, 0), 0.5+random.uniform(-0.25,0.25), 0.5+random.uniform(-0.25,0.25), random.uniform(0.05,0.1)])
-    vels.append(list(map(operator.sub, [0.5]*3, balls[-1][:3])))
-    balls.append(list(map(operator.add, [0.5]*3, vels[-1])))
-    balls[-1].append(random.uniform(0.05,0.1))
-    vels.append(list(map(operator.sub, [0.5]*3, balls[-1][:3])))
+	balls.append([0.5+random.uniform(-0.25, 0), 0.5+random.uniform(-0.25,0.25), 0.5+random.uniform(-0.25,0.25), random.uniform(0.05,0.1)])
+	vels.append(list(map(operator.sub, [0.5]*3, balls[-1][:3])))
+	balls.append(list(map(operator.add, [0.5]*3, vels[-1])))
+	balls[-1].append(random.uniform(0.05,0.1))
+	vels.append(list(map(operator.sub, [0.5]*3, balls[-1][:3])))
 
 for i, ball in enumerate(balls):
-    ball_c = vec3(ball[0]*params['res']+params['bnd'], ball[1]*params['res']+params['bnd'], ball[2]*params['res']+params['bnd'] if (params['dim']==3) else 0.5)
-    obj = s.create(Sphere, center=ball_c, radius=ball[3]*params['res'])
-    begin = pp.pySize()
-    sampleShapeWithParticles(shape=obj, flags=gFlags, parts=pp, discretization=params['sres'], randomness=params['jitter'], refillEmpty=True, notiming=True)
-    end = pp.pySize()
-    pT.setConstRange(s=FlagFluid, begin=begin, end=end, notiming=True)
-    markFluidCells(parts=pp, flags=gFlags, ptype=pT, exclude=FlagObstacle)
+	ball_c = vec3(ball[0]*params['res']+params['bnd'], ball[1]*params['res']+params['bnd'], ball[2]*params['res']+params['bnd'] if (params['dim']==3) else 0.5)
+	obj = s.create(Sphere, center=ball_c, radius=ball[3]*params['res'])
+	begin = pp.pySize()
+	sampleShapeWithParticles(shape=obj, flags=gFlags, parts=pp, discretization=params['sres'], randomness=params['jitter'], refillEmpty=True, notiming=True)
+	end = pp.pySize()
+	pT.setConstRange(s=FlagFluid, begin=begin, end=end, notiming=True)
+	markFluidCells(parts=pp, flags=gFlags, ptype=pT, exclude=FlagObstacle)
 
-    vel = vels[i]
-    if (params['dim']<3): vel[2] = 0
-    vel = list(map(operator.mul, normalize(vel), [random.uniform(1, 3)*params['res']]*3))
-    pV.setConstRange(s=vec3(vel[0], vel[1], vel[2]), begin=begin, end=end, notiming=True)
+	vel = vels[i]
+	if (params['dim']<3): vel[2] = 0
+	vel = list(map(operator.mul, normalize(vel), [random.uniform(1, 3)*params['res']]*3))
+	pV.setConstRange(s=vec3(vel[0], vel[1], vel[2]), begin=begin, end=end, notiming=True)
 
-    gPhi.join(obj.computeLevelset(), notiming=True)
+	gPhi.join(obj.computeLevelset(), notiming=True)
 
 gui = None
 if not nogui:
-    gui = Gui()
-    gui.show()
-    if pause: gui.pause()
+	gui = Gui()
+	gui.show()
+	if pause: gui.pause()
 
 if output:
-    save_frame(output, s.frame, savingFuncs)
-    with open(output+'/params.pickle', 'wb') as f: pickle.dump(params, f)
+	save_frame(output, s.frame, savingFuncs)
+	with open(output+'/params.pickle', 'wb') as f: pickle.dump(params, f)
 
 while (s.timeTotal<params['t_end']): # main loop
 
-    mapPartsToMAC(vel=gV, flags=gFlags, velOld=gVold, parts=pp, partVel=pV, ptype=pT, exclude=FlagEmpty)
-    if params['sdt'] is None: s.adaptTimestep(gV.getMax())
-    else: s.adaptTimestepByDt(params['sdt'])
+	mapPartsToMAC(vel=gV, flags=gFlags, velOld=gVold, parts=pp, partVel=pV, ptype=pT, exclude=FlagEmpty)
+	if params['sdt'] is None: s.adaptTimestep(gV.getMax())
+	else: s.adaptTimestepByDt(params['sdt'])
 
-    addGravityNoScale(flags=gFlags, vel=gV, gravity=vec3(0, params['grav'], 0))
+	addGravityNoScale(flags=gFlags, vel=gV, gravity=vec3(0, params['grav'], 0))
 
-    gridParticleIndex(parts=pp, flags=gFlags, indexSys=gIdxSys, index=gIdx)
-    unionParticleLevelset(parts=pp, indexSys=gIdxSys, flags=gFlags, index=gIdx, phi=gPhi, radiusFactor=1.0)
-    getLaplacian(laplacian=gCurv, grid=gPhi)
-    gCurv.clamp(-1.0, 1.0)
+	gridParticleIndex(parts=pp, flags=gFlags, indexSys=gIdxSys, index=gIdx)
+	unionParticleLevelset(parts=pp, indexSys=gIdxSys, flags=gFlags, index=gIdx, phi=gPhi, radiusFactor=1.0)
+	getLaplacian(laplacian=gCurv, grid=gPhi)
+	gCurv.clamp(-1.0, 1.0)
 
-    if (params['dim']==3 and gui):
-        extrapolateLsSimple(phi=gPhi, distance=4, inside=True)
-        gPhi.createMesh(mesh)
+	if (params['dim']==3 and gui):
+		extrapolateLsSimple(phi=gPhi, distance=4, inside=True)
+		gPhi.createMesh(mesh)
 
-    setWallBcs(flags=gFlags, vel=gV)
-    solvePressure(flags=gFlags, vel=gV, pressure=gP, cgAccuracy=params['cgaccuracy'], phi=gPhi, curv=gCurv, surfTens=params['stens'])
-    setWallBcs(flags=gFlags, vel=gV)
-    extrapolateMACSimple(flags=gFlags, vel=gV)
+	setWallBcs(flags=gFlags, vel=gV)
+	solvePressure(flags=gFlags, vel=gV, pressure=gP, cgAccuracy=params['cgaccuracy'], phi=gPhi, curv=gCurv, surfTens=params['stens'])
+	setWallBcs(flags=gFlags, vel=gV)
+	extrapolateMACSimple(flags=gFlags, vel=gV)
 
-    # update velocity (general update from FLIP and individual update for Lagrangian particles)
-    flipVelocityUpdate(vel=gV, velOld=gVold, flags=gFlags, parts=pp, partVel=pV, flipRatio=0.97, ptype=pT, exclude=FlagObstacle|FlagEmpty)
-    addForcePvel(vel=pV, a=vec3(0, params['grav'], 0), dt=s.timestep, ptype=pT, exclude=FlagObstacle|FlagFluid)
+	# update velocity (general update from FLIP and individual update for Lagrangian particles)
+	flipVelocityUpdate(vel=gV, velOld=gVold, flags=gFlags, parts=pp, partVel=pV, flipRatio=0.97, ptype=pT, exclude=FlagObstacle|FlagEmpty)
+	addForcePvel(vel=pV, a=vec3(0, params['grav'], 0), dt=s.timestep, ptype=pT, exclude=FlagObstacle|FlagFluid)
 
-    # update position
-    pp.getPosPdata(target=pVtmp)
-    pp.advectInGrid(flags=gFlags, vel=gV, integrationMode=IntRK4, deleteInObstacle=False, ptype=pT, exclude=FlagObstacle|FlagEmpty)
-    eulerStep(parts=pp, vel=pV, ptype=pT, exclude=FlagFluid|FlagObstacle)
-    pp.projectOutOfBnd(flags=gFlags, bnd=params['bnd']+params['dx']*0.5)
-    markFluidCells(parts=pp, flags=gFlags, ptype=pT, exclude=FlagObstacle)
+	# update position
+	pp.getPosPdata(target=pVtmp)
+	pp.advectInGrid(flags=gFlags, vel=gV, integrationMode=IntRK4, deleteInObstacle=False, ptype=pT, exclude=FlagObstacle|FlagEmpty)
+	eulerStep(parts=pp, vel=pV, ptype=pT, exclude=FlagFluid|FlagObstacle)
+	pp.projectOutOfBnd(flags=gFlags, bnd=params['bnd']+params['dx']*0.5)
+	markFluidCells(parts=pp, flags=gFlags, ptype=pT, exclude=FlagObstacle)
 
-    # update velocity of the Lagrangian particles
-    updateVelocityFromDeltaPos(parts=pp, vel=pV, x_prev=pVtmp, dt=s.timestep, ptype=pT, exclude=FlagFluid|FlagObstacle)
+	# update velocity of the Lagrangian particles
+	updateVelocityFromDeltaPos(parts=pp, vel=pV, x_prev=pVtmp, dt=s.timestep, ptype=pT, exclude=FlagFluid|FlagObstacle)
 
-    # NOTE: We don't need to solve the pressure for isolated cells.
-    setPartType(parts=pp, ptype=pT, mark=FlagFluid, stype=FlagEmpty, flags=gFlags, cflag=FlagFluid)
-    markIsolatedFluidCell(flags=gFlags, mark=FlagEmpty)
-    setPartType(parts=pp, ptype=pT, mark=FlagEmpty, stype=FlagFluid, flags=gFlags, cflag=FlagEmpty)
+	# NOTE: We don't need to solve the pressure for isolated cells.
+	setPartType(parts=pp, ptype=pT, mark=FlagFluid, stype=FlagEmpty, flags=gFlags, cflag=FlagFluid)
+	markIsolatedFluidCell(flags=gFlags, mark=FlagEmpty)
+	setPartType(parts=pp, ptype=pT, mark=FlagEmpty, stype=FlagFluid, flags=gFlags, cflag=FlagEmpty)
 
-    _dummyV_.copyFrom(gV) 
-    _dummyV_.multConst(Vec3(0.02)) 
+	_dummyV_.copyFrom(gV) 
+	_dummyV_.multConst(Vec3(0.02)) 
 
-    s.step()
+	s.step()
 
-    if output: save_frame(output, s.frame, savingFuncs)
+	if output: save_frame(output, s.frame, savingFuncs)
