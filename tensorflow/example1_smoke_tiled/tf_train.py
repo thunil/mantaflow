@@ -71,8 +71,8 @@ is_convolution_transpose_network = False
 # when training , manually abort when it's good enough
 # then enter test_XXXX id and model checkpoint ID below to load
 
-loadModelTest = -1
-loadModelNo   = -1
+loadModelTest = -1 # loads the network from test_000x, can also be used for training if old network should be trained further
+loadModelNo   = -1 # specifies which checkpoint should be loaded (last 4 are saved), important if overfitted, if -1 -> load newest checkpoint
 testPathStartNo = 1
 
 # command line params, explanations mostly above with variables
