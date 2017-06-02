@@ -284,6 +284,15 @@ bool GridCg<APPLYMAT>::iterate() {
 
 	debMsg("GridCg::iterate i="<<mIterations<<" sigmaNew="<<sigmaNew<<" sigmaLast="<<mSigma<<" alpha="<<alpha<<" beta="<<beta<<" ", CG_DEBUGLEVEL);
 	mSigma = sigmaNew;
+
+	if(!(mResNorm<1e35)) {
+		if(mPcMethod == PC_MGP) {
+			// diverging solves can be caused by the static multigrid mode, we cannot detect this here, though
+			// only the pressure solve call "knows" whether the MG is static or dynamics...
+			debMsg("GridCg::iterate: Warning - this diverging solve can be caused by the 'static' mode of the MG preconditioner. If the static mode is active, try switching to dynamic.", 1);
+		}
+		errMsg("GridCg::iterate: The CG solver diverged, residual norm > 1e30, stopping.");
+	}
 	
 	//debMsg("PB-CG-Norms::p"<<sqrt( GridOpNormNosqrt(mpDst, mpFlags).getValue() ) <<" search"<<sqrt( GridOpNormNosqrt(mpSearch, mpFlags).getValue(), CG_DEBUGLEVEL ) <<" res"<<sqrt( GridOpNormNosqrt(mpResidual, mpFlags).getValue() ) <<" tmp"<<sqrt( GridOpNormNosqrt(mpTmp, mpFlags).getValue() ), CG_DEBUGLEVEL ); // debug
 	return true;
