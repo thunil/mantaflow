@@ -18,7 +18,7 @@ import os
 import shutil
 import copy
 from shutil import copyfile
-from random import randint, shuffle, random
+from random import randint
 
 # global for tile creator
 basePath = '../data/'
@@ -92,10 +92,8 @@ def updatePaths(simNo=None, frameNo=None, tileNo=None, tile_size_x=0, tile_size_
 	paths['tile_high_npb'] = paths['tiles'] + data_type + '_high_%04d_%04d' % (simNo, frameNo) #, tileNo)
 
 
-
 #******************************************************************************
 # I/O helper
-
 # helper functions to load uni files into arrays with multiple channels
 
 def uniToArray(uniPath, is_vel=False):
@@ -175,6 +173,7 @@ def createPngArrayChannel(input, savePath, channel=0):
 				fixedArray[x][y] = v
 
 	scipy.misc.toimage(fixedArray, cmin=0.0, cmax=1.0).save(savePath)
+
 
 #******************************************************************************
 # tiling
@@ -297,9 +296,9 @@ def combineTilesVelocity(tiles, imageHeight, imageWidth, tileHeight, tileWidth):
 
 	return resultArray
 
+
 #******************************************************************************
 # higher level functions to organize test data
-
 
 # save & load uni files
 def createTestDataUni(simNo, tileSize, lowResSize, upScalingFactor, overlapping=0, createPngs=False, with_vel=False, with_pos=False):
@@ -348,8 +347,6 @@ def createTestDataUni(simNo, tileSize, lowResSize, upScalingFactor, overlapping=
 		frameNo += 1
 		tileNo = 0
 		updatePaths(simNo, frameNo, tileNo, tileSize, tileSize, overlapping, data_type)
-
-
 
 def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partTrain=3, partTest=1, load_img=False, load_pos=False, load_vel=False, to_frame=200, low_res_size=64, upres=2):
 	total_tiles_all_sim = 0
@@ -442,7 +439,6 @@ def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 	print('Testing Sets:  {}'.format(len(tile_data['inputs_test'])))
 
 
-
 #******************************************************************************
 # higher level functions to organize test data , npz format
 
@@ -513,7 +509,7 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 	if special_output_type == '':
 		highArray = uniToArray(paths['frame_high_uni'].replace(dataType, 'density'))
 	else:
-		# Hack to load load input data which is names e.g. "pressure"
+		# load input data with special name, e.g. "pressure"
 		highArray = uniToArray(paths['frame_high_uni'].replace(dataType + '_high', special_output_type))
 	if bWidth >= 0:
 		boundrySize = bWidth + 1
@@ -539,11 +535,10 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 		if special_output_type == '':
 			uniio.writeNumpyBuf( paths['tile_high_npb'], highTiles[currTile] )
 		else:
-			# Hack to load load input data which is names e.g. "pressure"
+			# load input data with special name, e.g. "pressure"
 			uniio.writeNumpyBuf( paths['tile_high_npb'].replace(dataType + '_high', special_output_type), highTiles[currTile] )
 
 	uniio.finalizeNumpyBufs()
-
 
 def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partTrain=3, partTest=1, load_pos=False, load_vel=False, special_output_type='', to_frame=200, low_res_size=64, upres=2, keepAll=False, bWidth=-1):
 	total_tiles_all_sim = 0
@@ -642,7 +637,6 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 	tile_data['outputs_train'], tile_data['outputs_test'], tile_data['outputs_val'] = np.split(tile_outputs_all, [end_train, end_test])
 	print('Training set: {}'.format(len(tile_data['inputs_train'])))
 	print('Testing set:  {}'.format(len(tile_data['inputs_test'])))
-
 
 
 #******************************************************************************
@@ -777,32 +771,6 @@ def shuffleInputs(a, b):
 	np.random.shuffle(b)
 	return a, b
 
-def debugOutputPressureVelocityUni(tiles, tileSize, imageSize, path, imageCounter=0, name='pressure'):
-	# Outputs uni files that can be loaded into mantaflow as velocity grid
-	# WARNING: Currently buggy
-
-	# split pressure
-	inputArray = []
-
-	tileCounter = 0
-	for currTile in range(0, len(tiles)):
-		tile = tiles[currTile]
-		tile = np.concatenate((tile, np.zeros(256, order='F')), axis=0)
-		tile = np.reshape(tile, (tileSize, tileSize, 3), order='F')
-		inputArray.append(tile)
-
-		tileCounter += 1
-
-		if tileCounter == ((imageSize // tileSize) ** 2):
-			imageCounter += 1
-			tileCounter = 0
-
-			inputImage = combineTilesVelocity(inputArray, imageSize, imageSize, tileSize, tileSize)
-			# TODO: get dynamic, real path
-			arrayToUni(inputImage, path + name + '_%04d.uni' % imageCounter, '../data/sim_1000/frame_0000/vel_low_1000_0000.uni', imageSize, imageSize, is_vel=True)
-
-			inputArray = []
-
 def debugOutputPngs(input, expected, output, tileSizeLow, tileSizeHigh, imageSizeLow, imageSizeHigh, path, imageCounter=0):
 	expectedArray = []
 	outputArray = []
@@ -885,67 +853,6 @@ def debugOutputPngsCrop(tiles, tileSizeHigh, imageSizeHigh, path, imageCounter=0
 				createPngFromArray(outputImage, path + 'full_%04d.png' % imageCounter)
 			outputArray = []
 
-
-def create_bad_sim_data(output, from_sim, to_sim, to_frame=-1):
-	# Output has to be image, quadratic and size length in power of 2. Input is copied.
-	# Creates for every input sim a "bad output sim" folder, with a simulation number >1000
-	# to_frame has to be the number of frames on which was trained
-
-	# find next free sim path (1000+)
-	folder_no = 1000
-	path_addition = 'sim_%04d/' % folder_no
-	while os.path.exists(basePath + path_addition):
-		folder_no += 1
-		path_addition = 'sim_%04d/' % folder_no
-	simNo = folder_no
-
-	image_size = len(output[0])
-
-	print("\n")
-	# Copy inputs (density and velocity) and save output
-	for curr_input_sim_no in range(from_sim, to_sim + 1):
-		sim_path = basePath + 'sim_%04d/' % simNo
-		os.makedirs(sim_path)
-
-		# for every frame in input
-		curr_input_frame_no = 0
-		while (os.path.exists(basePath + 'sim_%04d/' % curr_input_sim_no
-									   + 'frame_%04d/' % curr_input_frame_no) and not curr_input_frame_no == to_frame):
-
-			new_frame_path = sim_path + 'frame_%04d/' % curr_input_frame_no
-			if not (os.path.exists(new_frame_path)):
-				os.makedirs(new_frame_path)
-
-			curr_input_frame_path_density = basePath + 'sim_%04d/' % curr_input_sim_no \
-													 + 'frame_%04d/' % curr_input_frame_no \
-													 + 'density_low_%04d_%04d.uni' % (curr_input_sim_no, curr_input_frame_no)
-			curr_input_frame_path_vel	 = basePath + 'sim_%04d/' % curr_input_sim_no \
-													 + 'frame_%04d/' % curr_input_frame_no \
-													 + 'vel_low_%04d_%04d.uni' % (curr_input_sim_no, curr_input_frame_no)
-
-			new_input_frame_path_density  = basePath + 'sim_%04d/' % simNo \
-													 + 'frame_%04d/' % curr_input_frame_no \
-													 + 'density_low_%04d_%04d.uni' % (simNo, curr_input_frame_no)
-			new_input_frame_path_vel	  = basePath + 'sim_%04d/' % simNo \
-													 + 'frame_%04d/' % curr_input_frame_no \
-													 + 'vel_low_%04d_%04d.uni' % (simNo, curr_input_frame_no)
-
-			copyfile(curr_input_frame_path_density, new_input_frame_path_density)
-			copyfile(curr_input_frame_path_vel, new_input_frame_path_vel)
-
-			new_output_frame_path_density = basePath + 'sim_%04d/' % simNo \
-													 + 'frame_%04d/' % curr_input_frame_no \
-													 + 'density_high_%04d_%04d.uni' % (simNo, curr_input_frame_no)
-
-			arrayToUni(output[curr_input_frame_no], new_output_frame_path_density, curr_input_frame_path_density, image_size, image_size)
-
-			curr_input_frame_no += 1
-
-		print("Created bad output for sim %04d." % simNo)
-
-		simNo += 1
-	print("\n")
-
 def create_png_for_sims(from_sim, to_sim, target_folder):
 	# target_folder with / at the end
 	frame_global_no = 0
@@ -962,24 +869,6 @@ def create_png_for_sims(from_sim, to_sim, target_folder):
 			frameNo += 1
 			frame_global_no += 1
 			updatePaths(simNo, frameNo, 0, 0, 0, 0, 'density')
-
-def create_bad_mixed_data(from_sim, to_sim):
-	bad_data_array = []
-
-	for simNo in range(from_sim, to_sim + 1):
-		frameNo = 0
-
-		updatePaths(simNo, frameNo, 0, 0, 0, 0, 'density')
-
-		while os.path.exists(paths['frame']):
-			bad_data_array.append(uniToArray(paths['frame_high_uni']))
-
-			frameNo += 1
-			updatePaths(simNo, frameNo, 0, 0, 0, 0, 'density')
-
-	np.random.shuffle(bad_data_array)
-	create_bad_sim_data(bad_data_array, from_sim, to_sim)
-
 
 # deep copy of sim data tree (only dens & vel, no tiles, only uni files)
 def copySimData(fromSim, toSim, to_frame=200):
