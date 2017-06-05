@@ -33,7 +33,7 @@ basePath = '../data/'
 
 # main mode switch:
 outputOnly = True  # apply model, or run full training?
-outputInputs = False					
+outputInputs = False
 
 simSizeLow   = 64
 tileSizeLow  = 16
@@ -58,12 +58,16 @@ randSeed        = 1
 fileFormat      = "npz"
 brightenOutput  = -1 # multiplied with output to brighten it up
 outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
-bWidth          = -1 # boundaryWidth to be cut away. 0 means 1 cell, 1 means two cells. In line with "bWidth" in manta scene files																																  
-# optional, add velocity as additional channels to input?
+bWidth          = -1 # boundaryWidth to be cut away. 0 means 1 cell, 1 means two cells. In line with "bWidth" in manta scene files
+# optional, add velocity as additional channels to input
+useDensity      = 0
 useVelocities   = 0
+onlyVelocities  = 0
+# load pressure as output
+usePressure     = 0
 
 # for conv_trans nets, the output tiles have to be created in the same batch size
-is_convolution_transpose_network = False									
+is_convolution_transpose_network = True
 
 # ---------------------------------------------
 
@@ -71,8 +75,8 @@ is_convolution_transpose_network = False
 # when training , manually abort when it's good enough
 # then enter test_XXXX id and model checkpoint ID below to load
 
-loadModelTest = -1 # loads the network from test_000x, can also be used for training if old network should be trained further
-loadModelNo   = -1 # specifies which checkpoint should be loaded (last 4 are saved), important if overfitted, if -1 -> load newest checkpoint
+loadModelTest = -1
+loadModelNo   = -1
 testPathStartNo = 1
 
 # command line params, explanations mostly above with variables
@@ -81,7 +85,10 @@ trainingEpochs  = int(ph.getParam( "trainingEpochs",  trainingEpochs ))
 loadModelTest   = int(ph.getParam( "loadModelTest",   loadModelTest))
 loadModelNo     = int(ph.getParam( "loadModelNo",     loadModelNo))
 basePath        =     ph.getParam( "basePath",        basePath        )
+useDensity		= int(ph.getParam( "useDensity",      useDensity  ))
 useVelocities   = int(ph.getParam( "useVelocities",   useVelocities  ))
+onlyVelocities  = int(ph.getParam( "onlyVelocities",  onlyVelocities  ))
+usePressure		= int(ph.getParam( "usePressure",     usePressure  ))
 testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
 fromSim         = int(ph.getParam( "fromSim",         fromSim  )) 
 toSim           = int(ph.getParam( "toSim",           toSim  ))
@@ -114,9 +121,8 @@ tf.set_random_seed(randSeed)
 if not outputOnly:
 	# run train!
 	loadModelTest = -1
-	# simSizeLow = 64
 	if fromSim==-1:
-		fromSim = toSim   = 1000 # short, use single sim
+		fromSim = toSim = 1000 # short, use single sim
 
 	if cropOverlap>0:
 		print("Error - dont use cropOverlap != 0 for training...")
@@ -132,10 +138,18 @@ else:
 
 n_input  = tileSizeLow  ** 2 
 n_output = tileSizeHigh ** 2
-n_inputChannels = 1
+n_inputChannels = 0
 
-if useVelocities:
-	n_inputChannels = 2
+if useDensity:
+	n_inputChannels += 1
+if onlyVelocities:
+	n_inputChannels += 2
+	useVelocities = 1
+elif useVelocities:
+	n_inputChannels += 3
+if n_inputChannels == 0:
+	print("ERROR: No inputs set. Use useDensity, useVelocities, ...")
+	exit()
 n_input *= n_inputChannels
 
 # create output dir
@@ -166,7 +180,6 @@ if not loadModelTest == -1:
 	load_path = basePath + 'test_%04d/model_%04d.ckpt' % (loadModelTest, loadModelNo)
 
 test_path = next_test_path(testPathStartNo)
-uniio.backupFile(__file__, test_path)
 
 # custom Logger to write Log to file
 class Logger(object):
@@ -208,13 +221,12 @@ x = tf.placeholder(tf.float32, shape=[None, n_input])
 y_true = tf.placeholder(tf.float32, shape=[None, n_output])
 keep_prob = tf.placeholder(tf.float32)
 
-xIn = tf.reshape(x, shape=[-1, tileSizeLow, tileSizeLow, n_inputChannels]) 
-cae = ConvolutionalAutoEncoder(xIn) 
-
-# --- main graph setup ---
+# --- begin graph setup ---
+xIn = tf.reshape(x, shape=[-1, tileSizeLow, tileSizeLow, n_inputChannels])
+cae = ConvolutionalAutoEncoder(xIn)
 
 pool = 4
-# note - for simplicity, we always reduce the number of channels to 8 here 
+# note - for simplicity, we always reduce the number of channels to 8 here
 # this is probably suboptimal in general, but keeps the network structure similar and simple
 clFMs = int(8 / n_inputChannels)
 cae.convolutional_layer(clFMs, [3, 3], tf.nn.relu)
@@ -233,6 +245,26 @@ cae.deconvolutional_layer(2, [5, 5], tf.nn.relu)
 y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
 print ("DOFs: %d " % cae.getDOFs())
 
+costFunc = tf.nn.l2_loss(y_true - y_pred)
+optimizer = tf.train.AdamOptimizer(learningRate).minimize(costFunc)
+
+#
+# layer_1_size = 512
+#
+# fc_1_weight = tf.Variable(tf.random_normal([n_input, layer_1_size], stddev=0.01))
+# fc_1_bias   = tf.Variable(tf.random_normal([layer_1_size], stddev=0.01))
+#
+# fc1 = tf.add(tf.matmul(x, fc_1_weight), fc_1_bias)
+# fc1 = tf.nn.tanh(fc1)
+# fc1 = tf.nn.dropout(fc1, dropout)
+#
+# fc_out_weight = tf.Variable(tf.random_normal([tileSizeLow*tileSizeLow * 2, tileSizeHigh * tileSizeHigh], stddev=0.01))
+# fc_out_bias   = tf.Variable(tf.random_normal([tileSizeHigh * tileSizeHigh], stddev=0.01))
+#
+# y_pred = tf.add(tf.matmul(fc1, fc_out_weight), fc_out_bias)
+
+# --- end graph setup ---
+
 costFunc = tf.nn.l2_loss(y_true - y_pred) 
 optimizer = tf.train.AdamOptimizer(learningRate).minimize(costFunc)
 
@@ -247,6 +279,8 @@ else:
 	saver.restore(sess, load_path)
 	print("Model restored from %s." % load_path)
 
+if usePressure:
+	outputDataName = "pressure"
 
 # load test data
 if (fileFormat == "npz"):
@@ -257,10 +291,11 @@ else:
 	print("\n ERROR: Unknown file format \"" + fileFormat + "\". Use \"npz\" or \"uni\".")
 	exit()
 
-if useVelocities:
-	print('Reducing data to 2D velocity...')
+if onlyVelocities:
+	print('Only Velocities set: Reducing data to 2D velocity...')
 	tiCr.reduceInputsTo2DVelocity()
-	tiCr.splitTileData(0.95, 0.05)									 
+	tiCr.splitTileData(0.95, 0.05)
+	
 # create a summary to monitor cost tensor
 lossTrain  = tf.summary.scalar("loss",     costFunc)
 lossTest   = tf.summary.scalar("lossTest", costFunc)
@@ -339,15 +374,46 @@ else:
 	for currOut in range( int(outrange) ): 
 		batch_xs = []
 		batch_ys = []
-		for curr_tile in range(tilesPerImg):
+		# to output velocity inputs
+		batch_velocity_x = []
+		batch_velocity_y = []
+
+		combine_tiles_amount = tilesPerImg
+		if is_convolution_transpose_network:
+			combine_tiles_amount = batchSize
+		for curr_tile in range(combine_tiles_amount):
+		# for curr_tile in range(tilesPerImg):
 			idx = currOut * tilesPerImg + curr_tile
+			if is_convolution_transpose_network and idx > len(tiCr.tile_inputs_all_complete) - 1:
+				exit()
 			batch_xs.append(tiCr.tile_inputs_all_complete[idx])
-			batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
+			# batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
+			batch_ys.append(tiCr.tile_outputs_all_complete[idx])
+
+			# to output velocity inputs
+			if (useVelocities or onlyVelocities) and outputInputs:
+				curr_tile = np.reshape(tiCr.tile_inputs_all_complete[idx], (2, tileSizeLow*tileSizeLow), order='C')
+				batch_velocity_x.append(curr_tile[0])
+				batch_velocity_y.append(curr_tile[1])
 
 		resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
-		tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, \
-			imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
+		if brightenOutput > 0:
+			for curr_value in range(len(resultTiles)):
+				resultTiles[curr_value] *= brightenOutput
+			for curr_value in range(len(batch_ys)):
+				batch_ys[curr_value] *= brightenOutput
+		tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
+		tiCr.debugOutputPngsCrop(batch_ys, tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg, name='expected_out')
+		# tiCr.debugOutputPngsSingle(batch_ys, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='expected_out')
+
+		if outputInputs:
+			if not useVelocities and not onlyVelocities:
+				tiCr.debugOutputPngsSingle(batch_xs, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='input')
+			else:
+				tiCr.debugOutputPngsSingle(batch_velocity_x, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='vel_x')
+				tiCr.debugOutputPngsSingle(batch_velocity_y, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='vel_y')
+
 		# optionally, output references
 		#tiCr.debugOutputPngsCrop(batch_ys, tileSizeHigh, simSizeHigh, test_path+"_ref", imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
 		img_count += 1

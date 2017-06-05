@@ -148,13 +148,17 @@ def createPngFromArray(input, savePath):
 	imageHeight = len(input)
 	imageWidth = len(input[0])
 
-	fixedArray = np.zeros((imageHeight, imageWidth), dtype='f')
+	fixedArray = np.zeros((imageHeight, imageWidth, 3), dtype='f')
 	for x in range(0, imageHeight):
 		for y in range(0, imageWidth):
 			if (input[x][y] < 0.0):
-				fixedArray[x][y] = 0.0
+				fixedArray[x][y][0] = -input[x][y]
 			else:
-				fixedArray[x][y] = input[x][y]
+				fixedArray[x][y][0] = input[x][y]
+				fixedArray[x][y][1] = input[x][y]
+				fixedArray[x][y][2] = input[x][y]
+
+
 
 	scipy.misc.toimage(fixedArray, cmin=0.0, cmax=1.0).save(savePath)
 
