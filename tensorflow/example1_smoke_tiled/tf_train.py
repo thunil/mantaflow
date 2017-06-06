@@ -60,7 +60,7 @@ brightenOutput  = -1 # multiplied with output to brighten it up
 outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
 bWidth          = -1 # boundaryWidth to be cut away. 0 means 1 cell, 1 means two cells. In line with "bWidth" in manta scene files
 # optional, add velocity as additional channels to input
-useDensity      = 0
+useDensity      = 1  # default, only density
 useVelocities   = 0
 onlyVelocities  = 0
 # load pressure as output
@@ -125,7 +125,7 @@ if not outputOnly:
 		fromSim = toSim = 1000 # short, use single sim
 
 	if cropOverlap>0:
-		print("Error - dont use cropOverlap != 0 for training...")
+		print("ERROR: dont use cropOverlap != 0 for training...")
 		exit(1)
 
 else:

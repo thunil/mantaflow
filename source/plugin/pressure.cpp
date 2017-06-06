@@ -40,7 +40,7 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 		return;
 	}
 
-	// compute divergence 
+	// compute negative divergence 
 	// no flag checks: assumes vel at obstacle interfaces is set to zero
 	Real set(0);
 	if(!fractions) {

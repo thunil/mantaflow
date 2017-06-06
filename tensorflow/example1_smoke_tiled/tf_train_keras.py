@@ -207,7 +207,7 @@ clFMs = int(8 / n_inputChannels)
 #print( "inputs " + format(len( tiCr.tile_data['inputs_train']) ))
 
 model = keras.models.Sequential()
-model.add( keras.layers.Conv2D(clFMs/2, (2,2), activation='relu', strides=(2,2), input_shape=(16,16,n_inputChannels), padding='same' ) )
+model.add( keras.layers.Conv2D(clFMs/2, (2,2), activation='relu', strides=(2,2), input_shape=(tileSizeLow,tileSizeLow,n_inputChannels), padding='same' ) )
 
 model.add( keras.layers.Conv2D(clFMs  , (2,2), activation='relu', strides=(2,2), padding='same' ) )
 model.add( keras.layers.BatchNormalization() )  

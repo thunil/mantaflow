@@ -615,14 +615,14 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 		total_tiles_all_sim += totalTiles
 		discarded_tiles_all_sim += discardedTiles
 
-	if 0: # NT_DEBUG , output all inputs as images
+	if 0: # for debugging: output all inputs as images
 		i =0
 		for tile in tile_inputs_all:
 			tile2d = np.reshape( tile,(tileSizeLow,tileSizeLow,4) )
 			print (format(tile2d.shape))
-			createPngArrayChannel( tile2d , "/Users/sinithue/temp/tf/tout3b_%04d.png"%i) # NT_DEBUG
+			createPngArrayChannel( tile2d , "/Users/sinithue/temp/tf/tout3b_%04d.png"%i) 
 			i+=1
-		exit(1) # NT_DEBUG
+		exit(1) 
 
 
 	print('Tiles in data set: %d' % (len(tile_inputs_all)) ) 
@@ -671,14 +671,6 @@ def selectRandomTiles(selectionSize, isTraining=True, cropped=False):
 # combine data into multiple channels of higher dimensional array
 def combineChannelsFromUni(low_tile_density, low_tile_vel, addPos=False):
 	shape = low_tile_density.shape
-
-	if 0:
-		print( "debug combineDensVelChannels") # NT_DEBUG
-		print( format(shape) )
-		#print( format(len(low_tile_density)) )
-		print( format(low_tile_density.flags) )
-		print( format(low_tile_density.strides ) )
-		exit(1)
 
 	# Combines one tile of density with one tile of velocity
 	channels = 4
