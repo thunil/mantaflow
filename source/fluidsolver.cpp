@@ -209,6 +209,11 @@ PYTHON() std::string printBuildInfo() {
 	return infoString;
 }
 
+//! set debug level for messages (0 off, 1 regular, higher = more, up to 10)
+PYTHON() void setDebugLevel(int level=1) {
+	gDebugLevel = level; 
+}
+
 //! helper function to check for numpy compilation
 PYTHON() void assertNumpy() {
 #if NUMPY==1
@@ -216,11 +221,6 @@ PYTHON() void assertNumpy() {
 #else
 	errMsg("This scene requires numpy support. Enable compilation in cmake with \"-DNUMPY=1\" ");
 #endif
-}
-
-//! set debug level for messages (0 off, 1 regular, higher = more, up to 10)
-PYTHON() void setDebugLevel(int level=1) {
-	gDebugLevel = level; 
 }
 
 } // manta
