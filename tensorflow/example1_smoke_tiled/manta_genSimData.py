@@ -36,7 +36,7 @@ setDebugLevel(1)
 res    = 64
 dim    = 2 
 offset = 20
-interval = 10		 
+interval = 1
 
 scaleFactor = 4
 
@@ -174,7 +174,7 @@ if (showGui and GUI):
 
 t = 0
 tcnt = 0
-resetN = 40
+resetN = 20
 
 if savedata:
 	folderNo = simNo

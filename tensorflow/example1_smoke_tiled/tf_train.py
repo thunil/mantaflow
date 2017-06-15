@@ -97,7 +97,7 @@ randSeed        = int(ph.getParam( "randSeed",        randSeed ))
 simSizeLow      = int(ph.getParam( "simSizeLow",      simSizeLow )) 
 upRes           = int(ph.getParam( "upRes",           upRes ))
 fileFormat      =     ph.getParam( "fileFormat",      fileFormat) # create pngs for inputs
-outputInputs    = int(ph.getParam( "outInputs",       outputInputs)) 
+outputInputs    = int(ph.getParam( "outInputs",       outputInputs)) # for debugging, write images for input data
 brightenOutput  = int(ph.getParam( "brightenOutput",  brightenOutput)) 
 outputDataName  =    (ph.getParam( "outName",         outputDataName))
 bWidth			= int(ph.getParam( "bWidth",          bWidth))
@@ -217,51 +217,55 @@ print_variables()
 
 # ---------------------------------------------
 # TENSORFLOW SETUP
-x = tf.placeholder(tf.float32, shape=[None, n_input])
-y_true = tf.placeholder(tf.float32, shape=[None, n_output])
+#x = tf.placeholder(tf.float32, shape=[None, n_input])
+x      = tf.placeholder(tf.float32, shape=[None, 1, tileSizeLow, tileSizeLow, n_inputChannels])  # fixed to 2D for now
+y_true = tf.placeholder(tf.float32, shape=[None, 1, tileSizeHigh,tileSizeHigh, 1             ])  # fixed to 2D for now , always output 1 channel
 keep_prob = tf.placeholder(tf.float32)
 
 # --- begin graph setup ---
-xIn = tf.reshape(x, shape=[-1, tileSizeLow, tileSizeLow, n_inputChannels])
-cae = ConvolutionalAutoEncoder(xIn)
+#xIn = tf.reshape(x, shape=[-1, tileSizeLow, tileSizeLow, n_inputChannels])
+cae = ConvolutionalAutoEncoder(x)
 
-pool = 4
+pool = 4 # very strong pooling by default
+
 # note - for simplicity, we always reduce the number of channels to 8 here
 # this is probably suboptimal in general, but keeps the network structure similar and simple
-clFMs = int(8 / n_inputChannels)
-cae.convolutional_layer(clFMs, [3, 3], tf.nn.relu)
-cae.max_pool([pool,pool], [pool,pool])
+# clFMs = int(8 / n_inputChannels)
+# cae.convolutional_layer(clFMs, [3, 3], tf.nn.relu)
+# cae.max_pool([pool,pool], [pool,pool])
+# 
+# flat_size = cae.flatten()
+# cae.fully_connected_layer(flat_size, tf.nn.relu)
+# cae.unflatten()
+# 
+# cae.max_depool([pool,pool], [pool,pool])
+# cae.deconvolutional_layer(4, [3, 3], tf.nn.relu)
+# 
+# cae.max_depool([pool,pool], [pool,pool])
+# cae.deconvolutional_layer(2, [5, 5], tf.nn.relu)
+# 
+# #y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
+# print ("DOFs: %d " % cae.getDOFs())
 
-flat_size = cae.flatten()
-cae.fully_connected_layer(flat_size, tf.nn.relu)
-cae.unflatten()
+# below is an alternate as-simple-as-possible fully connected layer network
+# use this as a starting point for own networks without the CAE class above
+# (comment out the cae part above, and uncomment the part below)
 
-cae.max_depool([pool,pool], [pool,pool])
-cae.deconvolutional_layer(4, [3, 3], tf.nn.relu)
+layer_1_size = 512
 
-cae.max_depool([pool,pool], [pool,pool])
-cae.deconvolutional_layer(2, [5, 5], tf.nn.relu)
+xIn = tf.reshape(x, shape=[-1, tileSizeLow* tileSizeLow* n_inputChannels]) # flatten
+fc_1_weight = tf.Variable(tf.random_normal([n_input, layer_1_size], stddev=0.01))
+fc_1_bias   = tf.Variable(tf.random_normal([layer_1_size], stddev=0.01))
 
-y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
-print ("DOFs: %d " % cae.getDOFs())
+fc1 = tf.add(tf.matmul(xIn, fc_1_weight), fc_1_bias)
+fc1 = tf.nn.tanh(fc1)
+fc1 = tf.nn.dropout(fc1, dropout)
 
-costFunc = tf.nn.l2_loss(y_true - y_pred)
-optimizer = tf.train.AdamOptimizer(learningRate).minimize(costFunc)
+fc_out_weight = tf.Variable(tf.random_normal([tileSizeLow*tileSizeLow * 2, tileSizeHigh * tileSizeHigh], stddev=0.01))
+fc_out_bias   = tf.Variable(tf.random_normal([tileSizeHigh * tileSizeHigh], stddev=0.01))
 
-#
-# layer_1_size = 512
-#
-# fc_1_weight = tf.Variable(tf.random_normal([n_input, layer_1_size], stddev=0.01))
-# fc_1_bias   = tf.Variable(tf.random_normal([layer_1_size], stddev=0.01))
-#
-# fc1 = tf.add(tf.matmul(x, fc_1_weight), fc_1_bias)
-# fc1 = tf.nn.tanh(fc1)
-# fc1 = tf.nn.dropout(fc1, dropout)
-#
-# fc_out_weight = tf.Variable(tf.random_normal([tileSizeLow*tileSizeLow * 2, tileSizeHigh * tileSizeHigh], stddev=0.01))
-# fc_out_bias   = tf.Variable(tf.random_normal([tileSizeHigh * tileSizeHigh], stddev=0.01))
-#
-# y_pred = tf.add(tf.matmul(fc1, fc_out_weight), fc_out_bias)
+y_pred = tf.add(tf.matmul(fc1, fc_out_weight), fc_out_bias)
+y_pred = tf.reshape( y_pred, shape=[-1, 1, tileSizeHigh, tileSizeHigh, 1])
 
 # --- end graph setup ---
 
@@ -286,7 +290,7 @@ if usePressure:
 if (fileFormat == "npz"):
 	tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll, special_output_type=outputDataName, bWidth=bWidth)
 elif (fileFormat == "uni"):
-	tiCr.loadTestDataUni(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes)
+	tiCr.loadTestDataUni(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll )
 else:
 	print("\n ERROR: Unknown file format \"" + fileFormat + "\". Use \"npz\" or \"uni\".")
 	exit()
@@ -362,16 +366,20 @@ else:
 
 	# ---------------------------------------------
 	# outputOnly: apply to a full data set, and re-create full outputs from tiles
-	print('Creating outputs...')
+
+	# print(format( tiCr.tile_inputs_all_complete[0].shape )) # NT_DEBUG
 	batch_xs, batch_ys = tiCr.tile_inputs_all_complete, tiCr.tile_outputs_all_complete
+	print('Creating %d tile outputs...' % (len(batch_xs)) )
+
 	tileSizeHiCrop = upRes * cropTileSizeLow
 	tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
 
 	img_count = 0
-	outrange = len(tiCr.tile_inputs_all_complete) / tilesPerImg
+	outrange = int( len(tiCr.tile_inputs_all_complete) / tilesPerImg )
+	#print("outtt1 NT_DEBUG %d, %d, %d, %d "%( len(tiCr.tile_inputs_all_complete) , tilesPerImg, outrange, 0) ); # NT_DEBUG exit(1)
 
 	# use int to avoid TypeError: 'float' object cannot be interpreted as an integer
-	for currOut in range( int(outrange) ): 
+	for currOut in range(outrange): 
 		batch_xs = []
 		batch_ys = []
 		# to output velocity inputs
@@ -384,17 +392,19 @@ else:
 		for curr_tile in range(combine_tiles_amount):
 		# for curr_tile in range(tilesPerImg):
 			idx = currOut * tilesPerImg + curr_tile
+			#print("outttt NT_DEBUG %d, %d, %d, %d "%( curr_tile, idx, currOut, len(tiCr.tile_inputs_all_complete) ) )
 			if is_convolution_transpose_network and idx > len(tiCr.tile_inputs_all_complete) - 1:
 				exit()
 			batch_xs.append(tiCr.tile_inputs_all_complete[idx])
 			# batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
 			batch_ys.append(tiCr.tile_outputs_all_complete[idx])
+#print(format( tiCr.tile_outputs_all_complete[0].sum( dtype=np.float64 ) ))
 
 			# to output velocity inputs
-			if (useVelocities or onlyVelocities) and outputInputs:
-				curr_tile = np.reshape(tiCr.tile_inputs_all_complete[idx], (2, tileSizeLow*tileSizeLow), order='C')
-				batch_velocity_x.append(curr_tile[0])
-				batch_velocity_y.append(curr_tile[1])
+			#? if (useVelocities or onlyVelocities) and outputInputs:
+				#? curr_tile = np.reshape(tiCr.tile_inputs_all_complete[idx], (2, tileSizeLow*tileSizeLow), order='C')
+				#? batch_velocity_x.append(curr_tile[0])
+				#? batch_velocity_y.append(curr_tile[1])
 
 		resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
@@ -404,15 +414,15 @@ else:
 			for curr_value in range(len(batch_ys)):
 				batch_ys[curr_value] *= brightenOutput
 		tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
-		tiCr.debugOutputPngsCrop(batch_ys, tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg, name='expected_out')
+		tiCr.debugOutputPngsCrop(batch_ys,    tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg, name='expected_out')
 		# tiCr.debugOutputPngsSingle(batch_ys, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='expected_out')
 
 		if outputInputs:
 			if not useVelocities and not onlyVelocities:
-				tiCr.debugOutputPngsSingle(batch_xs, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='input')
-			else:
-				tiCr.debugOutputPngsSingle(batch_velocity_x, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='vel_x')
-				tiCr.debugOutputPngsSingle(batch_velocity_y, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='vel_y')
+				tiCr.debugOutputPngsSingle(batch_xs,         tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='input')
+			else: # NT_DEBUG todo	 test
+				tiCr.debugOutputPngsSingle(batch_velocity_x, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='in_vel_x')
+				tiCr.debugOutputPngsSingle(batch_velocity_y, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='in_vel_y')
 
 		# optionally, output references
 		#tiCr.debugOutputPngsCrop(batch_ys, tileSizeHigh, simSizeHigh, test_path+"_ref", imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)

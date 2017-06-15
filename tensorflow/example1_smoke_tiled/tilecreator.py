@@ -83,13 +83,11 @@ def updatePaths(simNo=None, frameNo=None, tileNo=None, tile_size_x=0, tile_size_
 	paths['tile_high_uni']  = paths['tiles'] + data_type + '_high_%04d_%04d_%04d.uni' % (simNo, frameNo, tileNo)
 
 	# new numpy array filenames
-	paths['frame_low_np']  = paths['frame_low_uni' ].replace('.uni', '.npz')
-	paths['frame_high_np'] = paths['frame_high_uni'].replace('.uni', '.npz')
 	paths['tile_low_np']   = paths['tile_low_uni'  ].replace('.uni', '.npz')  
 	paths['tile_high_np']  = paths['tile_high_uni' ].replace('.uni', '.npz') 
 
-	paths['tile_low_npb']  = paths['tiles'] + data_type + '_low_%04d_%04d' % (simNo, frameNo) #, tileNo)
-	paths['tile_high_npb'] = paths['tiles'] + data_type + '_high_%04d_%04d' % (simNo, frameNo) #, tileNo)
+	paths['tile_low_npb']  = paths['tiles'] + data_type + '_low_%04d_%04d' % (simNo, frameNo)  # base name for numpy files
+	paths['tile_high_npb'] = paths['tiles'] + data_type + '_high_%04d_%04d' % (simNo, frameNo) #
 
 
 #******************************************************************************
@@ -158,9 +156,8 @@ def createPngFromArray(input, savePath):
 				fixedArray[x][y][1] = input[x][y]
 				fixedArray[x][y][2] = input[x][y]
 
-
-
 	scipy.misc.toimage(fixedArray, cmin=0.0, cmax=1.0).save(savePath)
+	print("Wrote '"+savePath+"'  ")
 
 # array can have multiple channels, use channel 0 for output
 def createPngArrayChannel(input, savePath, channel=0):
@@ -183,7 +180,8 @@ def createPngArrayChannel(input, savePath, channel=0):
 # tiling
 
 # break down single image into smaller tiles
-def createTiles(input, imageHeight, imageWidth, tileHeight, tileWidth, overlapping=0):
+# TODO, require square inputs? pass only one size...
+def createTiles(input, imageHeight, imageWidth, tileHeight, tileWidth, overlapping=0, dims=2, channels=1):
 	if ((imageHeight % tileHeight) != 0 |
 		imageWidth % tileWidth != 0):
 		print('Error: Image and tile size do not match.')
@@ -196,7 +194,9 @@ def createTiles(input, imageHeight, imageWidth, tileHeight, tileWidth, overlappi
 	for currTileVert in range(0, tilesVertical):
 		for currTileHor in range(0, tilesHorizontal):
 
-			currTile = np.zeros((tileHeight + overlapping * 2, tileWidth + overlapping * 2), dtype='f')
+			z = 0 # 2D for now
+			s = tileHeight + overlapping * 2
+			currTile = np.zeros((1 if dims==2 else s, s, s, channels), dtype='f')
 
 			for currPixelVert in range(-overlapping, tileHeight + overlapping):
 				for currPixelHor in range(-overlapping, tileWidth + overlapping):
@@ -204,9 +204,9 @@ def createTiles(input, imageHeight, imageWidth, tileHeight, tileWidth, overlappi
 					indexY = currPixelHor + (currTileHor * tileHeight)
 
 					if (indexX >= 0) and (indexY >= 0) and (indexX < len(input)) and (indexY < len(input[0])):
-						currTile[currPixelVert + overlapping][currPixelHor + overlapping] = input[indexX][indexY]
+						currTile[z][currPixelVert + overlapping][currPixelHor + overlapping] = input[z][indexX][indexY]
 					else:
-						currTile[currPixelVert + overlapping][currPixelHor + overlapping] = 0
+						currTile[z][currPixelVert + overlapping][currPixelHor + overlapping] = 0
 
 			tiles.append(currTile)
 
@@ -254,16 +254,14 @@ def combineTiles(tiles, imageHeight, imageWidth, tileHeight, tileWidth):
 	tilesHorizontal = imageWidth // tileWidth
 
 	resultArray = np.zeros((imageHeight, imageWidth), dtype='f')
-
 	for currTileVert in range(0, tilesVertical):
 		for currTileHor in range(0, tilesHorizontal):
 
 			for currPixelVert in range(0, tileHeight):
 				for currPixelHor in range(0, tileWidth):
 					indexX = currPixelHor + (currTileHor * tileHeight)
-					indexY = currPixelVert + (currTileVert * tileWidth)
-
-					resultArray[indexX][indexY] = (tiles[currTileHor * tilesHorizontal + currTileVert])[currPixelHor][currPixelVert]
+					indexY = currPixelVert + (currTileVert * tileWidth) 
+					resultArray[indexX][indexY] = (tiles[currTileHor * tilesHorizontal + currTileVert])[0][currPixelHor][currPixelVert][0]
 
 	return resultArray
 
@@ -319,6 +317,7 @@ def createTestDataUni(simNo, tileSize, lowResSize, upScalingFactor, overlapping=
 			if not os.path.exists(paths['tiles']):
 				os.makedirs(paths['tiles'])
 
+			# NT_DEBUG todo use createTiles with channels
 			# create tiles 
 			if with_vel:
 				lowArray = combineDensVelSpace(uniToArray(paths['frame_low_uni']), uniToArray(paths['frame_low_uni'].replace('density', 'vel'), is_vel=True))
@@ -352,7 +351,7 @@ def createTestDataUni(simNo, tileSize, lowResSize, upScalingFactor, overlapping=
 		tileNo = 0
 		updatePaths(simNo, frameNo, tileNo, tileSize, tileSize, overlapping, data_type)
 
-def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partTrain=3, partTest=1, load_img=False, load_pos=False, load_vel=False, to_frame=200, low_res_size=64, upres=2):
+def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partTrain=3, partTest=1, load_img=False, load_pos=False, load_vel=False, to_frame=200, low_res_size=64, upres=2, keepAll=False):
 	total_tiles_all_sim = 0
 	discarded_tiles_all_sim = 0 
 	data_type = 'density'
@@ -383,13 +382,12 @@ def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 			if load_img:
 				lowArray = uniToArray(paths['frame_low_uni'])
 				highArray = uniToArray(paths['frame_high_uni'])
-				img_inputs_all.append(lowArray.flatten())
-				img_outputs_all.append(highArray.flatten())
+				img_inputs_all.append(lowArray) # .flatten())
+				img_outputs_all.append(highArray) # .flatten())
 
 			#print('Loading frame %04d' % frameNo)
 			while os.path.exists(paths['tile_high_uni']):
 				# check if tile is empty. If so, don't add it
-				accumulatedDensity = 0.0
 				if load_vel:
 					lowTile = uniToArray(paths['tile_low_uni'].replace('density', 'dens_vel'))
 				elif load_pos:
@@ -398,17 +396,17 @@ def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 					lowTile = uniToArray(paths['tile_low_uni'])
 				highTile = uniToArray(paths['tile_high_uni'])
 
-				for value in lowTile.flatten():
-					accumulatedDensity += value
-				if accumulatedDensity > (densityMinimum * tileSizeLow * tileSizeLow):
-					tile_inputs_all.append(lowTile.flatten())
-					tile_outputs_all.append(highTile.flatten())
+				totalDens = lowTile.sum( dtype=np.float64 )
+				if totalDens > (densityMinimum * tileSizeLow * tileSizeLow):
+					tile_inputs_all.append(lowTile) # .flatten())
+					tile_outputs_all.append(highTile) # .flatten())
 				else:
 					# print('Discarded empty tile.')
 					discardedTiles += 1
 
-				tile_inputs_all_complete.append(lowTile.flatten())
-				tile_outputs_all_complete.append(highTile.flatten()) 
+				if keepAll:
+					tile_inputs_all_complete.append(lowTile) # .flatten())
+					tile_outputs_all_complete.append(highTile) # .flatten()) 
 				totalTiles += 1
 
 				tileNo += 1
@@ -461,11 +459,17 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 		dataShape[3] = 4
 	elif with_pos:
 		dataShape[3] = 7
-	tileShape = [tileSize,tileSize,tileSize]
+	tileShape  = [tileSize,tileSize,tileSize]
 	if dims==2:
 		tileShape[0] = 1
 		dataShape[0] = 1
 	dataType = paths['data_type']
+
+	dataShapeHi = [dataShape[0], dataShape[1], dataShape[2], dataShape[3] ] 
+	tileShapeHi = [tileShape[0], tileShape[1], tileShape[2] ] 
+	for i in range( 1 if (dims==2) else 0, 3):  # scale active spatial dimensions
+		dataShapeHi[i] = dataShapeHi[i] * upScalingFactor
+		tileShapeHi[i] = tileShapeHi[i] * upScalingFactor
 
 	# for each frame: create tiles + folders, warning hard coded max 999
 	#print('Creating tiles for sim %04d, frame %04d' % (simNo, frameNo))
@@ -501,14 +505,12 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 		from_value = int(from_value)
 		to_value = int(to_value)
 		lowArray = lowArray[dataShapeWithBoundry[0] - 1, from_value: to_value, from_value: to_value]
-		lowArray = np.reshape(lowArray, dataShape)
 	else:
 		assertShape3D(lowArray.shape, dataShape, "regular simulation")
-		lowArray = np.reshape(lowArray, dataShape)
-	lowTiles = createTilesNumpy(lowArray, tileShape, overlapping)
 
-	#tilet2d = np.reshape( lowArray,(lowResSize,lowResSize,4) )
-	#createPngArrayChannel( tilet2d , "/Users/sinithue/temp/tf/tout3a_%04d.png"%frameNo) # debug, write inputs again as images
+	lowArray = np.reshape(lowArray, dataShape)
+	lowTiles = createTilesNumpy(lowArray, tileShape, overlapping)
+	#createPngArrayChannel( tilet2d , "testOut_%04d.png"%frameNo) # debug, write inputs again as images
 
 	if special_output_type == '':
 		highArray = uniToArray(paths['frame_high_uni'].replace(dataType, 'density'))
@@ -523,7 +525,9 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 		from_value = int(from_value)
 		to_value = int(to_value)
 		highArray = highArray[from_value: to_value, from_value: to_value]
-	highTiles = createTiles(highArray, lowResSize * upScalingFactor, lowResSize * upScalingFactor, tileSize * upScalingFactor, tileSize * upScalingFactor, overlapping)
+
+	highArray = np.reshape(highArray, dataShapeHi)
+	highTiles = createTilesNumpy(highArray, tileShapeHi, overlapping)
 
 	if 0: # debug info
 		print('Sim dimensions low %s, high %s' % (format(lowArray.shape), format(highArray.shape)) )
@@ -569,7 +573,6 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 				createTestDataNpz(paths, tileSizeLow, low_res_size, upres, overlapping, with_vel=load_vel, with_pos=load_pos, special_output_type=special_output_type, bWidth=bWidth)
 
 			#print('Loading np buffers for frame %04d' % frameNo)
-			#print(paths['tile_high_np'])
 			while os.path.exists(paths['tile_low_np']):
 				# check if tile is empty. If so, don't add it
 				ltPath = paths['tile_low_np']
@@ -587,17 +590,16 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 					highTile = highTiles[ "arr_%d"%i ]
 
 					totalDens = lowTile.sum( dtype=np.float64 )
-					#print("sum %f %f " % (accumulatedDensity,totalDens) )
 					if totalDens > (densityMinimum * tileSizeLow * tileSizeLow):
-						tile_inputs_all.append(lowTile.flatten())
-						tile_outputs_all.append(highTile.flatten())
+						tile_inputs_all.append(lowTile) 
+						tile_outputs_all.append(highTile)
 					else:
 						# print('Discarded empty tile.')
 						discardedTiles += 1
 
 					if keepAll:
-						tile_inputs_all_complete.append(lowTile.flatten()) 
-						tile_outputs_all_complete.append(highTile.flatten())
+						tile_inputs_all_complete.append(lowTile) 
+						tile_outputs_all_complete.append(highTile) 
 					totalTiles += 1
 
 				bufferNo   += 1
@@ -619,7 +621,7 @@ def loadTestDataNpz(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, pa
 		i =0
 		for tile in tile_inputs_all:
 			tile2d = np.reshape( tile,(tileSizeLow,tileSizeLow,4) )
-			print (format(tile2d.shape))
+			#print (format(tile2d.shape))
 			createPngArrayChannel( tile2d , "/Users/sinithue/temp/tf/tout3b_%04d.png"%i) 
 			i+=1
 		exit(1) 
@@ -739,7 +741,7 @@ def reduceTo2DVelocity(tile, tileSizeLow):
 	# reduces one tile with density and velocity to the x and y of the velocity
 	curr_tile = np.reshape(tile, (4, tileSizeLow * tileSizeLow), order='F')
 	tile = [curr_tile[1], curr_tile[2]]
-	return np.array(tile).flatten()
+	return np.array(tile) # .flatten()
 
 def reduceInputsTo2DVelocity():
 	# reduces tile inputs with density and velocity to the x and y of the velocity
@@ -767,52 +769,22 @@ def shuffleInputs(a, b):
 	np.random.shuffle(b)
 	return a, b
 
-def debugOutputPngs(input, expected, output, tileSizeLow, tileSizeHigh, imageSizeLow, imageSizeHigh, path, imageCounter=0):
-	expectedArray = []
-	outputArray = []
+# creates output png from tiles (that form an image)
+def debugOutputPngsSingle(input, tileSize, imageSize, path, imageCounter=0, name='input', channel=0):
 	inputArray = []
 
 	tileCounter = 0
 	for currTile in range(0, len(input)):
-		expectedArray.append(np.reshape(expected[currTile], (tileSizeHigh, tileSizeHigh)))
-		outputArray.append(np.reshape(output[currTile], (tileSizeHigh, tileSizeHigh)))
-		# inputArray.append(np.reshape(input[currTile], (tileSizeLow, tileSizeLow)))
+		inTile = input[currTile][:,:,:,channel:channel+1] # channel is last dimension, pick one for image, but keep 4d array...
+		inputArray.append(inTile)
 
 		tileCounter += 1
-
-		if tileCounter == ((imageSizeLow // tileSizeLow) ** 2):
-			imageCounter += 1
-			tileCounter = 0
-
-			expectedImage = combineTiles(expectedArray, imageSizeHigh, imageSizeHigh, tileSizeHigh, tileSizeHigh)
-			outputImage   = combineTiles(outputArray, imageSizeHigh, imageSizeHigh, tileSizeHigh, tileSizeHigh)
-			# inputImage = combineTiles(inputArray, imageSizeLow, imageSizeLow, tileSizeLow, tileSizeLow)
-
-			createPngFromArray(expectedImage, path + 'ref_%04d.png' % imageCounter)
-			createPngFromArray(outputImage, path + 'debout_%04d.png' % imageCounter)
-			# createPngFromArray(inputImage, path + 'full_%04d_1.png' % imageCounter)
-
-			expectedArray = []
-			outputArray = []
-			inputArray = []
-
-def debugOutputPngsSingle(input, tileSize, imageSize, path, imageCounter=0, name='input'):
-	# creates output png from tiles (that form an image)
-	inputArray = []
-
-	tileCounter = 0
-	for currTile in range(0, len(input)):
-		inputArray.append(np.reshape(input[currTile], (tileSize, tileSize)))
-
-		tileCounter += 1
-
 		if tileCounter == ((imageSize // tileSize) ** 2):
 			imageCounter += 1
 			tileCounter = 0
 
 			inputImage = combineTiles(inputArray, imageSize, imageSize, tileSize, tileSize)
 			createPngFromArray(inputImage, path + name + '_%04d.png' % imageCounter)
-
 			inputArray = []
 
 # Edited for cropping: Added this method. Nearly the same as the original one, didn't want to ruin the original one.
@@ -823,15 +795,11 @@ def debugOutputPngsCrop(tiles, tileSizeHigh, imageSizeHigh, path, imageCounter=0
 
 	for currTile in range(0, len(tiles)):
 		if cut_output_to == -1:
-			outputArray.append(np.reshape(tiles[currTile], (tileSizeHigh, tileSizeHigh)))
+			outputArray.append( tiles[currTile] )
 		else:
-			from_value = (tileSizeHigh - cut_output_to) / 2
-			to_value = tileSizeHigh - from_value
-			# avoid error "TypeError: slice indices must be integers or None or have an __index__ method"
-			from_value = int(from_value)
-			to_value   = int(to_value)
-			output_tile = np.reshape(tiles[currTile], (tileSizeHigh, tileSizeHigh))
-			outputArray.append(output_tile[from_value: to_value, from_value: to_value])
+			from_value = int( (tileSizeHigh - cut_output_to) / 2 )
+			to_value   = tileSizeHigh - from_value
+			outputArray.append(tiles[currTile][:, from_value: to_value, from_value: to_value, :])
 
 		tileCounter += 1 
 		if tileCounter == (tiles_in_image):

@@ -12,7 +12,7 @@ class ConvolutionalAutoEncoder(object):
 		self.preFlatShapes = []
 		self.weight_stack = []
 		self.layer_num = 0
-		print ("Input: {}".format(self.layer.get_shape())) 
+		print ("CAE Input shape: {}".format(self.layer.get_shape())) 
 	
 	#---------------------------------------------------------------------------------
 	# thanks to http://robromijnders.github.io/tensorflow_basic/
