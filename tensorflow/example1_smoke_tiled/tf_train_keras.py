@@ -8,8 +8,14 @@
 # http://www.gnu.org/licenses
 #
 # Manta & tensor flow example with tiles using Keras
+# (note, this is a slightly simplified version of the tf_train script, with a deeper network and better regularization)
 #
 #******************************************************************************
+
+# NT_DEBUG todo
+# test load/save
+# test output mode
+# test vel...
 
 import time
 import os
@@ -64,9 +70,9 @@ outputDataName  = '' # name of data to be regressed; by default, does nothing (d
 bWidth          = -1 # boundaryWidth to be cut away. 0 means 1 cell, 1 means two cells. In line with "bWidth" in manta scene files																																  
 
 # run this many iterations per keras fit call
-kerasChunk = 100
+kerasChunk = 200
 
-# optional, add velocity as additional channels to input?
+# optional, add velocity (x,y,z) as additional channels to input?
 useVelocities   = 0
 
 
@@ -154,7 +160,7 @@ if not loadModelTest == -1:
 			exit()
 		# print('Latest model: %d.' % loadModelNo)
 
-	load_path = basePath + 'test_%04d/model_%04d.kkpt' % (loadModelTest, loadModelNo)
+load_path = basePath + 'test_%04d/model_%04d.kkpt' % (loadModelTest, loadModelNo)
 
 (test_path,test_folder_no) = next_test_path(testPathStartNo)
 if not outputOnly: uniio.backupFile(__file__, test_path)
@@ -197,14 +203,16 @@ print_variables()
 
 n_input  = tileSizeLow  ** 2 
 n_output = tileSizeHigh ** 2
-n_inputChannels = 1
-
+n_inputChannels = 1 
 if useVelocities:
 	n_inputChannels = 4
 n_input *= n_inputChannels
 
 clFMs = int(8 / n_inputChannels)
 #print( "inputs " + format(len( tiCr.tile_data['inputs_train']) ))
+
+# ---------------------------------------------
+# model
 
 model = keras.models.Sequential()
 model.add( keras.layers.Conv2D(clFMs/2, (2,2), activation='relu', strides=(2,2), input_shape=(tileSizeLow,tileSizeLow,n_inputChannels), padding='same' ) )
@@ -223,18 +231,31 @@ model.add( keras.layers.convolutional.Conv2DTranspose(clFMs/2, (2,2), activation
 model.add( keras.layers.convolutional.Conv2DTranspose(clFMs/4, (2,2), activation='relu', strides=(2,2), padding='same' ) )
 model.add( keras.layers.convolutional.Conv2DTranspose(1,       (4,4), activation='relu', strides=(2,2), padding='same' ) )
 
-model.compile( loss='mse', optimizer='adam') #, metrics=['accuracy'] )
+model.compile( loss='mse', optimizer='adam') 
+
+if 1: # count DOFs?
+	DOFs = 0
+	for l in model.layers:
+		for i in l.get_weights():
+			DOFs += i.size
+	print("Total DOFs: " + format(DOFs) )
+
+if not loadModelTest == -1:
+	model.load_weights( load_path )
+	print("Model restored from %s." % load_path)
 
 # load test data, note no split into train & test/validation set necessary here, done by keras during fit
 tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 1.0, 0.0, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll)
 
-# manually reshape data
-#print( format( tiCr.tile_data['inputs_train'].shape) + " " + format( tiCr.tile_data['outputs_train'].shape) ) # 16x16, 64x64
-dataSize = tiCr.tile_data['outputs_train'].shape[0]
-tiCr.tile_data['inputs_train']  = np.reshape( tiCr.tile_data['inputs_train'],  [dataSize,tileSizeLow,tileSizeLow,  n_inputChannels] )
-tiCr.tile_data['outputs_train'] = np.reshape( tiCr.tile_data['outputs_train'], [dataSize,tileSizeHigh,tileSizeHigh,1 ] )
-
+# ---------------------------------------------
+# training
 if not outputOnly:
+	# manually reshape data to remove third spatial dimension
+	dataSize = tiCr.tile_data['outputs_train'].shape[0]
+	#print( "Data sizes "+ format(dataSize) +", inputs " + format( tiCr.tile_data['inputs_train'].shape) + ", outputs " + format( tiCr.tile_data['outputs_train'].shape) ) # 16x16, 64x64 
+	tiCr.tile_data['inputs_train']  = np.reshape( tiCr.tile_data['inputs_train'],  [dataSize,tileSizeLow,tileSizeLow,  n_inputChannels] )
+	tiCr.tile_data['outputs_train'] = np.reshape( tiCr.tile_data['outputs_train'], [dataSize,tileSizeHigh,tileSizeHigh,1 ] )
+
 	startTime = time.time()
 	if 1:
 		lastCost   = 1e10
@@ -245,12 +266,12 @@ if not outputOnly:
 			batch_xs, batch_ys = tiCr.selectRandomTiles(batchSize*kerasChunk) 
 			batch_xs  = np.reshape( batch_xs,  [batchSize*kerasChunk,tileSizeLow,tileSizeLow,  n_inputChannels] )
 			batch_ys  = np.reshape( batch_ys,  [batchSize*kerasChunk,tileSizeHigh,tileSizeHigh,  1] )
-			#model.fit( tiCr.tile_data['inputs_train'], tiCr.tile_data['outputs_train'], batch_size=batchSize, epochs=1 )
+
+			# ...go!
 			hist = model.fit( batch_xs, batch_ys, batch_size=batchSize, epochs=1, validation_split=0.05 )
 
 			#_, cost, summary = sess.run([optimizer, costFunc, lossTrain], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
-			cost = lastCost - 1.0 # NT_DEBUG fix
-			# NT_DEBUG print(format(hist))
+			cost = lastCost - 1.0 # NT_DEBUG fixme, read out cost...
 
 			# save model
 			doSave = False
@@ -273,16 +294,23 @@ if not outputOnly:
 	print('To apply the trained model, set "outputOnly" to True, and set id for "loadModelTest". E.g. "out 1 loadModelTest %d".' % test_folder_no)
 	
 else:
-	model.load_weights( load_path )
-	print("Model restored from %s." % load_path)
+	# ---------------------------------------------
+	# outputOnly: apply to a full data set, and re-create full outputs from tiles
 
 	batch_xs, batch_ys = tiCr.tile_inputs_all_complete, tiCr.tile_outputs_all_complete # old, inputs_test, outputs_test
+	print('Creating %d tile outputs...' % (len(batch_xs)) )
+
 	tdataSize = len(batch_xs)
-	#print( format( tdataSize))
+	# for prediction, we have to get rid of the third spatial dim
 	batch_xs = np.reshape( batch_xs, [tdataSize,tileSizeLow,tileSizeLow,  n_inputChannels] )
 	batch_ys = np.reshape( batch_ys, [tdataSize,tileSizeHigh,tileSizeHigh,1 ] )
+
 	resultTiles = model.predict( batch_xs )
-	#print( format( resultTiles.shape ) )
+
+	# now restore it...
+	batch_xs = np.reshape( batch_xs, [tdataSize,1, tileSizeLow,tileSizeLow,  n_inputChannels] )
+	batch_ys = np.reshape( batch_ys, [tdataSize,1, tileSizeHigh,tileSizeHigh,1 ] )
+	resultTiles = np.reshape( resultTiles, [tdataSize,1, tileSizeHigh,tileSizeHigh,1 ] )
 
 	# simply concat tiles into images...
 	tileSizeHiCrop = upRes * cropTileSizeLow
@@ -290,6 +318,12 @@ else:
 	img_count = len(tiCr.tile_inputs_all_complete) / tilesPerImg
 	tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, \
 		imageCounter=1, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
+
+	if outputInputs:
+		tiCr.debugOutputPngsSingle(batch_xs,         tileSizeLow, simSizeLow, test_path, imageCounter=0, name='input', channel=0)
+		if useVelocities: 
+			tiCr.debugOutputPngsSingle(batch_xs,         tileSizeLow, simSizeLow, test_path, imageCounter=0, name='in_vel_x', channel=1)
+			tiCr.debugOutputPngsSingle(batch_xs,         tileSizeLow, simSizeLow, test_path, imageCounter=0, name='in_vel_y', channel=2)
 
 	print('Output finished, %d pngs written to %s.' % (img_count, test_path) )
 
