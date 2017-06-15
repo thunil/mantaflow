@@ -465,7 +465,7 @@ def createTestDataNpz(paths, tileSize, lowResSize, upScalingFactor, overlapping=
 		dataShape[0] = 1
 	dataType = paths['data_type']
 
-	dataShapeHi = [dataShape[0], dataShape[1], dataShape[2], dataShape[3] ] 
+	dataShapeHi = [dataShape[0], dataShape[1], dataShape[2], 1 ] # output always scalar for now
 	tileShapeHi = [tileShape[0], tileShape[1], tileShape[2] ] 
 	for i in range( 1 if (dims==2) else 0, 3):  # scale active spatial dimensions
 		dataShapeHi[i] = dataShapeHi[i] * upScalingFactor

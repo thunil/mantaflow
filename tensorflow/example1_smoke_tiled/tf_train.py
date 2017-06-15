@@ -338,15 +338,15 @@ if not outputOnly:
 			# display error
 			avgCost += cost
 			if (epoch + 1) % testInterval == 0:
-				accumulatedCost = 0.0
+				avgCostTest = 0.0
 				for curr in range(numTests):
 					batch_xs, batch_ys = tiCr.selectRandomTiles(batchSize, isTraining=False)
 					cost_test, summary_test = sess.run([costFunc, lossTest], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
-					accumulatedCost += cost_test
-				accumulatedCost /= numTests
+					avgCostTest += cost_test
+				avgCostTest /= numTests
 
 				avgCost /= testInterval
-				print('\nEpoch {:04d}/{:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), trainingEpochs, avgCost, accumulatedCost))
+				print('\nEpoch {:04d}/{:04d} - Avg. cost= {:.9f} - Avg. validation cost= {:.9f}'.format((epoch + 1), trainingEpochs, avgCost, avgCostTest))
 				print('%d epochs took %.02f seconds.' % (testInterval, (time.time() - epochTime)))
 				#print('Estimated time: %.02f minutes.' % ((trainingEpochs - epoch) / testInterval * (time.time() - epochTime) / 60.0))
 				epochTime = time.time()
@@ -367,7 +367,6 @@ else:
 	# ---------------------------------------------
 	# outputOnly: apply to a full data set, and re-create full outputs from tiles
 
-	# print(format( tiCr.tile_inputs_all_complete[0].shape )) # NT_DEBUG
 	batch_xs, batch_ys = tiCr.tile_inputs_all_complete, tiCr.tile_outputs_all_complete
 	print('Creating %d tile outputs...' % (len(batch_xs)) )
 
@@ -376,15 +375,12 @@ else:
 
 	img_count = 0
 	outrange = int( len(tiCr.tile_inputs_all_complete) / tilesPerImg )
-	#print("outtt1 NT_DEBUG %d, %d, %d, %d "%( len(tiCr.tile_inputs_all_complete) , tilesPerImg, outrange, 0) ); # NT_DEBUG exit(1)
 
 	# use int to avoid TypeError: 'float' object cannot be interpreted as an integer
 	for currOut in range(outrange): 
 		batch_xs = []
 		batch_ys = []
-		# to output velocity inputs
-		batch_velocity_x = []
-		batch_velocity_y = []
+		batch_velocity = [] # for optional velocity inputs images
 
 		combine_tiles_amount = tilesPerImg
 		if is_convolution_transpose_network:
@@ -392,19 +388,15 @@ else:
 		for curr_tile in range(combine_tiles_amount):
 		# for curr_tile in range(tilesPerImg):
 			idx = currOut * tilesPerImg + curr_tile
-			#print("outttt NT_DEBUG %d, %d, %d, %d "%( curr_tile, idx, currOut, len(tiCr.tile_inputs_all_complete) ) )
 			if is_convolution_transpose_network and idx > len(tiCr.tile_inputs_all_complete) - 1:
 				exit()
 			batch_xs.append(tiCr.tile_inputs_all_complete[idx])
 			# batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
 			batch_ys.append(tiCr.tile_outputs_all_complete[idx])
-#print(format( tiCr.tile_outputs_all_complete[0].sum( dtype=np.float64 ) ))
 
 			# to output velocity inputs
-			#? if (useVelocities or onlyVelocities) and outputInputs:
-				#? curr_tile = np.reshape(tiCr.tile_inputs_all_complete[idx], (2, tileSizeLow*tileSizeLow), order='C')
-				#? batch_velocity_x.append(curr_tile[0])
-				#? batch_velocity_y.append(curr_tile[1])
+			if (useVelocities or onlyVelocities) and outputInputs:
+				batch_velocity.append(tiCr.tile_inputs_all_complete[idx])
 
 		resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
@@ -420,9 +412,9 @@ else:
 		if outputInputs:
 			if not useVelocities and not onlyVelocities:
 				tiCr.debugOutputPngsSingle(batch_xs,         tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='input')
-			else: # NT_DEBUG todo	 test
-				tiCr.debugOutputPngsSingle(batch_velocity_x, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='in_vel_x')
-				tiCr.debugOutputPngsSingle(batch_velocity_y, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='in_vel_y')
+			else: 
+				tiCr.debugOutputPngsSingle(batch_velocity, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='in_vel_x', channel=1)
+				tiCr.debugOutputPngsSingle(batch_velocity, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='in_vel_y', channel=2)
 
 		# optionally, output references
 		#tiCr.debugOutputPngsCrop(batch_ys, tileSizeHigh, simSizeHigh, test_path+"_ref", imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)

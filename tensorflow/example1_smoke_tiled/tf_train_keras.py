@@ -258,7 +258,6 @@ if not outputOnly:
 
 	startTime = time.time()
 	if 1:
-		lastCost   = 1e10
 		lastSave   = 1
 		save_no    = 0
 		trainingEpochs = int(trainingEpochs/kerasChunk)
@@ -271,22 +270,21 @@ if not outputOnly:
 			hist = model.fit( batch_xs, batch_ys, batch_size=batchSize, epochs=1, validation_split=0.05 )
 
 			#_, cost, summary = sess.run([optimizer, costFunc, lossTrain], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
-			cost = lastCost - 1.0 # NT_DEBUG fixme, read out cost...
+			#cost = lastCost - 1.0 # NT_DEBUG fixme, read out cost...
 
 			# save model
 			doSave = False
-			if ((cost < lastCost) or alwaysSave) and (lastSave >= saveInterval): doSave = True
-			if epoch == (trainingEpochs-1): doSave = True # save last state
+			if (lastSave >= saveInterval) or epoch == (trainingEpochs-1): doSave = True 
 
 			if doSave:
-				model.save_weights(test_path + 'model_%04d.kkpt' % save_no)
-				print('Saved Model with cost %f.' % cost)
+				mpath = test_path + 'model_%04d.kkpt' % save_no
+				model.save_weights(mpath)
+				print('Saved weights ' + mpath )
 				save_no += 1
 				lastSave = 1
-				lastCost = cost
 			else:
 				lastSave += 1
-			print('\nEpoch {:04d}/{:04d} - Cost= {:.9f} - Cost_test= {:.9f}'.format((epoch + 1), trainingEpochs, 0., 0.))
+			print('\nScript Epoch {:04d}/{:04d}'.format((epoch + 1), trainingEpochs))
 
 	print('\n*****TRAINING %d FINISHED*****' % test_folder_no)
 	training_duration = (time.time() - startTime) / 60.0
