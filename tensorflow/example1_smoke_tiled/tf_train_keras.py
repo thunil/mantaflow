@@ -53,20 +53,19 @@ cropOverlap     = 0
 cropTileSizeLow = tileSizeLow - 2*cropOverlap
 
 emptyTileValue  = 0.01
-learningRate    = 0.00005
+learningRate    = 0.00005  # NT_DEBUG use
 trainingEpochs  = 10000 # for large values, stop manualy with ctrl-c...
 dropout         = 0.9   # slight...
 batchSize       = 96
-testInterval    = 200
-saveInterval    = 1000
-#saveInterval    = 50 # increase for long runs...
+saveInterval    = 10
 fromSim = toSim = -1
 keepAll         = False
 numTests        = 10      # evaluate on 10 data points from test data
 randSeed        = 1
 fileFormat      = "npz"
-brightenOutput  = -1 # multiplied with output to brighten it up
-outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
+#testInterval    = 200
+#brightenOutput  = -1 # multiplied with output to brighten it up
+#outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
 bWidth          = -1 # boundaryWidth to be cut away. 0 means 1 cell, 1 means two cells. In line with "bWidth" in manta scene files																																  
 
 # run this many iterations per keras fit call
@@ -96,14 +95,14 @@ useVelocities   = int(ph.getParam( "useVelocities",   useVelocities  ))
 testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
 fromSim         = int(ph.getParam( "fromSim",         fromSim  )) 
 toSim           = int(ph.getParam( "toSim",           toSim  ))
-alwaysSave      = int(ph.getParam( "alwaysSave",      False  )) # by default, only save checkpoint when cost is lower, can be turned off here
+#alwaysSave      = int(ph.getParam( "alwaysSave",      False  )) # by default, only save checkpoint when cost is lower, can be turned off here
 randSeed        = int(ph.getParam( "randSeed",        randSeed )) 
 simSizeLow      = int(ph.getParam( "simSizeLow",      simSizeLow )) 
 upRes           = int(ph.getParam( "upRes",           upRes ))
-#fileFormat     =     ph.getParam( "fileFormat",      fileFormat) # create pngs for inputs
 outputInputs    = int(ph.getParam( "outInputs",       outputInputs)) 
-brightenOutput  = int(ph.getParam( "brightenOutput",  brightenOutput)) 
-outputDataName  =    (ph.getParam( "outName",         outputDataName))
+#fileFormat     =     ph.getParam( "fileFormat",      fileFormat) # create pngs for inputs
+#brightenOutput  = int(ph.getParam( "brightenOutput",  brightenOutput)) 
+#outputDataName  =    (ph.getParam( "outName",         outputDataName))
 ph.checkUnusedParams()
 
 # initialize
@@ -229,7 +228,7 @@ model.add( keras.layers.Reshape( (4,4,clFMs) ) ) # for flatten, not really neede
 model.add( keras.layers.convolutional.Conv2DTranspose(clFMs,   (2,2), activation='relu', strides=(2,2), padding='same' ) )
 model.add( keras.layers.convolutional.Conv2DTranspose(clFMs/2, (2,2), activation='relu', strides=(2,2), padding='same' ) )
 model.add( keras.layers.convolutional.Conv2DTranspose(clFMs/4, (2,2), activation='relu', strides=(2,2), padding='same' ) )
-model.add( keras.layers.convolutional.Conv2DTranspose(1,       (4,4), activation='relu', strides=(2,2), padding='same' ) )
+model.add( keras.layers.convolutional.Conv2DTranspose(1,       (4,4), activation='relu', strides=(2,2), padding='same' , name="out") )
 
 model.compile( loss='mse', optimizer='adam') 
 
@@ -243,6 +242,8 @@ if 1: # count DOFs?
 if not loadModelTest == -1:
 	model.load_weights( load_path )
 	print("Model restored from %s." % load_path)
+
+#print( format( model.layers[ len(model.layers)-1 ].output )) # print output shape
 
 # load test data, note no split into train & test/validation set necessary here, done by keras during fit
 tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 1.0, 0.0, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll)
@@ -313,9 +314,9 @@ else:
 	# simply concat tiles into images...
 	tileSizeHiCrop = upRes * cropTileSizeLow
 	tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
-	img_count = len(tiCr.tile_inputs_all_complete) / tilesPerImg
-	tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, \
-		imageCounter=1, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
+	imgCnt = len(tiCr.tile_inputs_all_complete) / tilesPerImg
+	tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, imageCounter=0, \
+		cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
 
 	if outputInputs:
 		tiCr.debugOutputPngsSingle(batch_xs,         tileSizeLow, simSizeLow, test_path, imageCounter=0, name='input', channel=0)
@@ -323,7 +324,7 @@ else:
 			tiCr.debugOutputPngsSingle(batch_xs,         tileSizeLow, simSizeLow, test_path, imageCounter=0, name='in_vel_x', channel=1)
 			tiCr.debugOutputPngsSingle(batch_xs,         tileSizeLow, simSizeLow, test_path, imageCounter=0, name='in_vel_y', channel=2)
 
-	print('Output finished, %d pngs written to %s.' % (img_count, test_path) )
+	print('Output finished, %d pngs written to %s.' % (imgCnt, test_path) )
 
 
 

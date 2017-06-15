@@ -372,8 +372,6 @@ else:
 
 	tileSizeHiCrop = upRes * cropTileSizeLow
 	tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
-
-	img_count = 0
 	outrange = int( len(tiCr.tile_inputs_all_complete) / tilesPerImg )
 
 	# use int to avoid TypeError: 'float' object cannot be interpreted as an integer
@@ -407,7 +405,6 @@ else:
 				batch_ys[curr_value] *= brightenOutput
 		tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
 		tiCr.debugOutputPngsCrop(batch_ys,    tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg, name='expected_out')
-		# tiCr.debugOutputPngsSingle(batch_ys, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='expected_out')
 
 		if outputInputs:
 			if not useVelocities and not onlyVelocities:
@@ -416,11 +413,6 @@ else:
 				tiCr.debugOutputPngsSingle(batch_velocity, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='in_vel_x', channel=1)
 				tiCr.debugOutputPngsSingle(batch_velocity, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='in_vel_y', channel=2)
 
-		# optionally, output references
-		#tiCr.debugOutputPngsCrop(batch_ys, tileSizeHigh, simSizeHigh, test_path+"_ref", imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
-		img_count += 1
-
-	print('Test finished, %d pngs written to %s.' % (img_count, test_path) )
 
 # write summary to test overview
 loaded_model = ''
