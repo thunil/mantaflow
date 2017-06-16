@@ -223,11 +223,13 @@ y_true = tf.placeholder(tf.float32, shape=[None, 1, tileSizeHigh,tileSizeHigh, 1
 keep_prob = tf.placeholder(tf.float32)
 
 # --- begin graph setup ---
-#xIn = tf.reshape(x, shape=[-1, tileSizeLow, tileSizeLow, n_inputChannels])
-cae = ConvolutionalAutoEncoder(x)
 
-pool = 4 # very strong pooling by default
-
+# convolutional version 
+# 
+# xIn = tf.reshape(x, shape=[-1, tileSizeLow, tileSizeLow, n_inputChannels]) # remove z
+# cae = ConvolutionalAutoEncoder(xIn)
+# pool = 4 # very strong pooling by default
+# 
 # note - for simplicity, we always reduce the number of channels to 8 here
 # this is probably suboptimal in general, but keeps the network structure similar and simple
 # clFMs = int(8 / n_inputChannels)
@@ -244,7 +246,7 @@ pool = 4 # very strong pooling by default
 # cae.max_depool([pool,pool], [pool,pool])
 # cae.deconvolutional_layer(2, [5, 5], tf.nn.relu)
 # 
-# #y_pred = tf.reshape( cae.y(), shape=[-1, (tileSizeHigh) *(tileSizeHigh)* 1])
+# y_pred = tf.reshape( cae.y(), shape=[-1, 1, tileSizeHigh, tileSizeHigh, 1])
 # print ("DOFs: %d " % cae.getDOFs())
 
 # below is an alternate as-simple-as-possible fully connected layer network
@@ -399,10 +401,10 @@ else:
 		resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
 		if brightenOutput > 0:
-			for curr_value in range(len(resultTiles)):
-				resultTiles[curr_value] *= brightenOutput
-			for curr_value in range(len(batch_ys)):
-				batch_ys[curr_value] *= brightenOutput
+			for i in range(len(resultTiles)):
+				resultTiles[i] *= brightenOutput
+			for i in range(len(batch_ys)):
+				batch_ys[i] *= brightenOutput
 		tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
 		tiCr.debugOutputPngsCrop(batch_ys,    tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg, name='expected_out')
 

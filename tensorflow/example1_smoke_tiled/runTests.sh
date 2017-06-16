@@ -51,7 +51,7 @@ echo "************** Test 3 (keras) **************"
 ${SAFEDEL} ${BPATH}test_0702
 ${SAFEDEL} ${BPATH}test_0802
 
-python tf_train_keras.py out 0 basePath ${BPATH}  useVelocities 0  trainingEpochs ${EPOS}  alwaysSave 1  testPathStartNo 702 fromSim ${SCENE_TRAIN}         simSizeLow 48
+python tf_train_keras.py out 0 basePath ${BPATH}  useVelocities 0  trainingEpochs ${EPOS}  testPathStartNo 702 fromSim ${SCENE_TRAIN}         simSizeLow 48
 python tf_train_keras.py out 1 basePath ${BPATH}  useVelocities 0  testPathStartNo 802  fromSim ${SCENE_NP}  loadModelTest 702     simSizeLow 96   outInputs ${SHOW_INPUTS}
 
 
