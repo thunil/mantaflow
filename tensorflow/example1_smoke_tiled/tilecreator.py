@@ -736,28 +736,36 @@ def splitTileData(partTrain=3, partTest=1):
 	tile_data['inputs_train'], tile_data['inputs_test'], tile_data['inputs_val'] = np.split(tile_inputs_all, [end_train, end_test])
 	tile_data['outputs_train'], tile_data['outputs_test'], tile_data['outputs_val'] = np.split(tile_outputs_all, [end_train, end_test])
 
-def reduceTo2DVelocity(tile, tileSizeLow):
-	# dont use this, use reduceInputsTo2DVelocity
+def reduceToVelocity(tile, tileSizeLow, dimensions=3):
+	# dont use this, use reduceInputsToVelocity
 	# reduces one tile with density and velocity to the x and y of the velocity
 	curr_tile = np.reshape(tile, (4, tileSizeLow * tileSizeLow), order='F')
-	tile = [curr_tile[1], curr_tile[2]]
+	if dimensions == 2:
+		tile = [curr_tile[1], curr_tile[2]]
+	elif dimensions == 3:
+		tile = [curr_tile[1], curr_tile[2]]
+
 	return np.array(tile) # .flatten()
 
-def reduceInputsTo2DVelocity():
-	# reduces tile inputs with density and velocity to the x and y of the velocity
+def reduceInputsToVelocity(dimensions=3):
+	# reduces tile inputs with density and velocity to the x and y (and z) of the velocity
+	if not (dimensions == 3 or dimensions == 2):
+		print("ERROR: Cannot reduce velocity to %d dimensions. Using 3D velocity." % dimensions)
+		dimensions = 3
+
 	calc_tile = np.array(tile_inputs_all[0])
 	tileSizeLow = int(scipy.sqrt(calc_tile.shape[0] / 4))
 
 	new_tile_inputs_all_complete = []
 	for curr_tile in tile_inputs_all_complete:
-		new_tile_inputs_all_complete.append(reduceTo2DVelocity(curr_tile, tileSizeLow))
+		new_tile_inputs_all_complete.append(reduceToVelocity(curr_tile, tileSizeLow, dimensions))
 	del tile_inputs_all_complete[:]
 	for curr_tile in new_tile_inputs_all_complete:
 		tile_inputs_all_complete.append(curr_tile)
 
 	new_tile_inputs_all = []
 	for curr_tile in tile_inputs_all:
-		new_tile_inputs_all.append(reduceTo2DVelocity(curr_tile, tileSizeLow))
+		new_tile_inputs_all.append(reduceToVelocity(curr_tile, tileSizeLow, dimensions))
 	del tile_inputs_all[:]
 	for curr_tile in new_tile_inputs_all:
 		tile_inputs_all.append(curr_tile)

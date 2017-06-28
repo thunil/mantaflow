@@ -62,12 +62,8 @@ bWidth          = -1 # boundaryWidth to be cut away. 0 means 1 cell, 1 means two
 # optional, add velocity as additional channels to input
 useDensity      = 1  # default, only density
 useVelocities   = 0
-onlyVelocities  = 0
 # load pressure as output
-usePressure     = 0
-
-# for conv_trans nets, the output tiles have to be created in the same batch size
-is_convolution_transpose_network = True
+outputPressure  = 0
 
 # ---------------------------------------------
 
@@ -84,11 +80,10 @@ outputOnly      = int(ph.getParam( "out",             outputOnly ))>0
 trainingEpochs  = int(ph.getParam( "trainingEpochs",  trainingEpochs ))
 loadModelTest   = int(ph.getParam( "loadModelTest",   loadModelTest))
 loadModelNo     = int(ph.getParam( "loadModelNo",     loadModelNo))
-basePath        =     ph.getParam( "basePath",        basePath        )
+basePath        =     ph.getParam( "basePath",        basePath)
 useDensity		= int(ph.getParam( "useDensity",      useDensity  ))
 useVelocities   = int(ph.getParam( "useVelocities",   useVelocities  ))
-onlyVelocities  = int(ph.getParam( "onlyVelocities",  onlyVelocities  ))
-usePressure		= int(ph.getParam( "usePressure",     usePressure  ))
+outputPressure	= int(ph.getParam( "outputPressure",  outputPressure  ))
 testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
 fromSim         = int(ph.getParam( "fromSim",         fromSim  )) 
 toSim           = int(ph.getParam( "toSim",           toSim  ))
@@ -132,7 +127,14 @@ else:
 	keepAll = True
 	# dont train, just apply to input seq, by default use plume (2004)
 	if fromSim==-1:
-		fromSim = toSim = 2007
+		fromSim = toSim = 3000
+
+# check if batchsize is multiple of tilesInImage
+tileSizeHiCrop = upRes * cropTileSizeLow
+tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
+if not (batchSize % tilesPerImg == 0):
+	print("WARNING: #batchSize (%d) is no multiple of #tilesPerImage (%d). " % (batchSize, tilesPerImg) +
+	"For convolutional transpose networks, this might create problems while generating the output (out=1).")
 
 # ---------------------------------------------
 
@@ -142,10 +144,7 @@ n_inputChannels = 0
 
 if useDensity:
 	n_inputChannels += 1
-if onlyVelocities:
-	n_inputChannels += 2
-	useVelocities = 1
-elif useVelocities:
+if useVelocities:
 	n_inputChannels += 3
 if n_inputChannels == 0:
 	print("ERROR: No inputs set. Use useDensity, useVelocities, ...")
@@ -269,6 +268,7 @@ fc_out_bias   = tf.Variable(tf.random_normal([tileSizeHigh * tileSizeHigh], stdd
 y_pred = tf.add(tf.matmul(fc1, fc_out_weight), fc_out_bias)
 y_pred = tf.reshape( y_pred, shape=[-1, 1, tileSizeHigh, tileSizeHigh, 1])
 
+
 # --- end graph setup ---
 
 costFunc = tf.nn.l2_loss(y_true - y_pred) 
@@ -285,7 +285,7 @@ else:
 	saver.restore(sess, load_path)
 	print("Model restored from %s." % load_path)
 
-if usePressure:
+if outputPressure:
 	outputDataName = "pressure"
 
 # load test data
@@ -297,9 +297,8 @@ else:
 	print("\n ERROR: Unknown file format \"" + fileFormat + "\". Use \"npz\" or \"uni\".")
 	exit()
 
-if onlyVelocities:
-	print('Only Velocities set: Reducing data to 2D velocity...')
-	tiCr.reduceInputsTo2DVelocity()
+if useVelocities and not useDensity:
+	tiCr.reduceInputsToVelocity(dimensions=3)
 	tiCr.splitTileData(0.95, 0.05)
 	
 # create a summary to monitor cost tensor
@@ -380,24 +379,30 @@ else:
 	for currOut in range(outrange): 
 		batch_xs = []
 		batch_ys = []
-		batch_velocity = [] # for optional velocity inputs images
+		batch_velocity = [] # for optional output of velocity input pngs
 
 		combine_tiles_amount = tilesPerImg
-		if is_convolution_transpose_network:
+		# use batchSize if its a multiple of tilesPerImage. Important for conv_trans networks.
+		stopOutput = False
+		if batchSize % tilesPerImg == 0:
 			combine_tiles_amount = batchSize
 		for curr_tile in range(combine_tiles_amount):
-		# for curr_tile in range(tilesPerImg):
 			idx = currOut * tilesPerImg + curr_tile
-			if is_convolution_transpose_network and idx > len(tiCr.tile_inputs_all_complete) - 1:
-				exit()
+			if combine_tiles_amount == batchSize and idx > len(tiCr.tile_inputs_all_complete) - 1:
+				# Stop output, if there are not enough tiles left to evaluate a full batch
+				# This will result in missing output pngs but prevents a crashes for conv_trans networks
+				stopOutput = True
+				break
 			batch_xs.append(tiCr.tile_inputs_all_complete[idx])
 			# batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
 			batch_ys.append(tiCr.tile_outputs_all_complete[idx])
 
 			# to output velocity inputs
-			if (useVelocities or onlyVelocities) and outputInputs:
+			if useVelocities and outputInputs:
 				batch_velocity.append(tiCr.tile_inputs_all_complete[idx])
 
+		if stopOutput:
+			break
 		resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
 
 		if brightenOutput > 0:
@@ -409,7 +414,7 @@ else:
 		tiCr.debugOutputPngsCrop(batch_ys,    tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg, name='expected_out')
 
 		if outputInputs:
-			if not useVelocities and not onlyVelocities:
+			if not useVelocities:
 				tiCr.debugOutputPngsSingle(batch_xs,         tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='input')
 			else: 
 				tiCr.debugOutputPngsSingle(batch_velocity, tileSizeLow, simSizeLow, test_path, imageCounter=currOut, name='in_vel_x', channel=1)
