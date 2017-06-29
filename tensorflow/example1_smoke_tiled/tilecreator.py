@@ -179,39 +179,7 @@ def createPngArrayChannel(input, savePath, channel=0):
 #******************************************************************************
 # tiling
 
-# break down single image into smaller tiles
-# TODO, require square inputs? pass only one size...
-def createTiles(input, imageHeight, imageWidth, tileHeight, tileWidth, overlapping=0, dims=2, channels=1):
-	if ((imageHeight % tileHeight) != 0 |
-		imageWidth % tileWidth != 0):
-		print('Error: Image and tile size do not match.')
-
-	tilesVertical = imageHeight // tileHeight
-	tilesHorizontal = imageWidth // tileWidth
-
-	tiles = []
-
-	for currTileVert in range(0, tilesVertical):
-		for currTileHor in range(0, tilesHorizontal):
-
-			z = 0 # 2D for now
-			s = tileHeight + overlapping * 2
-			currTile = np.zeros((1 if dims==2 else s, s, s, channels), dtype='f')
-
-			for currPixelVert in range(-overlapping, tileHeight + overlapping):
-				for currPixelHor in range(-overlapping, tileWidth + overlapping):
-					indexX = currPixelVert + (currTileVert * tileWidth)
-					indexY = currPixelHor + (currTileHor * tileHeight)
-
-					if (indexX >= 0) and (indexY >= 0) and (indexX < len(input)) and (indexY < len(input[0])):
-						currTile[z][currPixelVert + overlapping][currPixelHor + overlapping] = input[z][indexX][indexY]
-					else:
-						currTile[z][currPixelVert + overlapping][currPixelHor + overlapping] = 0
-
-			tiles.append(currTile)
-
-	return tiles
-
+# break down single image into smaller tiles, and save as numpy file
 def createTilesNumpy(data, tileShape, overlapping=0):
 	dataShape = data.shape
 	noTiles = [ dataShape[0]//tileShape[0], dataShape[1]//tileShape[1], dataShape[2]//tileShape[2] ]
@@ -276,16 +244,6 @@ def combineTilesVelocity(tiles, imageHeight, imageWidth, tileHeight, tileWidth):
 
 	resultArray = np.zeros((imageHeight, imageWidth, 3), dtype='f')
 
-	# for currTileVert in range(0, tilesVertical):
-	# 	for currTileHor in range(0, tilesHorizontal):
-    #
-	# 		for currPixelVert in range(0, tileHeight):
-	# 			for currPixelHor in range(0, tileWidth):
-	# 				indexX = currPixelHor + (currTileHor * tileHeight)
-	# 				indexY = currPixelVert + (currTileVert * tileWidth)
-    #
-	# 				resultArray[indexX][indexY] = (tiles[currTileHor * tilesHorizontal + currTileVert])[currPixelHor][currPixelVert]
-
 	for currTileVert in range(0, tilesVertical):
 		for currTileHor in range(0, tilesHorizontal):
 
@@ -298,147 +256,6 @@ def combineTilesVelocity(tiles, imageHeight, imageWidth, tileHeight, tileWidth):
 
 	return resultArray
 
-
-#******************************************************************************
-# higher level functions to organize test data
-
-# save & load uni files
-def createTestDataUni(simNo, tileSize, lowResSize, upScalingFactor, overlapping=0, createPngs=False, with_vel=False, with_pos=False):
-	frameNo = 0
-	tileNo = 0 
-	data_type = 'density' 
-	updatePaths(simNo, frameNo, tileNo, tileSize, tileSize, overlapping, data_type)
-
-	# for each frame: create tiles + folders
-	# print(paths['tiles'])
-	while frameNo < 999:
-		if os.path.exists(paths['frame']): 
-			# print('Creating tiles for sim %04d, frame %04d' % (simNo, frameNo))
-			if not os.path.exists(paths['tiles']):
-				os.makedirs(paths['tiles'])
-
-			# NT_DEBUG todo use createTiles with channels
-			# create tiles 
-			if with_vel:
-				lowArray = combineDensVelSpace(uniToArray(paths['frame_low_uni']), uniToArray(paths['frame_low_uni'].replace('density', 'vel'), is_vel=True))
-				lowTiles = createTiles(lowArray, lowResSize * 2, lowResSize * 2, tileSize * 2, tileSize * 2, overlapping * 2)
-			elif with_pos:
-				lowArray = addPosToDensVelSpace(uniToArray(paths['frame_low_uni']), uniToArray(paths['frame_low_uni'].replace('density', 'vel'), is_vel=True))
-				lowTiles = createTiles(lowArray, lowResSize * 3, lowResSize * 3, tileSize * 3, tileSize * 3, overlapping * 3)
-			else:
-				lowArray = uniToArray(paths['frame_low_uni'])
-				lowTiles = createTiles(lowArray, lowResSize, lowResSize, tileSize, tileSize, overlapping)
-
-			highArray = uniToArray(paths['frame_high_uni'])
-			highTiles = createTiles(highArray, lowResSize * upScalingFactor, lowResSize * upScalingFactor, tileSize * upScalingFactor, tileSize * upScalingFactor, overlapping)
-
-			for currTile in range(0, len(lowTiles)):
-				if with_vel:
-					arrayToUni(lowTiles[currTile], paths['tile_low_uni'].replace('density', 'dens_vel'), paths['frame_low_uni'], (tileSize + overlapping * 2) * 2, (tileSize + overlapping * 2) * 2)
-				elif with_pos:
-					arrayToUni(lowTiles[currTile], paths['tile_low_uni'].replace('density', 'dens_vel_pos'), paths['frame_low_uni'], (tileSize + overlapping * 2) * 3, (tileSize + overlapping * 2) * 3)
-				else:
-					arrayToUni(lowTiles[currTile], paths['tile_low_uni'], paths['frame_low_uni'], tileSize + overlapping * 2, tileSize + overlapping * 2)
-				arrayToUni(highTiles[currTile], paths['tile_high_uni'], paths['frame_high_uni'], tileSize * upScalingFactor, tileSize * upScalingFactor)
-				if createPngs:
-					createPngFromUni(paths['tile_low_uni'].replace('density', 'dens_vel'))
-					createPngFromUni(paths['tile_high_uni'])
-
-				tileNo += 1
-				updatePaths(simNo, frameNo, tileNo, tileSize, tileSize, overlapping, data_type)
-
-		frameNo += 1
-		tileNo = 0
-		updatePaths(simNo, frameNo, tileNo, tileSize, tileSize, overlapping, data_type)
-
-def loadTestDataUni(fromSim, toSim, densityMinimum, tileSizeLow, overlapping, partTrain=3, partTest=1, load_img=False, load_pos=False, load_vel=False, to_frame=200, low_res_size=64, upres=2, keepAll=False):
-	total_tiles_all_sim = 0
-	discarded_tiles_all_sim = 0 
-	data_type = 'density'
-
-	for simNo in range(fromSim, toSim + 1):
-		print('\nLoading sim %04d' % simNo)
-		frameNo = 0
-		tileNo = 0
-
-		updatePaths(simNo, frameNo, tileNo, tileSizeLow, tileSizeLow, overlapping, data_type)
-		print('from ' + paths['tiles'])
-		# check if right tiles are available - create them if not
-		if load_vel:
-			pathCheck = paths['tile_low_uni'].replace('density', 'dens_vel')
-		elif load_pos:
-			pathCheck = paths['tile_low_uni'].replace('density', 'dens_vel_pos')
-		else:
-			pathCheck = paths['tile_low_uni']
-
-		if not os.path.exists(paths['tiles']) or not os.path.exists(pathCheck):
-			print('Could not find tiles for sim %04d. Creating new ones.' % simNo)
-			createTestDataUni(simNo, tileSizeLow, low_res_size, upres, overlapping, with_vel=load_vel, with_pos=load_pos)
-			updatePaths(simNo, frameNo, tileNo, tileSizeLow, tileSizeLow, overlapping, data_type)
-		totalTiles = 0
-		discardedTiles = 0
-
-		while frameNo < to_frame:
-			if load_img:
-				lowArray = uniToArray(paths['frame_low_uni'])
-				highArray = uniToArray(paths['frame_high_uni'])
-				img_inputs_all.append(lowArray) # .flatten())
-				img_outputs_all.append(highArray) # .flatten())
-
-			#print('Loading frame %04d' % frameNo)
-			while os.path.exists(paths['tile_high_uni']):
-				# check if tile is empty. If so, don't add it
-				if load_vel:
-					lowTile = uniToArray(paths['tile_low_uni'].replace('density', 'dens_vel'))
-				elif load_pos:
-					lowTile = uniToArray(paths['tile_low_uni'].replace('density', 'dens_vel_pos'))
-				else:
-					lowTile = uniToArray(paths['tile_low_uni'])
-				highTile = uniToArray(paths['tile_high_uni'])
-
-				totalDens = lowTile.sum( dtype=np.float64 )
-				if totalDens > (densityMinimum * tileSizeLow * tileSizeLow):
-					tile_inputs_all.append(lowTile) # .flatten())
-					tile_outputs_all.append(highTile) # .flatten())
-				else:
-					# print('Discarded empty tile.')
-					discardedTiles += 1
-
-				if keepAll:
-					tile_inputs_all_complete.append(lowTile) # .flatten())
-					tile_outputs_all_complete.append(highTile) # .flatten()) 
-				totalTiles += 1
-
-				tileNo += 1
-				updatePaths(simNo, frameNo, tileNo, tileSizeLow, tileSizeLow, overlapping, data_type)
-
-			tileNo = 0
-			frameNo += 1
-			updatePaths(simNo, frameNo, tileNo, tileSizeLow, tileSizeLow, overlapping, data_type)
-
-		print('Total Tiles: %d' % totalTiles)
-		print('Discarded Tiles: %d' % discardedTiles)
-		print('Used Tiles: %d' % (totalTiles - discardedTiles))
-		total_tiles_all_sim += totalTiles
-		discarded_tiles_all_sim += discardedTiles
-
-	print('Tiles in data set: %d' % (len(tile_inputs_all)) ) 
-	if(len(tile_inputs_all)==0):
-		print("No input tiles found!")
-		exit(1)
-
-	# split into train, test und val data
-
-	parts_complete = partTrain + partTest 
-	end_train = int( (len(tile_inputs_all) * partTrain / parts_complete) )  
-	end_test = end_train + int( (len(tile_inputs_all) * partTest / parts_complete) )
-
-	#print( "Debug out   %f   %f  %f  " % (len(tile_inputs_all), len(tile_inputs_all) // parts_complete, parts_complete ) )
-	#print( "Ranges: len tile_inputs_all %d, end_train %d, end_test %d " % (len(tile_inputs_all), end_train, end_test) )
-	tile_data['inputs_train'],  tile_data['inputs_test'],  tile_data['inputs_val']  = np.split(tile_inputs_all,  [end_train, end_test])
-	tile_data['outputs_train'], tile_data['outputs_test'], tile_data['outputs_val'] = np.split(tile_outputs_all, [end_train, end_test])
-	print('Training Sets: {}'.format(len(tile_data['inputs_train'])))
-	print('Testing Sets:  {}'.format(len(tile_data['inputs_test'])))
 
 
 #******************************************************************************
@@ -694,58 +511,6 @@ def combineChannelsFromUni(low_tile_density, low_tile_vel, addPos=False):
 	#createPngFromArray(output_tile, basePath + 'debugOut.png')
 	return output_tile
 
-# arrange data spatially into larger single channel array
-def combineDensVelSpace(low_tile_density, low_tile_vel):
-	# Combines one tile of density with one tile of velocity
-	output_tile = np.zeros((len(low_tile_density) * 2, len(low_tile_density) * 2), dtype='f')
-
-	for curr_pos_x in range(len(low_tile_density)):
-		for curr_pos_y in range(len(low_tile_density)):
-			output_tile[curr_pos_x * 2	][curr_pos_y * 2	] = low_tile_density[curr_pos_x][curr_pos_y]
-			output_tile[curr_pos_x * 2 + 1][curr_pos_y * 2	] = low_tile_vel[curr_pos_x][curr_pos_y][0]
-			output_tile[curr_pos_x * 2	][curr_pos_y * 2 + 1] = low_tile_vel[curr_pos_x][curr_pos_y][1]
-			output_tile[curr_pos_x * 2 + 1][curr_pos_y * 2 + 1] = low_tile_vel[curr_pos_x][curr_pos_y][2]
-
-	#createPngFromArray(output_tile, basePath + 'debugOut.png')
-	return output_tile
-
-def addPosToDensVelSpace(low_tile_density, low_tile_vel):
-	output_tile = np.zeros((len(low_tile_density) * 3, len(low_tile_density) * 3), dtype='f')
-	pos = []
-
-	for x in range(len(low_tile_density)):
-		pos.append(np.linspace(0., 1., len(low_tile_density)))
-
-	for curr_pos_x in range(len(low_tile_density)):
-		for curr_pos_y in range(len(low_tile_density)):
-			output_tile[curr_pos_x * 3	][curr_pos_y * 3	] = low_tile_density[curr_pos_x][curr_pos_y]
-			output_tile[curr_pos_x * 3 + 1][curr_pos_y * 3	] = low_tile_vel[curr_pos_x][curr_pos_y][0]
-			output_tile[curr_pos_x * 3	][curr_pos_y * 3 + 1] = low_tile_vel[curr_pos_x][curr_pos_y][1]
-			output_tile[curr_pos_x * 3 + 1][curr_pos_y * 3 + 1] = low_tile_vel[curr_pos_x][curr_pos_y][2]
-			output_tile[curr_pos_x * 3	][curr_pos_y * 3 + 2] = pos[curr_pos_x][curr_pos_y]
-			output_tile[curr_pos_x * 3 + 1][curr_pos_y * 3 + 2] = pos[curr_pos_y][curr_pos_x]
-
-	#createPngFromArray(output_tile, basePath + 'debugOutP.png')
-	return output_tile
-
-def splitTileData(partTrain=3, partTest=1):
-	parts_complete = partTrain + partTest
-	end_train = int((len(tile_inputs_all) * partTrain / parts_complete))
-	end_test = end_train + int((len(tile_inputs_all) * partTest / parts_complete))
-
-	tile_data['inputs_train'], tile_data['inputs_test'], tile_data['inputs_val'] = np.split(tile_inputs_all, [end_train, end_test])
-	tile_data['outputs_train'], tile_data['outputs_test'], tile_data['outputs_val'] = np.split(tile_outputs_all, [end_train, end_test])
-
-def reduceToVelocity(tile, tileSizeLow, dimensions=3):
-	# dont use this, use reduceInputsToVelocity
-	# reduces one tile with density and velocity to the x and y of the velocity
-	curr_tile = np.reshape(tile, (4, tileSizeLow * tileSizeLow), order='F')
-	if dimensions == 2:
-		tile = [curr_tile[1], curr_tile[2]]
-	elif dimensions == 3:
-		tile = [curr_tile[1], curr_tile[2]]
-
-	return np.array(tile) # .flatten()
 
 def reduceInputsToVelocity(dimensions=3):
 	# reduces tile inputs with density and velocity to the x and y (and z) of the velocity
@@ -824,23 +589,6 @@ def debugOutputPngsCrop(tiles, tileSizeHigh, imageSizeHigh, path, imageCounter=0
 			else:
 				createPngFromArray(outputImage, path + 'full_%04d.png' % imageCounter)
 			outputArray = []
-
-def create_png_for_sims(from_sim, to_sim, target_folder):
-	# target_folder with / at the end
-	frame_global_no = 0
-
-	for simNo in range(from_sim, to_sim + 1):
-		frameNo = 0
-
-		updatePaths(simNo, frameNo, 0, 0, 0, 0, 'density')
-
-		while os.path.exists(paths['frame']):
-			createPngFromUni(paths['frame_low_uni'], target_folder + 'frame_%04d_2.png' % frame_global_no)
-			createPngFromUni(paths['frame_high_uni'], target_folder + 'frame_%04d_3.png' % frame_global_no)
-
-			frameNo += 1
-			frame_global_no += 1
-			updatePaths(simNo, frameNo, 0, 0, 0, 0, 'density')
 
 # deep copy of sim data tree (only dens & vel, no tiles, only uni files)
 def copySimData(fromSim, toSim, to_frame=200):

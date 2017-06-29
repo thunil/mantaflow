@@ -8,7 +8,6 @@
 # http://www.gnu.org/licenses
 #
 # Manta & tensor flow example with tiles
-# loads and writes uni files
 #
 #******************************************************************************
 
@@ -26,7 +25,6 @@ sys.path.append("../tools")
 import tilecreator as tiCr
 import uniio
 import paramhelpers as ph
-from convautoenc import ConvolutionalAutoEncoder
 
 # path to sim data, trained models and output are also saved here
 basePath = '../data/'
@@ -55,7 +53,6 @@ fromSim = toSim = -1 # range of sim data directories to use
 keepAll         = False
 numTests        = 10      # evaluate on 10 data points from test data
 randSeed        = 1
-fileFormat      = "npz"
 brightenOutput  = -1 # multiplied with output to brighten it up
 outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
 bWidth          = -1 # boundaryWidth to be cut away. 0 means 1 cell, 1 means two cells. In line with "bWidth" in manta scene files
@@ -91,7 +88,6 @@ alwaysSave      = int(ph.getParam( "alwaysSave",      False  )) # by default, on
 randSeed        = int(ph.getParam( "randSeed",        randSeed )) 
 simSizeLow      = int(ph.getParam( "simSizeLow",      simSizeLow )) 
 upRes           = int(ph.getParam( "upRes",           upRes ))
-fileFormat      =     ph.getParam( "fileFormat",      fileFormat) # create pngs for inputs
 outputInputs    = int(ph.getParam( "outInputs",       outputInputs)) # for debugging, write images for input data
 brightenOutput  = int(ph.getParam( "brightenOutput",  brightenOutput)) 
 outputDataName  =    (ph.getParam( "outName",         outputDataName))
@@ -216,45 +212,13 @@ print_variables()
 
 # ---------------------------------------------
 # TENSORFLOW SETUP
-#x = tf.placeholder(tf.float32, shape=[None, n_input])
 x      = tf.placeholder(tf.float32, shape=[None, 1, tileSizeLow, tileSizeLow, n_inputChannels])  # fixed to 2D for now
 y_true = tf.placeholder(tf.float32, shape=[None, 1, tileSizeHigh,tileSizeHigh, 1             ])  # fixed to 2D for now , always output 1 channel
 keep_prob = tf.placeholder(tf.float32)
 
-# --- begin graph setup ---
-
-# convolutional version 
-# 
-# xIn = tf.reshape(x, shape=[-1, tileSizeLow, tileSizeLow, n_inputChannels]) # remove z
-# cae = ConvolutionalAutoEncoder(xIn)
-# pool = 4 # very strong pooling by default
-# 
-# note - for simplicity, we always reduce the number of channels to 8 here
-# this is probably suboptimal in general, but keeps the network structure similar and simple
-# clFMs = int(8 / n_inputChannels)
-# cae.convolutional_layer(clFMs, [3, 3], tf.nn.relu)
-# cae.max_pool([pool,pool], [pool,pool])
-# 
-# flat_size = cae.flatten()
-# cae.fully_connected_layer(flat_size, tf.nn.relu)
-# cae.unflatten()
-# 
-# cae.max_depool([pool,pool], [pool,pool])
-# cae.deconvolutional_layer(4, [3, 3], tf.nn.relu)
-# 
-# cae.max_depool([pool,pool], [pool,pool])
-# cae.deconvolutional_layer(2, [5, 5], tf.nn.relu)
-# 
-# y_pred = tf.reshape( cae.y(), shape=[-1, 1, tileSizeHigh, tileSizeHigh, 1])
-# print ("DOFs: %d " % cae.getDOFs())
-
-# below is an alternate as-simple-as-possible fully connected layer network
-# use this as a starting point for own networks without the CAE class above
-# (comment out the cae part above, and uncomment the part below)
-
 layer_1_size = 512
 
-xIn = tf.reshape(x, shape=[-1, tileSizeLow* tileSizeLow* n_inputChannels]) # flatten
+xIn = tf.reshape(x, shape=[-1, n_input ]) # flatten
 fc_1_weight = tf.Variable(tf.random_normal([n_input, layer_1_size], stddev=0.01))
 fc_1_bias   = tf.Variable(tf.random_normal([layer_1_size], stddev=0.01))
 
@@ -268,8 +232,6 @@ fc_out_bias   = tf.Variable(tf.random_normal([tileSizeHigh * tileSizeHigh], stdd
 y_pred = tf.add(tf.matmul(fc1, fc_out_weight), fc_out_bias)
 y_pred = tf.reshape( y_pred, shape=[-1, 1, tileSizeHigh, tileSizeHigh, 1])
 
-
-# --- end graph setup ---
 
 costFunc = tf.nn.l2_loss(y_true - y_pred) 
 optimizer = tf.train.AdamOptimizer(learningRate).minimize(costFunc)
@@ -289,13 +251,7 @@ if outputPressure:
 	outputDataName = "pressure"
 
 # load test data
-if (fileFormat == "npz"):
-	tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll, special_output_type=outputDataName, bWidth=bWidth)
-elif (fileFormat == "uni"):
-	tiCr.loadTestDataUni(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll )
-else:
-	print("\n ERROR: Unknown file format \"" + fileFormat + "\". Use \"npz\" or \"uni\".")
-	exit()
+tiCr.loadTestDataNpz(fromSim, toSim, emptyTileValue, cropTileSizeLow, cropOverlap, 0.95, 0.05, load_vel=useVelocities, low_res_size=simSizeLow, upres=upRes, keepAll=keepAll, special_output_type=outputDataName, bWidth=bWidth)
 
 if useVelocities and not useDensity:
 	tiCr.reduceInputsToVelocity(dimensions=3)

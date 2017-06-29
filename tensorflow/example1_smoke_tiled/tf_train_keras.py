@@ -12,11 +12,6 @@
 #
 #******************************************************************************
 
-# NT_DEBUG todo
-# test load/save
-# test output mode
-# test vel...
-
 import time
 import os
 import shutil
@@ -31,10 +26,8 @@ sys.path.append("../tools")
 import tilecreator as tiCr
 import uniio
 import paramhelpers as ph
-from convautoenc import ConvolutionalAutoEncoder
 
 import keras
-#import tf.keras as keras  # TODO, later for TF v1.2 
 
 # path to sim data, trained models and output are also saved here
 basePath = '../data/'
@@ -46,12 +39,9 @@ outputInputs = False
 simSizeLow   = 64
 tileSizeLow  = 16
 upRes        = 4
+useVelocities= 0       # optional, add velocity (x,y,z) as additional channels to input?
 
-# dont use for training! for applying model, add overlap here if necessary (i.e., cropOverlap>0) 
-# note:  cropTileSizeLow + (cropOverlap * 2) = tileSizeLow
-cropOverlap     = 0
-cropTileSizeLow = tileSizeLow - 2*cropOverlap
-
+kerasChunk      = 200     # run this many iterations per keras fit call
 emptyTileValue  = 0.01
 learningRate    = 0.00005  # NT_DEBUG use
 trainingEpochs  = 10000 # for large values, stop manualy with ctrl-c...
@@ -62,17 +52,13 @@ fromSim = toSim = -1
 keepAll         = False
 numTests        = 10      # evaluate on 10 data points from test data
 randSeed        = 1
-fileFormat      = "npz"
-#testInterval    = 200
-#brightenOutput  = -1 # multiplied with output to brighten it up
-#outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
-bWidth          = -1 # boundaryWidth to be cut away. 0 means 1 cell, 1 means two cells. In line with "bWidth" in manta scene files																																  
 
-# run this many iterations per keras fit call
-kerasChunk = 200
 
-# optional, add velocity (x,y,z) as additional channels to input?
-useVelocities   = 0
+# dont use for training! for applying model, add overlap here if necessary (i.e., cropOverlap>0) 
+# note:  cropTileSizeLow + (cropOverlap * 2) = tileSizeLow
+cropOverlap     = 0
+cropTileSizeLow = tileSizeLow - 2*cropOverlap
+
 
 
 # ---------------------------------------------
@@ -95,14 +81,10 @@ useVelocities   = int(ph.getParam( "useVelocities",   useVelocities  ))
 testPathStartNo = int(ph.getParam( "testPathStartNo", testPathStartNo  ))
 fromSim         = int(ph.getParam( "fromSim",         fromSim  )) 
 toSim           = int(ph.getParam( "toSim",           toSim  ))
-#alwaysSave      = int(ph.getParam( "alwaysSave",      False  )) # by default, only save checkpoint when cost is lower, can be turned off here
 randSeed        = int(ph.getParam( "randSeed",        randSeed )) 
 simSizeLow      = int(ph.getParam( "simSizeLow",      simSizeLow )) 
 upRes           = int(ph.getParam( "upRes",           upRes ))
 outputInputs    = int(ph.getParam( "outInputs",       outputInputs)) 
-#fileFormat     =     ph.getParam( "fileFormat",      fileFormat) # create pngs for inputs
-#brightenOutput  = int(ph.getParam( "brightenOutput",  brightenOutput)) 
-#outputDataName  =    (ph.getParam( "outName",         outputDataName))
 ph.checkUnusedParams()
 
 # initialize
@@ -269,9 +251,6 @@ if not outputOnly:
 
 			# ...go!
 			hist = model.fit( batch_xs, batch_ys, batch_size=batchSize, epochs=1, validation_split=0.05 )
-
-			#_, cost, summary = sess.run([optimizer, costFunc, lossTrain], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
-			#cost = lastCost - 1.0 # NT_DEBUG fixme, read out cost...
 
 			# save model
 			doSave = False
