@@ -43,7 +43,7 @@ useVelocities= 0       # optional, add velocity (x,y,z) as additional channels t
 
 kerasChunk      = 200     # run this many iterations per keras fit call
 emptyTileValue  = 0.01
-learningRate    = 0.00005  # NT_DEBUG use
+learningRate    = 0.002
 trainingEpochs  = 10000 # for large values, stop manualy with ctrl-c...
 dropout         = 0.9   # slight...
 batchSize       = 96
@@ -212,7 +212,7 @@ model.add( keras.layers.convolutional.Conv2DTranspose(clFMs/2, (2,2), activation
 model.add( keras.layers.convolutional.Conv2DTranspose(clFMs/4, (2,2), activation='relu', strides=(2,2), padding='same' ) )
 model.add( keras.layers.convolutional.Conv2DTranspose(1,       (4,4), activation='relu', strides=(2,2), padding='same' , name="out") )
 
-model.compile( loss='mse', optimizer='adam') 
+model.compile( loss='mse', optimizer=keras.optimizers.adam(lr=learningRate) )
 
 if 1: # count DOFs?
 	DOFs = 0

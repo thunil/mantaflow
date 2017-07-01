@@ -192,7 +192,7 @@ if savedata:
 # main loop --------------------------------------------------------------------#
 while t < steps+offset:
 	curt = t * sm.timestep
-	sys.stdout.write( "Current time t: " + str(curt) +" \n" )
+	mantaMsg( "Current time t: " + str(curt) +" \n" )
 	
 	newCentre = calcCenterOfMass(xl_density)
 	xl_velOffset = xl_gs*float(0.5) - newCentre
