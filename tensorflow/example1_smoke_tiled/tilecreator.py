@@ -481,7 +481,7 @@ def selectRandomTiles(selectionSize, isTraining=True, cropped=False):
 	selectedOutputs = []
 	inputSize = len(allInputs) - 1
 	for currNo in range(0, selectionSize):
-		randNo = randint(0, inputSize)
+		randNo = randint(0, inputSize) 
 		selectedInputs.append(allInputs[randNo])
 		selectedOutputs.append(allOutputs[randNo])
 
@@ -511,7 +511,6 @@ def combineChannelsFromUni(low_tile_density, low_tile_vel, addPos=False):
 	#createPngFromArray(output_tile, basePath + 'debugOut.png')
 	return output_tile
 
-
 def reduceInputsToVelocity(dimensions=3):
 	# reduces tile inputs with density and velocity to the x and y (and z) of the velocity
 	if not (dimensions == 3 or dimensions == 2):
@@ -534,13 +533,6 @@ def reduceInputsToVelocity(dimensions=3):
 	del tile_inputs_all[:]
 	for curr_tile in new_tile_inputs_all:
 		tile_inputs_all.append(curr_tile)
-
-def shuffleInputs(a, b):
-	rng_state = np.random.get_state()
-	np.random.shuffle(a)
-	np.random.set_state(rng_state)
-	np.random.shuffle(b)
-	return a, b
 
 # creates output png from tiles (that form an image)
 def debugOutputPngsSingle(input, tileSize, imageSize, path, imageCounter=0, name='input', channel=0):
