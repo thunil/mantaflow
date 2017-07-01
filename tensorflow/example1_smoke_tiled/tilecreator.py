@@ -100,10 +100,6 @@ def uniToArray(uniPath, is_vel=False):
 	imageHeight = head['dimX']
 	imageWidth  = head['dimY']
 	#print(format(uniPath) + " " + format(head)) # debug info
-	if not is_vel:
-		fixedArray = np.zeros((imageHeight, imageWidth, 1), dtype='f')
-	else:
-		fixedArray = np.zeros((imageHeight, imageWidth, 3), dtype='f')
 
 	if not is_vel:
 		fixedArray = np.reshape(content, [imageWidth, imageHeight])

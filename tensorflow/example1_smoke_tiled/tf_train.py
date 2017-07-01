@@ -30,7 +30,7 @@ import paramhelpers as ph
 basePath = '../data/'
 
 # main mode switch:
-outputOnly = True  # apply model, or run full training?
+outputOnly   = True  # apply model, or run full training?
 outputInputs = False
 
 simSizeLow   = 64
@@ -45,22 +45,24 @@ cropTileSizeLow = tileSizeLow - 2*cropOverlap
 emptyTileValue  = 0.01
 learningRate    = 0.00005
 trainingEpochs  = 10000 # for large values, stop manualy with ctrl-c...
-dropout         = 0.9   # slight...
+dropout         = 0.1   # slight
 batchSize       = 96
 testInterval    = 200
 saveInterval    = 1000
-fromSim = toSim = -1 # range of sim data directories to use
+fromSim = toSim = -1    # range of sim data directories to use
 keepAll         = False
-numTests        = 10      # evaluate on 10 data points from test data
+numTests        = 10    # evaluate on 10 data points from test data
 randSeed        = 1
-brightenOutput  = -1 # multiplied with output to brighten it up
-outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
-bWidth          = -1 # boundaryWidth to be cut away. 0 means 1 cell, 1 means two cells. In line with "bWidth" in manta scene files
+brightenOutput  = -1    # multiplied with output to brighten it up
+
 # optional, add velocity as additional channels to input
-useDensity      = 1  # default, only density
+useDensity      = 1     # default, only density
 useVelocities   = 0
+
 # load pressure as output
 outputPressure  = 0
+outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
+bWidth          = -1 # boundaryWidth to be cut away, in line with "bWidth" in manta scene files
 
 # ---------------------------------------------
 
@@ -107,7 +109,7 @@ tiCr.setBasePath(basePath)
 np.random.seed(randSeed)
 tf.set_random_seed(randSeed)
 
-#tiCr.copySimData( fromSim, toSim ); exit(1);  # debug, copy sim data to different ID
+#tiCr.copySimData( fromSim, toSim ); exit(1);  # debug helper, copy sim data to different ID
 
 if not outputOnly:
 	# run train!
@@ -214,24 +216,22 @@ print_variables()
 # TENSORFLOW SETUP
 x      = tf.placeholder(tf.float32, shape=[None, 1, tileSizeLow, tileSizeLow, n_inputChannels])  # fixed to 2D for now
 y_true = tf.placeholder(tf.float32, shape=[None, 1, tileSizeHigh,tileSizeHigh, 1             ])  # fixed to 2D for now , always output 1 channel
-keep_prob = tf.placeholder(tf.float32)
+training = tf.placeholder(tf.bool)
 
-layer_1_size = 512
-
+hl1_size = 512 
 xIn = tf.reshape(x, shape=[-1, n_input ]) # flatten
-fc_1_weight = tf.Variable(tf.random_normal([n_input, layer_1_size], stddev=0.01))
-fc_1_bias   = tf.Variable(tf.random_normal([layer_1_size], stddev=0.01))
+fc_1_weight = tf.Variable(tf.random_normal([n_input, hl1_size], stddev=0.01))
+fc_1_bias   = tf.Variable(tf.random_normal([hl1_size], stddev=0.01))
 
 fc1 = tf.add(tf.matmul(xIn, fc_1_weight), fc_1_bias)
 fc1 = tf.nn.tanh(fc1)
-fc1 = tf.nn.dropout(fc1, dropout)
+fc1 = tf.layers.dropout(fc1, rate=dropout, training=training)
 
-fc_out_weight = tf.Variable(tf.random_normal([tileSizeLow*tileSizeLow * 2, tileSizeHigh * tileSizeHigh], stddev=0.01))
+fc_out_weight = tf.Variable(tf.random_normal([hl1_size, tileSizeHigh * tileSizeHigh], stddev=0.01))
 fc_out_bias   = tf.Variable(tf.random_normal([tileSizeHigh * tileSizeHigh], stddev=0.01))
 
 y_pred = tf.add(tf.matmul(fc1, fc_out_weight), fc_out_bias)
 y_pred = tf.reshape( y_pred, shape=[-1, 1, tileSizeHigh, tileSizeHigh, 1])
-
 
 costFunc = tf.nn.l2_loss(y_true - y_pred) 
 optimizer = tf.train.AdamOptimizer(learningRate).minimize(costFunc)
@@ -280,7 +280,7 @@ if not outputOnly:
 		lastCost = 1e10
 		for epoch in range(trainingEpochs):
 			batch_xs, batch_ys = tiCr.selectRandomTiles(batchSize)
-			_, cost, summary = sess.run([optimizer, costFunc, lossTrain], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: dropout})
+			_, cost, summary = sess.run([optimizer, costFunc, lossTrain], feed_dict={x: batch_xs, y_true: batch_ys, training:True})
 
 			# save model
 			if ((cost < lastCost) or alwaysSave) and (lastSave >= saveInterval):
@@ -298,7 +298,7 @@ if not outputOnly:
 				avgCostTest = 0.0
 				for curr in range(numTests):
 					batch_xs, batch_ys = tiCr.selectRandomTiles(batchSize, isTraining=False)
-					cost_test, summary_test = sess.run([costFunc, lossTest], feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
+					cost_test, summary_test = sess.run([costFunc, lossTest], feed_dict={x: batch_xs, y_true: batch_ys, training:False}) 
 					avgCostTest += cost_test
 				avgCostTest /= numTests
 
@@ -359,7 +359,7 @@ else:
 
 		if stopOutput:
 			break
-		resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, keep_prob: 1.})
+		resultTiles = y_pred.eval(feed_dict={x: batch_xs, y_true: batch_ys, training:False}) 
 
 		if brightenOutput > 0:
 			for i in range(len(resultTiles)):

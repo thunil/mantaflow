@@ -58,8 +58,6 @@ sm.timestep = 0.5
 xl = Solver(name='larger', gridSize = xl_gs, dim=dim)
 xl.timestep = sm.timestep 
 
-timings = Timings()
-
 # Simulation Grids  -------------------------------------------------------------------#
 flags    = sm.create(FlagGrid)
 vel      = sm.create(MACGrid)
@@ -172,10 +170,6 @@ if (showGui and GUI):
 	gui.show()
 	gui.pause()
 
-t = 0
-tcnt = 0
-resetN = 20
-
 if savedata:
 	folderNo = simNo
 	pathaddition = 'sim_%04d/' % folderNo
@@ -188,6 +182,8 @@ if savedata:
 	simNo = folderNo
 	os.makedirs(simPath)
 
+t = 0
+resetN = 20
 
 # main loop --------------------------------------------------------------------#
 while t < steps+offset:
@@ -222,7 +218,7 @@ while t < steps+offset:
 	# low res fluid, velocity
 	if( t % resetN == 0) :
 		xl_blurvel.copyFrom( xl_vel )
-		# todo blurMacGrid( xl_vel, xl_blurvel, blurSig)
+		# optional blurMacGrid( xl_vel, xl_blurvel, blurSig)
 		interpolateMACGrid( target=vel, source=xl_blurvel )
 		vel.multConst( vec3(1./scaleFactor) )
 	else:
@@ -236,14 +232,11 @@ while t < steps+offset:
 
 	velTmp.copyFrom(vel)
 	velTmp.addConst( velOffset )
-	#if( dim == 2 ):
-		#vel.multConst( vec3(1.0,1.0,0.0) )
-		#velTmp.multConst( vec3(1.0,1.0,0.0) )
 
 	# low res fluid, density
 	if( t % resetN == 0) :
 		xl_blurden.copyFrom( xl_density )
-		# todo blurRealGrid( xl_density, xl_blurden, blurSig)
+		# optional blurRealGrid( xl_density, xl_blurden, blurSig)
 		interpolateGrid( target=density, source=xl_blurden )
 	else:
 		advectSemiLagrange(flags=flags, vel=velTmp, grid=density, order=2, openBounds=True, boundaryWidth=bWidth)
@@ -251,8 +244,8 @@ while t < steps+offset:
 
 	# save low and high res
 	# save all frames
-	if savedata and tcnt>=offset and (tcnt-offset)%interval==0:
-		tf = (tcnt-offset)/interval
+	if savedata and t>=offset and (t-offset)%interval==0:
+		tf = (t-offset)/interval
 		framePath = simPath + 'frame_%04d/' % tf
 		os.makedirs(framePath)
 		density.save(framePath + 'density_low_%04d_%04d.uni' % (simNo, tf))
@@ -261,11 +254,9 @@ while t < steps+offset:
 		if(saveppm):
 			projectPpmFull( xl_density, simPath + 'density_high_%04d_%04d.ppm' % (simNo, tf), 0, 1.0 )
 			projectPpmFull( density, simPath + 'density_low_%04d_%04d.ppm' % (simNo, tf), 0, 1.0 )
-	tcnt += 1
 
 	sm.step()
 	#gui.screenshot( 'outLibt1_%04d.png' % t )
-	#timings.display()
 
 	xl.step()
 	t = t+1
