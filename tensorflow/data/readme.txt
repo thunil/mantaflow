@@ -1,1 +1,3 @@
-by default, the simulation data for the examples will end up in this directory
+
+By default, the simulation data for the data generation and training runs  will end up in this directory.
+

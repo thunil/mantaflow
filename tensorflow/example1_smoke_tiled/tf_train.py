@@ -130,9 +130,6 @@ else:
 # check if batchsize is multiple of tilesInImage
 tileSizeHiCrop = upRes * cropTileSizeLow
 tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
-if not (batchSize % tilesPerImg == 0):
-	print("WARNING: #batchSize (%d) is no multiple of #tilesPerImage (%d). " % (batchSize, tilesPerImg) +
-	"For convolutional transpose networks, this might create problems while generating the output (out=1).")
 
 # ---------------------------------------------
 
@@ -320,6 +317,11 @@ if not outputOnly:
 	print('To apply the trained model, set "outputOnly" to True, and insert numbers for "load_model_test", and "load_model_no" ')
 
 else: 
+
+	# sanity check for output
+	if not (batchSize % tilesPerImg == 0):
+		print("ERROR: #batchSize (%d) is no multiple of #tilesPerImage (%d). " % (batchSize, tilesPerImg) +
+		"For convolutional transpose networks, this will create problems when generating images."); exit(1);
 
 	# ---------------------------------------------
 	# outputOnly: apply to a full data set, and re-create full outputs from tiles
