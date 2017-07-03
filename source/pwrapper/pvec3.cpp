@@ -12,10 +12,8 @@
  ******************************************************************************/
 
 #include "pythonInclude.h"
-#include <math.h>
 #include <string>
 #include <sstream>
-#include <limits>
 #include "vectorbase.h"
 #include "structmember.h"
 #include "manta.h"

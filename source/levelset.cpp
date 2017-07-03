@@ -29,7 +29,7 @@ static const int FlagInited = FastMarch<FmHeapEntryOut, +1>::FlagInited;
 static const Vec3i neighbors[6] = { Vec3i(-1,0,0), Vec3i(1,0,0), Vec3i(0,-1,0), Vec3i(0,1,0), Vec3i(0,0,-1), Vec3i(0,0,1) };
 	
 KERNEL(bnd=1) 
-void InitFmIn (FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignoreWalls, int obstacleType) {
+void InitFmIn (const FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignoreWalls, int obstacleType) {
 	const IndexInt idx = flags.index(i,j,k);
 	const Real v = phi[idx];
 	if (ignoreWalls) {
@@ -44,7 +44,7 @@ void InitFmIn (FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignore
 }
 
 KERNEL(bnd=1) 
-void InitFmOut (FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignoreWalls, int obstacleType) {
+void InitFmOut (const FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignoreWalls, int obstacleType) {
 	const IndexInt idx = flags.index(i,j,k);
 	const Real v = phi[idx];
 	if (ignoreWalls) {
@@ -59,7 +59,7 @@ void InitFmOut (FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& phi, bool ignor
 }
 
 KERNEL(bnd=1) 
-void SetUninitialized (Grid<int>& flags, Grid<int>& fmFlags, Grid<Real>& phi, const Real val, int ignoreWalls, int obstacleType) {
+void SetUninitialized (const Grid<int>& flags, Grid<int>& fmFlags, Grid<Real>& phi, const Real val, int ignoreWalls, int obstacleType) {
 	if(ignoreWalls) {
 		if ( (fmFlags(i,j,k) != FlagInited) && ((flags(i,j,k) & obstacleType) == 0) ) {
 			phi(i,j,k) = val; }
@@ -69,7 +69,7 @@ void SetUninitialized (Grid<int>& flags, Grid<int>& fmFlags, Grid<Real>& phi, co
 }
 
 template<bool inward>
-inline bool isAtInterface(Grid<int>& fmFlags, Grid<Real>& phi, const Vec3i& p) {
+inline bool isAtInterface(const Grid<int>& fmFlags, Grid<Real>& phi, const Vec3i& p) {
 	// check for interface
 	int max = phi.is3D() ? 6 : 4;
 	for (int nb=0; nb<max; nb++) {
@@ -112,7 +112,7 @@ void LevelsetGrid::subtract(const LevelsetGrid& o) { KnSubtract(*this, o); }
 //! re-init levelset and extrapolate velocities (in & out)
 //  note - uses flags to identify border (could also be done based on ls values)
 static void doReinitMarch( Grid<Real>& phi,
-		FlagGrid& flags, Real maxTime, MACGrid* velTransport,
+		const FlagGrid& flags, Real maxTime, MACGrid* velTransport,
 		bool ignoreWalls, bool correctOuterLayer, int obstacleType )
 {
 	const int dim = (phi.is3D() ? 3 : 2); 
@@ -213,14 +213,14 @@ static void doReinitMarch( Grid<Real>& phi,
 
 //! call for levelset grids & external real grids
 
-void LevelsetGrid::reinitMarching( FlagGrid& flags, Real maxTime, MACGrid* velTransport,
+void LevelsetGrid::reinitMarching( const FlagGrid& flags, Real maxTime, MACGrid* velTransport,
 		bool ignoreWalls, bool correctOuterLayer, int obstacleType )
 {
 	doReinitMarch( *this, flags, maxTime, velTransport, ignoreWalls, correctOuterLayer, obstacleType );
 }
 
 
-void LevelsetGrid::initFromFlags(FlagGrid& flags, bool ignoreWalls) {
+void LevelsetGrid::initFromFlags(const FlagGrid& flags, bool ignoreWalls) {
 	FOR_IDX(*this) {
 		if (flags.isFluid(idx) || (ignoreWalls && flags.isObstacle(idx)))
 			mData[idx] = -0.5;

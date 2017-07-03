@@ -20,7 +20,7 @@ using namespace std;
 
 namespace Manta { 
 
-//! add Forces between fl/fl and fl/em cells
+//! add Forces between fl/fl and fl/em cells (interpolate cell centered forces to MAC grid)
 KERNEL(bnd=1) void KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curEmpty = flags.isEmpty(i,j,k);
@@ -34,7 +34,7 @@ KERNEL(bnd=1) void KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& fo
 		vel(i,j,k).z += 0.5*(force(i,j,k-1).z + force(i,j,k).z);
 }
 
-//! add Forces between fl/fl and fl/em cells
+//! add constant force between fl/fl and fl/em cells
 KERNEL(bnd=1) void KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curEmpty = flags.isEmpty(i,j,k);
@@ -48,9 +48,14 @@ KERNEL(bnd=1) void KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
 		vel(i,j,k).z += force.z;
 }
 
-//! add gravity forces to all fluid cells
+//! add gravity forces to all fluid cells, automatically adapts to different grid sizes
 PYTHON() void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {    
 	Vec3 f = gravity * flags.getParent()->getDt() / flags.getDx();
+	KnAddForce(flags, vel, f);
+}
+//! add gravity forces to all fluid cells , but dont account for changing cell size
+PYTHON() void addGravityNoScale(FlagGrid& flags, MACGrid& vel, const Vec3& gravity) {
+	const Vec3 f = gravity * flags.getParent()->getDt();
 	KnAddForce(flags, vel, f);
 }
 
@@ -292,6 +297,56 @@ PYTHON() void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, 
 	}
 }
 
+//! add obstacle velocity between obs/obs, obs/fl and/or obs,em cells. expects centered obsvels, sets staggered vels
+KERNEL() void KnSetObstacleVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& obsvel, int borderWidth)
+{
+	bool curFluid = flags.isFluid(i,j,k);
+	bool curObs   = flags.isObstacle(i,j,k);
+	if (!curFluid && !curObs) return;
+
+	// Set vel for obstacles: getting centered vels and setting staggered
+	// Affects all cells inside obstacle. obsvels end exactly at obs/fl or obs/em border
+	if (flags.isObstacle(i-1,j,k) || (curObs && flags.isFluid(i-1,j,k)) || (curObs && flags.isEmpty(i-1,j,k)))
+		vel(i,j,k).x = 0.5*(obsvel(i-1,j,k).x + obsvel(i,j,k).x);
+	if (flags.isObstacle(i,j-1,k) || (curObs && flags.isFluid(i,j-1,k)) || (curObs && flags.isEmpty(i,j-1,k)))
+		vel(i,j,k).y = 0.5*(obsvel(i,j-1,k).y + obsvel(i,j,k).y);
+	if (vel.is3D() && (flags.isObstacle(i,j,k-1) || (curObs && flags.isFluid(i,j,k-1)) || (curObs && flags.isEmpty(i,j,k-1))))
+		vel(i,j,k).z = 0.5*(obsvel(i,j,k-1).z + obsvel(i,j,k).z);
+
+	// Optional border velocities outside of obstacle
+	if (!borderWidth) return;
+	for (int d=1; d<1+borderWidth; ++d)
+	{
+		bool rObs = flags.isObstacle(i+d,j,k); // right
+		bool lObs = flags.isObstacle(i-d,j,k); // left
+		bool uObs = flags.isObstacle(i,j+d,k); // up
+		bool dObs = flags.isObstacle(i,j-d,k); // down
+		bool tObs = flags.isObstacle(i,j,k+d); // top
+		bool bObs = flags.isObstacle(i,j,k-d); // bottom
+
+		bool rupObs = flags.isObstacle(i+d,j+d,k+d); // corner right up top
+		bool rdtObs = flags.isObstacle(i+d,j-d,k+d); // corner right down top
+		bool lupObs = flags.isObstacle(i-d,j+d,k+d); // corner left up top
+		bool ldtObs = flags.isObstacle(i-d,j-d,k+d); // corner left down top
+
+		bool rubObs = flags.isObstacle(i+d,j+d,k-d); // corner right up bottom
+		bool rdbObs = flags.isObstacle(i+d,j-d,k-d); // corner right down bottom
+		bool lubObs = flags.isObstacle(i-d,j+d,k-d); // corner left up bottom
+		bool ldbObs = flags.isObstacle(i-d,j-d,k-d); // corner left down bottom
+
+		if (rObs || lObs || uObs || dObs || tObs || bObs
+			|| rupObs || rdtObs || lupObs || ldtObs || rubObs || rdbObs || lubObs || ldbObs) {
+			vel(i,j,k).x = 0.5*(obsvel(i-1,j,k).x + obsvel(i,j,k).x);
+			vel(i,j,k).y = 0.5*(obsvel(i,j-1,k).y + obsvel(i,j,k).y);
+			if (vel.is3D()) {
+			vel(i,j,k).z = 0.5*(obsvel(i,j,k-1).z + obsvel(i,j,k).z); }
+		}
+	}
+}
+
+PYTHON() void setObstacleVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& obsvel, int borderWidth=0) {
+	KnSetObstacleVelocity(flags, vel, obsvel, borderWidth);
+}
 
 //! Kernel: gradient norm operator
 KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {

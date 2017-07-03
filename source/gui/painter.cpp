@@ -88,7 +88,7 @@ void LockedObjPainter::nextObject() {
 template<class T>
 GridPainter<T>::GridPainter(FlagGrid** flags, QWidget* par) 
 	: LockedObjPainter(par), mMaxVal(0), mDim(0), mPlane(0), mMax(0), mLocalGrid(NULL), 
-	  mFlags(flags), mInfo(NULL), mHide(false), mHideLocal(false), mDispMode(VecDispCentered), mValScale()
+	  mFlags(flags), mInfo(NULL), mHide(false), mHideLocal(false), mDispMode(), mValScale()
 {
 	mDim = 2; // Z plane
 	mPlane = 0;
@@ -128,7 +128,7 @@ void GridPainter<T>::update() {
 	mLocalGrid->copyFrom( *src , true ); // copy grid data and type marker
 	mLocalGrid->setName(src->getName());
 	mLocalGrid->setParent(src->getParent());    
-	mMaxVal = mLocalGrid->getMaxAbsValue();
+	mMaxVal = mLocalGrid->getMaxAbs();
 	
 	mPlane = clamp(mPlane, 0, mLocalGrid->getSize()[mDim]-1);
 	
@@ -164,9 +164,28 @@ void GridPainter<T>::processKeyEvent(PainterEvent e, int param)
 
 // get scale value for current grid from map, or create new
 template<class T>
+int GridPainter<T>::getDispMode() {
+	if (!mObject || !mLocalGrid) return RealDispOff;
+	if (mDispMode.find(mObject) == mDispMode.end()) {
+		int dm = RealDispStd; // same for vec & real
+		// initialize exceptions, eg levelset
+		if (mLocalGrid->getType() & GridBase::TypeLevelset) dm = RealDispLevelset;
+		mDispMode[mObject] = dm; // RealDispNone; NT_DEBUG remove
+		return dm;
+	} 
+	return mDispMode[mObject];
+}
+
+template<class T>
+void GridPainter<T>::setDispMode(int dm) {
+	mDispMode[mObject] = dm;
+}
+
+template<class T>
 Real GridPainter<T>::getScale() {
 	if (!mObject) return 0;
-	std::pair<void*, int> id; id.first=mObject; id.second=mDispMode;
+	const int dm = getDispMode();
+	std::pair<void*, int> id; id.first=mObject; id.second=dm;
 	
 	if (mValScale.find(id) == mValScale.end()) {
 		// init new scale value
@@ -176,8 +195,8 @@ Real GridPainter<T>::getScale() {
 		else if (mLocalGrid->getType() & GridBase::TypeLevelset)
 			s = 1.0; 
 		else if (mLocalGrid->getType() & GridBase::TypeReal) {
-			if(mDispMode == RealDispShadeVol ) s = 4.0; // depends a bit on grid size in practice...
-			if(mDispMode == RealDispShadeSurf) s = 1.0; 
+			if(dm == RealDispShadeVol ) s = 4.0; // depends a bit on grid size in practice...
+			if(dm == RealDispShadeSurf) s = 1.0; 
 		}
 		mValScale[id] = s;
 	}
@@ -187,7 +206,7 @@ Real GridPainter<T>::getScale() {
 
 template<class T>
 void GridPainter<T>::setScale(Real v) {
-	std::pair<void*, int> id; id.first=mObject; id.second=mDispMode;
+	std::pair<void*, int> id; id.first=mObject; id.second=getDispMode();
 	mValScale[id] = v;
 }
 
@@ -204,40 +223,42 @@ template<>
 void GridPainter<Real>::processSpecificKeyEvent(PainterEvent e, int param) {
 	if (e == EventNextReal) {
 		nextObject();
-		// by default, switch levelsets to alt color scale
-		if (mLocalGrid->getType() & GridBase::TypeLevelset) mDispMode = RealDispLevelset;
-		else mDispMode = RealDispStd;
-	} else if (e == EventScaleRealDown && mObject)
+		mHideLocal = (getDispMode()==VecDispOff); 
+	} else if (e == EventScaleRealDown && mObject) {
 		setScale( getScale() * 0.5 );
-	else if (e == EventScaleRealUp && mObject)
+	} else if (e == EventScaleRealUp && mObject) {
 		setScale( getScale() * 2.0 );
-	else if (e == EventScaleRealDownSm && mObject)
+	} else if (e == EventScaleRealDownSm && mObject) {
 		setScale( getScale() * 0.9 );
-	else if (e == EventScaleRealUpSm && mObject)
+	} else if (e == EventScaleRealUpSm && mObject) {
 		setScale( getScale() * 1.1 );
-	else if (e == EventNextRealDisplayMode) {
-		mDispMode  = (mDispMode+1)%NumRealDispModes;
-		mHideLocal = (mDispMode==RealDispOff); 
+	} else if (e == EventNextRealDisplayMode) {
+		setDispMode( (getDispMode()+1)%NumRealDispModes );
+		mHideLocal = (getDispMode()==RealDispOff); 
 	}
 }
 
 template<>
 void GridPainter<Vec3>::processSpecificKeyEvent(PainterEvent e, int param) {
-	if (e == EventNextVec)
+	if (e == EventNextVec) {
 		nextObject();
-	else if (e == EventScaleVecDown && mObject)
+		mHideLocal = (getDispMode()==VecDispOff); 
+	} else if (e == EventScaleVecDown && mObject) {
 		setScale( getScale() * 0.5 );
-	else if (e == EventScaleVecUp && mObject)
+	} else if (e == EventScaleVecUp && mObject) {
 		setScale( getScale() * 2.0 );
-	else if (e == EventNextVecDisplayMode) {
-		mDispMode  = (mDispMode+1)%NumVecDispModes;
-		mHideLocal = (mDispMode==VecDispOff); 
+	} else if (e == EventScaleVecDownSm && mObject) {
+		setScale( getScale() * 0.9 );
+	} else if (e == EventScaleVecUpSm && mObject) {
+		setScale( getScale() * 1.1 );
+	} else if (e == EventNextVecDisplayMode) {
+		setDispMode( (getDispMode()+1)%NumVecDispModes );
+		mHideLocal = (getDispMode()==VecDispOff); 
 	}
 }
 
 template<> void GridPainter<int>::updateText() {
 	stringstream s;
-	//if (mObject && (!mHide)) {
 	if (mObject) {
 		if(mHide) s <<"(hidden) ";
 		s << "Int Grid '" << mLocalGrid->getName() << "'" << endl;
@@ -419,19 +440,20 @@ template<> void GridPainter<Real>::paint() {
 	if (!mObject || mHide || mHideLocal || mPlane <0 || mPlane >= mLocalGrid->getSize()[mDim] || !mFlags || !(*mFlags))
 		return;
 	
-	float dx = mLocalGrid->getDx();
+	const int dm     = getDispMode();
+	const Real scale = getScale();
+	const float dx   = mLocalGrid->getDx();
 	Vec3 box[4];
 	glBegin(GL_QUADS);
-	Real scale = getScale();
 
 	// "new" drawing style 
 	// ignore flags, its a bit dangerous to skip outside info
-	if( (mDispMode==RealDispStd) || (mDispMode==RealDispLevelset) ) {
+	if( (dm==RealDispStd) || (dm==RealDispLevelset) ) {
 
 		FOR_P_SLICE(mLocalGrid, mDim, mPlane) 
 		{ 
 			Real v = mLocalGrid->get(p) * scale; 
-			if (mDispMode==RealDispLevelset) {
+			if (dm==RealDispLevelset) {
 				v = max(min(v*0.2, 1.0),-1.0);
 				if (v>=0)
 					glColor3f(v,0,0.5);
@@ -451,12 +473,12 @@ template<> void GridPainter<Real>::paint() {
 
 	}
 
-	if( (mDispMode==RealDispShadeVol) || (mDispMode==RealDispShadeSurf) ) {
+	if( (dm==RealDispShadeVol) || (dm==RealDispShadeSurf) ) {
 		SimpleImage img;
 
 		// note - slightly wasteful, projects all 3 axes!
 		int mode = 0;
-		if (mDispMode==RealDispShadeSurf) mode = 1;
+		if (dm==RealDispShadeSurf) mode = 1;
 		projectImg( img, *mLocalGrid, mode, scale );
 
 		FOR_P_SLICE(mLocalGrid, mDim, mPlane) 
@@ -483,11 +505,12 @@ template<> void GridPainter<Vec3>::paint() {
 	if (!mObject || mHide || mHideLocal || mPlane <0 || mPlane >= mLocalGrid->getSize()[mDim])
 		return;
 	
-	float dx = mLocalGrid->getDx();
-	bool mac = mLocalGrid->getType() & GridBase::TypeMAC;
+	const int dm     = getDispMode();
 	const Real scale = getScale();
+	const float dx   = mLocalGrid->getDx();
+	const bool mac   = mLocalGrid->getType() & GridBase::TypeMAC;
 
-	if( (mDispMode==VecDispCentered) || (mDispMode==VecDispStaggered) ) {
+	if( (dm==VecDispCentered) || (dm==VecDispStaggered) ) {
 
 		// regular velocity drawing mode
 		glBegin(GL_LINES);
@@ -495,7 +518,7 @@ template<> void GridPainter<Vec3>::paint() {
 		FOR_P_SLICE(mLocalGrid, mDim, mPlane) {        
 			Vec3 vel = mLocalGrid->get(p) * scale;
 			Vec3 pos (p.x+0.5, p.y+0.5, p.z+0.5);
-			if (mDispMode==VecDispCentered) {
+			if (dm==VecDispCentered) {
 				if (mac) {
 					if (p.x < mLocalGrid->getSizeX()-1) 
 						vel.x = 0.5 * (vel.x + scale * mLocalGrid->get(p.x+1,p.y,p.z).x);
@@ -508,7 +531,7 @@ template<> void GridPainter<Vec3>::paint() {
 				glVertex(pos, dx);
 				glColor3f(1,1,0);
 				glVertex(pos+vel*1.2, dx);
-			} else if (mDispMode==VecDispStaggered) {
+			} else if (dm==VecDispStaggered) {
 				for (int d=0; d<3; d++) {
 					if (fabs(vel[d]) < 1e-2) continue;
 					Vec3 p1(pos);
@@ -526,7 +549,7 @@ template<> void GridPainter<Vec3>::paint() {
 		}
 		glEnd();    
 	
-	} else if (mDispMode==VecDispUv) {
+	} else if (dm==VecDispUv) {
 		// draw as "uv" coordinates (ie rgb), note - this will completely hide the real grid display!
 		Vec3 box[4];
 		glBegin(GL_QUADS); 

@@ -174,11 +174,6 @@ public:
 	//! set all boundary cells to last inner value (Neumann)
 	PYTHON() void setBoundNeumann(int boundaryWidth=1);
 
-	//! for compatibility, old names:
-	PYTHON() Real getMaxAbsValue() { return getMaxAbs(); }
-	PYTHON() Real getMaxValue()    { return getMax(); }
-	PYTHON() Real getMinValue()    { return getMin(); }
-
 	//! debugging helper, print grid from Python
 	PYTHON() void printGrid(int zSlice=-1, int tSlice=-1,  bool printIndex=false, int bnd=0); 
 

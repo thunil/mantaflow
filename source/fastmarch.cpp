@@ -21,7 +21,7 @@ using namespace std;
 namespace Manta {
 	
 template<class COMP, int TDIR>
-FastMarch<COMP,TDIR>::FastMarch(FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& levelset, Real maxTime, MACGrid* velTransport )
+FastMarch<COMP,TDIR>::FastMarch(const FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& levelset, Real maxTime, MACGrid* velTransport )
 	: mLevelset(levelset), mFlags(flags), mFmFlags(fmFlags)
 {
 	if (velTransport)
@@ -505,17 +505,24 @@ PYTHON() void extrapolateLsSimple (Grid<Real>& phi, int distance = 4, bool insid
 }
 
 // extrapolate centered vec3 values from marked fluid cells
-PYTHON() void extrapolateVec3Simple (Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4)
+PYTHON() void extrapolateVec3Simple (Grid<Vec3>& vel, Grid<Real>& phi, int distance = 4, bool inside=false)
 {
 	Grid<int> tmp( vel.getParent() );
 	tmp.clear();
 	const int dim = (vel.is3D() ? 3:2);
 
-	// mark all inside
-	FOR_IJK_BND(vel,1) {
-		if ( phi(i,j,k) < 0. ) { tmp(i,j,k) = 1; }
-	} 
-	// + first layer outside
+ 	// mark initial cells, by default, march outside
+ 	if(!inside) {
+ 		// mark all inside
+ 		FOR_IJK_BND(phi,1) {
+ 			if ( phi(i,j,k) < 0. ) { tmp(i,j,k) = 1; }
+ 		}
+ 	} else {
+ 		FOR_IJK_BND(phi,1) {
+ 			if ( phi(i,j,k) > 0. ) { tmp(i,j,k) = 1; }
+ 		}
+  	}
+	// + first layer next to initial cells
 	FOR_IJK_BND(vel,1) {
 		Vec3i p(i,j,k);
 		if ( tmp(p) ) continue;

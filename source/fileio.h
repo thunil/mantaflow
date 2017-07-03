@@ -46,7 +46,7 @@ void readGrid4dUniCleanup(void** fileHandle);
 template<class T> void writeGrid4dRaw(const std::string& name, Grid4d<T>* grid);
 template<class T> void readGrid4dRaw (const std::string& name, Grid4d<T>* grid);
 
-void writeParticlesUni(const std::string& name, BasicParticleSystem* parts );
+void writeParticlesUni(const std::string& name, const BasicParticleSystem* parts );
 void readParticlesUni (const std::string& name, BasicParticleSystem* parts );
 
 template <class T> void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata );

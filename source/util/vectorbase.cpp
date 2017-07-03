@@ -12,8 +12,6 @@
  ******************************************************************************/
 
 #include "vectorbase.h"
-#include <limits>
-#include <math.h>
 
 using namespace std;
 

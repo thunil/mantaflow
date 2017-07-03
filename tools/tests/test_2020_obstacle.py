@@ -47,6 +47,9 @@ for t in range(10):
 
 
 # check final state
-doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.002 , thresholdStrict=1e-10 )
-doTestGrid( sys.argv[0],"vel"  , s, vel     , threshold=0.003 , thresholdStrict=1e-10 )
+doTestGrid( sys.argv[0],"dens" , s, density , threshold=0.002 , thresholdStrict=1e-10, debugShowDifference=False )
+doTestGrid( sys.argv[0],"vel"  , s, vel     , threshold=0.003 , thresholdStrict=1e-10, debugShowDifference=False )
+
+for t in range(99): # pause for debugging
+	s.step()
 

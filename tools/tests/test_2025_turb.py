@@ -105,7 +105,7 @@ for t in range(frames):
 	s.step()
 
 	if 1 and getVisualSetting() and (t%getVisualSetting()==0):
-		#maxv = (k.getMaxValue()); print "Max k %f \n"%(maxv)
+		#maxv = (k.getMax()); print "Max k %f \n"%(maxv)
 		projectPpmFull( k, '%s_%04d.ppm' % (sys.argv[0],t/getVisualSetting()) , 0, 20.0 );
    
 # check final state

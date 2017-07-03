@@ -40,10 +40,12 @@ static const int STR_LEN_PDATA = 256;
 typedef struct {
 	int dimX, dimY, dimZ; // grid size
 	int gridType, elementType, bytesPerElement; // data type info
-	char info[252]; // mantaflow build information
-	int dimT;       // optionally store forth dimension for 4d grids
+	char info[STR_LEN_GRID]; // mantaflow build information
+	int dimT;                // optionally store forth dimension for 4d grids
 	unsigned long long timestamp; // creation time
 } UniHeader;
+
+// note: header v4 only uses 4 bytes of the info string to store the fourth dimension, not needed for pdata
 
 //! pdata uni header, v3  (similar to grid header)
 typedef struct {
@@ -770,7 +772,7 @@ void readGridUni(const string& name, Grid<T>* grid) {
 		gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
 #		endif
 	} else {
-		debMsg( "Unknown header!" ,1);
+		errMsg( "Unknown header '"<<ID<<"' " );
 	}
 	gzclose(gzf);
 #	else
@@ -914,6 +916,8 @@ void writeGrid4dUni(const string& name, Grid4d<T>* grid) {
 #	endif
 };
 
+//! note, reading 4d uni grids is slightly more complicated than 3d ones
+//! as it optionally supports sliced reading
 template <class T>
 void readGrid4dUni(const string& name, Grid4d<T>* grid, int readTslice, Grid4d<T>* slice, void** fileHandle ) 
 {
@@ -1054,12 +1058,12 @@ void readGrid4dRaw(const string& name, Grid4d<T>* grid) {
 
 
 //*****************************************************************************
-// particle data
+// particles and particle data
 //*****************************************************************************
 
 static const int PartSysSize = sizeof(Vector3D<float>)+sizeof(int);
 
-void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
+void writeParticlesUni(const std::string& name, const BasicParticleSystem* parts ) {
 	debMsg( "writing particles " << parts->getName() << " to uni file " << name ,1);
 	
 #	if NO_ZLIB!=1
@@ -1092,7 +1096,7 @@ void writeParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 #	else
 	assertMsg( sizeof(BasicParticleData) == PartSysSize, "particle data size doesn't match" );
 	gzwrite(gzf, &head, sizeof(UniPartHeader));
-	gzwrite(gzf, &(parts->getData()[0]), PartSysSize*head.dim);
+	gzwrite(gzf, &((*parts)[0]), PartSysSize*head.dim);
 #	endif
 	gzclose(gzf);
 #	else
@@ -1216,13 +1220,20 @@ void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 // helper functions
 
 
-KERNEL(idx) void knQuantize(Grid<Real>& grid, Real step)
-{
-	int    q  = int(grid(idx) / step + step*0.5);
+void quantizeReal(Real& v, const Real step) { 
+	int    q  = int(v / step + step*0.5);
 	double qd = q * (double)step;
-	grid(idx) = (Real)qd;
+	v = (Real)qd;
+}
+KERNEL(idx) void knQuantize(Grid<Real>& grid, Real step) {
+	quantizeReal( grid(idx), step );
 } 
 PYTHON() void quantizeGrid(Grid<Real>& grid, Real step) { knQuantize(grid,step); }
+
+KERNEL(idx) void knQuantizeVec3(Grid<Vec3>& grid, Real step) {
+	for(int c=0; c<3; ++c) quantizeReal( grid(idx)[c], step );
+} 
+PYTHON() void quantizeGridVec3(Grid<Vec3>& grid, Real step) { knQuantizeVec3(grid,step); }
 
 
 

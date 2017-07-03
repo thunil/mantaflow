@@ -99,8 +99,8 @@ for dim in range(2,4):
 		checkSymmetry    (a=pressure, err=errR1, axis=dir1)
 		checkSymmetryVec3(a=vel     , err=errV1, axis=dir1)
 
-		maxErrR = outputScale * errR1.getMaxValue()
-		maxErrV = outputScale * errV1.getMaxValue()
+		maxErrR = outputScale * errR1.getMax()
+		maxErrV = outputScale * errV1.getMax()
 		#print( "Initial symmetry err %f , %f" % (maxErrR, maxErrV) )
 		#errV1.printGrid(zSlice=0)
 		#s.step()
@@ -113,8 +113,8 @@ for dim in range(2,4):
 		checkSymmetry    (a=pressure, err=errR1, axis=dir1)
 		checkSymmetryVec3(a=vel     , err=errV1, axis=dir1)
 
-		maxErrR = outputScale * errR1.getMaxValue()
-		maxErrV = outputScale * errV1.getMaxValue()
+		maxErrR = outputScale * errR1.getMax()
+		maxErrV = outputScale * errV1.getMax()
 		if(showErrs):
 			print( "Initial symmetry check %f , %f " % (maxErrR, maxErrV) )
 
@@ -125,8 +125,8 @@ for dim in range(2,4):
 			checkSymmetry    (a=pressure, err=errR2, axis=dir2)
 			checkSymmetryVec3(a=vel     , err=errV2, axis=dir2)
 
-			maxErrR = outputScale * errR2.getMaxValue()
-			maxErrV = outputScale * errV2.getMaxValue()
+			maxErrR = outputScale * errR2.getMax()
+			maxErrV = outputScale * errV2.getMax()
 			if(showErrs):
 				print( "Initial symmetry check %f , %f " % (maxErrR, maxErrV) )
 
@@ -160,13 +160,13 @@ for dim in range(2,4):
 			advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
 
 			checkSymmetry(a=phi, err=errR1, axis=dir1)
-			maxErrR = outputScale * errR1.getMaxValue()
+			maxErrR = outputScale * errR1.getMax()
 			if(showErrs):
 				print( "Max symmetry err1 real: %f " % (maxErrR) )
 
 			if(dim==3):
 				checkSymmetry(a=phi, err=errR2, axis=dir2)
-				maxErrR = outputScale * errR2.getMaxValue()
+				maxErrR = outputScale * errR2.getMax()
 				if(showErrs):
 					print( "Max symmetry err2 real: %f " % (maxErrR) )
 
@@ -193,19 +193,19 @@ for dim in range(2,4):
 			#vel.printGrid(zSlice=0, printIndex=True)
 
 			checkSymmetryVec3(a=vel, err=errV1, axis=dir1) 
-			maxErrV = outputScale * errV1.getMaxValue()
+			maxErrV = outputScale * errV1.getMax()
 			if(showErrs):
 				print( "Max symmetry err1 vec3: %f " % (maxErrV) )
 			if(dim==3):
 				checkSymmetryVec3(a=vel, err=errV2, axis=dir2) 
-				maxErrV = outputScale * errV2.getMaxValue()
+				maxErrV = outputScale * errV2.getMax()
 				if(showErrs):
 					print( "Max symmetry err2 vec3: %f " % (maxErrV) )
 
 			# debug version, check symmetry only for a single component of the MAC grid
-			#checkSymmetryVec3(a=vel, err=errV1, axis=dir1, disable=6); maxErrV = outputScale * errV1.getMaxValue(); print( "Max err run X  %f " % (maxErrV))
-			#checkSymmetryVec3(a=vel, err=errV1, axis=dir1, disable=5); maxErrV = outputScale * errV1.getMaxValue(); print( "Max err run Y  %f " % (maxErrV))
-			#checkSymmetryVec3(a=vel, err=errV1, axis=dir1, disable=3); maxErrV = outputScale * errV1.getMaxValue(); print( "Max err run Z  %f " % (maxErrV))
+			#checkSymmetryVec3(a=vel, err=errV1, axis=dir1, disable=6); maxErrV = outputScale * errV1.getMax(); print( "Max err run X  %f " % (maxErrV))
+			#checkSymmetryVec3(a=vel, err=errV1, axis=dir1, disable=5); maxErrV = outputScale * errV1.getMax(); print( "Max err run Y  %f " % (maxErrV))
+			#checkSymmetryVec3(a=vel, err=errV1, axis=dir1, disable=3); maxErrV = outputScale * errV1.getMax(); print( "Max err run Z  %f " % (maxErrV))
 			#errV1.printGrid(zSlice=0, printIndex=True)
 
 			s.step()

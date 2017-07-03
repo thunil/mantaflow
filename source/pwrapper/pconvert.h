@@ -210,7 +210,11 @@ protected:
 	std::vector<void*> mTmpStorage;
 };
 
-
 } // namespace
+
+#if NUMPY==1
+#include "numpyWrap.h"
+#endif
+
 #endif
 #endif

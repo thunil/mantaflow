@@ -25,7 +25,7 @@ public:
 	PYTHON() LevelsetGrid(FluidSolver* parent, bool show = true);
 	
 	//! reconstruct the levelset using fast marching
-	PYTHON() void reinitMarching(FlagGrid& flags, Real maxTime=4.0, 
+	PYTHON() void reinitMarching(const FlagGrid& flags, Real maxTime=4.0, 
 			MACGrid* velTransport=NULL, bool ignoreWalls=false, bool correctOuterLayer=true, 
 			int obstacleType = FlagGrid::TypeObstacle );
 
@@ -37,7 +37,7 @@ public:
 	PYTHON() void subtract(const LevelsetGrid& o);
 	
 	//! initialize levelset from flags (+/- 0.5 heaviside)
-	PYTHON() void initFromFlags(FlagGrid& flags, bool ignoreWalls=false);
+	PYTHON() void initFromFlags(const FlagGrid& flags, bool ignoreWalls=false);
 	
 	static Real invalidTimeValue();
 };

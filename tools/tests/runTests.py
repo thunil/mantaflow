@@ -49,6 +49,9 @@ else:
 printAllOutpus = 0
 filePrefix = "test_"
 
+# by default, disable UI (if compiled)
+os.environ["MANTA_DISABLE_UI"] = "1"
+
 if(len(sys.argv)<2):
 	print("Usage runTests.py <manta-executable>")
 	exit(1)
@@ -56,28 +59,6 @@ if(len(sys.argv)<2):
 manta = sys.argv[1]
 print ("Using mantaflow executable '" + manta + "' " )
 
-# try to get build info (and floating point accuracy) to adapt test data directory
-floatPrecision = 0
-if 1:
-	bifile = "helperBuildInfo.py"
-	if   platform == 0:
-		result = os.popen(manta + " " + bifile).read() 
-	else:
-		result = os.popen('"'+ manta + '" '+ bifile).read() 
-	fp1 = re.findall(r" fp1 ", result)
-	fp2 = re.findall(r" fp2 ", result)
-	#print( "FP strings: " + str(len(fp1)) + " " + str(len(fp2)) ) # debug
-	if len(fp1) >= 2:
-		floatPrecision = 1
-	elif len(fp2) >= 2:
-		print("Double precision build detected")
-		floatPrecision = 2
-	else:
-		print("Unable to determine floating point accuracy with executable '"+manta+"'; Output: \n"+result +"\n")
-		exit(1);
-
-	# export to following manta calls
-	os.environ["MANTA_FPACCURACY"] = str(floatPrecision)
 
 # extract path from script call
 basedir  = os.path.dirname (sys.argv[0])
@@ -86,7 +67,9 @@ if len(basedir)==0:
 	basedir = "."
 
 # store test data in separate directory
+getFloatSetting(extCall = True, platform=platform, mantaExe=manta ) # check from external call
 datadir = dataDirectory(sys.argv[0])
+
 
 #unix only: currdate = os.popen("date \"+%y%m%d%H%M\"").read() 
 if getGenRefFileSetting():
@@ -127,6 +110,12 @@ elif platform==1:
 elif platform==2:
 	files = os.popen("ls "+basedir+str(filePrefix)+"????_*.py").read() # some cygwin under windows
 #print ("Debug - using test scene files: "+files)
+
+# for graphs in visual mode only
+gnuplotExe = "/usr/bin/gnuplot"
+if len( os.getenv('MANTA_GNUPLOT', "") )>0:
+	gnuplotExe = os.getenv('MANTA_GNUPLOT', "")
+	print("Using gnuplot at %s" % gnuplotExe);
 
 # ready to go...
 currdate = os.popen("date \"+%y%m%d%H%M\"").read() 
@@ -204,9 +193,9 @@ for file in files:
 		print("Full output: " + result);
 		print(" ");
 
-	# store benchmarking results (if theres any output) , and generate plot
+	# store benchmarking results (if theres any output) , and generate plots
 	timefile = "%s/runtimes/%s_v%d" % (basedir, os.path.basename(file), getVisualSetting()) 
-	if getVisualSetting() and ( os.path.isfile( "%s_0001.ppm"%(file) ) or os.path.isfile(timefile+".time") ):
+	if getVisualSetting() and ( os.path.isfile( "%s_0001.ppm"%(file) ) or os.path.isfile(timefile+".time") ) and os.path.isfile( gnuplotExe ):
 		runtime = elapsed_time2-elapsed_time1 
 		if runtime>0.0:
 			text_file = open(timefile+".time", "a");
@@ -215,10 +204,6 @@ for file in files:
 		else:
 			print("Zero runtime! Something went wrong...");
 		
-		gnuplotExe = "/usr/bin/gnuplot"
-		if len( os.getenv('MANTA_GNUPLOT', "") )>0:
-			gnuplotExe = os.getenv('MANTA_GNUPLOT', "")
-		print("Using %s" % gnuplotExe);
 		if os.path.isfile(gnuplotExe):
 			plot = Popen(gnuplotExe, stdin=PIPE)
 			plot.stdin.write("unset key\n")

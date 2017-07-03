@@ -169,6 +169,8 @@ public:
 	PYTHON() void multConst(T s);
 	//! clamp content to range (for vec3, clamps each component separately)
 	PYTHON() void clamp(Real min, Real max);
+	//! reduce small values to zero
+	PYTHON() void stomp(const T& threshold);
 	
 	// common compound operators
 	//! get absolute max value in grid 
@@ -176,16 +178,16 @@ public:
 	//! get max value in grid 
 	PYTHON() Real getMax();
 	//! get min value in grid 
-	PYTHON() Real getMin();    
+	PYTHON() Real getMin();
+	//! calculate L1 norm of grid content
+	PYTHON() Real getL1(int bnd=0);
+	//! calculate L2 norm of grid content
+	PYTHON() Real getL2(int bnd=0);
+
 	//! set all boundary cells to constant value (Dirichlet)
 	PYTHON() void setBound(T value, int boundaryWidth=1);
 	//! set all boundary cells to last inner value (Neumann)
 	PYTHON() void setBoundNeumann(int boundaryWidth=1);
-
-	//! for compatibility, old names:
-	PYTHON() Real getMaxAbsValue() { return getMaxAbs(); }
-	PYTHON() Real getMaxValue()    { return getMax(); }
-	PYTHON() Real getMinValue()    { return getMin(); }
 
 	//! get data pointer of grid
 	PYTHON() std::string getDataPointer();
@@ -328,9 +330,15 @@ public:
 
 	void initBoundaries( const int &boundaryWidth, const int *types );
 
+	//! set fluid flags inside levelset (liquids)
 	PYTHON() void updateFromLevelset(LevelsetGrid& levelset);    
+	//! set all cells (except obs/in/outflow) to type (fluid by default)
 	PYTHON() void fillGrid(int type=TypeFluid);
 
+	//! count no. of cells matching flags via "AND"
+	//! warning for large grids! only regular int returned (due to python interface)
+	//! optionally creates mask in RealGrid (1 where flag matches, 0 otherwise)
+	PYTHON() int countCells(int flag, int bnd=0, Grid<Real>* mask=NULL);
 };
 
 //! helper to compute grid conversion factor between local coordinates of two grids
@@ -343,8 +351,9 @@ void copyMacToVec3(MACGrid &source, Grid<Vec3>& target);
 void convertMacToVec3(MACGrid &source, Grid<Vec3>& target);
 void resampleVec3ToMac(Grid<Vec3>& source, MACGrid &target);
 void resampleMacToVec3 (MACGrid &source, Grid<Vec3>& target );
-void getComponent(const Grid<Vec3>& src, Grid<Real>& dst, int c);
-void setComponent(const Grid<Real>& src, Grid<Vec3>& dst, int c);
+
+void getComponent(const Grid<Vec3>& source, Grid<Real>& target, int component);
+void setComponent(const Grid<Real>& source, Grid<Vec3>& target, int component);
 
 
 
@@ -446,7 +455,6 @@ KERNEL(idx) template<class T, class S> void gridAddScalar (Grid<T>& me, const S&
 KERNEL(idx) template<class T, class S> void gridMultScalar(Grid<T>& me, const S& other)  { me[idx] *= other; }
 KERNEL(idx) template<class T, class S> void gridScaledAdd (Grid<T>& me, const Grid<T>& other, const S& factor) { me[idx] += factor * other[idx]; }
 
-KERNEL(idx) template<class T> void gridSafeDiv (Grid<T>& me, const Grid<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
 KERNEL(idx) template<class T> void gridSetConst(Grid<T>& grid, T value) { grid[idx] = value; }
 
 template<class T> template<class S> Grid<T>& Grid<T>::operator+= (const Grid<S>& a) {
@@ -482,7 +490,6 @@ template<class T> template<class S> Grid<T>& Grid<T>::operator/= (const S& a) {
 	gridMultScalar<T,S> (*this, rez);
 	return *this;
 }
-
 
 //******************************************************************************
 // Other helper functions

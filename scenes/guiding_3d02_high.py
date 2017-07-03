@@ -92,7 +92,8 @@ for t in range(numFrames):
 		tau = tau, sigma = sigma, theta = theta, preconditioner = PcMGStatic, zeroPressureFixing=True )
 	
 	setWallBcs(flags=flags, vel=vel)
-	projectPpmFull( density, output_ppm % (t) , 0, 2.0 );
+	if 0:
+		projectPpmFull( density, output_ppm % (t) , 0, 2.0 );
 	density.save(output_uni % (t))
 	
 	s2.step()

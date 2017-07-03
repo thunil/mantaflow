@@ -65,7 +65,7 @@ public:
 	FmValueTransportVec3() : mpVal(0), mpFlags(0) { };
 	~FmValueTransportVec3() { };
 	inline bool isInitialized() { return mpVal != 0; } 
-	void initMarching(GRID* val, FlagGrid* flags) {
+	void initMarching(GRID* val, const FlagGrid* flags) {
 		mpVal = val;
 		mpFlags = flags;
 	} 
@@ -84,7 +84,7 @@ public:
 
 protected:
 	GRID* mpVal;
-	FlagGrid* mpFlags;
+	const FlagGrid* mpFlags;
 };
 
 class FmHeapEntryOut {
@@ -136,7 +136,7 @@ public:
 
 	enum SpecialValues { FlagInited = 1, FlagIsOnHeap = 2};
 
-	FastMarch(FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& levelset, Real maxTime, MACGrid* velTransport = NULL);
+	FastMarch(const FlagGrid& flags, Grid<int>& fmFlags, Grid<Real>& levelset, Real maxTime, MACGrid* velTransport = NULL);
 	~FastMarch() {}
 	
 	//! advect level set function with given velocity */
@@ -156,7 +156,7 @@ public:
 	inline Real _phi(int i, int j, int k) { return mLevelset(i,j,k); }
 protected:   
 	Grid<Real>&   mLevelset;
-	FlagGrid&     mFlags;
+	const FlagGrid&     mFlags;
 	Grid<int>&    mFmFlags;
 	
 	//! velocity extrpolation

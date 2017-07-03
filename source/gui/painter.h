@@ -31,15 +31,16 @@ class Painter : public QObject {
 public:
 	enum PainterEvent { 
 		EventNone = 0, UpdateRequest, UpdateFull, UpdateStep,
-		EventScaleVecUp, EventScaleVecDown, EventNextRealDisplayMode, EventScaleRealUp, EventScaleRealDown, EventScaleRealUpSm, EventScaleRealDownSm, EventChangePlane, 
+		EventScaleVecUpSm, EventScaleVecDownSm, EventScaleVecUp, EventScaleVecDown, 
+		EventNextRealDisplayMode, EventScaleRealUp, EventScaleRealDown, EventScaleRealUpSm, EventScaleRealDownSm, EventChangePlane, 
 		EventSetPlane, EventSetDim, EventNextInt, EventNextReal, EventNextVec, EventNextVecDisplayMode,
 		EventNextMesh, EventMeshMode, EventToggleGridDisplay, EventScaleMeshUp, EventScaleMeshDown, EventMeshColorMode,
 		EventNextSystem, EventToggleParticles, EventNextParticleDisplayMode, EventToggleBackgroundMesh, EventSetMax,
 		EventScalePdataDown, EventScalePdataUp };
 
-	enum RealDisplayModes { RealDispOff=0, RealDispStd, RealDispLevelset, RealDispShadeVol, RealDispShadeSurf, NumRealDispModes };
-
-	enum VecDisplayModes { VecDispOff=0, VecDispCentered, VecDispStaggered, VecDispUv, NumVecDispModes };
+	//! display modes, note - 0=off,1=std are shared for real & vec grids! same semantics
+	enum RealDisplayModes { RealDispOff=0, RealDispStd, RealDispLevelset, RealDispShadeVol, RealDispShadeSurf, NumRealDispModes }; 
+	enum VecDisplayModes  { VecDispOff=0, VecDispCentered, VecDispStaggered, VecDispUv, NumVecDispModes };
 	
 	Painter(QWidget* par = 0) : QObject(par) {}
 	virtual ~Painter() {}
@@ -93,6 +94,8 @@ protected:
 	std::string getID();
 	Real getScale();
 	void setScale(Real v);
+	int  getDispMode();
+	void setDispMode(int dm);
 	void update();
 	void updateText();
 	void processKeyEvent(PainterEvent e, int param);
@@ -106,8 +109,8 @@ protected:
 	QLabel*     mInfo;         //! info string
 	bool        mHide;         //! hide all grids?
 	bool        mHideLocal;    //! hide only this type?
-	int         mDispMode;     //! display modes 
-	std::map< std::pair<void*, int>, Real> mValScale;
+	std::map< void*, int > mDispMode; //! display modes , for each object
+	std::map< std::pair<void*, int>, Real> mValScale; //! scaling of values , per object and display mode
 };
 
 }

@@ -69,7 +69,7 @@ sourceBox = s.create( Box, center=boxCenter, size=boxSize )
 
 # main loop
 while s.frame < frames:
-	maxvel = vel.getMaxValue()
+	maxvel = vel.getMax()
 	s.adaptTimestep( maxvel )
 	mantaMsg('\nFrame %i, time-step size %f' % (s.frame, s.timestep))
 	

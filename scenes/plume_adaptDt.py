@@ -53,7 +53,7 @@ source = s.create(Cylinder, center=gs*vec3(0.5,0.1,0.5), radius=res*0.14, z=gs*v
 lastFrame = -1
 while s.frame < frames:
 	
-	maxvel = vel.getMaxValue()
+	maxvel = vel.getMax()
 	s.adaptTimestep(maxvel)
 	mantaMsg('\nFrame %i, time-step size %f' % (s.frame, s.timestep))
 
@@ -69,11 +69,11 @@ while s.frame < frames:
 	
 	solvePressure( flags=flags, vel=vel, pressure=pressure )
 	setWallBcs(flags=flags, vel=vel)
-	
-	#timings.display()
-	s.step()
 
 	if 0 and (GUI) and (lastFrame!=s.frame) and (s.frame%1==0):
-		gui.screenshot( 'addt05_%04d.png' % s.frame );
-	lastFrame = s.frame
+		gui.screenshot( 'plumead_%04d.jpg' % s.frame );
+
+	#timings.display()
+	lastFrame = s.frame 
+	s.step()
 
