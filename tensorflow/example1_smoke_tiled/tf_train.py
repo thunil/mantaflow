@@ -37,7 +37,7 @@ simSizeLow   = 64
 tileSizeLow  = 16
 upRes        = 4
 
-# dont use for training! for applying model, add overlap here if necessary (i.e., cropOverlap>0) 
+# dont use for training! only for applying model, add overlap here if necessary (i.e., cropOverlap>0) 
 # note:  cropTileSizeLow + (cropOverlap * 2) = tileSizeLow
 cropOverlap     = 0
 cropTileSizeLow = tileSizeLow - 2*cropOverlap
@@ -59,16 +59,16 @@ brightenOutput  = -1    # multiplied with output to brighten it up
 useDensity      = 1     # default, only density
 useVelocities   = 0
 
-# load pressure as output
+# load pressure as reference data (instead of density by default)
 outputPressure  = 0
 outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
-bWidth          = -1 # boundaryWidth to be cut away, in line with "bWidth" in manta scene files
+bWidth          = -1 # special: boundaryWidth to be cut away, in line with "bWidth" in manta scene files
 
 # ---------------------------------------------
 
 # load an existing model when load_ values > -1
-# when training , manually abort when it's good enough
-# then enter test_XXXX id and model checkpoint ID below to load
+# when training, manually abort if necessary (for large no. of epochs)
+# then enter test_XXXX id and model checkpoint ID below to load & apply
 
 loadModelTest = -1
 loadModelNo   = -1
@@ -109,10 +109,11 @@ tiCr.setBasePath(basePath)
 np.random.seed(randSeed)
 tf.set_random_seed(randSeed)
 
-#tiCr.copySimData( fromSim, toSim ); exit(1);  # debug helper, copy sim data to different ID
+# debug helper, copy sim data to different ID
+#tiCr.copySimData( fromSim, toSim ); exit(1);  # uncomment to run...
 
 if not outputOnly:
-	# run train!
+	# run training!
 	loadModelTest = -1
 	if fromSim==-1:
 		fromSim = toSim = 1000 # short, use single sim
@@ -212,7 +213,7 @@ print_variables()
 # ---------------------------------------------
 # TENSORFLOW SETUP
 x      = tf.placeholder(tf.float32, shape=[None, 1, tileSizeLow, tileSizeLow, n_inputChannels])  # fixed to 2D for now
-y_true = tf.placeholder(tf.float32, shape=[None, 1, tileSizeHigh,tileSizeHigh, 1             ])  # fixed to 2D for now , always output 1 channel
+y_true = tf.placeholder(tf.float32, shape=[None, 1, tileSizeHigh,tileSizeHigh, 1             ])  # also fixed, always output 1 channel
 training = tf.placeholder(tf.bool)
 
 hl1_size = 512 
@@ -341,7 +342,6 @@ else:
 				stopOutput = True
 				break
 			batch_xs.append(tiCr.tile_inputs_all_complete[idx])
-			# batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
 			batch_ys.append(tiCr.tile_outputs_all_complete[idx])
 
 			# to output velocity inputs
