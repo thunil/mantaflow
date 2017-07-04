@@ -317,12 +317,6 @@ if not outputOnly:
 	print('To apply the trained model, set "outputOnly" to True, and insert numbers for "load_model_test", and "load_model_no" ')
 
 else: 
-
-	# sanity check for output
-	if not (batchSize % tilesPerImg == 0):
-		print("ERROR: #batchSize (%d) is no multiple of #tilesPerImage (%d). " % (batchSize, tilesPerImg) +
-		"For convolutional transpose networks, this will create problems when generating images."); exit(1);
-
 	# ---------------------------------------------
 	# outputOnly: apply to a full data set, and re-create full outputs from tiles
 
@@ -330,25 +324,20 @@ else:
 	print('Creating %d tile outputs...' % (len(batch_xs)) )
 
 	tileSizeHiCrop = upRes * cropTileSizeLow
-	tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
+	batchSize = tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2 # note - override batchsize for output
 	outrange = int( len(tiCr.tile_inputs_all_complete) / tilesPerImg )
 
-	# use int to avoid TypeError: 'float' object cannot be interpreted as an integer
 	for currOut in range(outrange): 
 		batch_xs = []
 		batch_ys = []
 		batch_velocity = [] # for optional output of velocity input pngs
 
-		combine_tiles_amount = tilesPerImg
 		# use batchSize if its a multiple of tilesPerImage. Important for conv_trans networks.
 		stopOutput = False
-		if batchSize % tilesPerImg == 0:
-			combine_tiles_amount = batchSize
-		for curr_tile in range(combine_tiles_amount):
+		for curr_tile in range(batchSize):
 			idx = currOut * tilesPerImg + curr_tile
-			if combine_tiles_amount == batchSize and idx > len(tiCr.tile_inputs_all_complete) - 1:
-				# Stop output, if there are not enough tiles left to evaluate a full batch
-				# This will result in missing output pngs but prevents a crashes for conv_trans networks
+			if idx > len(tiCr.tile_inputs_all_complete) - 1:
+				print('Warning - not all tiles used for output')
 				stopOutput = True
 				break
 			batch_xs.append(tiCr.tile_inputs_all_complete[idx])
@@ -368,7 +357,7 @@ else:
 				resultTiles[i] *= brightenOutput
 			for i in range(len(batch_ys)):
 				batch_ys[i] *= brightenOutput
-		tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
+		tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg, name='output')
 		tiCr.debugOutputPngsCrop(batch_ys,    tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg, name='expected_out')
 
 		if outputInputs:
