@@ -409,7 +409,7 @@ void processKernel(const Block& block, const string& code, Sink& sink) {
 			errMsg(block.line0, "enable 4d mode to loop over 4d grids!");
 		}
 	}
-	// NT_DEBUG auto check?
+	// TODO, potentially add auto check for 4d grid (or data type of first arg in general)
 
 	kernelAssert(!baseGrid.empty(), "use at least one grid to call the kernel.");
 

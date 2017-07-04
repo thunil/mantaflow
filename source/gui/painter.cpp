@@ -170,7 +170,7 @@ int GridPainter<T>::getDispMode() {
 		int dm = RealDispStd; // same for vec & real
 		// initialize exceptions, eg levelset
 		if (mLocalGrid->getType() & GridBase::TypeLevelset) dm = RealDispLevelset;
-		mDispMode[mObject] = dm; // RealDispNone; NT_DEBUG remove
+		mDispMode[mObject] = dm; 
 		return dm;
 	} 
 	return mDispMode[mObject];

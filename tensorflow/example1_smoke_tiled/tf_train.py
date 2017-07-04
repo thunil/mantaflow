@@ -37,7 +37,7 @@ simSizeLow   = 64
 tileSizeLow  = 16
 upRes        = 4
 
-# dont use for training! for applying model, add overlap here if necessary (i.e., cropOverlap>0) 
+# dont use for training! only for applying model, add overlap here if necessary (i.e., cropOverlap>0) 
 # note:  cropTileSizeLow + (cropOverlap * 2) = tileSizeLow
 cropOverlap     = 0
 cropTileSizeLow = tileSizeLow - 2*cropOverlap
@@ -59,16 +59,16 @@ brightenOutput  = -1    # multiplied with output to brighten it up
 useDensity      = 1     # default, only density
 useVelocities   = 0
 
-# load pressure as output
+# load pressure as reference data (instead of density by default)
 outputPressure  = 0
 outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
-bWidth          = -1 # boundaryWidth to be cut away, in line with "bWidth" in manta scene files
+bWidth          = -1 # special: boundaryWidth to be cut away, in line with "bWidth" in manta scene files
 
 # ---------------------------------------------
 
 # load an existing model when load_ values > -1
-# when training , manually abort when it's good enough
-# then enter test_XXXX id and model checkpoint ID below to load
+# when training, manually abort if necessary (for large no. of epochs)
+# then enter test_XXXX id and model checkpoint ID below to load & apply
 
 loadModelTest = -1
 loadModelNo   = -1
@@ -109,10 +109,11 @@ tiCr.setBasePath(basePath)
 np.random.seed(randSeed)
 tf.set_random_seed(randSeed)
 
-#tiCr.copySimData( fromSim, toSim ); exit(1);  # debug helper, copy sim data to different ID
+# debug helper, copy sim data to different ID
+#tiCr.copySimData( fromSim, toSim ); exit(1);  # uncomment to run...
 
 if not outputOnly:
-	# run train!
+	# run training!
 	loadModelTest = -1
 	if fromSim==-1:
 		fromSim = toSim = 1000 # short, use single sim
@@ -212,7 +213,7 @@ print_variables()
 # ---------------------------------------------
 # TENSORFLOW SETUP
 x      = tf.placeholder(tf.float32, shape=[None, 1, tileSizeLow, tileSizeLow, n_inputChannels])  # fixed to 2D for now
-y_true = tf.placeholder(tf.float32, shape=[None, 1, tileSizeHigh,tileSizeHigh, 1             ])  # fixed to 2D for now , always output 1 channel
+y_true = tf.placeholder(tf.float32, shape=[None, 1, tileSizeHigh,tileSizeHigh, 1             ])  # also fixed, always output 1 channel
 training = tf.placeholder(tf.bool)
 
 hl1_size = 512 
@@ -317,12 +318,6 @@ if not outputOnly:
 	print('To apply the trained model, set "outputOnly" to True, and insert numbers for "load_model_test", and "load_model_no" ')
 
 else: 
-
-	# sanity check for output
-	if not (batchSize % tilesPerImg == 0):
-		print("ERROR: #batchSize (%d) is no multiple of #tilesPerImage (%d). " % (batchSize, tilesPerImg) +
-		"For convolutional transpose networks, this will create problems when generating images."); exit(1);
-
 	# ---------------------------------------------
 	# outputOnly: apply to a full data set, and re-create full outputs from tiles
 
@@ -330,29 +325,23 @@ else:
 	print('Creating %d tile outputs...' % (len(batch_xs)) )
 
 	tileSizeHiCrop = upRes * cropTileSizeLow
-	tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
+	batchSize = tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2 # note - override batchsize for output
 	outrange = int( len(tiCr.tile_inputs_all_complete) / tilesPerImg )
 
-	# use int to avoid TypeError: 'float' object cannot be interpreted as an integer
 	for currOut in range(outrange): 
 		batch_xs = []
 		batch_ys = []
 		batch_velocity = [] # for optional output of velocity input pngs
 
-		combine_tiles_amount = tilesPerImg
 		# use batchSize if its a multiple of tilesPerImage. Important for conv_trans networks.
 		stopOutput = False
-		if batchSize % tilesPerImg == 0:
-			combine_tiles_amount = batchSize
-		for curr_tile in range(combine_tiles_amount):
+		for curr_tile in range(batchSize):
 			idx = currOut * tilesPerImg + curr_tile
-			if combine_tiles_amount == batchSize and idx > len(tiCr.tile_inputs_all_complete) - 1:
-				# Stop output, if there are not enough tiles left to evaluate a full batch
-				# This will result in missing output pngs but prevents a crashes for conv_trans networks
+			if idx > len(tiCr.tile_inputs_all_complete) - 1:
+				print('Warning - not all tiles used for output')
 				stopOutput = True
 				break
 			batch_xs.append(tiCr.tile_inputs_all_complete[idx])
-			# batch_ys.append(np.zeros((tileSizeHigh * tileSizeHigh), dtype='f'))
 			batch_ys.append(tiCr.tile_outputs_all_complete[idx])
 
 			# to output velocity inputs
@@ -368,7 +357,7 @@ else:
 				resultTiles[i] *= brightenOutput
 			for i in range(len(batch_ys)):
 				batch_ys[i] *= brightenOutput
-		tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
+		tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg, name='output')
 		tiCr.debugOutputPngsCrop(batch_ys,    tileSizeHigh, simSizeHigh, test_path, imageCounter=currOut, cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg, name='expected_out')
 
 		if outputInputs:
