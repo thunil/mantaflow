@@ -256,40 +256,40 @@ void knExtrapolateMACSimple (MACGrid& vel, int distance , Grid<int>& tmp , const
 		vel(p)[c] = avgVel / nbs;
 	}
 }
-// NT_DEBUG, todo - test w/o single threaded, should work...
-KERNEL(bnd=0, single)
-void knExtrapolateIntoBnd (FlagGrid& flags, MACGrid& vel)
+//! copy velocity into domain side, note - don't read & write same grid, hence velTmp copy
+KERNEL(bnd=0)
+void knExtrapolateIntoBnd (FlagGrid& flags, MACGrid& vel, const MACGrid& velTmp)
 {
 	int c=0;
 	Vec3 v(0,0,0);
 	if( i==0 ) { 
-		v = vel(i+1,j,k);
+		v = velTmp(i+1,j,k);
 		if(v[0] < 0.) v[0] = 0.;
 		c++;
 	}
 	else if( i==(flags.getSizeX()-1) ) { 
-		v = vel(i-1,j,k);
+		v = velTmp(i-1,j,k);
 		if(v[0] > 0.) v[0] = 0.;
 		c++;
 	}
 	if( j==0 ) { 
-		v = vel(i,j+1,k);
+		v = velTmp(i,j+1,k);
 		if(v[1] < 0.) v[1] = 0.;
 		c++;
 	}
 	else if( j==(flags.getSizeY()-1) ) { 
-		v = vel(i,j-1,k);
+		v = velTmp(i,j-1,k);
 		if(v[1] > 0.) v[1] = 0.;
 		c++;
 	}
 	if(flags.is3D()) {
 	if( k==0 ) { 
-		v = vel(i,j,k+1);
+		v = velTmp(i,j,k+1);
 		if(v[2] < 0.) v[2] = 0.;
 		c++;
 	}
 	else if( k==(flags.getSizeZ()-1) ) { 
-		v = vel(i,j,k-1);
+		v = velTmp(i,j,k-1);
 		if(v[2] > 0.) v[2] = 0.;
 		c++;
 	} }
@@ -368,8 +368,9 @@ PYTHON() void extrapolateMACSimple (FlagGrid& flags, MACGrid& vel, int distance 
 		knUnprojectNormalComp( flags, vel, *phiObs, distance );
 	}
 
-	// copy tangential values into sides
-	knExtrapolateIntoBnd(flags, vel);
+	// copy tangential values into sides of domain
+	MACGrid velTmp( flags.getParent() ); velTmp.copyFrom(vel);
+	knExtrapolateIntoBnd(flags, vel, velTmp);
 }
 
 KERNEL(bnd=1)

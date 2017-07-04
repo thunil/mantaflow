@@ -262,31 +262,6 @@ template<class T> std::string Grid<T>::getDataPointer() {
 
 // L1 / L2 functions
 
-/* NT_DEBUG merge 
-// L1
-KERNEL(idx, reduce=+) returns(double result=0.0)
-double knGridL1(const    Grid<Real>& a) { result += fabs(a[idx]); }
-
-KERNEL(idx, reduce=+) returns(double result=0.0)
-double knVecGridL1(const Grid<Vec3>& v) { result += norm(v[idx]); }
-
-//! compute L1 norm of whole grid content 
-PYTHON() Real getGridL1(Grid<Real>&    source) { return ( knGridL1   (source) ); }
-PYTHON() Real getVecGridL1(Grid<Vec3>& source) { return ( knVecGridL1(source) ); }
-
-// L2
-KERNEL(idx, reduce=+) returns(double result=0.0)
-double knGridL2(const    Grid<Real>& a) { result += a[idx]*a[idx]; }
-
-KERNEL(idx, reduce=+) returns(double result=0.0)
-double knVecGridL2(const Grid<Vec3>& v) { result += normSquare(v[idx]); }
-
-//! compute L2 norm of whole grid content 
-PYTHON() Real getGridL2(Grid<Real>&    source) { return sqrt( knGridL2   (source) ); }
-PYTHON() Real getVecGridL2(Grid<Vec3>& source) { return sqrt( knVecGridL2(source) ); }
-
-*/
-
 //! calculate L1 norm for whole grid with non-parallelized loop
 template<class GRID>
 Real loop_calcL1Grid (const GRID &grid, int bnd)
@@ -297,7 +272,8 @@ Real loop_calcL1Grid (const GRID &grid, int bnd)
 }
 
 //! calculate L2 norm for whole grid with non-parallelized loop
-// TODO , use kernel instead! slow... , also move to grid.h add 4D versions
+// note - kernels "could" be used here, but they can't be templated at the moment (also, that would
+// mean the bnd parameter is fixed)
 template<class GRID>
 Real loop_calcL2Grid(const GRID &grid, int bnd)
 {
@@ -308,10 +284,11 @@ Real loop_calcL2Grid(const GRID &grid, int bnd)
 	return (Real)sqrt(accu);
 }
 
-
+//! compute L1 norm of whole grid content (note, not parallel at the moment)
 template<class T> Real Grid<T>::getL1(int bnd) {
 	return loop_calcL1Grid<Grid<T> >(*this, bnd);
 }
+//! compute L2 norm of whole grid content (note, not parallel at the moment)
 template<class T> Real Grid<T>::getL2(int bnd) {
 	return loop_calcL2Grid<Grid<T> >(*this, bnd);
 }
@@ -326,6 +303,7 @@ int knCountCells(const FlagGrid& flags, int flag, int bnd, Grid<Real>* mask) {
 	}
 }
 
+//! count number of cells of a certain type flag (can contain multiple bits, checks if any one of them is set - not all!)
 int FlagGrid::countCells(int flag, int bnd, Grid<Real>* mask) {
 	return knCountCells(*this, flag, bnd, mask);
 }
