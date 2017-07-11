@@ -97,18 +97,15 @@ bWidth			= int(ph.getParam( "bWidth",          bWidth))
 ph.checkUnusedParams()
 
 # initialize
-simSizeHigh  = simSizeLow   * upRes
-tileSizeHigh = tileSizeLow  * upRes
-if outputOnly: # dont discard
-	emptyTileValue = -1.
-
-if toSim==-1:
-	toSim = fromSim
-tiCr.setBasePath(basePath)
-
+tiCr.setBasePath(basePath) 
 np.random.seed(randSeed)
 tf.set_random_seed(randSeed)
 
+simSizeHigh  = simSizeLow   * upRes
+tileSizeHigh = tileSizeLow  * upRes
+
+if toSim==-1:
+	toSim = fromSim
 # debug helper, copy sim data to different ID
 #tiCr.copySimData( fromSim, toSim ); exit(1);  # uncomment to run...
 
@@ -124,6 +121,7 @@ if not outputOnly:
 
 else:
 	keepAll = True
+	emptyTileValue = -1. # dont discard any
 	# dont train, just apply to input seq, by default use plume (2004)
 	if fromSim==-1:
 		fromSim = toSim = 3000

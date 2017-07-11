@@ -294,8 +294,8 @@ else:
 	tileSizeHiCrop = upRes * cropTileSizeLow
 	tilesPerImg = (simSizeHigh // tileSizeHiCrop) ** 2
 	imgCnt = len(tiCr.tile_inputs_all_complete) / tilesPerImg
-	tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, imageCounter=0, \
-		cut_output_to=tileSizeHiCrop, tiles_in_image=tilesPerImg)
+	tiCr.debugOutputPngsCrop(resultTiles, tileSizeHigh, simSizeHigh, test_path, imageCounter=0, cut_output_to=tileSizeHiCrop, \
+		tiles_in_image=tilesPerImg, name='output')
 
 	if outputInputs:
 		tiCr.debugOutputPngsSingle(batch_xs,         tileSizeLow, simSizeLow, test_path, imageCounter=0, name='input', channel=0)
