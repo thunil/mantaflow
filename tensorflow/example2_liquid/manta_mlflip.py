@@ -239,7 +239,7 @@ while (s.timeTotal<params['t_end']): # main loop
 	if tfopt['mve']: dv_c += appx_s_c*np.random.normal(size=(N_candidate, 3))
 
 	dv = np.zeros((pp.pySize(), 3), dtype=dtype_real)
-	dv[candidate] = dv_c
+	dv[candidate] = dv_c * scale['modvel']
 
 	# END: machine learning part <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -274,7 +274,6 @@ while (s.timeTotal<params['t_end']): # main loop
 	# 3. final decision and velocity modification
 	stats['splashed'] += np.count_nonzero(decision==FlagEmpty)
 	dv[(decision!=FlagEmpty)] = 0
-	dv *= scale['modvel']
 	np_pTimer[(decision==FlagEmpty)] = s.frameLength # set judgement timer
 
 	# 4. roll-back
