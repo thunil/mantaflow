@@ -115,7 +115,7 @@ void doRegister(int argc, char* argv[]) {
 
 		for (std::string line; getline(input, line); )	{
 			int pos = line.find("void PbRegister_");
-			if (pos != std::string::npos) {
+			if (pos != (int)std::string::npos) {
 				std::string lineRegEnd = line.substr( pos, line.length() );
 				int endpos = lineRegEnd.find("{");
 				std::string lineFunc = lineRegEnd.substr( 0, endpos );
