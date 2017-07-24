@@ -50,7 +50,6 @@ for sim in range(1000,2000):
 			arr = np.reshape(content, [w, h])
 			arr = arr[::-1] # reverse order
 			arr = np.reshape(arr, [w, h, 1])
-			#densities[i] = arr
 			densities.append( arr )
 
 loadNum = len(densities)
@@ -90,6 +89,8 @@ y_pred = tf.reshape( y_pred, shape=[-1, 64, 64, 1])
 cost = tf.nn.l2_loss(y - y_pred) 
 opt  = tf.train.AdamOptimizer(0.0001).minimize(cost)
 
+
+
 # now we can start training...
 
 print("Starting training...")
@@ -102,16 +103,16 @@ for epoch in range(trainingEpochs):
 	for currNo in range(0, batchSize):
 		r = random.randint(0, loadNum-1) 
 		batch.append( densities[r] )
-	#batch_xs, batch_ys = densities[c:c+batchSize,:], densities[c:c+batchSize,:]
+
 	_ , currentCost = sess.run([opt, cost], feed_dict={x: batch, y: batch})
-	#print("Epoch %d/%d: cost %f " % (epoch, trainingEpochs, currentCost) )
+	#print("Epoch %d/%d: cost %f " % (epoch, trainingEpochs, currentCost) ) # debug, always output cost
 	
 	if epoch%10==9 or epoch==trainingEpochs-1:
 		[valiCost,vout] = sess.run([cost, y_pred], feed_dict={x: valiData, y: valiData})
 		print("Epoch %d/%d: cost %f , validation cost %f " % (epoch, trainingEpochs, currentCost, valiCost) )
-		#print("Validation cost %f " % (valiCost) )
 
 		if epoch==trainingEpochs-1:
+			print("\n Training done. Writing %d images from validation data to current directory..." % len(valiData) )
 			for i in range(len(valiData)):
 				scipy.misc.toimage( np.reshape(valiData[i], [64, 64]) , cmin=0.0, cmax=1.0).save("in_%d.png" % i)
 				scipy.misc.toimage( np.reshape(vout[i]    , [64, 64]) , cmin=0.0, cmax=1.0).save("out_%d.png" % i)
