@@ -247,6 +247,7 @@ void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& o
 	
 	dval.x = doClampComponentMAC<0>(flags, gridUpper, dval.x, orig, dfwd.x, pos, vel.getAtMACX(i,j,k) * dt, clampMode );
 	dval.y = doClampComponentMAC<1>(flags, gridUpper, dval.y, orig, dfwd.y, pos, vel.getAtMACY(i,j,k) * dt, clampMode );
+	if(flags.is3D())
 	dval.z = doClampComponentMAC<2>(flags, gridUpper, dval.z, orig, dfwd.z, pos, vel.getAtMACZ(i,j,k) * dt, clampMode );
 
 	// note - the MAC version currently does not check whether source points were inside an obstacle! (unlike centered version)
