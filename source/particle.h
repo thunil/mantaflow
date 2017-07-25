@@ -616,7 +616,7 @@ void ParticleSystem<S>::insertBufferedParticles() {
 			mPdataInt[pd]->initNewValue(newCnt, mNewBuffer[i] );
 		newCnt++;
 	}
-	if(mNewBuffer.size()>0) debMsg("Added & initialized "<<(IndexInt)mNewBuffer.size()<<" particles", 1); // debug info
+	if(mNewBuffer.size()>0) debMsg("Added & initialized "<<(IndexInt)mNewBuffer.size()<<" particles", 2); // debug info
 	mNewBuffer.clear();
 }
 
