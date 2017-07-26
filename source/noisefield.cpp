@@ -100,7 +100,7 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
 	if(loadFromFile) {
 		FILE* fp = fopen(TILENAME,"rb"); 
 		if(fp) {
-			fread(noise3, sizeof(Real), n3d, fp); 
+			assertMsg( fread(noise3, sizeof(Real), n3d, fp) == n3d, "Failed to read wavelet noise tile, file invalid/corrupt? ("<<TILENAME<<") "); 
 			fclose(fp);
 			debMsg("Noise tile loaded from file " TILENAME , 1);
 			mNoiseTile = noise3;

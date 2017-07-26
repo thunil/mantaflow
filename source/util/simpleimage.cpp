@@ -147,7 +147,7 @@ bool SimpleImage::initFromPpm (std::string filename) {
 	unsigned char *ptr = NULL;
 	ptr = &pic[(windH-1) * rowsize];
 	for (int i = windH; i > 0; i--) {
-		fread((void *)ptr, 1, rowsize, fp);
+		assertMsg( fread((void *)ptr, 1, rowsize, fp) == rowsize, "SimpleImage::initFromPpm couldn't read data");
 		ptr -= rowsize;
 	}
 

@@ -178,8 +178,8 @@ inline Real doClampComponentMAC(FlagGrid& flags, const Vec3i& gridSize, Real dst
 	for(int l=0; l<numPos; ++l) {
 		Vec3i& currPos = positions[l];
 
-		const int i0 = clamp(currPos.x, 0, gridSize.x-0); // note! gridsize already has -1 from call 
-		const int j0 = clamp(currPos.y, 0, gridSize.y-0);
+		const int i0 = clamp(currPos.x, 0, gridSize.x-1); // note! gridsize already has -1 from call 
+		const int j0 = clamp(currPos.y, 0, gridSize.y-1); // but we need a clamp to -2 for the +1 offset below	
 		const int k0 = clamp(currPos.z, 0, (orig.is3D() ? (gridSize.z-1) : 0) );
 		const int i1 = i0+1, j1 = j0+1, k1= (orig.is3D() ? (k0+1) : k0);
 
@@ -247,6 +247,7 @@ void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& o
 	
 	dval.x = doClampComponentMAC<0>(flags, gridUpper, dval.x, orig, dfwd.x, pos, vel.getAtMACX(i,j,k) * dt, clampMode );
 	dval.y = doClampComponentMAC<1>(flags, gridUpper, dval.y, orig, dfwd.y, pos, vel.getAtMACY(i,j,k) * dt, clampMode );
+	if(flags.is3D())
 	dval.z = doClampComponentMAC<2>(flags, gridUpper, dval.z, orig, dfwd.z, pos, vel.getAtMACZ(i,j,k) * dt, clampMode );
 
 	// note - the MAC version currently does not check whether source points were inside an obstacle! (unlike centered version)

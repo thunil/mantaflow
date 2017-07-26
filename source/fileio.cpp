@@ -858,7 +858,8 @@ void readGridVol<Real>(const string& name, Grid<Real>* grid) {
 #	if FLOATINGPOINT_PRECISION!=1
 	errMsg("Not yet supported");
 #	else
-	fread( &((*grid)[0]), 1, sizeof(float)*header.dimX*header.dimY*header.dimZ , fp);
+	const unsigned int s = sizeof(float)*header.dimX*header.dimY*header.dimZ;
+	assertMsg( fread( &((*grid)[0]), 1, s, fp) == s, "can't read file, no / not enough data");
 #	endif
 
 	fclose(fp);
