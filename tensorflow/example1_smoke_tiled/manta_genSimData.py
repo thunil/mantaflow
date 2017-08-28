@@ -171,16 +171,8 @@ if (showGui and GUI):
 	gui.pause()
 
 if savedata:
-	folderNo = simNo
-	pathaddition = 'sim_%04d/' % folderNo
-	while os.path.exists(basePath + pathaddition):
-		folderNo += 1
-		pathaddition = 'sim_%04d/' % folderNo
-
-	simPath = basePath + pathaddition
-	print("Using output dir '%s'" % simPath) 
-	simNo = folderNo
-	os.makedirs(simPath)
+	simPath, _ = ph.getNextSimPath(simNo, basePath)
+	sys.stdout = ph.Logger(simPath)
 
 t = 0
 resetN = 20
