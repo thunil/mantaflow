@@ -147,7 +147,7 @@ def save_new_splashing_particles(o_path, o_t_path, i_t_curr, i_p_curr, i_p_next)
     if o_t_path: xl_pT.save(o_t_path)
 
     np_arr = np.zeros(xl_pp.pySize(), dtype=dtype_int)
-    copyPdataToArrayInt(n=np_arr, p=xl_pT)
+    copyPdataToArrayInt(target=np_arr, source=xl_pT)
     np.savez_compressed(o_path, labels=np_arr.reshape((-1, 1)))
 
 def drop_zdim(data):
@@ -161,7 +161,7 @@ def save_velocity_modification(o_path, i_t_gt, i_p_next, i_p_curr, i_v_next):
     pVtmp.sub(pV); pVtmp.multConst(vec3(pargs.dscale)); pVtmp.multConst(vec3(1.0/s.frameLength))
     pV.load(i_v_next); pVtmp.sub(pV) # dv = (x(n+1) - x(n))/dt - v(n+1)
     np_arr = np.zeros(pp.pySize()*3, dtype=dtype_real)
-    copyPdataToArrayVec3(n=np_arr, p=pVtmp)
+    copyPdataToArrayVec3(target=np_arr, source=pVtmp)
     np_arr = np_arr.reshape((-1, 3)) if params['dim']==3 else drop_zdim(np_arr.reshape((-1, 3)))
 
     # clear for non-splashing particles
