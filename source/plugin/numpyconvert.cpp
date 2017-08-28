@@ -156,8 +156,8 @@ PYTHON() void copyArrayToGridMAC(const PyArrayContainer source, MACGrid& target)
 	copyArrayToGridVector<MACGrid>(source, target);
 }
 
-PYTHON() void copyGridToArrayMAC(const MACGrid& _Source, PyArrayContainer target) {
-	copyGridToArrayVector<MACGrid>(_Source, target);
+PYTHON() void copyGridToArrayMAC(const MACGrid& source, PyArrayContainer target) {
+	copyGridToArrayVector<MACGrid>(source, target);
 }
 
 //====================================================================================================
@@ -165,39 +165,39 @@ PYTHON() void copyGridToArrayMAC(const MACGrid& _Source, PyArrayContainer target
 //----------------------------------------------------------------------------------------------------
 
 template<typename T>
-void numpyToParticleDataImpl(ParticleDataImpl<T> &p, const PyArrayContainer n) {
-	assertMsg(n.TotalSize == p.size(), "Sizes are different!");
-	std::copy(reinterpret_cast<const T*>(n.pData), reinterpret_cast<const T*>(n.pData)+n.TotalSize,  &(p[0]));
+void numpyToParticleDataImpl(const PyArrayContainer source, ParticleDataImpl<T> &target) {
+	assertMsg(source.TotalSize == target.size(), "Sizes are different!");
+	std::copy(reinterpret_cast<const T*>(source.pData), reinterpret_cast<const T*>(source.pData)+source.TotalSize,  &(target[0]));
 }
 template<typename T>
-void particleDataImplToNumpy(PyArrayContainer n, const ParticleDataImpl<T> &p) {
-	assertMsg(n.TotalSize == p.size(), "Sizes are different!");
-	std::copy(&(p[0]), &(p[0])+n.TotalSize, reinterpret_cast<T*>(n.pData));
+void particleDataImplToNumpy(const ParticleDataImpl<T> &source, PyArrayContainer target) {
+	assertMsg(target.TotalSize == source.size(), "Sizes are different!");
+	std::copy(&(source[0]), &(source[0])+target.TotalSize, reinterpret_cast<T*>(target.pData));
 }
 
 // python interface
 
-PYTHON() void copyArrayToPdataInt(ParticleDataImpl<int> &p, const PyArrayContainer n) { 
-	numpyToParticleDataImpl<int>(p, n); 
+PYTHON() void copyArrayToPdataInt(const PyArrayContainer source, ParticleDataImpl<int> &target) { 
+	numpyToParticleDataImpl<int>(source, target); 
 }
-PYTHON() void copyPdataToArrayInt(PyArrayContainer n, const ParticleDataImpl<int> &p) { 
-	particleDataImplToNumpy<int>(n, p); 
-}
-
-PYTHON() void copyArrayToPdataReal(ParticleDataImpl<Real> &p, const PyArrayContainer n) { 
-	numpyToParticleDataImpl<Real>(p, n); 
-}
-PYTHON() void copyPdataToArrayReal(PyArrayContainer n, const ParticleDataImpl<Real> &p) { 
-	particleDataImplToNumpy<Real>(n, p); 
+PYTHON() void copyPdataToArrayInt(const ParticleDataImpl<int> &source, PyArrayContainer target) { 
+	particleDataImplToNumpy<int>(source, target); 
 }
 
-PYTHON() void copyArrayToPdataVec3(ParticleDataImpl<Vec3> &p, const PyArrayContainer n) {
-	assertMsg(n.TotalSize == p.size()*3, "Sizes are different!");
-	std::copy(reinterpret_cast<const Real*>(n.pData), reinterpret_cast<const Real*>(n.pData)+n.TotalSize,  &(p[0][0]));
+PYTHON() void copyArrayToPdataReal(const PyArrayContainer source, ParticleDataImpl<Real> &target) { 
+	numpyToParticleDataImpl<Real>(source, target); 
 }
-PYTHON() void copyPdataToArrayVec3(PyArrayContainer n, const ParticleDataImpl<Vec3> &p) {
-	assertMsg(n.TotalSize == p.size()*3, "Sizes are different!");
-	std::copy(&(p[0][0]), &(p[0][0])+n.TotalSize, reinterpret_cast<Real*>(n.pData));
+PYTHON() void copyPdataToArrayReal(const ParticleDataImpl<Real> &source, PyArrayContainer target) { 
+	particleDataImplToNumpy<Real>(source, target); 
+}
+
+PYTHON() void copyArrayToPdataVec3(const PyArrayContainer source, ParticleDataImpl<Vec3> &target) {
+	assertMsg(source.TotalSize == target.size()*3, "Sizes are different!");
+	std::copy(reinterpret_cast<const Real*>(source.pData), reinterpret_cast<const Real*>(source.pData)+source.TotalSize,  &(target[0][0]));
+}
+PYTHON() void copyPdataToArrayVec3(const ParticleDataImpl<Vec3> &source, PyArrayContainer target) {
+	assertMsg(target.TotalSize == source.size()*3, "Sizes are different!");
+	std::copy(&(source[0][0]), &(source[0][0])+target.TotalSize, reinterpret_cast<Real*>(target.pData));
 }
 
 } // manta
