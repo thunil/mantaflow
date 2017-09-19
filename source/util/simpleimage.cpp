@@ -199,11 +199,10 @@ bool SimpleImage::indexIsValid(int i, int j)
 
 //*****************************************************************************
 
-//! simple shaded output , note requires grid functionality!
-
 #include "grid.h"
 namespace Manta {
 
+// simple shaded output , note requires grid functionality!
 static void gridPrecompLight(Grid<Real>& density, Grid<Real>& L, Vec3 light = Vec3(1,1,1) )
 {
 	FOR_IJK(density) {
@@ -244,6 +243,7 @@ static inline void shadeCell(Vec3& dst, int shadeMode, Real src, Real light, int
 	}
 }
 
+//! helper to project a grid intro an image (used for ppm export and GUI displauy)
 void projectImg( SimpleImage& img, Grid<Real>& val, int shadeMode=0, Real scale=1.)
 {
 	Vec3i s  = val.getSize();
