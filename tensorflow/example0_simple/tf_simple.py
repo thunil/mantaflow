@@ -44,12 +44,11 @@ for sim in range(1000,2000):
 		for i in range(0,100): 
 			filename = "%s/simSimple_%04d/density_%04d.uni" 
 			uniPath = filename % (basePath, sim, i)  # 100 files per sim
-			header, content = uniio.readUni(uniPath)
+			header, content = uniio.readUni(uniPath) # returns [Z,Y,X,C] np array
 			h = header['dimX']
 			w  = header['dimY']
-			arr = np.reshape(content, [w, h])
-			arr = arr[::-1] # reverse order
-			arr = np.reshape(arr, [w, h, 1])
+			arr = content[:, ::-1, :, :] # reverse order of Y axis
+			arr = np.reshape(arr, [w, h, 1]) # discard Z
 			densities.append( arr )
 
 loadNum = len(densities)
