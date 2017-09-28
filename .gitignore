@@ -1,7 +1,10 @@
-build
 *.sublime-project
 *.sublime-workspace
-tools/tests/*.uni
-tools/tests/*.pyc
-tools/tests/*.bin
+*.uni
+*.npz
+*.pyc
+*.bin
+waveletNoiseTile.bin
+waveletNoiseTileDouble.bin
+build
 doc
