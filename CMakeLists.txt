@@ -181,6 +181,7 @@ SET(PP_SOURCES
 	source/edgecollapse.cpp
 	source/plugin/advection.cpp
 	source/plugin/extforces.cpp
+	source/plugin/apic.cpp
 	source/plugin/flip.cpp
 	source/plugin/fire.cpp
 	source/plugin/fluidguiding.cpp
