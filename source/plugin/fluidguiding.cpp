@@ -167,21 +167,24 @@ Real getEpsDual(const Real eps_abs, const Real eps_rel, const MACGrid &y) {
 	return eps_dual;
 }
 
-//! Create a spiral velocity field in 2D as a test scene
-PYTHON() void getSpiralVelocity2D(const FlagGrid &flags, MACGrid &vel, Real strength = 1.0) {
-	int nx = flags.getSizeX(), ny = flags.getSizeY();
+//! Create a spiral velocity field in 2D as a test scene (optionally in 3D)
+PYTHON() void getSpiralVelocity(const FlagGrid &flags, MACGrid &vel, Real strength = 1.0, bool with3D=false) {
+	int nx = flags.getSizeX(), ny = flags.getSizeY(), nz = 1;
+	if (with3D) nz = flags.getSizeZ();
 	Real midX = 0.5*(Real)(nx - 1);
 	Real midY = 0.5*(Real)(ny - 1);
-	int k = 0;
+	Real midZ = 0.5*(Real)(nz - 1);
 	for (int i = 0; i < nx; i++) {
 		for (int j = 0; j < ny; j++) {
-			int idx = flags.index(i, j, k);
-			Real diffX = midX - i;
-			Real diffY = midY - j;
-			Real hypotenuse = sqrt(diffX*diffX + diffY*diffY);
-			if (hypotenuse > 0) {
-				vel[idx].x = diffY / hypotenuse;
-				vel[idx].y = -diffX / hypotenuse;
+			for (int k = 0; k < nz; k++) {
+				int idx = flags.index(i, j, k);
+				Real diffX = midX - i;
+				Real diffY = midY - j;
+				Real hypotenuse = sqrt(diffX*diffX + diffY*diffY);
+				if (hypotenuse > 0) {
+					vel[idx].x = diffY / hypotenuse;
+					vel[idx].y = -diffX / hypotenuse;
+				}
 			}
 		}
 	}
