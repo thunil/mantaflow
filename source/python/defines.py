@@ -49,4 +49,12 @@ PcMIC       = 1
 PcMGDynamic = 2
 PcMGStatic  = 3
 
+# particles
+PtypeNone    = 0
+PtypeNew     = 1
+PtypeDroplet = 2
+PtypeBubble  = 4
+PtypeFloater = 8
+PtypeTracer  = 16
+
 

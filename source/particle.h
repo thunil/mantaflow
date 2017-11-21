@@ -33,7 +33,11 @@ public:
 	
 	enum ParticleStatus {
 		PNONE         = 0,
-		PNEW          = (1<<1),  // particles newly created in this step
+		PNEW          = (1<<0),  // particles newly created in this step
+		PDROPLET      = (1<<1),  // secondary particle types
+		PBUBBLE       = (1<<2),
+		PFLOATER      = (1<<3),
+		PTRACER       = (1<<4),
 		PDELETE       = (1<<10), // mark as deleted, will be deleted in next compress() step
 		PINVALID      = (1<<30), // unused
 	};
@@ -52,7 +56,7 @@ public:
 	virtual IndexInt getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; }
 
 	//! add a position as potential candidate for new particle (todo, make usable from parallel threads)
-	inline void addBuffered(const Vec3& pos);
+	inline void addBuffered(const Vec3& pos, int flag=0);
 
 	//! particle data functions
 
@@ -76,7 +80,8 @@ public:
 
 protected:  
 	//! new particle candidates
-	std::vector<Vec3> mNewBuffer;
+	std::vector<Vec3> mNewBufferPos;
+	std::vector<int> mNewBufferFlag;
 
 	//! allow automatic compression / resize? disallowed for, eg, flip particle systems
 	bool mAllowCompress;
@@ -114,7 +119,14 @@ public:
 
 	//! query status
 	inline int  getStatus(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].flag; }
-	inline bool isActive(IndexInt idx) const  { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PDELETE) == 0; }
+	inline bool isActive(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PDELETE) == 0; }
+	inline bool isDroplet(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PDROPLET); }
+	inline bool isBubble(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PBUBBLE); }
+	inline bool isFloater(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PFLOATER); }
+	inline bool isTracer(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PTRACER); }
+
+	//! update status
+	inline void setStatus(IndexInt idx, const int status) { DEBUG_ONLY(checkPartIndex(idx)); mData[idx].flag = status; }
 	
 	//! safe accessor for python
 	PYTHON() void setPos(const IndexInt idx, const Vec3& pos) { DEBUG_ONLY(checkPartIndex(idx)); mData[idx].pos = pos; }
@@ -371,8 +383,9 @@ PYTHON() alias ParticleDataImpl<Vec3> PdataVec3;
 
 const int DELETE_PART = 20; // chunk size for compression
 
-void ParticleBase::addBuffered(const Vec3& pos) {
-	mNewBuffer.push_back(pos);
+void ParticleBase::addBuffered(const Vec3& pos, int flag) {
+	mNewBufferPos.push_back(pos);
+	mNewBufferFlag.push_back(flag);
 }
    
 template<class S>
@@ -598,28 +611,30 @@ void ParticleSystem<S>::compress() {
 //! insert buffered positions as new particles, update additional particle data
 template<class S>
 void ParticleSystem<S>::insertBufferedParticles() {
-	if(mNewBuffer.size()==0) return;
+	if(mNewBufferPos.size()==0) return;
 	IndexInt newCnt = mData.size();
-	resizeAll(newCnt + mNewBuffer.size());
+	resizeAll(newCnt + mNewBufferPos.size());
 
 	// clear new flag everywhere
 	for(IndexInt i=0; i<(IndexInt)mData.size(); ++i) mData[i].flag &= ~PNEW;
 
-	for(IndexInt i=0; i<(IndexInt)mNewBuffer.size(); ++i) {
+	for(IndexInt i=0; i<(IndexInt)mNewBufferPos.size(); ++i) {
+		int flag = (mNewBufferFlag.size() > 0) ? mNewBufferFlag[i] : 0;
 		// note, other fields are not initialized here...
-		mData[newCnt].pos  = mNewBuffer[i];
-		mData[newCnt].flag = PNEW;
+		mData[newCnt].pos  = mNewBufferPos[i];
+		mData[newCnt].flag = PNEW | flag;
 		// now init pdata fields from associated grids...
-		for(IndexInt pd=0; pd<(IndexInt)mPdataReal.size(); ++pd)
-			mPdataReal[pd]->initNewValue(newCnt, mNewBuffer[i] );
-		for(IndexInt pd=0; pd<(IndexInt)mPdataVec3.size(); ++pd)
-			mPdataVec3[pd]->initNewValue(newCnt, mNewBuffer[i] );
-		for(IndexInt pd=0; pd<(IndexInt)mPdataInt.size(); ++pd)
-			mPdataInt[pd]->initNewValue(newCnt, mNewBuffer[i] );
+		for(IndexInt pd=0; pd<(IndexInt)mPdataReal.size(); ++pd) 
+			mPdataReal[pd]->initNewValue(newCnt, mNewBufferPos[i] );
+		for(IndexInt pd=0; pd<(IndexInt)mPdataVec3.size(); ++pd) 
+			mPdataVec3[pd]->initNewValue(newCnt, mNewBufferPos[i] );
+		for(IndexInt pd=0; pd<(IndexInt)mPdataInt.size(); ++pd) 
+			mPdataInt[pd]->initNewValue(newCnt, mNewBufferPos[i] );
 		newCnt++;
 	}
-	if(mNewBuffer.size()>0) debMsg("Added & initialized "<<(IndexInt)mNewBuffer.size()<<" particles", 2); // debug info
-	mNewBuffer.clear();
+	if(mNewBufferPos.size()>0) debMsg("Added & initialized "<<(IndexInt)mNewBufferPos.size()<<" particles", 2); // debug info
+	mNewBufferPos.clear();
+	mNewBufferFlag.clear();
 }
 
 
