@@ -642,6 +642,12 @@ void getUniFileSize(const string& name, int& x, int& y, int& z, int* t, std::str
 		gzclose(gzf);
 	}
 #	endif
+	if(info) {
+		std::ostringstream out;
+		out << x <<","<< y <<","<< z ;
+		if(t && (*t)>0 ) out << ","<< (*t);
+		*info = out.str();
+	}
 }
 PYTHON() Vec3 getUniFileSize(const string& name) {
 	int x,y,z;
