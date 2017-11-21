@@ -214,6 +214,9 @@ public:
 	std::vector<BasicParticleData>& getData() { return mData; }
 
 	PYTHON() void printParts(IndexInt start=-1, IndexInt stop=-1, bool printIndex=false);
+
+	//! get data pointer of particle data
+	PYTHON() std::string getDataPointer();
 };
 
 
@@ -362,6 +365,9 @@ public:
 	//! file io
 	PYTHON() void save(const std::string name);
 	PYTHON() void load(const std::string name);
+
+	//! get data pointer of particle data
+	PYTHON() std::string getDataPointer();
 protected:
 	//! data storage
 	std::vector<T> mData; 
