@@ -8,8 +8,6 @@
 # http://www.gnu.org/licenses
 #
 # Read mantaflow uni files into numpy arrays
-# note - only supports 3D grids for now
-# (python2 , switch to python3 below)
 #
 #******************************************************************************
 
@@ -22,6 +20,7 @@ from datetime import date
 from collections import namedtuple
 import numpy as np
 
+# python 2 vs 3 switch
 PY3K = sys.version_info >= (3, 0)
 
 # read content of grid
