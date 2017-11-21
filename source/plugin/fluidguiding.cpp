@@ -352,5 +352,12 @@ PYTHON() void PD_fluid_guiding(MACGrid& vel, MACGrid& velT,
 	debMsg("PD_fluid_guiding iterations:" << iter, 1);
 }
 
+//! reset precomputation
+PYTHON() void releaseBlurPrecomp() {
+	gBlurPrecomputed = false;
+	gBlurKernelRadius = -1;
+	gBlurKernel = 0.f;
+}
+
 
 } // end namespace
