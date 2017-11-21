@@ -100,6 +100,9 @@ ostream& operator<<(ostream& os, const MuTime& t) {
 //! print info about this mantaflow build, used eg by printBuildInfo in fluidsolver.cpp
 std::string buildInfoString() {
 	std::ostringstream infoStr;
+#	ifndef MANTAVERSION
+#	define MANTAVERSION "<unknown-version>"
+#	endif
 	infoStr << "mantaflow " << MANTAVERSION;
 
 	// os
