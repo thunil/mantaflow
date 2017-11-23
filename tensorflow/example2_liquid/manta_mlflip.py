@@ -30,6 +30,7 @@ def save_frame(outdir, frame, saving_funcs):
 parser = argparse.ArgumentParser(description='FLIP with ML', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument(      '--load',   default='../data/mlflip-tf/',  help='path to the trained tensorflow model directory')
 parser.add_argument('-w', '--window', default=1, type=int, help='window size for sampling features; 1 (default) means 3x3, 2 means 5x5, so on.')
+parser.add_argument(      '--t_end', default=6.0, type=float, help='end time of simulation.')
 pargs = parser.parse_known_args()[0]
 
 onphi  = True
@@ -88,7 +89,7 @@ params['gref']        = -9.8               # real-world gravity
 params['jitter']      = 0.2                # jittering particles
 params['cgaccuracy']  = 1e-3               # cg solver's threshold
 params['fps']         = 24
-params['t_end']       = 6.0
+params['t_end']       = pargs.t_end        # default 6.0
 params['sdt']         = None
 params['frame_saved'] = -1
 params['frame_last']  = -1

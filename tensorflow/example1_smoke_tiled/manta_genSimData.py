@@ -18,14 +18,18 @@ simNo    = 1000  # start ID
 showGui  = 0
 basePath = '../data/'
 npSeedstr   = "-1"
+res      = 64
 
 # debugging
 #steps = 50       # shorter test
 #savedata = False # debug , dont write...
 #showGui  = 1
 
-basePath        =     ph.getParam( "basePath",        basePath        )
-npSeedstr       =     ph.getParam( "npSeed"  ,        npSeedstr       )
+basePath        =     ph.getParam( "basePath",        basePath  )
+npSeedstr       =     ph.getParam( "npSeed"  ,        npSeedstr )
+simNo           =     int(ph.getParam( "simNo" ,      simNo     ))
+res             =     int(ph.getParam( "res"   ,      res       ))
+steps           =     int(ph.getParam( "steps" ,      steps     ))
 npSeed          =     int(npSeedstr)
 ph.checkUnusedParams()
 
@@ -33,7 +37,6 @@ ph.checkUnusedParams()
 setDebugLevel(1)
 
 # Solver params  ----------------------------------------------------------------------#
-res    = 64
 dim    = 2 
 offset = 20
 interval = 1
@@ -171,7 +174,7 @@ if (showGui and GUI):
 	gui.pause()
 
 if savedata:
-	simPath, _ = ph.getNextSimPath(simNo, basePath)
+	simPath, simNo = ph.getNextSimPath(simNo, basePath)
 	sys.stdout = ph.Logger(simPath)
 
 t = 0
