@@ -17,6 +17,7 @@
 #include "vectorbase.h"
 #include "manta.h"
 #include "grid.h"
+#include <atomic>
 
 namespace Manta {
 
@@ -28,7 +29,7 @@ class WaveletNoiseField : public PbClass {
 	public:     
 		PYTHON() WaveletNoiseField( FluidSolver* parent, int fixedSeed=-1 , int loadFromFile=false );
 		~WaveletNoiseField() {
-			if(mNoiseTile) { delete mNoiseTile; mNoiseTile=NULL; }
+			if(mNoiseTile && !mNoiseReferenceCount) { delete mNoiseTile; mNoiseTile=NULL; }
 		};
 
 		//! evaluate noise
@@ -40,13 +41,13 @@ class WaveletNoiseField : public PbClass {
 
 		//! direct data access
 		Real* data() { return mNoiseTile; }
-		
+
 		//! compute wavelet decomposition of an input grid (stores residual coefficients)
 		static void computeCoefficients(Grid<Real>& input, Grid<Real>& tempIn1, Grid<Real>& tempIn2);
 
 		// helper
 		std::string toString();
-		
+
 		// texcoord position and scale
 		PYTHON(name=posOffset) Vec3 mPosOffset;
 		PYTHON(name=posScale)  Vec3 mPosScale;
@@ -59,7 +60,7 @@ class WaveletNoiseField : public PbClass {
 		PYTHON(name=clampPos)  Real mClampPos;
 		// animated over time
 		PYTHON(name=timeAnim)  Real mTimeAnim;
-		
+
 	protected:
 		// noise evaluation functions
 		static inline Real WNoiseDx (const Vec3& p, Real *data);
@@ -82,16 +83,19 @@ class WaveletNoiseField : public PbClass {
 
 		// pre-compute tile data for wavelet noise
 		void generateTile( int loadFromFile );
-				
+
 		// animation over time
 		// grid size normalization (inverse size)
 		Real mGsInvX, mGsInvY, mGsInvZ;
 		// random offset into tile to simulate different random seeds
 		Vec3 mSeedOffset;
-		
+
 		static Real* mNoiseTile;
 		// global random seed storage
 		static int randomSeed;
+
+		// global reference count for noise tile
+		static std::atomic<int> mNoiseReferenceCount;
 };
 
 
