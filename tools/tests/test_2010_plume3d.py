@@ -53,8 +53,8 @@ for t in range(frames):
 	densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
 	
 	#source.applyToGrid(grid=vel, value=velInflow)
-	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)	
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2, clampMode=1)	
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, clampMode=1)
 	
 	setWallBcs(flags=flags, vel=vel)	
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-5e-2,0), flags=flags)

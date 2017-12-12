@@ -42,8 +42,8 @@ if 0 and (GUI):
 #main loop
 for t in range(10):
 
-	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2, orderSpace=1)  
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2, strength=1.0)
+	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2, orderSpace=1, clampMode=1)  
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2, strength=1.0, clampMode=1)
 
 	if(new_BC):
 		setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)

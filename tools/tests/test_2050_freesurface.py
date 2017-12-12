@@ -53,11 +53,11 @@ for t in range(frames):
 	
 	# update and advect levelset
 	phi.reinitMarching(flags=flags, velTransport=vel) #, ignoreWalls=False)
-	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
+	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2, clampMode=1)
 	flags.updateFromLevelset(phi)
 	
 	# velocity self-advection
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, clampMode=1)
 	addGravity(flags=flags, vel=vel, gravity=vec3(0,-0.025,0))
 	
 	# pressure solve

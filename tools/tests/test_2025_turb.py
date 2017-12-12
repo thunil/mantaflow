@@ -95,7 +95,7 @@ for t in range(frames):
 		KEpsilonGradientDiffusion(k=k, eps=eps, vel=vel, nuT=nuT, sigmaU=10.0);
 
 	# base solver
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, clampMode=1)
 	setWallBcs(flags=flags, vel=vel)
 	setInflowBcs(vel=vel,dir='xXyYzZ',value=velInflow)
 	solvePressure(flags=flags, vel=vel, pressure=pressure, cgMaxIterFac=0.5)

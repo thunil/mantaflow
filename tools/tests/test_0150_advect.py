@@ -75,9 +75,9 @@ doTestGrid( sys.argv[0], "mgrid1" , s, pressure , threshold=1e-04, thresholdStri
 # macCormack
 initGrids(density, vgrid, mgrid)
 for i in range(10):
-	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)
-	advectSemiLagrange(flags=flags, vel=vel, grid=vgrid  , order=2)
-	advectSemiLagrange(flags=flags, vel=vel, grid=mgrid  , order=2)
+	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2, clampMode=1)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vgrid  , order=2, clampMode=1)
+	advectSemiLagrange(flags=flags, vel=vel, grid=mgrid  , order=2, clampMode=1)
 	s.step()
 
 doTestGrid( sys.argv[0], "dens2" , s, pressure , threshold=1e-04, thresholdStrict=1e-10)
