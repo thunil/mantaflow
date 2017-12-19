@@ -58,7 +58,7 @@ PYTHON() void sampleFlagsWithParticles(const FlagGrid& flags, BasicParticleSyste
 //! be re-filled once they empty when calling sampleLevelsetWithParticles during 
 //! the main loop).
 PYTHON() void sampleLevelsetWithParticles(const LevelsetGrid& phi, const FlagGrid& flags, BasicParticleSystem& parts,
-					  const int discretization, const Real randomness, const bool reset=false, const bool refillEmpty=false)
+					  const int discretization, const Real randomness, const bool reset=false, const bool refillEmpty=false, const int particleFlag=-1)
 {
 	const bool is3D = phi.is3D();
 	const Real jlen = randomness / discretization;
@@ -82,7 +82,12 @@ PYTHON() void sampleLevelsetWithParticles(const LevelsetGrid& phi, const FlagGri
 				subpos += jlen * (Vec3(1,1,1) - 2.0 * mRand.getVec3());
 				if(!is3D) subpos[2] = 0.5; 
 				if( phi.getInterpolated(subpos) > 0. ) continue; 
-				parts.addBuffered(subpos);
+				if(particleFlag < 0){
+					parts.addBuffered(subpos);
+				}
+				else{
+					parts.addBuffered(subpos, particleFlag);
+				}
 			}
 		}
 	}
