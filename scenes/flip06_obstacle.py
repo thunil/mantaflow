@@ -113,7 +113,7 @@ while s.frame < frames:
 	phi.join( phiParts );
 	extrapolateLsSimple(phi=phi, distance=narrowBand+2, inside=True ) 
 	extrapolateLsSimple(phi=phi, distance=3 )
-	phi.setBoundNeumann(1) # make sure no particles are placed at outer boundary
+	phi.setBoundNeumann(0) # make sure no particles are placed at outer boundary, warning - larger values can delete thin sheets at outer walls...
 	flags.updateFromLevelset(phi)
 
 	# combine particles velocities with advected grid velocities
