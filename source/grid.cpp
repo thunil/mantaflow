@@ -17,7 +17,7 @@
 #include <limits>
 #include <sstream>
 #include <cstring>
-#include "fileio.h"
+#include "fileio/io.h"
 
 using namespace std;
 namespace Manta {

@@ -174,7 +174,9 @@ SET(PP_SOURCES
 	source/mesh.cpp
 	source/particle.cpp
 	source/movingobs.cpp
-	source/fileio.cpp
+	source/fileio/iogrids.cpp
+	source/fileio/iomeshes.cpp
+	source/fileio/ioparticles.cpp
 	source/noisefield.cpp
 	source/kernel.cpp
 	source/vortexsheet.cpp
@@ -218,7 +220,7 @@ SET(PP_HEADERS
 	source/kernel.h
 	source/timing.h
 	source/movingobs.h
-	source/fileio.h
+	source/fileio/io.h
 	source/edgecollapse.h
 	source/vortexpart.h
 	source/turbulencepart.h
@@ -369,8 +371,8 @@ endif()
 # optional - openvdb support
 
 IF(OPENVDB)
-	set(VDB_SOURCES source/fileiovdb.cpp )
-	list(APPEND PP_SOURCES ${VDB_SOURCES})
+	#set(VDB_SOURCES source/fileiovdb.cpp )
+	#list(APPEND PP_SOURCES ${VDB_SOURCES})
 
 	find_package(OPENVDB REQUIRED)
 	find_package(Boost)

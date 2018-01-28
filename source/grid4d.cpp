@@ -14,7 +14,7 @@
 #include <limits>
 #include <sstream>
 #include <cstring>
-#include "fileio.h"
+#include "fileio/io.h"
 
 #include "grid4d.h"
 #include "levelset.h"
