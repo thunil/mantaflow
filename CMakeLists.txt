@@ -371,8 +371,7 @@ endif()
 # optional - openvdb support
 
 IF(OPENVDB)
-	#set(VDB_SOURCES source/fileiovdb.cpp )
-	#list(APPEND PP_SOURCES ${VDB_SOURCES})
+	add_definitions(-DOPENVDB=1)
 
 	find_package(OPENVDB REQUIRED)
 	find_package(Boost)
