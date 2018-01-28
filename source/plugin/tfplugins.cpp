@@ -27,8 +27,8 @@ namespace Manta {
 KERNEL(bnd=0)
 void knSimpleNumpyTest(Grid<Real>& grid, PyArrayContainer npAr, Real scale) 
 {
-	const Real* p = reinterpret_cast<float*>(npAr.pData);
-	grid(i,j,k) += scale * p[j*grid.getSizeX()+i]; // calc access into numpy array, no size check here!
+	const float* p = reinterpret_cast<float*>(npAr.pData);
+	grid(i,j,k) += scale * (Real)p[j*grid.getSizeX()+i]; // calc access into numpy array, no size check here!
 }
 
 //! simple test function and kernel with numpy array 

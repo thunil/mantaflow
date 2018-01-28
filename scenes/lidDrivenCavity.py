@@ -10,10 +10,10 @@ worldScale = 1.0
 # viscosity, in [m^2/s] , rescale to unit cube
 # uncomment one of these to select LDC with specific Reynolds nr
 # (higher ones will need larger resolution!)
-#visc       = 0.0002  / worldScale  # Re 5k
-visc       = 0.0001  / worldScale  # Re 10k
-#visc       = 0.00005 / worldScale  # Re 20k 
-#visc       = 0.00001 / worldScale  # Re 100k 
+#visc       = 0.0002  / (worldScale*worldScale)  # Re 5k
+visc       = 0.0001  / (worldScale*worldScale)  # Re 10k
+#visc       = 0.00005 / (worldScale*worldScale)  # Re 20k 
+#visc       = 0.00001 / (worldScale*worldScale)  # Re 100k 
 #visc       = 0. # off, rely on numerical viscosity, no proper LDC!
 # move whole top side in one time unit, ie 1 m/s if domain is 1m 
 lidVel     = 1.00

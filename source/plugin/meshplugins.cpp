@@ -93,7 +93,7 @@ PYTHON() void smoothMesh(Mesh& mesh, Real strength, int steps = 1, Real minLengt
 	// preserve volume : scale relative to CM
 	Real beta;
 #if defined(WIN32) || defined(_WIN32)
-	beta = pow( (Real)abs(origVolume/newVolume), (Real)(1./3.) );
+	beta = pow( (Real)std::abs(origVolume/newVolume), (Real)(1./3.) );
 #else
 	beta = cbrt( origVolume/newVolume );
 #	endif

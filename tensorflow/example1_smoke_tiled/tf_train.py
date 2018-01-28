@@ -64,21 +64,18 @@ outputPressure  = 0
 outputDataName  = '' # name of data to be regressed; by default, does nothing (density), e.g. if output data is pressure set to "pressure"
 bWidth          = -1 # special: boundaryWidth to be cut away, in line with "bWidth" in manta scene files
 
-# ---------------------------------------------
-
-# load an existing model when load_ values > -1
-# when training, manually abort if necessary (for large no. of epochs)
-# then enter test_XXXX id and model checkpoint ID below to load & apply
-
+# previous test to load (id X for test_X dir)
 loadModelTest = -1
-loadModelNo   = -1
+loadModelNo   = -1 # specific saved model to load, searches for latest by default
 testPathStartNo = 1
+
+# ---------------------------------------------
 
 # command line params, explanations mostly above with variables
 outputOnly      = int(ph.getParam( "out",             outputOnly ))>0
 trainingEpochs  = int(ph.getParam( "trainingEpochs",  trainingEpochs ))
-loadModelTest   = int(ph.getParam( "loadModelTest",   loadModelTest))
-loadModelNo     = int(ph.getParam( "loadModelNo",     loadModelNo))
+loadModelTest   = int(ph.getParam( "loadModelTest",   loadModelTest))  
+loadModelNo     = int(ph.getParam( "loadModelNo",     loadModelNo))    
 basePath        =     ph.getParam( "basePath",        basePath)
 useDensity		= int(ph.getParam( "useDensity",      useDensity  ))
 useVelocities   = int(ph.getParam( "useVelocities",   useVelocities  ))
@@ -106,6 +103,7 @@ tileSizeHigh = tileSizeLow  * upRes
 
 if toSim==-1:
 	toSim = fromSim
+
 # debug helper, copy sim data to different ID
 #tiCr.copySimData( fromSim, toSim ); exit(1);  # uncomment to run...
 
@@ -145,17 +143,6 @@ if n_inputChannels == 0:
 	exit()
 n_input *= n_inputChannels
 
-# create output dir
-def next_test_path(folder_no = 1):
-	test_path_addition = 'test_%04d/' % folder_no
-	while os.path.exists(basePath + test_path_addition):
-		folder_no += 1
-		test_path_addition = 'test_%04d/' % folder_no 
-	test_path = basePath + test_path_addition
-	print("Using test dir '%s'" % test_path)
-	os.makedirs(test_path)
-	return test_path
-
 # create model loading path
 if not loadModelTest == -1:
 	if not os.path.exists(basePath + 'test_%04d/' % loadModelTest):
@@ -172,22 +159,10 @@ if not loadModelTest == -1:
 
 	load_path = basePath + 'test_%04d/model_%04d.ckpt' % (loadModelTest, loadModelNo)
 
-test_path = next_test_path(testPathStartNo)
+(test_path,test_folder_no) = ph.getNextTestPath(testPathStartNo, basePath)
+if not outputOnly: uniio.backupFile(__file__, test_path)
 
-# custom Logger to write Log to file
-class Logger(object):
-	def __init__(self):
-		self.terminal = sys.stdout
-		self.log = open(test_path + "logfile.log", "a")
-
-	def write(self, message):
-		self.terminal.write(message)
-		self.log.write(message)
-
-	def flush(self): 
-		# to avoid errormsg, " AttributeError: 'Logger' object has no attribute 'flush' "
-		pass
-sys.stdout = Logger()
+sys.stdout = ph.Logger(test_path)
 
 # print Variables to log
 def print_variables():
@@ -313,7 +288,7 @@ if not outputOnly:
 	print('\n*****TRAINING FINISHED*****')
 	training_duration = (time.time() - startTime) / 60.0
 	print('Training needed %.02f minutes.' % (training_duration))
-	print('To apply the trained model, set "outputOnly" to True, and insert numbers for "load_model_test", and "load_model_no" ')
+	print('To apply the trained model, set "outputOnly" to True, add "out 1 loadModelTest %d" to script call ' % test_folder_no)
 
 else: 
 	# ---------------------------------------------

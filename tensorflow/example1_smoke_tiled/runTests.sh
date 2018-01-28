@@ -2,14 +2,14 @@
 # 
 # note, uses & deletes test indices 7xx (models), and 8xx (outputs)
 # to really clean all tests, remove test_07?? and test_08?? dirs, plus tiles in sim input dirs (uncomment below)
-# by default, expects training data in sim 3000, and applies to 3001 and 3002 (shortened data sets)
+#
+# by default, expects training data in sim 3000 (res 48), and applies to 3001 (res 96)
 #
 
 BPATH=../data/
 SAFEDEL='rm -r'
-SCENE_TRAIN=3000
-SCENE_NP=3001
-SCENE_UNI=3002
+SCENE_TRAIN=3000  # assumed to be resolution 48
+SCENE_NP=3001     # assumed to be resolution 96
 SHOW_INPUTS=1
 EPOS=1000
 

@@ -30,6 +30,7 @@ def save_frame(outdir, frame, saving_funcs):
 parser = argparse.ArgumentParser(description='FLIP with ML', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument(      '--load',   default='../data/mlflip-tf/',  help='path to the trained tensorflow model directory')
 parser.add_argument('-w', '--window', default=1, type=int, help='window size for sampling features; 1 (default) means 3x3, 2 means 5x5, so on.')
+parser.add_argument(      '--t_end', default=6.0, type=float, help='end time of simulation.')
 pargs = parser.parse_known_args()[0]
 
 onphi  = True
@@ -88,7 +89,7 @@ params['gref']        = -9.8               # real-world gravity
 params['jitter']      = 0.2                # jittering particles
 params['cgaccuracy']  = 1e-3               # cg solver's threshold
 params['fps']         = 24
-params['t_end']       = 6.0
+params['t_end']       = pargs.t_end        # default 6.0
 params['sdt']         = None
 params['frame_saved'] = -1
 params['frame_last']  = -1
@@ -193,7 +194,7 @@ while (s.timeTotal<params['t_end']): # main loop
 	setPartType(parts=pp, ptype=pItmp, mark=0, stype=FlagEmpty, flags=gFlagTmp, cflag=FlagEmpty|FlagFluid) # already individual? then, kill
 	setPartType(parts=pp, ptype=pItmp, mark=FlagEmpty, stype=FlagFluid, flags=gFlagTmp, cflag=FlagEmpty)   # mark surface particles
 	candidate = np.zeros(pp.pySize(), dtype=dtype_int)
-	copyPdataToArrayInt(n=candidate, p=pItmp)
+	copyPdataToArrayInt(target=candidate, source=pItmp)
 
 	candidate = (candidate==FlagEmpty) # turn into bool array
 	N_candidate = np.count_nonzero(candidate)
@@ -264,12 +265,12 @@ while (s.timeTotal<params['t_end']): # main loop
 	# 2. try to move splashing particles only, so check if it's really splashing; revert the wrong decisions
 	pp.setPosPdata(source=pVtmp)
 	pVtm2.copyFrom(pV)
-	copyArrayToPdataVec3(p=pVtm3, n=dv.reshape(-1, 1))
+	copyArrayToPdataVec3(target=pVtm3, source=dv.reshape(-1, 1))
 	pVtm2.add(pVtm3)
-	copyArrayToPdataInt(p=pItmp, n=decision)
+	copyArrayToPdataInt(target=pItmp, source=decision)
 	eulerStep(parts=pp, vel=pVtm2, ptype=pItmp, exclude=FlagObstacle|FlagFluid)
 	setPartType(parts=pp, ptype=pItmp, mark=FlagFluid, stype=FlagEmpty, flags=gFlagTmp, cflag=FlagFluid|FlagObstacle) # empty -> fluid if they are not acturally splashing.
-	copyPdataToArrayInt(n=decision, p=pItmp)
+	copyPdataToArrayInt(target=decision, source=pItmp)
 
 	# 3. final decision and velocity modification
 	stats['splashed'] += np.count_nonzero(decision==FlagEmpty)
@@ -281,9 +282,9 @@ while (s.timeTotal<params['t_end']): # main loop
 	pp.setPosPdata(source=pVtmp)
 
 	# mark splashing particles and modify the velocities so that they can flow individually
-	copyArrayToPdataInt(p=pItmp, n=decision)
+	copyArrayToPdataInt(target=pItmp, source=decision)
 	pT.setConstIntFlag(s=FlagEmpty, t=pItmp, flag=FlagEmpty)
-	copyArrayToPdataVec3(p=pVtm2, n=dv.reshape(-1, 1))
+	copyArrayToPdataVec3(target=pVtm2, source=dv.reshape(-1, 1))
 	pV.add(pVtm2)
 
 	# update position
@@ -302,12 +303,12 @@ while (s.timeTotal<params['t_end']): # main loop
 
 	# keep the valid splashing judgements; the particles may still stay inside the flow (due to a small timestep size)
 	curr = np.zeros(pp.pySize(), dtype=dtype_int)
-	copyPdataToArrayInt(n=curr, p=pT)
+	copyPdataToArrayInt(target=curr, source=pT)
 	np_pTimer = np_pTimer - s.timestep
 	np_pTimer[(np_pTimer<=0.0)] = 0.0 # time-over of a splashing judgement
 	keep = np.zeros(pp.pySize(), dtype=dtype_int)
 	keep[(curr==FlagFluid)&(np_pTimer>0.0)] = FlagEmpty # keep valid judgement
-	copyArrayToPdataInt(p=pItmp, n=keep)
+	copyArrayToPdataInt(target=pItmp, source=keep)
 	pT.setConstIntFlag(s=FlagEmpty, t=pItmp, flag=FlagEmpty) # judgement is still valid -> splashing (empty)
 
 	s.step()

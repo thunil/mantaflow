@@ -35,13 +35,40 @@ def checkUnusedParams():
 	if err:
 		exit(1);
 
-# others
 
-def backupSources(name):
-	sceneFile = sys.argv[0];
-	shutil.copyfile( sceneFile, '%s_scene.py' % (name) )
-	# double check path, might not exist everywhere
-	#srcFile = "xxx.cpp";
-	#if (os.path.isfile(srcFile)):
-	#	shutil.copyfile( srcFile, '%s_of.cpp' % (name) )
+# ======================================================================================================================
+# others / directory handling
+
+
+# search & create next output dir
+def getNextGenericPath(dirPrefix, folder_no = 1, basePath="../data/"):
+	test_path_addition = '%s_%04d/' % (dirPrefix, folder_no)
+	while os.path.exists(basePath + test_path_addition):
+		folder_no += 1
+		test_path_addition = '%s_%04d/' % (dirPrefix, folder_no)
+		test_folder_no = folder_no
+	test_path = basePath + test_path_addition
+	print("Using %s dir '%s'" % (dirPrefix, test_path) )
+	os.makedirs(test_path)
+	return (test_path, folder_no)
+
+def getNextTestPath(folder_no = 1, basePath="../data/"):
+	return getNextGenericPath("test", folder_no, basePath)
+
+def getNextSimPath(folder_no = 1, basePath="../data/"):
+	return getNextGenericPath("sim", folder_no, basePath)
+
+# custom Logger to write Log to file
+class Logger(object):
+	def __init__(self, test_path):
+		self.terminal = sys.stdout
+		self.log = open(test_path + "logfile.log", "a")
+
+	def write(self, message):
+		self.terminal.write(message)
+		self.log.write(message)
+
+	def flush(self): 
+		# to avoid errormsg, " AttributeError: 'Logger' object has no attribute 'flush' "
+		pass
 

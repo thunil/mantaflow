@@ -72,7 +72,7 @@ while s.frame < 10:
 	advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=1)
 	flags.updateFromLevelset(phi)
 	
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, clampMode=1)
 
 	# Create level set of particles
 	gridParticleIndex( parts=pp , flags=flags, indexSys=pindex, index=gpi )

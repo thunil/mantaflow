@@ -122,12 +122,10 @@ while s.frame<30:
 		waveSeedingCurvatureThresholdRegionRadius = 0.01,
 		waveSeedStepSizeRatioOfMax = 0.05 )
 
-	mantaMsg("check pp")
-	debugCheckParts(pp, flags)
-	mantaMsg("check surfacePoint")
-	debugCheckParts(surfacePoints, flags)
-	mantaMsg("check surfacePoint disp")
-	debugCheckParts(surfacePointsDisplaced, flags)
+	# older debug checks
+	#debugCheckParts(pp, flags)
+	#debugCheckParts(surfacePoints, flags)
+	#debugCheckParts(surfacePointsDisplaced, flags)
 	
 	# white color 
 	spdDummy.setConst(vec3(1,1,1))

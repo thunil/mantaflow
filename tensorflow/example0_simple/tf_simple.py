@@ -111,10 +111,12 @@ for epoch in range(trainingEpochs):
 		print("Epoch %d/%d: cost %f , validation cost %f " % (epoch, trainingEpochs, currentCost, valiCost) )
 
 		if epoch==trainingEpochs-1:
-			print("\n Training done. Writing %d images from validation data to current directory..." % len(valiData) )
+			outDir = "%s/test_simple" % basePath
+			if not os.path.exists(outDir): os.makedirs(outDir)
+			print("\n Training done. Writing %d images from validation data to directory %s..." % (len(valiData),outDir) )
 			for i in range(len(valiData)):
-				scipy.misc.toimage( np.reshape(valiData[i], [64, 64]) , cmin=0.0, cmax=1.0).save("in_%d.png" % i)
-				scipy.misc.toimage( np.reshape(vout[i]    , [64, 64]) , cmin=0.0, cmax=1.0).save("out_%d.png" % i)
+				scipy.misc.toimage( np.reshape(valiData[i], [64, 64]) , cmin=0.0, cmax=1.0).save("%s/in_%d.png" % (outDir,i))
+				scipy.misc.toimage( np.reshape(vout[i]    , [64, 64]) , cmin=0.0, cmax=1.0).save("%s/out_%d.png" % (outDir,i))
 
 
 

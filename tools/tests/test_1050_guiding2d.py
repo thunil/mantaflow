@@ -52,8 +52,8 @@ for t in range(5):
 
 	source.applyToGrid(grid=density, value=1)
 	
-	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2)
+	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2, clampMode=1)    
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, clampMode=1)
 	
 	setWallBcs(flags=flags, vel=vel)
 	addBuoyancy(density=density, vel=vel, gravity=vec3(0,0.25*scale*-1e-2,0), flags=flags)

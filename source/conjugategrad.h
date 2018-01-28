@@ -158,30 +158,30 @@ void MakeLaplaceMatrix(FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Rea
 	
 	if(!fractions) {
 		// diagonal, A0
-		if (!flags.isObstacle(i-1,j,k)) A0(i,j,k) += 1.;
-		if (!flags.isObstacle(i+1,j,k)) A0(i,j,k) += 1.;
-		if (!flags.isObstacle(i,j-1,k)) A0(i,j,k) += 1.;
-		if (!flags.isObstacle(i,j+1,k)) A0(i,j,k) += 1.;
+		if (!flags.isObstacle(i-1,j,k))                 A0(i,j,k) += 1.;
+		if (!flags.isObstacle(i+1,j,k))                 A0(i,j,k) += 1.;
+		if (!flags.isObstacle(i,j-1,k))                 A0(i,j,k) += 1.;
+		if (!flags.isObstacle(i,j+1,k))                 A0(i,j,k) += 1.;
 		if (flags.is3D() && !flags.isObstacle(i,j,k-1)) A0(i,j,k) += 1.;
 		if (flags.is3D() && !flags.isObstacle(i,j,k+1)) A0(i,j,k) += 1.;
 		
 		// off-diagonal entries
-		if (flags.isFluid(i+1,j,k)) Ai(i,j,k) = -1.;
-		if (flags.isFluid(i,j+1,k)) Aj(i,j,k) = -1.;
+		if (flags.isFluid(i+1,j,k))                 Ai(i,j,k) = -1.;
+		if (flags.isFluid(i,j+1,k))                 Aj(i,j,k) = -1.;
 		if (flags.is3D() && flags.isFluid(i,j,k+1)) Ak(i,j,k) = -1.;
 	} else {
 		// diagonal
-		A0(i,j,k) += fractions->get(i,j,k).x;
-		A0(i,j,k) += fractions->get(i+1,j,k).x;
-		A0(i,j,k) += fractions->get(i,j,k).y;
-		A0(i,j,k) += fractions->get(i,j+1,k).y;
-		if (flags.is3D()) A0(i,j,k) += fractions->get(i,j,k).z;
+		A0(i,j,k)                   += fractions->get(i  ,j,k).x;
+		A0(i,j,k)                   += fractions->get(i+1,j,k).x;
+		A0(i,j,k)                   += fractions->get(i,j  ,k).y;
+		A0(i,j,k)                   += fractions->get(i,j+1,k).y;
+		if (flags.is3D()) A0(i,j,k) += fractions->get(i,j,k  ).z;
 		if (flags.is3D()) A0(i,j,k) += fractions->get(i,j,k+1).z;
 
 		// off-diagonal entries
-		Ai(i,j,k) = -fractions->get(i+1,j,k).x;
-		Aj(i,j,k) = -fractions->get(i,j+1,k).y;
-		if (flags.is3D()) Ak(i,j,k) = -fractions->get(i,j,k+1).z;
+		if (flags.isFluid(i+1,j,k))                 Ai(i,j,k) = -fractions->get(i+1,j,k).x;
+		if (flags.isFluid(i,j+1,k))                 Aj(i,j,k) = -fractions->get(i,j+1,k).y;
+		if (flags.is3D() && flags.isFluid(i,j,k+1)) Ak(i,j,k) = -fractions->get(i,j,k+1).z;
 	}
 
 }

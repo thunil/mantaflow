@@ -8,8 +8,6 @@
 # http://www.gnu.org/licenses
 #
 # Read mantaflow uni files into numpy arrays
-# note - only supports 3D grids for now
-# (python2 , switch to python3 below)
 #
 #******************************************************************************
 
@@ -22,6 +20,7 @@ from datetime import date
 from collections import namedtuple
 import numpy as np
 
+# python 2 vs 3 switch
 PY3K = sys.version_info >= (3, 0)
 
 # read content of grid
@@ -72,7 +71,7 @@ def RU_read_header(bytestream):
 		exit(1)
 
 	else:
-		print("read_header error - unknown header '%s' " % ID)
+		print("read_header error - unknown uni file header '%s' " % ID)
 		exit(1)
 	
 	return header
@@ -83,16 +82,12 @@ def readUni(filename):
 	with gzip.open(filename, 'rb') as bytestream:
 		header = RU_read_header(bytestream)
 		content = RU_read_content(bytestream, header)
-		#print("Strides "+format(content.strides))
-
 		return header, content
 
 # use this to write a .uni file. The header has to be supplied in the same dictionary format as the output of readuni
 def writeUni(filename, header, content):
 	#print("Writing '%s'" % filename) # debug
-	#print("Strides "+format(content.strides))
 	with gzip.open(filename, 'wb') as bytestream:
-
 		# write the header of the uni file (old v3 header)
 		#bytestream.write(b'MNT2') # v3
 		#head_tuple = namedtuple('GenericDict', header.keys())(**header)
@@ -133,33 +128,37 @@ def backupFile(name, test_path):
 # particle data
 
 def RP_read_header(bytestream):
-    ID = bytestream.read(4)     # NOTE: useless
-    # unpack header struct object
-    head = namedtuple('UniPartHeader', 'dim, dimX, dimY, dimZ, elementType, bytesPerElement, info, timestamp')
-    # convert to namedtuple and then directly to a dict
-    head = head._asdict(head._make(struct.unpack('iiiiii256sQ', bytestream.read(288))))
+    ID = bytestream.read(4) 
+	if(PY3K): ID = ID.decode("utf-8") 
+	if ID=="PD01":
+		# unpack header struct object
+		header = namedtuple('UniPartHeader', 'dim, dimX, dimY, dimZ, elementType, bytesPerElement, info, timestamp')
+		# convert to namedtuple and then directly to a dict
+		header = header._asdict(header._make(struct.unpack('iiiiii256sQ', bytestream.read(288))))
 
-    return head
+	else:
+		print("read_particle_header error - unknown uni file header '%s' " % ID)
+		exit(1)
 
-def RP_read_content(bytestream, head, data_type=None): # data_type = {None: BasicParticleSystem; "float32": Real; "int32": Int}
-    assert(head['bytesPerElement']==16 or head['bytesPerElement']==12 or head['bytesPerElement']==4)
+    return header
 
-    if(head['elementType']==0): # BasicParticleSystem
+def RP_read_content(bytestream, header, data_type=None): # data_type = {None: BasicParticleSystem; "float32": Real; "int32": Int}
+    assert(header['bytesPerElement']==16 or header['bytesPerElement']==12 or header['bytesPerElement']==4)
+
+    if(header['elementType']==0): # BasicParticleSystem
         print('(BasicParticleSystem) ' )
         data = np.frombuffer(bytestream.read(), dtype=np.dtype([('f1',(np.float32,3)),('f2',(np.int32,1))]))['f1']
-    else:                       # head['elementType']==1: ParticleDataImpl<T>, where T = {float32: Real(4) or Vec3(12); int32: Int(4)}
-        print('(ParticleDataImpl<T={}{}>) '.format(data_type, 'x3' if (head['bytesPerElement']==12) else '') )
-        data = np.reshape(np.frombuffer(bytestream.read(), dtype=data_type), (-1, 3 if (head['bytesPerElement']==12) else 1))
+    else:                         # header['elementType']==1: ParticleDataImpl<T>, where T = {float32: Real(4) or Vec3(12); int32: Int(4)}
+        print('(ParticleDataImpl<T={}{}>) '.format(data_type, 'x3' if (header['bytesPerElement']==12) else '') )
+        data = np.reshape(np.frombuffer(bytestream.read(), dtype=data_type), (-1, 3 if (header['bytesPerElement']==12) else 1))
 
     return data
 
 def readParticles(filename, data_type=None):
-    print('Reading {} ... '.format(filename) )
+    #print('Reading {} ... '.format(filename) )
     with gzip.open(filename, 'rb') as bytestream:
         head = RP_read_header(bytestream)
-        data = RP_read_content(bytestream, head, data_type)
-
-        print('Done.')
+        data     = RP_read_content(bytestream, head, data_type) 
         return head, data
 
 #******************************************************************************

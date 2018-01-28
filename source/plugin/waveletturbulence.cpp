@@ -201,7 +201,7 @@ PYTHON() void computeWaveletCoeffs(Grid<Real>& input)
 }
 
 // note - alomst the same as for vorticity confinement
-PYTHON() void computeVorticity(MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* norm) {
+PYTHON() void computeVorticity(MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* norm=NULL) {
 	Grid<Vec3> velCenter(vel.getParent());
 	GetCentered(velCenter, vel);
 	CurlOp(velCenter, vorticity);

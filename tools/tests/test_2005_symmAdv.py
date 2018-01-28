@@ -157,7 +157,7 @@ for dim in range(2,4):
 				checkSymmetry(a=phi, symmetrize=True, axis=dir2)
 			phi.setBoundNeumann(0)
 
-			advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2)
+			advectSemiLagrange(flags=flags, vel=vel, grid=phi, order=2, clampMode=1)
 
 			checkSymmetry(a=phi, err=errR1, axis=dir1)
 			maxErrR = outputScale * errR1.getMax()
@@ -189,7 +189,7 @@ for dim in range(2,4):
 			if(dim==3):
 				checkSymmetryVec3(a=vel, symmetrize=True, axis=dir2)
 
-			advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2) 
+			advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, clampMode=1) 
 			#vel.printGrid(zSlice=0, printIndex=True)
 
 			checkSymmetryVec3(a=vel, err=errV1, axis=dir1) 

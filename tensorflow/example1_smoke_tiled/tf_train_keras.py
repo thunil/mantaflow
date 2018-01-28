@@ -115,18 +115,6 @@ else:
 
 # ---------------------------------------------
 
-# create output dir
-def next_test_path(folder_no = 1):
-	test_path_addition = 'test_%04d/' % folder_no
-	while os.path.exists(basePath + test_path_addition):
-		folder_no += 1
-		test_path_addition = 'test_%04d/' % folder_no 
-		test_folder_no = folder_no
-	test_path = basePath + test_path_addition
-	print("Using test dir '%s'" % test_path)
-	os.makedirs(test_path)
-	return (test_path, folder_no)
-
 # create model loading path
 if not loadModelTest == -1:
 	if not os.path.exists(basePath + 'test_%04d/' % loadModelTest):
@@ -143,23 +131,10 @@ if not loadModelTest == -1:
 
 load_path = basePath + 'test_%04d/model_%04d.kkpt' % (loadModelTest, loadModelNo)
 
-(test_path,test_folder_no) = next_test_path(testPathStartNo)
+(test_path,test_folder_no) = ph.getNextTestPath(testPathStartNo, basePath)
 if not outputOnly: uniio.backupFile(__file__, test_path)
 
-# custom Logger to write Log to file
-class Logger(object):
-	def __init__(self):
-		self.terminal = sys.stdout
-		self.log = open(test_path + "logfile.log", "a")
-
-	def write(self, message):
-		self.terminal.write(message)
-		self.log.write(message)
-
-	def flush(self): 
-		# to avoid errormsg, " AttributeError: 'Logger' object has no attribute 'flush' "
-		pass
-sys.stdout = Logger()
+sys.stdout = ph.Logger(test_path)
 
 print("Call: " + str(" ".join(sys.argv) ) )
 
