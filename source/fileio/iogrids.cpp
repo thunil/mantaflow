@@ -766,13 +766,10 @@ template <>
 void writeGridVDB(const string& name, Grid<Real>* grid) {
 	debMsg("Writing real grid " << grid->getName() << " to vdb file " << name, 1);
 
-	openvdb::initialize();
-	
 	// Create an empty floating-point grid with background value 0.
-	openvdb::FloatGrid::Ptr gridVDB = openvdb::FloatGrid::create();
-
-	gridVDB->setTransform(
-		openvdb::math::Transform::createLinearTransform( /*voxel size=*/ 0.08 ));
+	openvdb::initialize();
+	openvdb::FloatGrid::Ptr gridVDB = openvdb::FloatGrid::create(); 
+	gridVDB->setTransform( openvdb::math::Transform::createLinearTransform( 0.08 )); //voxel size
 
 	// Get an accessor for coordinate-based access to voxels.
 	openvdb::FloatGrid::Accessor accessor = gridVDB->getAccessor();
@@ -795,6 +792,36 @@ void writeGridVDB(const string& name, Grid<Real>* grid) {
 	gridsVDB.push_back(gridVDB);
 
 	// Write out the contents of the container.
+	file.write(gridsVDB);
+	file.close();
+};
+
+template <>
+void writeGridVDB(const string& name, Grid<Vec3>* grid) {
+	debMsg("Writing real grid " << grid->getName() << " to vdb file " << name, 1);
+
+	openvdb::initialize(); 
+	openvdb::FloatGrid::Ptr gridVDB = openvdb::Vec3SGrid::create();
+	gridVDB->setTransform( openvdb::math::Transform::createLinearTransform( 0.08 )); //voxel size 
+	openvdb::FloatGrid::Accessor accessor = gridVDB->getAccessor();
+
+	// MAC or regular vec grid?
+	if(grid->getType() & GridBase::TypeMAC) gridVDB->setGridClass(openvdb::GRID_STAGGERED);
+	else gridVDB->setGridClass(openvdb::GRID_UNKNOWN);
+
+	gridVDB->setName( grid->getName() );
+
+	openvdb::io::File file(name);
+	FOR_IJK(*grid) { 
+		openvdb::Coord xyz(i, j, k);
+		Vec3 v = (*grid)(i, j, k);
+		openvdb::Vec3f vo( (float)v[0] , (float)v[1] , (float)v[2] );
+		accessor.setValue(xyz, vo);
+	}
+
+	openvdb::GridPtrVec gridsVDB;
+	gridsVDB.push_back(gridVDB);
+
 	file.write(gridsVDB);
 	file.close();
 };
