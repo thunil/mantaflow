@@ -769,7 +769,7 @@ void writeGridVDB(const string& name, Grid<Real>* grid) {
 	// Create an empty floating-point grid with background value 0.
 	openvdb::initialize();
 	openvdb::FloatGrid::Ptr gridVDB = openvdb::FloatGrid::create(); 
-	gridVDB->setTransform( openvdb::math::Transform::createLinearTransform( 0.08 )); //voxel size
+	gridVDB->setTransform( openvdb::math::Transform::createLinearTransform( 1./grid->getSizeX() )); //voxel size
 
 	// Get an accessor for coordinate-based access to voxels.
 	openvdb::FloatGrid::Accessor accessor = gridVDB->getAccessor();
@@ -802,7 +802,8 @@ void writeGridVDB(const string& name, Grid<Vec3>* grid) {
 
 	openvdb::initialize(); 
 	openvdb::FloatGrid::Ptr gridVDB = openvdb::Vec3SGrid::create();
-	gridVDB->setTransform( openvdb::math::Transform::createLinearTransform( 0.08 )); //voxel size 
+	// note , warning - velocity content currently not scaled...
+	gridVDB->setTransform( openvdb::math::Transform::createLinearTransform( 1./grid->getSizeX() )); //voxel size 
 	openvdb::FloatGrid::Accessor accessor = gridVDB->getAccessor();
 
 	// MAC or regular vec grid?
