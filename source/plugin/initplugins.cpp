@@ -464,5 +464,156 @@ PYTHON() void initVortexVelocity(Grid<Real> &phiObs, MACGrid& vel, const Vec3 &c
 }
 
 
+//*****************************************************************************
+// helper functions for blurring
+
+//! class for Gaussian Blur
+struct GaussianKernelCreator{
+public:
+
+	float  mSigma;
+	int    mDim;
+	float* mMat1D;
+
+	GaussianKernelCreator() : mSigma(0.0f), mDim(0), mMat1D(NULL) {}
+	GaussianKernelCreator(float sigma, int dim = 0) 
+		: mSigma(0.0f), mDim(0), mMat1D(NULL) {
+		setGaussianSigma(sigma, dim);
+	}
+
+	Real getWeiAtDis(float disx, float disy){
+		float m = 1.0 / (sqrt(2.0 * M_PI) * mSigma);
+		float v = m * exp(-(1.0*disx*disx + 1.0*disy*disy) / (2.0 * mSigma * mSigma));
+		return v;
+	}
+
+	Real getWeiAtDis(float disx, float disy, float disz){
+		float m = 1.0 / (sqrt(2.0 * M_PI) * mSigma);
+		float v = m * exp(-(1.0*disx*disx + 1.0*disy*disy + 1.0*disz*disz) / (2.0 * mSigma * mSigma));
+		return v;
+	}
+
+	void setGaussianSigma(float sigma, int dim = 0){
+		mSigma = sigma;
+		if (dim < 3)
+			mDim = (int)(2.0 * 3.0 * sigma + 1.0f);
+		else
+			mDim = dim;
+		if (mDim < 3) mDim = 3;
+				
+		if (mDim % 2 == 0) ++mDim;// make dim odd  
+
+		float s2 = mSigma * mSigma;
+		int c = mDim / 2;
+		float m = 1.0 / (sqrt(2.0 * M_PI) * mSigma);
+
+		// create 1D matrix
+		if (mMat1D) delete[] mMat1D;
+		mMat1D = new float[mDim];
+		for (int i = 0; i < (mDim + 1) / 2; i++){
+			float v = m * exp(-(1.0*i*i) / (2.0 * s2));
+			mMat1D[c + i] = v;
+			mMat1D[c - i] = v;
+		}
+	}
+
+	~GaussianKernelCreator(){
+		if (mMat1D) delete[] mMat1D;
+	}
+
+	float get1DKernelValue(int off){
+		assertMsg(off >= 0 && off < mDim, "off exceeded boundary in Gaussian Kernel 1D!");
+		return mMat1D[off];
+	}
+
+};
+
+template<class T>
+T convolveGrid(Grid<T>& originGrid, GaussianKernelCreator& gkSigma, Vec3 pos, int cdir){
+	// pos should be the centre pos, e.g., 1.5, 4.5, 0.5 for grid pos 1,4,0
+	Vec3 step(1.0, 0.0, 0.0);
+	if (cdir == 1)// todo, z
+		step = Vec3(0.0, 1.0, 0.0);
+	else if (cdir == 2)
+		step = Vec3(0.0, 0.0, 1.0);
+	T pxResult(0);
+	for (int i = 0; i < gkSigma.mDim; ++i){
+		Vec3i curpos = toVec3i(pos - step*(i - gkSigma.mDim / 2));
+		if (originGrid.isInBounds(curpos))
+			pxResult += gkSigma.get1DKernelValue(i) * originGrid.get(curpos);
+		else{ // TODO , improve...
+			Vec3i curfitpos = curpos;
+			if (curfitpos.x < 0) curfitpos.x = 0;
+			else if (curfitpos.x >= originGrid.getSizeX()) curfitpos.x = originGrid.getSizeX() - 1;
+			if (curfitpos.y < 0) curfitpos.y = 0;
+			else if (curfitpos.y >= originGrid.getSizeY()) curfitpos.y = originGrid.getSizeY() - 1;
+			if (curfitpos.z < 0) curfitpos.z = 0;
+			else if (curfitpos.z >= originGrid.getSizeZ()) curfitpos.z = originGrid.getSizeZ() - 1;
+			pxResult += gkSigma.get1DKernelValue(i) * originGrid.get(curfitpos);
+		}
+	}
+	return pxResult;
+}
+
+KERNEL() template<class T>
+void knBlurGrid(Grid<T>& originGrid, Grid<T>& targetGrid, GaussianKernelCreator& gkSigma, int cdir){
+	targetGrid(i, j, k) = convolveGrid<T>(originGrid, gkSigma, Vec3(i, j, k), cdir);
+}
+
+template<class T>
+int blurGrid(Grid<T>& originGrid, Grid<T>& targetGrid, float sigma){
+	GaussianKernelCreator tmGK(sigma);
+	Grid<T> tmpGrid(originGrid);
+	knBlurGrid<T>(originGrid, tmpGrid, tmGK, 0); //blur x
+	knBlurGrid<T>(tmpGrid, targetGrid, tmGK, 1); //blur y
+	if (targetGrid.is3D()){
+		tmpGrid.copyFrom(targetGrid);
+		knBlurGrid<T>(tmpGrid, targetGrid, tmGK, 2);
+	}
+	return tmGK.mDim;
+}
+
+
+KERNEL()
+void KnBlurMACGridGauss(MACGrid& originGrid, MACGrid& target, GaussianKernelCreator& gkSigma, int cdir){
+	Vec3 pos(i, j, k);
+	Vec3 step(1.0, 0.0, 0.0);
+	if (cdir == 1)
+		step = Vec3(0.0, 1.0, 0.0);
+	else if (cdir == 2)
+		step = Vec3(0.0, 0.0, 1.0);
+	
+	Vec3 pxResult(0.0f);
+	for (int di = 0; di < gkSigma.mDim; ++di){
+		Vec3i curpos = toVec3i(pos - step*(di - gkSigma.mDim / 2));
+		if (!originGrid.isInBounds(curpos)){
+			if (curpos.x < 0) curpos.x = 0;
+			else if (curpos.x >= originGrid.getSizeX()) curpos.x = originGrid.getSizeX() - 1;
+			if (curpos.y < 0) curpos.y = 0;
+			else if (curpos.y >= originGrid.getSizeY()) curpos.y = originGrid.getSizeY() - 1;
+			if (curpos.z < 0) curpos.z = 0;
+			else if (curpos.z >= originGrid.getSizeZ()) curpos.z = originGrid.getSizeZ() - 1;
+		}
+		pxResult += gkSigma.get1DKernelValue(di) * originGrid.get(curpos);
+	}
+	target(i,j,k) = pxResult;
+}
+
+PYTHON() int blurMacGrid(MACGrid& oG, MACGrid& tG, float si){
+	GaussianKernelCreator tmGK(si); 
+	MACGrid tmpGrid(oG);
+	KnBlurMACGridGauss(oG, tmpGrid, tmGK, 0); //blur x
+	KnBlurMACGridGauss(tmpGrid, tG, tmGK, 1); //blur y
+	if (tG.is3D()){
+		tmpGrid.copyFrom(tG);
+		KnBlurMACGridGauss(tmpGrid, tG, tmGK, 2);
+	}
+	return tmGK.mDim;
+}
+
+PYTHON() int blurRealGrid(Grid<Real>& oG, Grid<Real>& tG, float si){
+	return blurGrid<Real> (oG, tG, si);
+}
+
 } // namespace
 
