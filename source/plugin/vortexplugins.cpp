@@ -26,7 +26,7 @@ namespace Manta {
 	
 //! Mark area of mesh inside shape as fixed nodes. 
 //! Remove all other fixed nodes if 'exclusive' is set
-PYTHON() void markAsFixed(Mesh& mesh, Shape* shape, bool exclusive=true) 
+PYTHON() void markAsFixed(Mesh& mesh, const Shape* shape, bool exclusive=true)
 {
 	for (int i=0; i<mesh.numNodes(); i++) {
 		if (shape->isInside(mesh.nodes(i).pos))
@@ -38,7 +38,7 @@ PYTHON() void markAsFixed(Mesh& mesh, Shape* shape, bool exclusive=true)
 
 //! Adapt texture coordinates of mesh inside shape
 //! to obtain an effective inflow effect
-PYTHON() void texcoordInflow(VortexSheetMesh& mesh, Shape* shape, MACGrid& vel) 
+PYTHON() void texcoordInflow(VortexSheetMesh& mesh, const Shape* shape, const MACGrid& vel)
 {
 	static Vec3 t0 = Vec3::Zero;
 	
@@ -66,7 +66,7 @@ PYTHON() void texcoordInflow(VortexSheetMesh& mesh, Shape* shape, MACGrid& vel)
 };
 
 //! Init smoke density values of the mesh surface inside source shape
-PYTHON() void meshSmokeInflow(VortexSheetMesh& mesh, Shape* shape, Real amount) 
+PYTHON() void meshSmokeInflow(VortexSheetMesh& mesh, const Shape* shape, Real amount)
 {
 	for (int t=0; t<mesh.numTris(); t++) {
 		if (shape->isInside(mesh.getFaceCenter(t)))
@@ -81,7 +81,7 @@ void KnAcceleration(MACGrid& a, const MACGrid& v1, const MACGrid& v0, const Real
 
 //! Add vorticity to vortex sheets based on buoyancy
 PYTHON() void vorticitySource(VortexSheetMesh& mesh, Vec3 gravity, 
-							MACGrid* vel=NULL, MACGrid* velOld=NULL,
+                                                        const MACGrid* vel=NULL, const MACGrid* velOld=NULL,
 							Real scale = 0.1, Real maxAmount = 0, Real mult = 1.0)
 {
 	Real dt = mesh.getParent()->getDt();
@@ -166,7 +166,7 @@ PYTHON() void smoothVorticity(VortexSheetMesh& mesh, int iter=1, Real sigma=0.2,
 }
 
 //! Seed Vortex Particles inside shape with K41 characteristics
-PYTHON() void VPseedK41(VortexParticleSystem& system, Shape* shape, Real strength=0, Real sigma0=0.2, Real sigma1=1.0, Real probability=1.0, Real N=3.0) {
+PYTHON() void VPseedK41(VortexParticleSystem& system, const Shape* shape, Real strength=0, Real sigma0=0.2, Real sigma1=1.0, Real probability=1.0, Real N=3.0) {
 	Grid<Real> temp(system.getParent());
 	const Real dt = system.getParent()->getDt();
 	static RandomStream rand(3489572);
@@ -189,7 +189,7 @@ PYTHON() void VPseedK41(VortexParticleSystem& system, Shape* shape, Real strengt
 }
 		
 //! Vortex-in-cell integration
-PYTHON() void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, FlagGrid& flags,
+PYTHON() void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel, const FlagGrid& flags,
 					  Grid<Vec3>* vorticity=NULL, Real cgMaxIterFac=1.5, Real cgAccuracy=1e-3, Real scale = 0.01, int precondition=0) {
 	
 	MuTime t0;
@@ -295,7 +295,7 @@ PYTHON() void VICintegration(VortexSheetMesh& mesh, Real sigma, Grid<Vec3>& vel,
 }
 
 //! Obtain density field from levelset with linear gradient of size sigma over the interface
-PYTHON() void densityFromLevelset(LevelsetGrid& phi, Grid<Real>& density, Real value=1.0, Real sigma=1.0) {
+PYTHON() void densityFromLevelset(const LevelsetGrid& phi, Grid<Real>& density, Real value=1.0, Real sigma=1.0) {
 	FOR_IJK(phi) {
 		// remove boundary
 		if (i<2 || j<2 || k<2 || i>=phi.getSizeX()-2 || j>=phi.getSizeY()-2 || k>=phi.getSizeZ()-2)

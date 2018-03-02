@@ -123,35 +123,35 @@ void Grid<T>::save(string name) {
 
 //! Kernel: Compute min value of Real grid
 KERNEL(idx, reduce=min) returns(Real minVal=std::numeric_limits<Real>::max())
-Real CompMinReal(Grid<Real>& val) {
+Real CompMinReal(const Grid<Real>& val) {
 	if (val[idx] < minVal)
 		minVal = val[idx];
 }
 
 //! Kernel: Compute max value of Real grid
 KERNEL(idx, reduce=max) returns(Real maxVal=-std::numeric_limits<Real>::max())
-Real CompMaxReal(Grid<Real>& val) {
+Real CompMaxReal(const Grid<Real>& val) {
 	if (val[idx] > maxVal)
 		maxVal = val[idx];
 }
 
 //! Kernel: Compute min value of int grid
 KERNEL(idx, reduce=min) returns(int minVal=std::numeric_limits<int>::max())
-int CompMinInt(Grid<int>& val) {
+int CompMinInt(const Grid<int>& val) {
 	if (val[idx] < minVal)
 		minVal = val[idx];
 }
 
 //! Kernel: Compute max value of int grid
 KERNEL(idx, reduce=max) returns(int maxVal=-std::numeric_limits<int>::max())
-int CompMaxInt(Grid<int>& val) {
+int CompMaxInt(const Grid<int>& val) {
 	if (val[idx] > maxVal)
 		maxVal = val[idx];
 }
 
 //! Kernel: Compute min norm of vec grid
 KERNEL(idx, reduce=min) returns(Real minVal=std::numeric_limits<Real>::max())
-Real CompMinVec(Grid<Vec3>& val) {
+Real CompMinVec(const Grid<Vec3>& val) {
 	const Real s = normSquare(val[idx]);
 	if (s < minVal)
 		minVal = s;
@@ -159,7 +159,7 @@ Real CompMinVec(Grid<Vec3>& val) {
 
 //! Kernel: Compute max norm of vec grid
 KERNEL(idx, reduce=max) returns(Real maxVal=-std::numeric_limits<Real>::max())
-Real CompMaxVec(Grid<Vec3>& val) {
+Real CompMaxVec(const Grid<Vec3>& val) {
 	const Real s = normSquare(val[idx]);
 	if (s > maxVal)
 		maxVal = s;
@@ -223,33 +223,33 @@ template<class T> void Grid<T>::stomp(const T& threshold) {
 	knGridStomp<T>(*this, threshold);
 }
 
-template<> Real Grid<Real>::getMax() {
+template<> Real Grid<Real>::getMax() const {
 	return CompMaxReal (*this);
 }
-template<> Real Grid<Real>::getMin() {
+template<> Real Grid<Real>::getMin() const {
 	return CompMinReal (*this);
 }
-template<> Real Grid<Real>::getMaxAbs() {
+template<> Real Grid<Real>::getMaxAbs() const {
 	Real amin = CompMinReal (*this);
 	Real amax = CompMaxReal (*this);
 	return max( fabs(amin), fabs(amax));
 }
-template<> Real Grid<Vec3>::getMax() {
+template<> Real Grid<Vec3>::getMax() const {
 	return sqrt(CompMaxVec (*this));
 }
-template<> Real Grid<Vec3>::getMin() { 
+template<> Real Grid<Vec3>::getMin() const {
 	return sqrt(CompMinVec (*this));
 }
-template<> Real Grid<Vec3>::getMaxAbs() {
+template<> Real Grid<Vec3>::getMaxAbs() const {
 	return sqrt(CompMaxVec (*this));
 }
-template<> Real Grid<int>::getMax() {
+template<> Real Grid<int>::getMax() const {
 	return (Real) CompMaxInt (*this);
 }
-template<> Real Grid<int>::getMin() {
+template<> Real Grid<int>::getMin() const {
 	return (Real) CompMinInt (*this);
 }
-template<> Real Grid<int>::getMaxAbs() {
+template<> Real Grid<int>::getMaxAbs() const {
 	int amin = CompMinInt (*this);
 	int amax = CompMaxInt (*this);
 	return max( fabs((Real)amin), fabs((Real)amax));

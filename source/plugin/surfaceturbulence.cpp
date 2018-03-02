@@ -88,7 +88,7 @@ struct ParticleAccelGrid{
         }
     }
 
-    void fillWith(BasicParticleSystem& particles) {
+    void fillWith(const BasicParticleSystem& particles) {
         // clear
         for(int i=0; i<res; i++) {
         for(int j=0; j<res; j++) {
@@ -106,7 +106,7 @@ struct ParticleAccelGrid{
         }
     }
 
-    void fillWith(ParticleDataImpl<Vec3>& particles){
+    void fillWith(const ParticleDataImpl<Vec3>& particles){
         // clear
         for(int i=0; i<res; i++) {
         for(int j=0; j<res; j++) {
@@ -184,20 +184,20 @@ struct BasicParticleSystemWrapper : PointSetWrapper {
 
     BasicParticleSystemWrapper(ParticleAccelGrid* inAccel) : PointSetWrapper(inAccel) {}
 
-    Vec3 getPos(int id) {return points->getPos(id);}
+    Vec3 getPos(int id) const {return points->getPos(id);}
     void setPos(int id, Vec3 pos) {points->setPos(id, pos);}
     void updateAccel() {accel->fillWith(*points);}
     void clear() {points->clear();}
-    int size() {return points->size();}
-    bool isActive(int id) {return points->isActive(id);}
+    int size() const {return points->size();}
+    bool isActive(int id) const {return points->isActive(id);}
     void addParticle(Vec3 pos) {points->addParticle(pos);}
-    int getStatus(int id) {return points->getStatus(id);}
+    int getStatus(int id) const {return points->getStatus(id);}
     void addBuffered(Vec3 pos) {points->addBuffered(pos);}
     void doCompress() {points->doCompress();}
     void insertBufferedParticles() {points->insertBufferedParticles();}
     void kill(int id) {points->kill(id);}
 
-    bool hasNeighbor(Vec3 pos, Real radius) {
+    bool hasNeighbor(Vec3 pos, Real radius) const {
         bool answer = false;
         int minI = clamp<int>(floor((pos.x-radius)/params.res*accel->res), 0, accel->res-1);
         int maxI = clamp<int>(floor((pos.x+radius)/params.res*accel->res), 0, accel->res-1);
@@ -219,7 +219,7 @@ struct BasicParticleSystemWrapper : PointSetWrapper {
         return answer;
     }
 
-    bool hasNeighborOtherThanItself(int idx, Real radius) {
+    bool hasNeighborOtherThanItself(int idx, Real radius) const {
         bool answer = false;
         Vec3 pos = points->getPos(idx);
         int minI = clamp<int>(floor((pos.x-radius)/params.res*accel->res), 0, accel->res-1);
@@ -263,10 +263,10 @@ struct ParticleDataImplVec3Wrapper : PointSetWrapper {
 
     ParticleDataImplVec3Wrapper(ParticleAccelGrid* inAccel) : PointSetWrapper(inAccel) {}
 
-    Vec3 getVec3(int id) {return (*points)[id];}
+    Vec3 getVec3(int id) const {return (*points)[id];}
     void setVec3(int id, Vec3 vec) {(*points)[id] = vec;}
     void updateAccel() {accel->fillWith(*points);}
-    bool isActive(int i) {return true;}
+    bool isActive(int i) const {return true;}
 
 };
 
@@ -347,9 +347,9 @@ Real smoothstep( Real edgeLeft, Real edgeRight, Real val ){
 //
 
 void initFines(
-    BasicParticleSystemWrapper& coarseParticles,
+    const BasicParticleSystemWrapper& coarseParticles,
     BasicParticleSystemWrapper& surfacePoints,
-    FlagGrid& flags
+    const FlagGrid& flags
 ){
     unsigned int discretization = (unsigned int) M_PI*(params.outerRadius+params.innerRadius)/params.meanFineDistance;
     Real dtheta = 2*params.meanFineDistance/(params.outerRadius+params.innerRadius);
@@ -407,8 +407,8 @@ void initFines(
 KERNEL(pts)
 void advectSurfacePoints(
         BasicParticleSystemWrapper& surfacePoints,
-        BasicParticleSystemWrapper& coarseParticles,
-        ParticleDataImplVec3Wrapper& coarseParticlesPrevPos
+        const BasicParticleSystemWrapper& coarseParticles,
+        const ParticleDataImplVec3Wrapper& coarseParticlesPrevPos
 )
 {
     if(surfacePoints.isActive(idx)) {
@@ -436,7 +436,7 @@ void advectSurfacePoints(
 // **** value and gradient of level-set band constraint ****
 //
 Real computeConstraintLevel(
-        BasicParticleSystemWrapper& coarseParticles,
+        const BasicParticleSystemWrapper& coarseParticles,
         Vec3 pos
 ){
     Real lvl = 0.0f;
@@ -449,7 +449,7 @@ Real computeConstraintLevel(
 }
 
 Vec3 computeConstraintGradient(
-        BasicParticleSystemWrapper& coarseParticles,
+        const BasicParticleSystemWrapper& coarseParticles,
         Vec3 pos
 ){
     Vec3 gradient(0,0,0);
@@ -466,8 +466,8 @@ Vec3 computeConstraintGradient(
 
 KERNEL(pts)
 void computeSurfaceNormals(
-        BasicParticleSystemWrapper& surfacePoints,
-        BasicParticleSystemWrapper& coarseParticles,
+        const BasicParticleSystemWrapper& surfacePoints,
+        const BasicParticleSystemWrapper& coarseParticles,
         ParticleDataImpl<Vec3>& surfaceNormals
 ){
         Vec3 pos = surfacePoints.getPos(idx);
@@ -524,8 +524,8 @@ void computeSurfaceNormals(
 
 KERNEL(pts)
 void computeAveragedNormals(
-        BasicParticleSystemWrapper& surfacePoints,
-        ParticleDataImpl<Vec3>& surfaceNormals
+        const BasicParticleSystemWrapper& surfacePoints,
+       const  ParticleDataImpl<Vec3>& surfaceNormals
 ){
     Vec3 pos = surfacePoints.getPos(idx);
     Vec3 newNormal = Vec3(0,0,0);
@@ -538,14 +538,14 @@ void computeAveragedNormals(
 
 KERNEL(pts)
 void assignNormals(
-        BasicParticleSystemWrapper& surfacePoints,
+        const BasicParticleSystemWrapper& surfacePoints,
         ParticleDataImpl<Vec3>& surfaceNormals
 ) {
     surfaceNormals[idx] = tempSurfaceVec3[idx];
 }
 
 void smoothSurfaceNormals(
-        BasicParticleSystemWrapper& surfacePoints,
+        const BasicParticleSystemWrapper& surfacePoints,
         ParticleDataImpl<Vec3>& surfaceNormals
 ){
     tempSurfaceVec3.resize(surfacePoints.size());
@@ -647,7 +647,7 @@ void addDeleteSurfacePoints(
 
 KERNEL(pts)
 void computeSurfaceDensities(
-        BasicParticleSystemWrapper& surfacePoints,
+        const BasicParticleSystemWrapper& surfacePoints,
         void* dummy
 ) {
     Vec3 pos = surfacePoints.getPos(idx);
@@ -662,8 +662,8 @@ void computeSurfaceDensities(
 
 KERNEL(pts)
 void computeSurfaceDisplacements(
-        BasicParticleSystemWrapper& surfacePoints,
-        ParticleDataImpl<Vec3>& surfaceNormals
+        const BasicParticleSystemWrapper& surfacePoints,
+        const ParticleDataImpl<Vec3>& surfaceNormals
 ){
     Vec3 pos = surfacePoints.getPos(idx);
     Vec3 normal = surfaceNormals[idx];
@@ -712,7 +712,7 @@ void applySurfaceDisplacements(
 
 void regularizeSurfacePoints(
         BasicParticleSystemWrapper& surfacePoints,
-        ParticleDataImpl<Vec3>& surfaceNormals
+        const ParticleDataImpl<Vec3>& surfaceNormals
 ){
     tempSurfaceVec3.resize(surfacePoints.size());
     tempSurfaceFloat.resize(surfacePoints.size()); 
@@ -726,7 +726,7 @@ void regularizeSurfacePoints(
 KERNEL(pts)
 void constrainSurface(
         BasicParticleSystemWrapper& surfacePoints,
-        BasicParticleSystemWrapper& coarseParticles        
+        const BasicParticleSystemWrapper& coarseParticles
 ) {
         Vec3 pos = surfacePoints.getPos(idx);
         Real level = computeConstraintLevel(coarseParticles, surfacePoints.getPos(idx));
@@ -740,7 +740,7 @@ void constrainSurface(
 
 KERNEL(pts)
 void interpolateNewWaveData(
-        BasicParticleSystemWrapper& surfacePoints,
+        const BasicParticleSystemWrapper& surfacePoints,
         ParticleDataImpl<Real>& surfaceWaveH,
         ParticleDataImpl<Real>& surfaceWaveDtH,
         ParticleDataImpl<Real>& surfaceWaveSeed,
@@ -772,7 +772,7 @@ void interpolateNewWaveData(
 
 
 void surfaceMaintenance(
-        BasicParticleSystemWrapper& coarseParticles,
+        const BasicParticleSystemWrapper& coarseParticles,
         BasicParticleSystemWrapper& surfacePoints,
         ParticleDataImpl<Vec3>& surfaceNormals,
         ParticleDataImpl<Real>& surfaceWaveH,
@@ -809,9 +809,9 @@ void surfaceMaintenance(
 
 KERNEL(pts)
 void addSeed(
-        BasicParticleSystemWrapper& surfacePoints,
+        const BasicParticleSystemWrapper& surfacePoints,
         ParticleDataImpl<Real>& surfaceWaveH,
-        ParticleDataImpl<Real>& surfaceWaveSeed
+        const ParticleDataImpl<Real>& surfaceWaveSeed
 ){
     surfaceWaveH[idx] += surfaceWaveSeed[idx];
 }
@@ -819,9 +819,9 @@ void addSeed(
 
 KERNEL(pts)
 void computeSurfaceWaveNormal(
-        BasicParticleSystemWrapper& surfacePoints,
-        ParticleDataImpl<Vec3>& surfaceNormals,
-        ParticleDataImpl<Real>& surfaceWaveH
+        const BasicParticleSystemWrapper& surfacePoints,
+        const ParticleDataImpl<Vec3>& surfaceNormals,
+        const ParticleDataImpl<Real>& surfaceWaveH
 ){
     Vec3 pos = surfacePoints.getPos(idx);
 
@@ -868,9 +868,9 @@ void computeSurfaceWaveNormal(
 
 KERNEL(pts)
 void computeSurfaceWaveLaplacians(
-        BasicParticleSystemWrapper& surfacePoints,
-        ParticleDataImpl<Vec3>& surfaceNormals,
-        ParticleDataImpl<Real>& surfaceWaveH
+        const BasicParticleSystemWrapper& surfacePoints,
+        const ParticleDataImpl<Vec3>& surfaceNormals,
+        const ParticleDataImpl<Real>& surfaceWaveH
 ){
     Real laplacian = 0;
     Real wTotal = 0;
@@ -912,10 +912,10 @@ void computeSurfaceWaveLaplacians(
 
 KERNEL(pts)
 void evolveWave(
-        BasicParticleSystemWrapper& surfacePoints,
+        const BasicParticleSystemWrapper& surfacePoints,
         ParticleDataImpl<Real>& surfaceWaveH,
         ParticleDataImpl<Real>& surfaceWaveDtH,
-        ParticleDataImpl<Real>& surfaceWaveSeed
+        const ParticleDataImpl<Real>& surfaceWaveSeed
 ){
     surfaceWaveDtH[idx] += params.waveSpeed*params.waveSpeed * params.dt * tempSurfaceFloat[idx];
     surfaceWaveDtH[idx] /= (1 + params.dt * params.waveDamping);
@@ -931,8 +931,8 @@ void evolveWave(
 
 KERNEL(pts)
 void computeSurfaceCurvature(
-        BasicParticleSystemWrapper& surfacePoints,
-        ParticleDataImpl<Vec3>& surfaceNormals
+        const BasicParticleSystemWrapper& surfacePoints,
+        const ParticleDataImpl<Vec3>& surfaceNormals
 ){
     Vec3 pPos = surfacePoints.getPos(idx);
     Real wTotal = 0;
@@ -960,7 +960,7 @@ void computeSurfaceCurvature(
 
 KERNEL(pts)
 void smoothCurvature(
-        BasicParticleSystemWrapper& surfacePoints,
+        const BasicParticleSystemWrapper& surfacePoints,
         ParticleDataImpl<Real>& surfaceWaveSource
 ){
     Vec3 pPos = surfacePoints.getPos(idx);
@@ -979,7 +979,7 @@ void smoothCurvature(
 
 KERNEL(pts)
 void seedWaves(
-        BasicParticleSystemWrapper& surfacePoints,
+        const BasicParticleSystemWrapper& surfacePoints,
         ParticleDataImpl<Real>& surfaceWaveSeed,
         ParticleDataImpl<Real>& surfaceWaveSeedAmplitude,
         ParticleDataImpl<Real>& surfaceWaveSource
@@ -1000,8 +1000,8 @@ void seedWaves(
 
 
 void surfaceWaves(
-        BasicParticleSystemWrapper& surfacePoints,
-        ParticleDataImpl<Vec3>& surfaceNormals,
+        const BasicParticleSystemWrapper& surfacePoints,
+        const ParticleDataImpl<Vec3>& surfaceNormals,
         ParticleDataImpl<Real>& surfaceWaveH,
         ParticleDataImpl<Real>& surfaceWaveDtH,
         ParticleDataImpl<Real>& surfaceWaveSource,
@@ -1026,7 +1026,7 @@ void surfaceWaves(
 
 
 PYTHON() void particleSurfaceTurbulence(
-    FlagGrid& flags,
+    const FlagGrid& flags,
     BasicParticleSystem& coarseParts,
     ParticleDataImpl<Vec3>& coarsePartsPrevPos,
     BasicParticleSystem& surfPoints,
@@ -1161,7 +1161,7 @@ PYTHON() void particleSurfaceTurbulence(
 
 
 
-PYTHON() void debugCheckParts(BasicParticleSystem& parts, FlagGrid& flags) {
+PYTHON() void debugCheckParts(const BasicParticleSystem& parts, const FlagGrid& flags) {
     for(int idx=0;idx<parts.size();idx++) {
         Vec3i p = toVec3i( parts.getPos(idx) );
         if(! flags.isInBounds(p) ) {

@@ -176,15 +176,15 @@ PYTHON() void testInitGridWithPos(Grid<Real>& grid) {
 
 
 //! helper to calculate particle radius factor to cover the diagonal of a cell in 2d/3d
-inline Real calculateRadiusFactor(Grid<Real>& grid, Real factor) {
+inline Real calculateRadiusFactor(const Grid<Real>& grid, Real factor) {
 	return (grid.is3D() ? sqrt(3.) : sqrt(2.) ) * (factor+.01); // note, a 1% safety factor is added here
 } 
 
 //! re-sample particles based on an input levelset 
 // optionally skip seeding new particles in "exclude" SDF
-PYTHON() void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& flags, 
-		int minParticles, int maxParticles, LevelsetGrid& phi, Real radiusFactor=1. , Real narrowBand=-1. ,
-		Grid<Real>* exclude=NULL ) 
+PYTHON() void adjustNumber(BasicParticleSystem& parts, const MACGrid& vel, const FlagGrid& flags,
+                int minParticles, int maxParticles, const LevelsetGrid& phi, Real radiusFactor=1. , Real narrowBand=-1. ,
+                const Grid<Real>* exclude=NULL )
 {
 	// which levelset to use as threshold
 	const Real SURFACE_LS = -1.0 * calculateRadiusFactor(phi, radiusFactor);
@@ -242,7 +242,7 @@ PYTHON() void adjustNumber( BasicParticleSystem& parts, MACGrid& vel, FlagGrid& 
 
 // simple and slow helper conversion to show contents of int grids like a real grid in the ui
 // (use eg to quickly display contents of the particle-index grid)
-PYTHON() void debugIntToReal( Grid<int>& source, Grid<Real>& dest, Real factor=1. )
+PYTHON() void debugIntToReal(const Grid<int>& source, Grid<Real>& dest, Real factor=1. )
 {
 	FOR_IJK( source ) { dest(i,j,k) = (Real)source(i,j,k) * factor; }
 }
@@ -250,8 +250,8 @@ PYTHON() void debugIntToReal( Grid<int>& source, Grid<Real>& dest, Real factor=1
 // build a grid that contains indices for a particle system
 // the particles in a cell i,j,k are particles[index(i,j,k)] to particles[index(i+1,j,k)-1]
 // (ie,  particles[index(i+1,j,k)] already belongs to cell i+1,j,k)
-PYTHON() void gridParticleIndex( BasicParticleSystem& parts, ParticleIndexSystem& indexSys,
-				 FlagGrid& flags, Grid<int>& index, Grid<int>* counter=NULL )
+PYTHON() void gridParticleIndex(const BasicParticleSystem& parts, ParticleIndexSystem& indexSys,
+                                 const FlagGrid& flags, Grid<int>& index, Grid<int>* counter=NULL )
 {
 	bool delCounter = false;
 	if(!counter) { counter = new Grid<int>(  flags.getParent() ); delCounter=true; }
@@ -392,13 +392,13 @@ void ComputeAveragedLevelsetWeight(const BasicParticleSystem& parts,
 	phi(i,j,k) = phiv;
 }
 
-template<class T> T smoothingValue(Grid<T> val, int i, int j, int k, T center) {
+template<class T> T smoothingValue(const Grid<T> val, int i, int j, int k, T center) {
 	return val(i,j,k);
 }
 
 // smoothing, and  
 KERNEL(bnd=1) template<class T> 
-void knSmoothGrid(Grid<T>& me, Grid<T>& tmp, Real factor) {
+void knSmoothGrid(const Grid<T>& me, Grid<T>& tmp, Real factor) {
 	T val = me(i,j,k) + 
 			me(i+1,j,k) + me(i-1,j,k) + 
 			me(i,j+1,k) + me(i,j-1,k) ;
@@ -409,7 +409,7 @@ void knSmoothGrid(Grid<T>& me, Grid<T>& tmp, Real factor) {
 }
 
 KERNEL(bnd=1) template<class T> 
-void knSmoothGridNeg(Grid<T>& me, Grid<T>& tmp, Real factor) {
+void knSmoothGridNeg(const Grid<T>& me, Grid<T>& tmp, Real factor) {
 	T val = me(i,j,k) + 
 			me(i+1,j,k) + me(i-1,j,k) + 
 			me(i,j+1,k) + me(i,j-1,k) ;
@@ -482,7 +482,7 @@ void knSafeDivReal(Grid<T>& me, const Grid<Real>& other, Real cutoff=VECTOR_EPSI
 // Set velocities on the grid from the particle system
 
 KERNEL(pts, single)
-void knMapLinearVec3ToMACGrid(const BasicParticleSystem& p, const FlagGrid& flags, MACGrid& vel, Grid<Vec3>& tmp,
+void knMapLinearVec3ToMACGrid(const BasicParticleSystem& p, const FlagGrid& flags, const MACGrid& vel, Grid<Vec3>& tmp,
 			      const ParticleDataImpl<Vec3>& pvel, const ParticleDataImpl<int>* ptype, const int exclude)
 {
 	unusedParameter(flags);
@@ -517,16 +517,17 @@ PYTHON() void mapPartsToMAC(const FlagGrid& flags, MACGrid& vel, MACGrid& velOld
 }
 
 KERNEL(pts, single) template<class T>
-void knMapLinear( BasicParticleSystem& p, FlagGrid& flags, Grid<T>& target, Grid<Real>& gtmp, 
-	ParticleDataImpl<T>& psource ) 
+void knMapLinear(const BasicParticleSystem& p, const FlagGrid& flags, const Grid<T>& target, Grid<Real>& gtmp,
+        const ParticleDataImpl<T>& psource )
 {
 	unusedParameter(flags);
 	if (!p.isActive(idx)) return;
 	target.setInterpolated( p[idx].pos, psource[idx], gtmp );
 } 
+
 template<class T>
-void mapLinearRealHelper( FlagGrid& flags, Grid<T>& target , 
-		BasicParticleSystem& parts , ParticleDataImpl<T>& source ) 
+void mapLinearRealHelper(const FlagGrid& flags, Grid<T>& target,
+                const BasicParticleSystem& parts, const ParticleDataImpl<T>& source )
 {
 	Grid<Real> tmp(flags.getParent());
 	target.clear();
@@ -534,10 +535,10 @@ void mapLinearRealHelper( FlagGrid& flags, Grid<T>& target ,
 	knSafeDivReal<T>( target, tmp );
 }
 
-PYTHON() void mapPartsToGrid    ( FlagGrid& flags, Grid<Real>& target , BasicParticleSystem& parts , ParticleDataImpl<Real>& source ) {
+PYTHON() void mapPartsToGrid    (const FlagGrid& flags, Grid<Real>& target , const BasicParticleSystem& parts , const ParticleDataImpl<Real>& source ) {
 	mapLinearRealHelper<Real>(flags,target,parts,source);
 }
-PYTHON() void mapPartsToGridVec3( FlagGrid& flags, Grid<Vec3>& target , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& source ) {
+PYTHON() void mapPartsToGridVec3(const FlagGrid& flags, Grid<Vec3>& target , const BasicParticleSystem& parts , const ParticleDataImpl<Vec3>& source ) {
 	mapLinearRealHelper<Vec3>(flags,target,parts,source);
 }
 // integers need "max" mode, not yet implemented
@@ -546,15 +547,15 @@ PYTHON() void mapPartsToGridVec3( FlagGrid& flags, Grid<Vec3>& target , BasicPar
 //}
 
 KERNEL(pts) template<class T>
-void knMapFromGrid( BasicParticleSystem& p, Grid<T>& gsrc, ParticleDataImpl<T>& target ) 
+void knMapFromGrid(const BasicParticleSystem& p, const Grid<T>& gsrc, ParticleDataImpl<T>& target )
 {
 	if (!p.isActive(idx)) return;
 	target[idx] = gsrc.getInterpolated( p[idx].pos );
 } 
-PYTHON() void mapGridToParts    ( Grid<Real>& source , BasicParticleSystem& parts , ParticleDataImpl<Real>& target ) {
+PYTHON() void mapGridToParts    (const Grid<Real>& source , const BasicParticleSystem& parts , ParticleDataImpl<Real>& target ) {
 	knMapFromGrid<Real>(parts, source, target);
 }
-PYTHON() void mapGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& parts , ParticleDataImpl<Vec3>& target ) {
+PYTHON() void mapGridToPartsVec3(const Grid<Vec3>& source , const BasicParticleSystem& parts , ParticleDataImpl<Vec3>& target ) {
 	knMapFromGrid<Vec3>(parts, source, target);
 }
 
@@ -562,15 +563,15 @@ PYTHON() void mapGridToPartsVec3( Grid<Vec3>& source , BasicParticleSystem& part
 // Get velocities from grid
 
 KERNEL(pts) 
-void knMapLinearMACGridToVec3_PIC(BasicParticleSystem& p, FlagGrid& flags, MACGrid& vel, ParticleDataImpl<Vec3>& pvel,
+void knMapLinearMACGridToVec3_PIC(const BasicParticleSystem& p, const FlagGrid& flags, const MACGrid& vel, ParticleDataImpl<Vec3>& pvel,
 				  const ParticleDataImpl<int>* ptype, const int exclude)
 {
 	if (!p.isActive(idx) || (ptype && ((*ptype)[idx] & exclude))) return;
 	// pure PIC
 	pvel[idx] = vel.getInterpolated( p[idx].pos );
 }
-PYTHON() void mapMACToParts(FlagGrid& flags, MACGrid& vel , 
-			    BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel,
+PYTHON() void mapMACToParts(const FlagGrid& flags, const MACGrid& vel ,
+                            const BasicParticleSystem& parts , ParticleDataImpl<Vec3>& partVel,
 			    const ParticleDataImpl<int>* ptype=NULL, const int exclude=0) {
 	knMapLinearMACGridToVec3_PIC( parts, flags, vel, partVel, ptype, exclude );
 }
@@ -598,7 +599,7 @@ PYTHON() void flipVelocityUpdate(const FlagGrid& flags, const MACGrid& vel, cons
 // narrow band 
 
 KERNEL()
-void knCombineVels(MACGrid& vel, Grid<Vec3>& w, MACGrid& combineVel, LevelsetGrid* phi, Real narrowBand, Real thresh ) {
+void knCombineVels(MACGrid& vel, const Grid<Vec3>& w, MACGrid& combineVel, const LevelsetGrid* phi, Real narrowBand, Real thresh ) {
 	int idx = vel.index(i,j,k);
 
 	for(int c=0; c<3; ++c)
@@ -623,7 +624,7 @@ void knCombineVels(MACGrid& vel, Grid<Vec3>& w, MACGrid& combineVel, LevelsetGri
 }
 
 //! narrow band velocity combination
-PYTHON() void combineGridVel( MACGrid& vel, Grid<Vec3>& weight, MACGrid& combineVel, LevelsetGrid* phi=NULL,
+PYTHON() void combineGridVel( MACGrid& vel, const Grid<Vec3>& weight, MACGrid& combineVel, const LevelsetGrid* phi=NULL,
     Real narrowBand=0.0, Real thresh=0.0) {
 	knCombineVels(vel, weight, combineVel, phi, narrowBand, thresh);
 }

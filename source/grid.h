@@ -46,7 +46,7 @@ public:
 	//! Get Stride in Z dimension
 	inline IndexInt getStrideZ() const { return mStrideZ; }
 	
-	inline Real getDx() { return mDx; }
+	inline Real getDx() const { return mDx; }
 	
 	//! Check if indices are within bounds, otherwise error (should only be called when debugging)
 	inline void checkIndex(int i, int j, int k) const;
@@ -174,11 +174,11 @@ public:
 	
 	// common compound operators
 	//! get absolute max value in grid 
-	PYTHON() Real getMaxAbs();
+	PYTHON() Real getMaxAbs() const;
 	//! get max value in grid 
-	PYTHON() Real getMax();
+	PYTHON() Real getMax() const;
 	//! get min value in grid 
-	PYTHON() Real getMin();
+	PYTHON() Real getMin() const;
 	//! calculate L1 norm of grid content
 	PYTHON() Real getL1(int bnd=0);
 	//! calculate L2 norm of grid content
@@ -236,7 +236,7 @@ public:
 	inline Vec3 getAtMACZ(int i, int j, int k) const;
 	// interpolation
 	inline Vec3 getInterpolated(const Vec3& pos) const { return interpolMAC(mData, mSize, mStrideZ, pos); }
-	inline void setInterpolated(const Vec3& pos, const Vec3& val, Vec3* tmp) { return setInterpolMAC(mData, mSize, mStrideZ, pos, val, tmp); }
+	inline void setInterpolated(const Vec3& pos, const Vec3& val, Vec3* tmp) const { return setInterpolMAC(mData, mSize, mStrideZ, pos, val, tmp); }
 	inline Vec3 getInterpolatedHi(const Vec3& pos, int order) const { 
 		switch(order) {
 		case 1:  return interpolMAC     (mData, mSize, mStrideZ, pos); 
@@ -516,7 +516,7 @@ inline Vec3 getGradient(const Grid<Real>& data, int i, int j, int k) {
 
 // interpolate grid from one size to another size
 KERNEL() template<class S>
-void knInterpolateGridTempl(Grid<S>& target, Grid<S>& source, const Vec3& sourceFactor , Vec3 offset, int orderSpace=1 ) {
+void knInterpolateGridTempl(Grid<S>& target, const Grid<S>& source, const Vec3& sourceFactor , Vec3 offset, int orderSpace=1 ) {
 	Vec3 pos = Vec3(i,j,k) * sourceFactor + offset;
 	if(!source.is3D()) pos[2] = 0; // allow 2d -> 3d
 	target(i,j,k) = source.getInterpolatedHi(pos, orderSpace);

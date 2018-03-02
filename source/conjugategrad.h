@@ -66,7 +66,7 @@ template<class APPLYMAT>
 class GridCg : public GridCgInterface {
 	public:
 		//! constructor
-		GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual, Grid<Real>& search, FlagGrid& flags, Grid<Real>& tmp, 
+		GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual, Grid<Real>& search, const FlagGrid& flags, Grid<Real>& tmp, 
 				Grid<Real>* A0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk);
 		~GridCg() {}
 		
@@ -95,7 +95,7 @@ class GridCg : public GridCgInterface {
 		Grid<Real>& mRhs;
 		Grid<Real>& mResidual;
 		Grid<Real>& mSearch;
-		FlagGrid& mFlags;
+		const FlagGrid& mFlags;
 		Grid<Real>& mTmp;
 
 		Grid<Real> *mpA0, *mpAi, *mpAj, *mpAk;
@@ -116,7 +116,7 @@ class GridCg : public GridCgInterface {
 
 //! Kernel: Apply symmetric stored Matrix
 KERNEL(idx) 
-void ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
+void ApplyMatrix (const FlagGrid& flags, Grid<Real>& dst, const Grid<Real>& src, 
 				  Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
 {
 	if (!flags.isFluid(idx)) {
@@ -134,7 +134,7 @@ void ApplyMatrix (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src,
 
 //! Kernel: Apply symmetric stored Matrix. 2D version
 KERNEL(idx) 
-void ApplyMatrix2D (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src, 
+void ApplyMatrix2D (const FlagGrid& flags, Grid<Real>& dst, const Grid<Real>& src, 
 					Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
 {
 	unusedParameter(Ak); // only there for parameter compatibility with ApplyMatrix
@@ -152,7 +152,7 @@ void ApplyMatrix2D (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& src,
 
 //! Kernel: Construct the matrix for the poisson equation
 KERNEL (bnd=1) 
-void MakeLaplaceMatrix(FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, MACGrid* fractions = 0) {
+void MakeLaplaceMatrix(const FlagGrid& flags, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak, const MACGrid* fractions = 0) {
 	if (!flags.isFluid(i,j,k))
 		return;
 	

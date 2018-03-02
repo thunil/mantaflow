@@ -34,7 +34,7 @@ inline void calcGridSizeFactorMod(Vec3i s1, Vec3i s2, Vec3i optSize, Vec3 scale,
 	retOff       = -retOff * sourceFactor + sourceFactor*0.5;
 }
 
-PYTHON() void interpolateGrid( Grid<Real>& target, Grid<Real>& source , Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), Vec3i size=Vec3i(-1,-1,-1) , int orderSpace=1 )
+PYTHON() void interpolateGrid( Grid<Real>& target, const Grid<Real>& source , Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), Vec3i size=Vec3i(-1,-1,-1) , int orderSpace=1 )
 {
 	Vec3 sourceFactor(1.), off2 = offset;
 	calcGridSizeFactorMod(source.getSize(), target.getSize(), size, scale, sourceFactor, off2);
@@ -48,7 +48,7 @@ PYTHON() void interpolateGrid( Grid<Real>& target, Grid<Real>& source , Vec3 sca
 	knInterpolateGridTempl<Real>(target, source, sourceFactor, off2, orderSpace);
 }
 
-PYTHON() void interpolateGridVec3( Grid<Vec3>& target, Grid<Vec3>& source , Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), Vec3i size=Vec3i(-1,-1,-1) , int orderSpace=1 )
+PYTHON() void interpolateGridVec3( Grid<Vec3>& target, const Grid<Vec3>& source , Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), Vec3i size=Vec3i(-1,-1,-1) , int orderSpace=1 )
 {
 	Vec3 sourceFactor(1.), off2 = offset;
 	calcGridSizeFactorMod(source.getSize(), target.getSize(), size, scale, sourceFactor, off2);
@@ -58,7 +58,7 @@ PYTHON() void interpolateGridVec3( Grid<Vec3>& target, Grid<Vec3>& source , Vec3
 
 //!interpolate a mac velocity grid from one size to another size
 KERNEL() 
-void KnInterpolateMACGrid(MACGrid& target, MACGrid& source, const Vec3& sourceFactor, const Vec3& off, int orderSpace)
+void KnInterpolateMACGrid(MACGrid& target, const MACGrid& source, const Vec3& sourceFactor, const Vec3& off, int orderSpace)
 {
 	Vec3 pos = Vec3(i,j,k) * sourceFactor + off;
 
@@ -70,7 +70,7 @@ void KnInterpolateMACGrid(MACGrid& target, MACGrid& source, const Vec3& sourceFa
 	target(i,j,k) = Vec3(vx,vy,vz);
 }
 
-PYTHON() void interpolateMACGrid(MACGrid& target, MACGrid& source, Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), Vec3i size=Vec3i(-1,-1,-1) , int orderSpace=1)
+PYTHON() void interpolateMACGrid(MACGrid& target, const MACGrid& source, Vec3 scale=Vec3(1.), Vec3 offset=Vec3(0.), Vec3i size=Vec3i(-1,-1,-1) , int orderSpace=1)
 {
 	Vec3 sourceFactor(1.), off2 = offset;
 	calcGridSizeFactorMod(source.getSize(), target.getSize(), size, scale, sourceFactor, off2);
@@ -83,16 +83,16 @@ PYTHON() void interpolateMACGrid(MACGrid& target, MACGrid& source, Vec3 scale=Ve
 
 //! Apply vector noise to grid, this is a simplified version - no position scaling or UVs
 KERNEL() 
-void knApplySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
-					  Real scale, Grid<Real>* weight ) 
+void knApplySimpleNoiseVec3(const FlagGrid& flags, Grid<Vec3>& target, const WaveletNoiseField& noise,
+                                          Real scale, const Grid<Real>* weight )
 {
 	if ( !flags.isFluid(i,j,k) ) return; 
 	Real factor = 1;
 	if(weight) factor = (*weight)(i,j,k);
 	target(i,j,k) += noise.evaluateCurl( Vec3(i,j,k)+Vec3(0.5) ) * scale * factor;
 }
-PYTHON() void applySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
-							Real scale=1.0 , Grid<Real>* weight=NULL )
+PYTHON() void applySimpleNoiseVec3(const FlagGrid& flags, Grid<Vec3>& target, const WaveletNoiseField& noise,
+                                                        Real scale=1.0 , const Grid<Real>* weight=NULL )
 {
 	// note - passing a MAC grid here is slightly inaccurate, we should evaluate each component separately
 	knApplySimpleNoiseVec3(flags, target, noise, scale , weight );
@@ -101,16 +101,16 @@ PYTHON() void applySimpleNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletN
 
 //! Simple noise for a real grid , follows applySimpleNoiseVec3
 KERNEL() 
-void knApplySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseField& noise, 
-					  Real scale, Grid<Real>* weight ) 
+void knApplySimpleNoiseReal(const FlagGrid& flags, Grid<Real>& target, const WaveletNoiseField& noise,
+                                          Real scale, const Grid<Real>* weight )
 {
 	if ( !flags.isFluid(i,j,k) ) return; 
 	Real factor = 1;
 	if(weight) factor = (*weight)(i,j,k);
 	target(i,j,k) += noise.evaluate( Vec3(i,j,k)+Vec3(0.5) ) * scale * factor;
 }
-PYTHON() void applySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletNoiseField& noise, 
-							Real scale=1.0 , Grid<Real>* weight=NULL )
+PYTHON() void applySimpleNoiseReal(const FlagGrid& flags, Grid<Real>& target, const WaveletNoiseField& noise,
+                                                        Real scale=1.0 , const Grid<Real>* weight=NULL )
 {
 	knApplySimpleNoiseReal(flags, target, noise, scale , weight );
 }
@@ -121,8 +121,8 @@ PYTHON() void applySimpleNoiseReal(FlagGrid& flags, Grid<Real>& target, WaveletN
 //! This is the version with more functionality - supports uv grids, and on-the-fly interpolation
 //! of input grids.
 KERNEL() 
-void knApplyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
-					  Real scale, Real scaleSpatial, Grid<Real>* weight, Grid<Vec3>* uv, bool uvInterpol, const Vec3& sourceFactor ) 
+void knApplyNoiseVec3(const FlagGrid& flags, Grid<Vec3>& target, const WaveletNoiseField& noise,
+                                          Real scale, Real scaleSpatial, const Grid<Real>* weight, const Grid<Vec3>* uv, bool uvInterpol, const Vec3& sourceFactor )
 {
 	if ( !flags.isFluid(i,j,k) ) return;
 
@@ -153,8 +153,8 @@ void knApplyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& no
 	//noiseVec3=pos; // debug , show interpolated positions
 	target(i,j,k) += noiseVec3;
 } 
-PYTHON() void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseField& noise, 
-							Real scale=1.0 , Real scaleSpatial=1.0 , Grid<Real>* weight=NULL , Grid<Vec3>* uv=NULL )
+PYTHON() void applyNoiseVec3(const FlagGrid& flags, Grid<Vec3>& target, const WaveletNoiseField& noise,
+                                                        Real scale=1.0 , Real scaleSpatial=1.0 , const Grid<Real>* weight=NULL , const Grid<Vec3>* uv=NULL )
 {
 	// check whether the uv grid has a different resolution
 	bool uvInterpol = false; 
@@ -178,7 +178,7 @@ PYTHON() void applyNoiseVec3(FlagGrid& flags, Grid<Vec3>& target, WaveletNoiseFi
 
 //! Compute energy of a staggered velocity field (at cell center)
 KERNEL() 
-void KnApplyComputeEnergy( FlagGrid& flags, MACGrid& vel, Grid<Real>& energy ) 
+void KnApplyComputeEnergy( const FlagGrid& flags, const MACGrid& vel, Grid<Real>& energy )
 {
 	Real e = 0.f;
 	if ( flags.isFluid(i,j,k) ) {
@@ -188,7 +188,7 @@ void KnApplyComputeEnergy( FlagGrid& flags, MACGrid& vel, Grid<Real>& energy )
 	energy(i,j,k) = e;
 }
 
-PYTHON() void computeEnergy( FlagGrid& flags, MACGrid& vel, Grid<Real>& energy )
+PYTHON() void computeEnergy( const FlagGrid& flags, const MACGrid& vel, Grid<Real>& energy )
 {
 	KnApplyComputeEnergy( flags, vel, energy );
 }
@@ -201,7 +201,7 @@ PYTHON() void computeWaveletCoeffs(Grid<Real>& input)
 }
 
 // note - alomst the same as for vorticity confinement
-PYTHON() void computeVorticity(MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* norm=NULL) {
+PYTHON() void computeVorticity(const MACGrid& vel, Grid<Vec3>& vorticity, Grid<Real>* norm=NULL) {
 	Grid<Vec3> velCenter(vel.getParent());
 	GetCentered(velCenter, vel);
 	CurlOp(velCenter, vorticity);
@@ -229,7 +229,7 @@ void KnComputeStrainRateMag(const MACGrid& vel, const Grid<Vec3>& velCenter, Gri
 		2.0*square(S12) + 2.0*square(S13) + 2.0*square(S23);
 	prod(i,j,k) = S2;
 }
-PYTHON() void computeStrainRateMag(MACGrid& vel, Grid<Real>& mag) {
+PYTHON() void computeStrainRateMag(const MACGrid& vel, Grid<Real>& mag) {
 	Grid<Vec3> velCenter(vel.getParent());
 	GetCentered(velCenter, vel);
 	KnComputeStrainRateMag(vel, velCenter, mag);
@@ -239,7 +239,7 @@ PYTHON() void computeStrainRateMag(MACGrid& vel, Grid<Real>& mag) {
 // extrapolate a real grid into a flagged region (based on initial flags)
 // by default extrapolates from fluid to obstacle cells
 template<class T> 
-void extrapolSimpleFlagsHelper (FlagGrid& flags, Grid<T>& val, int distance = 4, 
+void extrapolSimpleFlagsHelper (const FlagGrid& flags, Grid<T>& val, int distance = 4,
 									int flagFrom=FlagGrid::TypeFluid, int flagTo=FlagGrid::TypeObstacle ) 
 {
 	Grid<int> tmp( flags.getParent() );
@@ -290,7 +290,7 @@ void extrapolSimpleFlagsHelper (FlagGrid& flags, Grid<T>& val, int distance = 4,
 
 	} // distance 
 }
-PYTHON() void extrapolateSimpleFlags (FlagGrid& flags, GridBase* val, int distance = 4, 
+PYTHON() void extrapolateSimpleFlags (const FlagGrid& flags, GridBase* val, int distance = 4,
 									int flagFrom=FlagGrid::TypeFluid, int flagTo=FlagGrid::TypeObstacle ) 
 {
 	if (val->getType() & GridBase::TypeReal) {
@@ -307,7 +307,7 @@ PYTHON() void extrapolateSimpleFlags (FlagGrid& flags, GridBase* val, int distan
 }
 
 //! convert vel to a centered grid, then compute its curl
-PYTHON() void getCurl(MACGrid& vel, Grid<Real>& vort, int comp) {
+PYTHON() void getCurl(const MACGrid& vel, Grid<Real>& vort, int comp) {
 	Grid<Vec3> velCenter(vel.getParent()), curl(vel.getParent());
 	
 	GetCentered(velCenter, vel);

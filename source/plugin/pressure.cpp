@@ -30,8 +30,8 @@ inline static Real surfTensHelper(const IndexInt idx, const int offset, const Gr
 
 //! Kernel: Construct the right-hand side of the poisson equation
 KERNEL(bnd=1, reduce=+) returns(int cnt=0) returns(double sum=0)
-void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, 
-			  Grid<Real>* perCellCorr, MACGrid* fractions,
+void MakeRhs (const FlagGrid& flags, Grid<Real>& rhs, const MACGrid& vel,
+                          const Grid<Real>* perCellCorr, const MACGrid* fractions,
 			  // note - all of the following are necessary for surface tension
               const Grid<Real> *phi, const Grid<Real> *curv, const Real surfTens, const Real gfClamp)
 {
@@ -80,7 +80,7 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 
 //! Kernel: make velocity divergence free by subtracting pressure gradient
 KERNEL(bnd = 1)
-void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
+void CorrectVelocity(const FlagGrid& flags, MACGrid& vel, const Grid<Real>& pressure)
 {
 	IndexInt idx = flags.index(i,j,k);
 	if (flags.isFluid(idx))
@@ -199,7 +199,7 @@ inline static Real ghostFluidWasClamped(IndexInt idx, int offset, const Grid<Rea
 }
 
 KERNEL(bnd=1)
-void ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags, 
+void ReplaceClampedGhostFluidVels(MACGrid &vel, const FlagGrid &flags,
 		const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp )
 {
 	const IndexInt idx = flags.index(i,j,k);
@@ -225,7 +225,7 @@ void ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags,
 
 //! Kernel: Compute min value of Real grid
 KERNEL(idx, reduce=+) returns(int numEmpty=0)
-int CountEmptyCells(FlagGrid& flags) {
+int CountEmptyCells(const FlagGrid& flags) {
 	if (flags.isEmpty(idx) ) numEmpty++;
 }
 
@@ -288,10 +288,10 @@ PYTHON() void releaseMG(FluidSolver* solver=nullptr) {
 //! curv: curvature for surface tension effects
 //! surfTens: surface tension coefficient
 //! retRhs: return RHS divergence, e.g., for debugging; optional
-PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgAccuracy = 1e-3,
-    Grid<Real>* phi = 0, 
-    Grid<Real>* perCellCorr = 0, 
-    MACGrid* fractions = 0,
+PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, const FlagGrid& flags, Real cgAccuracy = 1e-3,
+    const Grid<Real>* phi = 0,
+    const Grid<Real>* perCellCorr = 0,
+    const MACGrid* fractions = 0,
     Real gfClamp = 1e-04,
     Real cgMaxIterFac = 1.5,
     bool precondition = true, // Deprecated, use preconditioner instead
