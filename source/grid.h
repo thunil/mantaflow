@@ -194,8 +194,8 @@ public:
 	//! get data pointer of grid
 	PYTHON() std::string getDataPointer();
 	
-	//! debugging helper, print grid from python
-	PYTHON() void printGrid(int zSlice=-1,  bool printIndex=false); 
+	//! debugging helper, print grid from python. skip boundary of width bnd
+	PYTHON() void printGrid(int zSlice=-1,  bool printIndex=false, int bnd=1); 
 
 	// c++ only operators
 	template<class S> Grid<T>& operator+=(const Grid<S>& a);

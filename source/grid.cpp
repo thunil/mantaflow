@@ -413,13 +413,12 @@ PYTHON() void copyRealToVec3 (Grid<Real> &sourceX, Grid<Real> &sourceY, Grid<Rea
 }
 PYTHON() void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertLevelsetToReal... use copyLevelsetToReal instead",1); copyLevelsetToReal(source,target); }
 
-template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
+template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex, int bnd) {
 	std::ostringstream out;
 	out << std::endl;
-	const int bnd = 1;
 	FOR_IJK_BND(*this,bnd) {
 		IndexInt idx = (*this).index(i,j,k);
-		if(zSlice>=0 && k==zSlice) { 
+		if((zSlice>=0 && k==zSlice) || (zSlice<0)) { 
 			out << " ";
 			if(printIndex &&  this->is3D()) out << "  "<<i<<","<<j<<","<<k <<":";
 			if(printIndex && !this->is3D()) out << "  "<<i<<","<<j<<":";
