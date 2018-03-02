@@ -43,7 +43,7 @@ template<> inline GridBase::GridType typeList<Vec3>()  { return GridBase::TypeVe
 
 template<class T>
 Grid<T>::Grid(FluidSolver* parent, bool show)
-	: GridBase(parent)
+        : GridBase(parent), externalData(false)
 {
 	mType = typeList<T>();
 	mSize = parent->getGridSize();
@@ -53,6 +53,19 @@ Grid<T>::Grid(FluidSolver* parent, bool show)
 	mDx = 1.0 / mSize.max();
 	clear();
 	setHidden(!show);
+}
+
+template<class T>
+Grid<T>::Grid(FluidSolver* parent, T* data, bool show)
+        : GridBase(parent), mData(data), externalData(true)
+{
+        mType = typeList<T>();
+        mSize = parent->getGridSize();
+
+        mStrideZ = parent->is2D() ? 0 : (mSize.x * mSize.y);
+        mDx = 1.0 / mSize.max();
+
+        setHidden(!show);
 }
 
 template<class T>
@@ -68,7 +81,9 @@ Grid<T>::Grid(const Grid<T>& a) : GridBase(a.getParent()) {
 
 template<class T>
 Grid<T>::~Grid() {
-	mParent->freeGridPointer<T>(mData);
+    if(!externalData)  {
+        mParent->freeGridPointer<T>(mData);
+    }
 }
 
 template<class T>
@@ -81,9 +96,13 @@ void Grid<T>::swap(Grid<T>& other) {
 	if (other.getSizeX() != getSizeX() || other.getSizeY() != getSizeY() || other.getSizeZ() != getSizeZ())
 		errMsg("Grid::swap(): Grid dimensions mismatch.");
 	
+        if(externalData || other.externalData)
+            errMsg("Grid::swap(): Cannot swap if one grid stores externalData.");
+
 	T* dswap = other.mData;
 	other.mData = mData;
 	mData = dswap;
+
 }
 
 template<class T>

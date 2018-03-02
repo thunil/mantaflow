@@ -94,6 +94,8 @@ class Grid : public GridBase {
 public:
 	//! init new grid, values are set to zero
 	PYTHON() Grid(FluidSolver* parent, bool show = true);
+	//! init new grid with an existing array
+	Grid(FluidSolver* parent, T* data, bool show = true);
 	//! create new & copy content from another grid
 	Grid(const Grid<T>& a);
 	//! return memory to solver
@@ -215,6 +217,7 @@ public:
 
 protected:
 	T* mData;
+	bool externalData;		// True if mData is managed outside of the Fluidsolver
 };
 
 // Python doesn't know about templates: explicit aliases needed
@@ -226,6 +229,8 @@ PYTHON() alias Grid<Vec3> VecGrid;
 PYTHON() class MACGrid : public Grid<Vec3> {
 public:
 	PYTHON() MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { 
+		mType = (GridType)(TypeMAC | TypeVec3); }
+        MACGrid(FluidSolver* parent, Vec3* data, bool show=true) : Grid<Vec3>(parent, data, show) { 
 		mType = (GridType)(TypeMAC | TypeVec3); }
 	
 	// specialized functions for interpolating MAC information
@@ -264,7 +269,9 @@ PYTHON() class FlagGrid : public Grid<int> {
 public:
 	PYTHON() FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show) { 
 		mType = (GridType)(TypeFlags | TypeInt); }
-	
+	FlagGrid(FluidSolver* parent, int* data, int dim = 3, bool show=true) : Grid<int>(parent, data, show) { 
+            mType = (GridType)(TypeFlags | TypeInt); }	
+
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
 	enum CellType { 
 		TypeNone     = 0,
