@@ -69,7 +69,8 @@ Grid<T>::Grid(FluidSolver* parent, T* data, bool show)
 }
 
 template<class T>
-Grid<T>::Grid(const Grid<T>& a) : GridBase(a.getParent()) {
+Grid<T>::Grid(const Grid<T>& a)
+        : GridBase(a.getParent()), externalData(false) {
 	mSize = a.mSize;
 	mType = a.mType;
 	mStrideZ = a.mStrideZ;
