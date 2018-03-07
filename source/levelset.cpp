@@ -93,6 +93,12 @@ LevelsetGrid::LevelsetGrid(FluidSolver* parent, bool show)
 	mType = (GridType)(TypeLevelset | TypeReal);    
 }    
 
+LevelsetGrid::LevelsetGrid(FluidSolver* parent, Real* data, bool show)
+        : Grid<Real>(parent, data, show)
+{
+        mType = (GridType)(TypeLevelset | TypeReal);
+}
+
 Real LevelsetGrid::invalidTimeValue() {
 	return FastMarch<FmHeapEntryOut, 1>::InvalidTime();
 }
