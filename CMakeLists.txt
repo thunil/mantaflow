@@ -372,6 +372,7 @@ endif()
 
 IF(OPENVDB)
 	add_definitions(-DOPENVDB=1)
+	message("Note - mantaflow assumes OpenVDB is installed in '<manta-dir>/openVDB'. For windows you can find an example zip package on the mantaflow homepage under downloads.")
 
 	find_package(OPENVDB REQUIRED)
 	find_package(Boost)

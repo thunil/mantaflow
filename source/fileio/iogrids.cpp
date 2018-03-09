@@ -801,10 +801,10 @@ void writeGridVDB(const string& name, Grid<Vec3>* grid) {
 	debMsg("Writing real grid " << grid->getName() << " to vdb file " << name, 1);
 
 	openvdb::initialize(); 
-	openvdb::FloatGrid::Ptr gridVDB = openvdb::Vec3SGrid::create();
+	openvdb::Vec3SGrid::Ptr gridVDB = openvdb::Vec3SGrid::create();
 	// note , warning - velocity content currently not scaled...
 	gridVDB->setTransform( openvdb::math::Transform::createLinearTransform( 1./grid->getSizeX() )); //voxel size 
-	openvdb::FloatGrid::Accessor accessor = gridVDB->getAccessor();
+	openvdb::Vec3SGrid::Accessor accessor = gridVDB->getAccessor();
 
 	// MAC or regular vec grid?
 	if(grid->getType() & GridBase::TypeMAC) gridVDB->setGridClass(openvdb::GRID_STAGGERED);
