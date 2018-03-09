@@ -118,6 +118,34 @@ if len( os.getenv('MANTA_GNUPLOT', "") )>0:
 	print("Using gnuplot at %s" % gnuplotExe);
 
 # ready to go...
+currdate = os.popen("date \"+%y%m%d%H%M\"").read() 
+currdate = str(currdate)[:-1]
+
+# in visual mode, also track runtimes
+visModeTrashDir = basedir+"/trash"
+outpngdir       = basedir+"/result_%s"%(currdate)
+if getVisualSetting():
+	dirname = basedir+"/runtimes"
+	if not os.path.exists( dirname ):
+		os.makedirs( dirname )	
+	# make sure no previous files are left
+	if not os.path.exists( visModeTrashDir ):
+		os.makedirs( visModeTrashDir )	
+	os.popen( "mv -f ./test_*.ppm %s"%(visModeTrashDir) )
+
+	if not os.path.exists( outpngdir ):
+		os.makedirs( outpngdir )	
+	print("Note - running in visual test mode...");
+
+# limit the runs for debugging
+visModeDebugCount = 0
+
+files = os.popen("ls "+basedir+"/"+str(filePrefix)+"????_*.py").read() 
+#print "Debug - using test scene files: "+files
+
+
+# ready to go...
+
 num = 0
 numOks = 0
 numFail = 0
@@ -139,6 +167,8 @@ for file in files:
 		result = os.popen('"'+ manta + '" '+ file).read() 
 	elif platform == 2:
 		result = os.popen('"'+ manta + '" '+ file + " 2>&1 ").read() 
+
+	(utime2, stime2, cutime2, cstime2, elapsed_time2) = os.times() 
 
 	(utime2, stime2, cutime2, cstime2, elapsed_time2) = os.times() 
 

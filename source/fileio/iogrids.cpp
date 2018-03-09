@@ -14,20 +14,22 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
+#include <cstring>
+
 #if NO_ZLIB!=1
 extern "C" { 
 #include <zlib.h>
 }
 #endif
 
-#include "fileio.h"
+#if OPENVDB==1
+#include "openvdb/openvdb.h"
+#endif
+
+#include "fileio/io.h"
 #include "grid.h"
-#include "mesh.h"
-#include "vortexsheet.h"
-#include "particle.h"
 #include "vector4d.h"
 #include "grid4d.h"
-#include  <cstring>
 
 using namespace std;
 
@@ -47,254 +49,6 @@ typedef struct {
 
 // note: header v4 only uses 4 bytes of the info string to store the fourth dimension, not needed for pdata
 
-//! pdata uni header, v3  (similar to grid header)
-typedef struct {
-	int dim; // number of partilces
-	int dimX, dimY, dimZ; // underlying solver resolution (all data in local coordinates!)
-	int elementType, bytesPerElement; // type id and byte size
-	char info[STR_LEN_PDATA]; // mantaflow build information
-	unsigned long long timestamp; // creation time
-} UniPartHeader;
-
-//*****************************************************************************
-// mesh data
-//*****************************************************************************
-
-void readBobjFile(const string& name, Mesh* mesh, bool append) {
-	debMsg( "reading mesh file " << name ,1);
-	if (!append)
-		mesh->clear();
-	else
-		errMsg("readBobj: append not yet implemented!");
-
-#	if NO_ZLIB!=1
-	const Real dx = mesh->getParent()->getDx();
-	const Vec3 gs = toVec3( mesh->getParent()->getGridSize() );
-
-	gzFile gzf = gzopen(name.c_str(), "rb1"); // do some compression
-	if (!gzf)
-		errMsg("readBobj: unable to open file");
-	
-	// read vertices
-	int num = 0;
-	gzread(gzf, &num, sizeof(int));
-	mesh->resizeNodes(num);
-	debMsg( "read mesh , verts "<<num,1);
-	for (int i=0; i<num; i++) {
-		Vector3D<float> pos;
-		gzread(gzf, &pos.value[0], sizeof(float)*3);
-	   	mesh->nodes(i).pos = toVec3(pos);
-
-		// convert to grid space
-		mesh->nodes(i).pos /= dx;
-		mesh->nodes(i).pos += gs*0.5;
-	}
-	
-	// normals
-	num = 0;
-	gzread(gzf, &num, sizeof(int));
-	for (int i=0; i<num; i++) {
-		Vector3D<float> pos;
-		gzread(gzf, &pos.value[0], sizeof(float)*3);
-	   	mesh->nodes(i).normal = toVec3(pos);
-	}
-	
-	// read tris
-	num = 0;
-	gzread(gzf, &num, sizeof(int));
-	mesh->resizeTris( num );
-	for(int t=0; t<num; t++) {
-		for(int j=0; j<3; j++) { 
-			int trip = 0;
-			gzread(gzf, &trip, sizeof(int)); 
-			mesh->tris(t).c[j] = trip;
-		}
-	} 
-	// note - vortex sheet info ignored for now... (see writeBobj)
-	gzclose( gzf );    
-	debMsg( "read mesh , triangles "<<mesh->numTris()<<", vertices "<<mesh->numNodes()<<" ",1 );
-#	else
-	debMsg( "file format not supported without zlib" ,1);
-#	endif
-}
-
-void writeBobjFile(const string& name, Mesh* mesh) {
-	debMsg( "writing mesh file " << name ,1);
-#	if NO_ZLIB!=1
-	const Real  dx = mesh->getParent()->getDx();
-	const Vec3i gs = mesh->getParent()->getGridSize();
-	
-	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-	if (!gzf)
-		errMsg("writeBobj: unable to open file");
-	
-	// write vertices
-	int numVerts = mesh->numNodes();
-	gzwrite(gzf, &numVerts, sizeof(int));
-	for (int i=0; i<numVerts; i++) {
-		Vector3D<float> pos = toVec3f(mesh->nodes(i).pos);
-		// normalize to unit cube around 0
-		pos -= toVec3f(gs)*0.5;
-		pos *= dx;
-		gzwrite(gzf, &pos.value[0], sizeof(float)*3);
-	}
-	
-	// normals
-	mesh->computeVertexNormals();
-	gzwrite(gzf, &numVerts, sizeof(int));
-	for (int i=0; i<numVerts; i++) {
-		Vector3D<float> pos = toVec3f(mesh->nodes(i).normal);
-		gzwrite(gzf, &pos.value[0], sizeof(float)*3);
-	}
-	
-	// write tris
-	int numTris = mesh->numTris();
-	gzwrite(gzf, &numTris, sizeof(int));
-	for(int t=0; t<numTris; t++) {
-		for(int j=0; j<3; j++) { 
-			int trip = mesh->tris(t).c[j];
-			gzwrite(gzf, &trip, sizeof(int)); 
-		}
-	}
-	
-	// per vertex smoke densities
-	if (mesh->getType() == Mesh::TypeVortexSheet) {
-		VortexSheetMesh* vmesh = (VortexSheetMesh*) mesh;
-		int densId[4] = {0, 'v','d','e'};
-		gzwrite(gzf, &densId[0], sizeof(int) * 4); 
-
-		// compute densities
-		vector<float> triDensity(numTris);
-		for (int tri=0; tri < numTris; tri++) {
-			Real area = vmesh->getFaceArea(tri);
-			if (area>0)
-				triDensity[tri] = vmesh->sheet(tri).smokeAmount;
-		}
-		
-		// project triangle data to vertex
-		vector<int> triPerVertex(numVerts);
-		vector<float> density(numVerts);
-		for (int tri=0; tri < numTris; tri++) {
-			for (int c=0; c<3; c++) {
-				int vertex = mesh->tris(tri).c[c];
-				density[vertex] += triDensity[tri];
-				triPerVertex[vertex]++;
-			}
-		}
-		
-		// averaged smoke densities
-		for(int point=0; point<numVerts; point++) {
-			float dens = 0;
-			if (triPerVertex[point]>0)
-				dens = density[point] / triPerVertex[point];
-			gzwrite(gzf, &dens, sizeof(float));             
-		}
-	}
-	
-	// vertex flags
-	if (mesh->getType() == Mesh::TypeVortexSheet) {
-		int Id[4] = {0, 'v','x','f'};
-		gzwrite(gzf, &Id[0], sizeof(int) * 4); 
-
-		// averaged smoke densities
-		for(int point=0; point<numVerts; point++) {
-			float alpha = (mesh->nodes(point).flags & Mesh::NfMarked) ? 1: 0;
-			gzwrite(gzf, &alpha, sizeof(float));             
-		}
-	}
-
-	gzclose( gzf );    
-#	else
-	debMsg( "file format not supported without zlib" ,1);
-#	endif
-}
-
-void readObjFile(const std::string& name, Mesh* mesh, bool append) {
-	ifstream ifs (name.c_str());
-	
-	if (!ifs.good())
-		errMsg("can't open file '" + name + "'");
-	
-	if (!append)
-		mesh->clear();
-	int nodebase = mesh->numNodes();
-	while(ifs.good() && !ifs.eof()) {
-		string id;
-		ifs >> id;
-		
-		if (id[0] == '#') {
-			// comment
-			getline(ifs, id);
-			continue;
-		}
-		if (id == "vt") {
-			// tex coord, ignore            
-		} else if (id == "vn") {
-			// normals, ignore            
-		} else if (id == "v") {
-			// vertex
-			Node n;
-			ifs >> n.pos.x >> n.pos.y >> n.pos.z;
-			mesh->addNode(n);
-		} else if (id == "g") {
-			// group
-			string group;
-			ifs >> group;
-		} else if (id == "f") {
-			// face
-			string face;
-			Triangle t;
-			for (int i=0; i<3; i++) {
-				ifs >> face;
-				if (face.find('/') != string::npos)
-					face = face.substr(0, face.find('/')); // ignore other indices
-				int idx = atoi(face.c_str()) - 1;
-				if (idx < 0)
-					errMsg("invalid face encountered");
-				idx += nodebase;
-				t.c[i] = idx;
-			}
-			mesh->addTri(t);
-		} else {
-			// whatever, ignore
-		}
-		// kill rest of line
-		getline(ifs, id);   
-	}
-	ifs.close();    
-}
-
-// write regular .obj file, in line with bobj.gz output (but only verts & tris for now)
-void writeObjFile(const string& name, Mesh* mesh) {
-	const Real  dx = mesh->getParent()->getDx();
-	const Vec3i gs = mesh->getParent()->getGridSize();
-
-	ofstream ofs(name.c_str());
-	if (!ofs.good())
-		errMsg("writeObjFile: can't open file " << name);
-
-	ofs << "o MantaMesh\n";
-	
-	// write vertices
-	int numVerts = mesh->numNodes();
-	for (int i=0; i<numVerts; i++) {
-		Vector3D<float> pos = toVec3f(mesh->nodes(i).pos);
-		// normalize to unit cube around 0
-		pos -= toVec3f(gs)*0.5;
-		pos *= dx;
-		ofs << "v "<< pos.value[0] <<" "<< pos.value[1] <<" "<< pos.value[2] <<" "<< "\n";
-	}
-	
-	// no normals for now
-	
-	// write tris
-	int numTris = mesh->numTris();
-	for(int t=0; t<numTris; t++) {
-		ofs << "f "<< (mesh->tris(t).c[0]+1) <<" "<< (mesh->tris(t).c[1]+1) <<" "<< (mesh->tris(t).c[2]+1) <<" "<< "\n";
-	}
-
-	ofs.close();
-}
 
 //*****************************************************************************
 // conversion functions for double precision
@@ -373,37 +127,6 @@ void gridConvertWrite(gzFile& gzf, Grid4d<Vector4D<double> >& grid, void* ptr, U
 }
 
 template <class T>
-void pdataConvertWrite( gzFile& gzf, ParticleDataImpl<T>& pdata, void* ptr, UniPartHeader& head) {
-	errMsg("pdataConvertWrite: unknown type, not yet supported");
-}
-
-template <>
-void pdataConvertWrite( gzFile& gzf, ParticleDataImpl<int>& pdata, void* ptr, UniPartHeader& head) {
-	gzwrite(gzf, &head,     sizeof(UniPartHeader));
-	gzwrite(gzf, &pdata[0], sizeof(int)*head.dim);
-} 
-template <>
-void pdataConvertWrite( gzFile& gzf, ParticleDataImpl<double>& pdata, void* ptr, UniPartHeader& head) {
-	head.bytesPerElement = sizeof(float);
-	gzwrite(gzf, &head, sizeof(UniPartHeader));
-	float* ptrf = (float*)ptr;
-	for(int i=0; i<pdata.size(); ++i,++ptrf) {
-		*ptrf = (float)pdata[i];
-	} 
-	gzwrite(gzf, ptr, sizeof(float)* head.dim);
-} 
-template <>
-void pdataConvertWrite( gzFile& gzf, ParticleDataImpl<Vec3>& pdata, void* ptr, UniPartHeader& head) {
-	head.bytesPerElement = sizeof(Vector3D<float>);
-	gzwrite(gzf, &head, sizeof(UniPartHeader));
-	float* ptrf = (float*)ptr;
-	for(int i=0; i<pdata.size(); ++i) {
-		for(int c=0; c<3; ++c) { *ptrf = (float)pdata[i][c]; ptrf++; }
-	} 
-	gzwrite(gzf, ptr, sizeof(Vector3D<float>) *head.dim);
-}
-
-template <class T>
 void gridReadConvert(gzFile& gzf, Grid<T>& grid, void* ptr, int bytesPerElement) {
 	errMsg("gridReadConvert: unknown type, not yet supported");
 }
@@ -435,41 +158,6 @@ void gridReadConvert<Vec3>(gzFile& gzf, Grid<Vec3>& grid, void* ptr, int bytesPe
 		Vec3 v;
 		for(int c=0; c<3; ++c) { v[c] = double(*ptrf); ptrf++; }
 		grid[i] = v;
-	} 
-}
-
-template <class T>
-void pdataReadConvert(gzFile& gzf, ParticleDataImpl<T>& grid, void* ptr, int bytesPerElement) {
-	errMsg("pdataReadConvert: unknown pdata type, not yet supported");
-}
-
-template <>
-void pdataReadConvert<int>(gzFile& gzf, ParticleDataImpl<int>& pdata, void* ptr, int bytesPerElement) {
-	gzread(gzf, ptr, sizeof(int)*pdata.size());
-	assertMsg (bytesPerElement == sizeof(int), "pdata element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(int) );
-	// int dont change in double precision mode - copy over
-	memcpy(&(pdata[0]), ptr, sizeof(int) * pdata.size() );
-}
-
-template <>
-void pdataReadConvert<double>(gzFile& gzf, ParticleDataImpl<double>& pdata, void* ptr, int bytesPerElement) {
-	gzread(gzf, ptr, sizeof(float)*pdata.size());
-	assertMsg (bytesPerElement == sizeof(float), "pdata element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(float) );
-	float* ptrf = (float*)ptr;
-	for(int i=0; i<pdata.size(); ++i,++ptrf) {
-		pdata[i] = double(*ptrf); 
-	} 
-}
-
-template <>
-void pdataReadConvert<Vec3>(gzFile& gzf, ParticleDataImpl<Vec3>& pdata, void* ptr, int bytesPerElement) {
-	gzread(gzf, ptr, sizeof(Vector3D<float>)*pdata.size());
-	assertMsg (bytesPerElement == sizeof(Vector3D<float>), "pdata element size doesn't match "<< bytesPerElement <<" vs "<< sizeof(Vector3D<float>) );
-	float* ptrf = (float*)ptr;
-	for(int i=0; i<pdata.size(); ++i) {
-		Vec3 v;
-		for(int c=0; c<3; ++c) { v[c] = double(*ptrf); ptrf++; }
-		pdata[i] = v;
 	} 
 }
 
@@ -1065,162 +753,82 @@ void readGrid4dRaw(const string& name, Grid4d<T>* grid) {
 
 
 //*****************************************************************************
-// particles and particle data
-//*****************************************************************************
+// optional openvdb export
 
-static const int PartSysSize = sizeof(Vector3D<float>)+sizeof(int);
-
-void writeParticlesUni(const std::string& name, const BasicParticleSystem* parts ) {
-	debMsg( "writing particles " << parts->getName() << " to uni file " << name ,1);
-	
-#	if NO_ZLIB!=1
-	char ID[5] = "PB02";
-	UniPartHeader head;
-	head.dim      = parts->size();
-	Vec3i         gridSize = parts->getParent()->getGridSize();
-	head.dimX     = gridSize.x;
-	head.dimY     = gridSize.y;
-	head.dimZ     = gridSize.z;
-	head.bytesPerElement = PartSysSize;
-	head.elementType = 0; // 0 for base data
-	snprintf( head.info, STR_LEN_PDATA, "%s", buildInfoString().c_str() );	
-	MuTime stamp;
-	head.timestamp = stamp.time;
-	
-	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-	if (!gzf) errMsg("can't open file " << name);
-	
-	gzwrite(gzf, ID, 4);
-#	if FLOATINGPOINT_PRECISION!=1
-	// warning - hard coded conversion of byte size here...
-	gzwrite(gzf, &head, sizeof(UniPartHeader));
-	for(int i=0; i<parts->size(); ++i) {
-		Vector3D<float> pos  = toVec3f( (*parts)[i].pos );
-		int             flag = (*parts)[i].flag;
-		gzwrite(gzf, &pos , sizeof(Vector3D<float>) );
-		gzwrite(gzf, &flag, sizeof(int)             );
-	}
-#	else
-	assertMsg( sizeof(BasicParticleData) == PartSysSize, "particle data size doesn't match" );
-	gzwrite(gzf, &head, sizeof(UniPartHeader));
-	gzwrite(gzf, &((*parts)[0]), PartSysSize*head.dim);
-#	endif
-	gzclose(gzf);
-#	else
-	debMsg( "file format not supported without zlib" ,1);
-#	endif
-};
-
-void readParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
-	debMsg( "reading particles " << parts->getName() << " from uni file " << name ,1);
-	
-#	if NO_ZLIB!=1
-	gzFile gzf = gzopen(name.c_str(), "rb");
-	if (!gzf) errMsg("can't open file " << name);
-
-	char ID[5]={0,0,0,0,0};
-	gzread(gzf, ID, 4);
-	
-	if (!strcmp(ID, "PB01")) {
-		errMsg("particle uni file format v01 not supported anymore");
-	} else if (!strcmp(ID, "PB02")) {
-		// current file format
-		UniPartHeader head;
-		assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
-		assertMsg ( ((head.bytesPerElement == PartSysSize) && (head.elementType==0) ), "particle type doesn't match");
-
-		// re-allocate all data
-		parts->resizeAll( head.dim );
-
-		assertMsg (head.dim == parts->size() , "particle size doesn't match");
-#		if FLOATINGPOINT_PRECISION!=1
-		for(int i=0; i<parts->size(); ++i) {
-			Vector3D<float> pos; int flag;
-			gzread(gzf, &pos , sizeof(Vector3D<float>) );
-			gzread(gzf, &flag, sizeof(int)             );
-			(*parts)[i].pos  = toVec3d(pos);
-			(*parts)[i].flag = flag;
-		}
-#		else
-		assertMsg( sizeof(BasicParticleData) == PartSysSize, "particle data size doesn't match" );
-		IndexInt bytes     = PartSysSize*head.dim;
-		IndexInt readBytes = gzread(gzf, &(parts->getData()[0]), bytes);
-		assertMsg( bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
-#		endif
-
-		parts->transformPositions( Vec3i(head.dimX,head.dimY,head.dimZ), parts->getParent()->getGridSize() );
-	}
-	gzclose(gzf);
-#	else
-	debMsg( "file format not supported without zlib" ,1);
-#	endif
-};
+#if OPENVDB==1
 
 template <class T>
-void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
-	debMsg( "writing particle data " << pdata->getName() << " to uni file " << name ,1);
-	
-#	if NO_ZLIB!=1
-	char ID[5] = "PD01";
-	UniPartHeader head;
-	head.dim      = pdata->size();
-	head.bytesPerElement = sizeof(T);
-	head.elementType = 1; // 1 for particle data, todo - add sub types?
-	snprintf( head.info, STR_LEN_PDATA, "%s", buildInfoString().c_str() );	
-	MuTime stamp;
-	head.timestamp = stamp.time;
-	
-	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-	if (!gzf) errMsg("can't open file " << name);
-	gzwrite(gzf, ID, 4);
-
-#	if FLOATINGPOINT_PRECISION!=1
-	// always write float values, even if compiled with double precision (as for grids)
-	ParticleDataImpl<T> temp(pdata->getParent());
-	temp.resize( pdata->size() );
-	pdataConvertWrite( gzf, *pdata, &(temp[0]), head);
-#	else
-	gzwrite(gzf, &head, sizeof(UniPartHeader));
-	gzwrite(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
-#	endif
-	gzclose(gzf);
-
-#	else
-	debMsg( "file format not supported without zlib" ,1);
-#	endif
-};
-
-template <class T>
-void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
-	debMsg( "reading particle data " << pdata->getName() << " from uni file " << name ,1);
-	
-#	if NO_ZLIB!=1
-	gzFile gzf = gzopen(name.c_str(), "rb");
-	if (!gzf) errMsg("can't open file " << name );
-
-	char ID[5]={0,0,0,0,0};
-	gzread(gzf, ID, 4);
-	
-	if (!strcmp(ID, "PD01")) {
-		UniPartHeader head;
-		assertMsg (gzread(gzf, &head, sizeof(UniPartHeader)) == sizeof(UniPartHeader), "can't read file, no header present");
-		assertMsg (head.dim == pdata->size() , "pdata size doesn't match");
-#		if FLOATINGPOINT_PRECISION!=1
-		ParticleDataImpl<T> temp(pdata->getParent());
-		temp.resize( pdata->size() );
-		pdataReadConvert<T>(gzf, *pdata, &(temp[0]), head.bytesPerElement);
-#		else
-		assertMsg ( ((head.bytesPerElement == sizeof(T)) && (head.elementType==1) ), "pdata type doesn't match");
-		IndexInt bytes = sizeof(T)*head.dim;
-		IndexInt readBytes = gzread(gzf, &(pdata->get(0)), sizeof(T)*head.dim);
-		assertMsg(bytes==readBytes, "can't read uni file, stream length does not match, "<<bytes<<" vs "<<readBytes );
-#		endif
-	}
-	gzclose(gzf);
-#	else
-	debMsg( "file format not supported without zlib" ,1);
-#	endif
+void writeGridVDB(const string& name, Grid<T>* grid) { 
+	debMsg("Writing grid " << grid->getName() << " to vdb file " << name <<" not yet supported!", 1);
 }
+
+template <>
+void writeGridVDB(const string& name, Grid<Real>* grid) {
+	debMsg("Writing real grid " << grid->getName() << " to vdb file " << name, 1);
+
+	// Create an empty floating-point grid with background value 0.
+	openvdb::initialize();
+	openvdb::FloatGrid::Ptr gridVDB = openvdb::FloatGrid::create(); 
+	gridVDB->setTransform( openvdb::math::Transform::createLinearTransform( 1./grid->getSizeX() )); //voxel size
+
+	// Get an accessor for coordinate-based access to voxels.
+	openvdb::FloatGrid::Accessor accessor = gridVDB->getAccessor();
+
+	// Identify the grid as a level set.
+	gridVDB->setGridClass(openvdb::GRID_FOG_VOLUME);
+
+	// Name the grid "density".
+	gridVDB->setName( grid->getName() );
+
+	openvdb::io::File file(name);
+
+	FOR_IJK(*grid) { 
+		openvdb::Coord xyz(i, j, k);
+		accessor.setValue(xyz, (*grid)(i, j, k));	
+	}
+
+	// Add the grid pointer to a container.
+	openvdb::GridPtrVec gridsVDB;
+	gridsVDB.push_back(gridVDB);
+
+	// Write out the contents of the container.
+	file.write(gridsVDB);
+	file.close();
+};
+
+template <>
+void writeGridVDB(const string& name, Grid<Vec3>* grid) {
+	debMsg("Writing real grid " << grid->getName() << " to vdb file " << name, 1);
+
+	openvdb::initialize(); 
+	openvdb::Vec3SGrid::Ptr gridVDB = openvdb::Vec3SGrid::create();
+	// note , warning - velocity content currently not scaled...
+	gridVDB->setTransform( openvdb::math::Transform::createLinearTransform( 1./grid->getSizeX() )); //voxel size 
+	openvdb::Vec3SGrid::Accessor accessor = gridVDB->getAccessor();
+
+	// MAC or regular vec grid?
+	if(grid->getType() & GridBase::TypeMAC) gridVDB->setGridClass(openvdb::GRID_STAGGERED);
+	else gridVDB->setGridClass(openvdb::GRID_UNKNOWN);
+
+	gridVDB->setName( grid->getName() );
+
+	openvdb::io::File file(name);
+	FOR_IJK(*grid) { 
+		openvdb::Coord xyz(i, j, k);
+		Vec3 v = (*grid)(i, j, k);
+		openvdb::Vec3f vo( (float)v[0] , (float)v[1] , (float)v[2] );
+		accessor.setValue(xyz, vo);
+	}
+
+	openvdb::GridPtrVec gridsVDB;
+	gridsVDB.push_back(gridVDB);
+
+	file.write(gridsVDB);
+	file.close();
+};
+
+#endif // OPENVDB==1
+
 
 
 //*****************************************************************************
@@ -1253,24 +861,18 @@ template void writeGridUni<Real>(const string& name, Grid<Real>* grid);
 template void writeGridUni<Vec3>(const string& name, Grid<Vec3>* grid);
 template void writeGridVol<int> (const string& name, Grid<int>*  grid);
 template void writeGridVol<Vec3>(const string& name, Grid<Vec3>* grid);
-template void readGridVol<int> (const string& name, Grid<int>*  grid);
-template void readGridVol<Vec3>(const string& name, Grid<Vec3>* grid);
 template void writeGridTxt<int> (const string& name, Grid<int>*  grid);
 template void writeGridTxt<Real>(const string& name, Grid<Real>* grid);
 template void writeGridTxt<Vec3>(const string& name, Grid<Vec3>* grid);
+
 template void readGridRaw<int>  (const string& name, Grid<int>*  grid);
 template void readGridRaw<Real> (const string& name, Grid<Real>* grid);
 template void readGridRaw<Vec3> (const string& name, Grid<Vec3>* grid);
 template void readGridUni<int>  (const string& name, Grid<int>*  grid);
 template void readGridUni<Real> (const string& name, Grid<Real>* grid);
 template void readGridUni<Vec3> (const string& name, Grid<Vec3>* grid);
-
-template void writePdataUni<int> (const std::string& name, ParticleDataImpl<int>* pdata );
-template void writePdataUni<Real>(const std::string& name, ParticleDataImpl<Real>* pdata );
-template void writePdataUni<Vec3>(const std::string& name, ParticleDataImpl<Vec3>* pdata );
-template void readPdataUni<int>  (const std::string& name, ParticleDataImpl<int>* pdata );
-template void readPdataUni<Real> (const std::string& name, ParticleDataImpl<Real>* pdata );
-template void readPdataUni<Vec3> (const std::string& name, ParticleDataImpl<Vec3>* pdata );
+template void readGridVol<int>  (const string& name, Grid<int>*  grid);
+template void readGridVol<Vec3> (const string& name, Grid<Vec3>* grid);
 
 template void readGrid4dUni<int>  (const string& name, Grid4d<int>*  grid, int readTslice, Grid4d<int>*  slice, void** fileHandle);
 template void readGrid4dUni<Real> (const string& name, Grid4d<Real>* grid, int readTslice, Grid4d<Real>* slice, void** fileHandle);
@@ -1280,6 +882,7 @@ template void writeGrid4dUni<int> (const string& name, Grid4d<int>*  grid);
 template void writeGrid4dUni<Real>(const string& name, Grid4d<Real>* grid);
 template void writeGrid4dUni<Vec3>(const string& name, Grid4d<Vec3>* grid);
 template void writeGrid4dUni<Vec4>(const string& name, Grid4d<Vec4>* grid);
+
 template void readGrid4dRaw<int>  (const string& name, Grid4d<int>*  grid);
 template void readGrid4dRaw<Real> (const string& name, Grid4d<Real>* grid);
 template void readGrid4dRaw<Vec3> (const string& name, Grid4d<Vec3>* grid);
@@ -1289,5 +892,14 @@ template void writeGrid4dRaw<Real>(const string& name, Grid4d<Real>* grid);
 template void writeGrid4dRaw<Vec3>(const string& name, Grid4d<Vec3>* grid);
 template void writeGrid4dRaw<Vec4>(const string& name, Grid4d<Vec4>* grid);
 
+#if OPENVDB==1
+template void writeGridVDB<int>(const string& name, Grid<int>*  grid);
+template void writeGridVDB<Vec3>(const string& name, Grid<Vec3>* grid);
+template void writeGridVDB<Real>(const string& name, Grid<Real>* grid);
+#endif // OPENVDB==1
 
 } //namespace
+
+namespace Manta {
+
+}

@@ -36,6 +36,10 @@ template<class T> void writeGridUni(const std::string& name, Grid<T>* grid);
 template<class T> void writeGridVol(const std::string& name, Grid<T>* grid);
 template<class T> void writeGridTxt(const std::string& name, Grid<T>* grid);
 
+#if OPENVDB==1
+template<class T> void writeGridVDB(const std::string& name, Grid<T>* grid);
+#endif // OPENVDB==1
+
 template<class T> void readGridUni (const std::string& name, Grid<T>* grid);
 template<class T> void readGridRaw (const std::string& name, Grid<T>* grid);
 template<class T> void readGridVol (const std::string& name, Grid<T>* grid);

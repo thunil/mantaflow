@@ -27,21 +27,21 @@ namespace Manta
 //----------------------------------------------------------------------------------------------------
 
 template<typename T>
-void copyArrayToGridScalar(const PyArrayContainer _Source, T& _Target)
+void copyArrayToGridScalar(const PyArrayContainer source, T& target)
 {
-	_Target.setConst(0.0f);
-	unsigned int uGridSize = _Target.getSizeX() * _Target.getSizeY() * _Target.getSizeZ();
-	assertMsg(_Source.TotalSize == uGridSize, "The size of the numpy array doesn't match the size of the Grid!");
+	target.setConst(0.0f);
+	unsigned int uGridSize = target.getSizeX() * target.getSizeY() * target.getSizeZ();
+	assertMsg(source.TotalSize == uGridSize, "The size of the numpy array doesn't match the size of the Grid!");
 	
-	NumpyTypes eDataType  = _Source.DataType; 
+	NumpyTypes eDataType  = source.DataType; 
 
 	switch (eDataType)
 	{
 		case NumpyTypes::N_FLOAT:
-			FOR_IDX(_Target) { _Target(idx) = (reinterpret_cast<float*>(_Source.pData))[idx]; }
+			FOR_IDX(target) { target(idx) = (reinterpret_cast<float*>(source.pData))[idx]; }
 			break;
 		case NumpyTypes::N_DOUBLE:
-			FOR_IDX(_Target) { _Target(idx) = (reinterpret_cast<double*>(_Source.pData))[idx]; } 
+			FOR_IDX(target) { target(idx) = (reinterpret_cast<double*>(source.pData))[idx]; } 
 			break;
 		default:
 			errMsg("unknown/unsupported type of Numpy array");
@@ -50,76 +50,75 @@ void copyArrayToGridScalar(const PyArrayContainer _Source, T& _Target)
 }
 
 template<typename T>
-void copyGridToArrayScalar(const T& _Source, PyArrayContainer _Target)
+void copyGridToArrayScalar(const T& source, PyArrayContainer target)
 {
-	unsigned int uGridsize = _Source.getSizeX() * _Source.getSizeY() * _Source.getSizeZ();
-	assertMsg(_Target.TotalSize == uGridsize, "The size of the numpy array doesn't match the size of the grid!");
+	unsigned int uGridsize = source.getSizeX() * source.getSizeY() * source.getSizeZ();
+	assertMsg(target.TotalSize == uGridsize, "The size of the numpy array doesn't match the size of the grid!");
 	
-	NumpyTypes eDataType = _Target.DataType;
+	NumpyTypes eDataType = target.DataType;
 
 	switch (eDataType)
 	{
 		case NumpyTypes::N_FLOAT:
-			FOR_IDX(_Source) { reinterpret_cast<float*>(_Target.pData)[idx] = _Source(idx); }
+			FOR_IDX(source) { reinterpret_cast<float*>(target.pData)[idx] = source(idx); }
 			break;
 		case NumpyTypes::N_DOUBLE:
-			FOR_IDX(_Source) { reinterpret_cast<double*>(_Target.pData)[idx] = _Source(idx); }
+			FOR_IDX(source) { reinterpret_cast<double*>(target.pData)[idx] = source(idx); }
 			break;
 		default:
+			errMsg("unknown/unsupported type of Numpy array");
 			break;
 	}
 }
 
 template<typename T>
-void copyArrayToGridVector(const PyArrayContainer _Source, T& _Target)
+void copyArrayToGridVector(const PyArrayContainer source, T& target)
 {
-	unsigned int uSizeX = _Target.getSizeX();
-	unsigned int uSizeY = _Target.getSizeY();
-	unsigned int uSizeZ = _Target.getSizeZ();
+	unsigned int uSizeX = target.getSizeX();
+	unsigned int uSizeY = target.getSizeY();
+	unsigned int uSizeZ = target.getSizeZ();
 	unsigned int uSizeW = 3u;
 	
-	assertMsg(_Source.TotalSize == uSizeX * uSizeY * uSizeZ * uSizeW, "The size of the numpy array doesn't match the size of the grid!");
+	assertMsg(source.TotalSize == uSizeX * uSizeY * uSizeZ * uSizeW, "The size of the numpy array doesn't match the size of the grid!");
 	
-	NumpyTypes eDataType = _Source.DataType;
+	NumpyTypes eDataType = source.DataType;
 
 	switch (eDataType)
 	{
 		case NumpyTypes::N_FLOAT:
-			FOR_IJK(_Target) { for(int w = 0; w < 3; ++w) {
-				_Target(i,j,k).value[w] = reinterpret_cast<float*>(_Source.pData)[w + uSizeW * (k +  uSizeZ * (i + uSizeX * j))]; } }
+			FOR_IDX(target) { for(int w = 0; w < 3; ++w) { target(idx)[w] = (reinterpret_cast<float*>(source.pData))[idx*3+w]; } }
 			break;
 		case NumpyTypes::N_DOUBLE:
-			FOR_IJK(_Target) { for(int w = 0; w < 3; ++w) {
-				_Target(i,j,k).value[w] = reinterpret_cast<double*>(_Source.pData)[w + uSizeW * (k +  uSizeZ * (i + uSizeX * j))]; } }
+			FOR_IDX(target) { for(int w = 0; w < 3; ++w) { target(idx)[w] = (reinterpret_cast<double*>(source.pData))[idx*3+w]; } }
 			break;
 		default:
+			errMsg("unknown/unsupported type of Vec3 Numpy array");
 			break;
 	}
 }
 
 template<typename T>
-void copyGridToArrayVector(const T& _Source, PyArrayContainer _Target)
+void copyGridToArrayVector(const T& source, PyArrayContainer target)
 {
-	unsigned int uSizeX = _Source.getSizeX();
-	unsigned int uSizeY = _Source.getSizeY();
-	unsigned int uSizeZ = _Source.getSizeZ();
+	unsigned int uSizeX = source.getSizeX();
+	unsigned int uSizeY = source.getSizeY();
+	unsigned int uSizeZ = source.getSizeZ();
 	unsigned int uSizeW = 3u;
 
-	assertMsg(_Target.TotalSize == uSizeX * uSizeY * uSizeZ * uSizeW, "The size of the numpy array doesn't match the size of the grid!");
+	assertMsg(target.TotalSize == uSizeX * uSizeY * uSizeZ * uSizeW, "The size of the numpy array doesn't match the size of the grid!");
 	
-	NumpyTypes eDataType = _Target.DataType;
+	NumpyTypes eDataType = target.DataType;
 	
 	switch (eDataType)
 	{
 		case NumpyTypes::N_FLOAT:
-			FOR_IJK(_Source) { for(int w = 0; w < 3; ++w) {
-				reinterpret_cast<float*>(_Target.pData)[w + uSizeW * (k +  uSizeZ * (i + uSizeX * j))] = _Source(i,j,k).value[w]; } }
+			FOR_IDX(source) { for(int w = 0; w < 3; ++w) { (reinterpret_cast<float*>(target.pData))[idx*3+w] = source(idx)[w]; } }
 			break;
 		case NumpyTypes::N_DOUBLE:
-			FOR_IJK(_Source) { for(int w = 0; w < 3; ++w) {
-				reinterpret_cast<double*>(_Target.pData)[w + uSizeW * (k +  uSizeZ * (i + uSizeX * j))] = _Source(i,j,k).value[w]; } }
+			FOR_IDX(source) { for(int w = 0; w < 3; ++w) { (reinterpret_cast<double*>(target.pData))[idx*3+w] = source(idx)[w]; } }
 			break;
 		default:
+			errMsg("unknown/unsupported type of Vec3 Numpy array");
 			break;
 	}
 }
@@ -166,12 +165,12 @@ PYTHON() void copyGridToArrayMAC(const MACGrid& source, PyArrayContainer target)
 
 template<typename T>
 void numpyToParticleDataImpl(const PyArrayContainer source, ParticleDataImpl<T> &target) {
-	assertMsg(source.TotalSize == target.size(), "Sizes are different!");
+	assertMsg(source.TotalSize == target.size(), "The size of the numpy array doesn't match the size of the pdata field!");
 	std::copy(reinterpret_cast<const T*>(source.pData), reinterpret_cast<const T*>(source.pData)+source.TotalSize,  &(target[0]));
 }
 template<typename T>
 void particleDataImplToNumpy(const ParticleDataImpl<T> &source, PyArrayContainer target) {
-	assertMsg(target.TotalSize == source.size(), "Sizes are different!");
+	assertMsg(target.TotalSize == source.size(), "The size of the numpy array doesn't match the size of the pdata field!");
 	std::copy(&(source[0]), &(source[0])+target.TotalSize, reinterpret_cast<T*>(target.pData));
 }
 
@@ -192,11 +191,11 @@ PYTHON() void copyPdataToArrayReal(const ParticleDataImpl<Real> &source, PyArray
 }
 
 PYTHON() void copyArrayToPdataVec3(const PyArrayContainer source, ParticleDataImpl<Vec3> &target) {
-	assertMsg(source.TotalSize == target.size()*3, "Sizes are different!");
+	assertMsg(source.TotalSize == target.size()*3, "The size of the numpy array doesn't match the size of the pdata field!");
 	std::copy(reinterpret_cast<const Real*>(source.pData), reinterpret_cast<const Real*>(source.pData)+source.TotalSize,  &(target[0][0]));
 }
 PYTHON() void copyPdataToArrayVec3(const ParticleDataImpl<Vec3> &source, PyArrayContainer target) {
-	assertMsg(target.TotalSize == source.size()*3, "Sizes are different!");
+	assertMsg(target.TotalSize == source.size()*3, "The size of the numpy array doesn't match the size of the pdata field!");
 	std::copy(&(source[0][0]), &(source[0][0])+target.TotalSize, reinterpret_cast<Real*>(target.pData));
 }
 

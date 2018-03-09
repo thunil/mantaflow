@@ -64,6 +64,9 @@ OPTION(PYTHON_VERSION "Manually choose python version" OFF)
 # numpy / tensorflow integration
 OPTION(NUMPY "Compile with numpy integration?" OFF)
 
+# compile with openVDB support
+OPTION(OPENVDB "Exporting OpenVDB files" OFF)
+
 # further options for blender integration
 OPTION(BLENDER "Compile for Blender integration" OFF)
 
@@ -171,7 +174,9 @@ SET(PP_SOURCES
 	source/mesh.cpp
 	source/particle.cpp
 	source/movingobs.cpp
-	source/fileio.cpp
+	source/fileio/iogrids.cpp
+	source/fileio/iomeshes.cpp
+	source/fileio/ioparticles.cpp
 	source/noisefield.cpp
 	source/kernel.cpp
 	source/vortexsheet.cpp
@@ -215,7 +220,7 @@ SET(PP_HEADERS
 	source/kernel.h
 	source/timing.h
 	source/movingobs.h
-	source/fileio.h
+	source/fileio/io.h
 	source/edgecollapse.h
 	source/vortexpart.h
 	source/turbulencepart.h
@@ -312,18 +317,6 @@ if (NOPYTHON)
 	add_definitions( -DNOPYTHON=1 )
 endif()
 
-# compile with numpy support?
-if(NUMPY)
-	# if the python command below doesnt work, manually set path, e.g., use "numpy.get_include()" to find path 
-	# set(NUMPY_INCLUDE_DIR "${PYTHON_INCLUDE_DIRS}/dist-packages/numpy/core/include") 
-	execute_process(COMMAND python${PYTHON_FORCE_VERSION} -c "import numpy; print(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR) 
-	list(APPEND INCLUDE_PATHS ${NUMPY_INCLUDE_DIR}) 
-	list(APPEND   PP_SOURCES source/plugin/numpyconvert.cpp)
-	list(APPEND   PP_SOURCES source/plugin/tfplugins.cpp)
-	list(APPEND NOPP_SOURCES source/pwrapper/numpyWrap.cpp)
-	list(APPEND NOPP_HEADERS source/pwrapper/numpyWrap.h)
-	add_definitions( -DNUMPY=1 )
-endif()
 
 # Multithreading
 if(MT)
@@ -359,6 +352,55 @@ if(MT)
 		endif()
 	endif()
 endif()
+
+#******************************************************************************
+# optional - compile with numpy support?
+if(NUMPY)
+	# if the python command below doesnt work, manually set path, e.g., use "numpy.get_include()" to find path 
+	# set(NUMPY_INCLUDE_DIR "${PYTHON_INCLUDE_DIRS}/dist-packages/numpy/core/include") 
+	execute_process(COMMAND python${PYTHON_FORCE_VERSION} -c "import numpy; print(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR) 
+	list(APPEND INCLUDE_PATHS ${NUMPY_INCLUDE_DIR}) 
+	list(APPEND   PP_SOURCES source/plugin/numpyconvert.cpp)
+	list(APPEND   PP_SOURCES source/plugin/tfplugins.cpp)
+	list(APPEND NOPP_SOURCES source/pwrapper/numpyWrap.cpp)
+	list(APPEND NOPP_HEADERS source/pwrapper/numpyWrap.h)
+	add_definitions( -DNUMPY=1 )
+endif()
+
+#******************************************************************************
+# optional - openvdb support
+
+IF(OPENVDB)
+	add_definitions(-DOPENVDB=1)
+	message("Note - mantaflow assumes OpenVDB is installed in '<manta-dir>/openVDB'. For windows you can find an example zip package on the mantaflow homepage under downloads.")
+
+	find_package(OPENVDB REQUIRED)
+	find_package(Boost)
+	set(BOOST_INCLUDE_DIR "${BOOST_INCLUDE_DIR}" CACHE PATH "")
+	list(APPEND INCLUDE_PATHS ${BOOST_INCLUDE_DIR})
+	if(BOOST_FOUND)
+		message("Found Boost")
+		set(Boost_LIBRARY_DIRS Boost_LIBRARY_DIRS CACHE PATH "")
+	endif()
+	
+	if(OPENVDB_FOUND)
+		message("Found OpenVDB") 
+		list(APPEND INCLUDE_PATHS ${OPENVDB_INCLUDE_DIR})
+		list(APPEND F_LIB_PATHS ${OPENVDB_LIBRARY_DIR})
+		list(APPEND F_LIBS ${OPENVDB_LIBRARY})
+		add_definitions(${OPENVDB_DEFINITIONS})
+	endif()
+	
+	# check, use openexr instead?
+	find_package(HOUDINI REQUIRED)
+	if(HOUDINI_FOUND)
+		message("Found Houdini") 
+		list(APPEND INCLUDE_PATHS ${HOUDINI_INCLUDE_DIRS})
+		list(APPEND INCLUDE_PATHS ${HOUDINI_INCLUDE_DIRS}/OpenEXR)
+		list(APPEND F_LIB_PATHS ${HOUDINI_LIBRARY_DIRS})
+		list(APPEND F_LIBS "Half.lib")
+	endif()
+ENDIF()
 
 #******************************************************************************
 # add a target to generate API documentation with Doxygen
@@ -630,15 +672,13 @@ IF(NOT NOPYTHON)
 		ENDIF()
 	ENDIF()
 
-ENDIF()
-
-IF(BUILD_STATIC)
+ELSEIF(BUILD_STATIC)
+	# only build static library in nopython mode
 	SET(EXECCMD manta_static)
 	# only build static library, e.g. for nopython mode
 	ADD_LIBRARY (core OBJECT ${SOURCES} ${GITINFO})
 	ADD_LIBRARY (${EXECCMD} STATIC $<TARGET_OBJECTS:core>)
 ENDIF()
-
 
 # gcc compiler flags 
 IF(NOT WIN32)
