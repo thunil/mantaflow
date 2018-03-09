@@ -23,7 +23,7 @@ const int CG_DEBUGLEVEL = 2;
 //  Precondition helpers
 
 //! Preconditioning a la Wavelet Turbulence (needs 4 add. grids)
-void InitPreconditionIncompCholesky(FlagGrid& flags,
+void InitPreconditionIncompCholesky(const FlagGrid& flags,
 				Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak,
 				Grid<Real>& orgA0, Grid<Real>& orgAi, Grid<Real>& orgAj, Grid<Real>& orgAk) 
 {
@@ -63,7 +63,7 @@ void InitPreconditionIncompCholesky(FlagGrid& flags,
 };
 
 //! Preconditioning using modified IC ala Bridson (needs 1 add. grid)
-void InitPreconditionModifiedIncompCholesky2(FlagGrid& flags,
+void InitPreconditionModifiedIncompCholesky2(const FlagGrid& flags,
 				Grid<Real>&Aprecond, 
 				Grid<Real>&A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) 
 {
@@ -106,7 +106,7 @@ void InitPreconditionMultigrid(GridMg* MG, Grid<Real>&A0, Grid<Real>& Ai, Grid<R
 };
 
 //! Apply WT-style ICP
-void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid& flags,
+void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, const FlagGrid& flags,
 				Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak,
 				Grid<Real>& orgA0, Grid<Real>& orgAi, Grid<Real>& orgAj, Grid<Real>& orgAk)
 {
@@ -132,7 +132,7 @@ void ApplyPreconditionIncompCholesky(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid
 }
 
 //! Apply Bridson-style mICP
-void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1, FlagGrid& flags,
+void ApplyPreconditionModifiedIncompCholesky2(Grid<Real>& dst, Grid<Real>& Var1, const FlagGrid& flags,
 				Grid<Real>& Aprecond, 
 				Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak) 
 {
@@ -179,7 +179,7 @@ double GridDotProduct (const Grid<Real>& a, const Grid<Real>& b) {
 
 //! Kernel: compute residual (init) and add to sigma
 KERNEL(idx, reduce=+) returns(double sigma=0)
-double InitSigma (FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp) 
+double InitSigma (const FlagGrid& flags, Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& temp)
 {    
 	const double res = rhs[idx] - temp[idx]; 
 	dst[idx] = (Real)res;
@@ -199,7 +199,7 @@ KERNEL(idx) void UpdateSearchVec (Grid<Real>& dst, Grid<Real>& src, Real factor)
 //  CG class
 
 template<class APPLYMAT>
-GridCg<APPLYMAT>::GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual, Grid<Real>& search, FlagGrid& flags, Grid<Real>& tmp, 
+GridCg<APPLYMAT>::GridCg(Grid<Real>& dst, Grid<Real>& rhs, Grid<Real>& residual, Grid<Real>& search, const FlagGrid& flags, Grid<Real>& tmp,
 			   Grid<Real>* pA0, Grid<Real>* pAi, Grid<Real>* pAj, Grid<Real>* pAk) :
 	GridCgInterface(), mInited(false), mIterations(0), mDst(dst), mRhs(rhs), mResidual(residual),
 	mSearch(search), mFlags(flags), mTmp(tmp), mpA0(pA0), mpAi(pAi), mpAj(pAj), mpAk(pAk),
@@ -347,7 +347,7 @@ template class GridCg<ApplyMatrix2D>;
 //! do a CG solve for diffusion; note: diffusion coefficient alpha given in grid space, 
 //  rescale in python file for discretization independence (or physical correspondence)
 //  see lidDrivenCavity.py for an example
-PYTHON() void cgSolveDiffusion(FlagGrid& flags, GridBase& grid, 
+PYTHON() void cgSolveDiffusion(const FlagGrid& flags, GridBase& grid,
 						Real alpha = 0.25, Real cgMaxIterFac = 1.0, Real cgAccuracy   = 1e-4 )
 {
 	// reserve temp grids

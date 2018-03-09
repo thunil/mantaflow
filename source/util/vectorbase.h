@@ -76,6 +76,9 @@ public:
 	//! Copy-Constructor
 	inline Vector3D ( const Vector3D<S> &v ) : x(v.x), y(v.y), z(v.z) {}
 
+        //! Copy-Constructor
+        inline Vector3D ( const int * v) : x((S)v[0]), y((S)v[1]), z((S)v[2]) {}
+
 	//! Copy-Constructor
 	inline Vector3D ( const float * v) : x((S)v[0]), y((S)v[1]), z((S)v[2]) {}
 

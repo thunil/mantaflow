@@ -433,7 +433,7 @@ template<> void GridPainter<int>::paint() {
 }
 
 // from simpleimage.cpp
-void projectImg( SimpleImage& img, Grid<Real>& val, int shadeMode=0, Real scale=1.);
+void projectImg( SimpleImage& img, const Grid<Real>& val, int shadeMode=0, Real scale=1.);
 
 // Paint box colors
 template<> void GridPainter<Real>::paint() {

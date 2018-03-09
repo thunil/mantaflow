@@ -23,7 +23,7 @@ namespace Manta {
 
 //! Semi-Lagrange interpolation kernel
 KERNEL(bnd=1) template<class T> 
-void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Real dt, bool isLevelset, int orderSpace) 
+void SemiLagrange (const FlagGrid& flags, const MACGrid& vel, Grid<T>& dst, const Grid<T>& src, Real dt, bool isLevelset, int orderSpace)
 {
 	// traceback position
 	Vec3 pos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getCentered(i,j,k) * dt;
@@ -32,7 +32,7 @@ void SemiLagrange (FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& src, Re
 
 //! Semi-Lagrange interpolation kernel for MAC grids
 KERNEL(bnd=1)
-void SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, Real dt, int orderSpace) 
+void SemiLagrangeMAC(const FlagGrid& flags, const MACGrid& vel, MACGrid& dst, const MACGrid& src, Real dt, int orderSpace)
 {
 	// get currect velocity at MAC position
 	// no need to shift xpos etc. as lookup field is also shifted
@@ -49,7 +49,7 @@ void SemiLagrangeMAC(FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& src, 
 
 //! Kernel: Correct based on forward and backward SL steps (for both centered & mac grids)
 KERNEL(idx) template<class T> 
-void MacCormackCorrect(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd,  Grid<T>& bwd, 
+void MacCormackCorrect(const FlagGrid& flags, Grid<T>& dst, const Grid<T>& old, const Grid<T>& fwd,  const Grid<T>& bwd,
 					   Real strength, bool isLevelSet, bool isMAC=false )
 {
 	dst[idx] = fwd[idx];
@@ -62,7 +62,7 @@ void MacCormackCorrect(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd
 
 //! Kernel: Correct based on forward and backward SL steps (for both centered & mac grids)
 KERNEL() template<class T> 
-void MacCormackCorrectMAC(FlagGrid& flags, Grid<T>& dst, Grid<T>& old, Grid<T>& fwd,  Grid<T>& bwd, 
+void MacCormackCorrectMAC(const FlagGrid& flags, Grid<T>& dst, const Grid<T>& old, const Grid<T>& fwd,  const Grid<T>& bwd,
 					   Real strength, bool isLevelSet, bool isMAC=false )
 {
 	bool skip[3] = { false, false, false };
@@ -112,7 +112,7 @@ template<> inline bool cmpMinMax<Vec3>(Vec3& minv, Vec3& maxv, const Vec3& val) 
 //  Note - 2 clamp modes, a sharper one (default, clampMode 1, also uses backward step), 
 //         and a softer version (clampMode 2) that is recommended in Andy's paper
 template<class T>
-inline T doClampComponent(const Vec3i& gridSize, FlagGrid& flags, T dst, Grid<T>& orig, T fwd, const Vec3& pos, const Vec3& vel, const int clampMode ) 
+inline T doClampComponent(const Vec3i& gridSize, const FlagGrid& flags, T dst, const Grid<T>& orig, const T fwd, const Vec3& pos, const Vec3& vel, const int clampMode )
 {
 	T minv( std::numeric_limits<Real>::max()), maxv( -std::numeric_limits<Real>::max());
 	bool haveFl = false;
@@ -159,7 +159,7 @@ inline T doClampComponent(const Vec3i& gridSize, FlagGrid& flags, T dst, Grid<T>
 //  similar to scalar version, just uses single component c of vec3 values
 //  for symmetry, reverts to first order near boundaries for clampMode 2
 template<int c> 
-inline Real doClampComponentMAC(FlagGrid& flags, const Vec3i& gridSize, Real dst, MACGrid& orig, Real fwd, const Vec3& pos, const Vec3& vel, const int clampMode ) 
+inline Real doClampComponentMAC(const FlagGrid& flags, const Vec3i& gridSize, Real dst, const MACGrid& orig, Real fwd, const Vec3& pos, const Vec3& vel, const int clampMode )
 {
 	Real minv = std::numeric_limits<Real>::max(), maxv = -std::numeric_limits<Real>::max();
 	//bool haveFl = false;
@@ -209,7 +209,7 @@ inline Real doClampComponentMAC(FlagGrid& flags, const Vec3i& gridSize, Real dst
 //! Kernel: Clamp obtained value to min/max in source area, and reset values that point out of grid or into boundaries
 //          (note - MAC grids are handled below)
 KERNEL(bnd=1) template<class T>
-void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig, Grid<T>& fwd, Real dt, const int clampMode)
+void MacCormackClamp(const FlagGrid& flags, const MACGrid& vel, Grid<T>& dst, const Grid<T>& orig, const Grid<T>& fwd, Real dt, const int clampMode)
 {
 	T     dval       = dst(i,j,k);
 	Vec3i gridUpper  = flags.getSize() - 1;
@@ -238,7 +238,7 @@ void MacCormackClamp(FlagGrid& flags, MACGrid& vel, Grid<T>& dst, Grid<T>& orig,
 
 //! Kernel: same as MacCormackClamp above, but specialized version for MAC grids
 KERNEL(bnd=1) 
-void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& orig, MACGrid& fwd, Real dt, const int clampMode)
+void MacCormackClampMAC (const FlagGrid& flags, const MACGrid& vel, MACGrid& dst, const MACGrid& orig, const MACGrid& fwd, Real dt, const int clampMode)
 {
 	Vec3  pos(i,j,k);
 	Vec3  dval       = dst(i,j,k);
@@ -260,7 +260,7 @@ void MacCormackClampMAC (FlagGrid& flags, MACGrid& vel, MACGrid& dst, MACGrid& o
 //! template function for performing SL advection
 //! (Note boundary width only needed for specialization for MAC grids below)
 template<class GridType> 
-void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, GridType& orig, int order, Real strength, int orderSpace, bool openBounds, int bWidth, int clampMode) {
+void fnAdvectSemiLagrange(FluidSolver* parent, const FlagGrid& flags, const MACGrid& vel, GridType& orig, int order, Real strength, int orderSpace, bool openBounds, int bWidth, int clampMode) {
 	typedef typename GridType::BASETYPE T;
 	
 	Real dt = parent->getDt();
@@ -293,7 +293,7 @@ void fnAdvectSemiLagrange(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, Gr
 // outflow functions
 
 //! calculate local propagation velocity for cell (i,j,k)
-Vec3 getBulkVel(FlagGrid& flags, MACGrid& vel, int i, int j, int k){
+Vec3 getBulkVel(const FlagGrid& flags, const MACGrid& vel, int i, int j, int k){
 	Vec3 avg = Vec3(0,0,0);
 	int count = 0;
 	int size=1; // stencil size
@@ -313,7 +313,7 @@ Vec3 getBulkVel(FlagGrid& flags, MACGrid& vel, int i, int j, int k){
 }
 
 //! extrapolate normal velocity components into outflow cell
-KERNEL() void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid& velDst, MACGrid& velPrev, Real timeStep, int bWidth){
+KERNEL() void extrapolateVelConvectiveBC(const FlagGrid& flags, const MACGrid& vel, MACGrid& velDst, const MACGrid& velPrev, Real timeStep, int bWidth) {
 	if (flags.isOutflow(i,j,k)){
 		Vec3 bulkVel = getBulkVel(flags,vel,i,j,k);
 		bool done=false;
@@ -348,10 +348,10 @@ KERNEL() void extrapolateVelConvectiveBC(FlagGrid& flags, MACGrid& vel, MACGrid&
 }
 
 //! copy extrapolated velocity components
-KERNEL() void copyChangedVels(FlagGrid& flags, MACGrid& velDst, MACGrid& vel){ if (flags.isOutflow(i,j,k)) vel(i, j, k) = velDst(i, j, k); }
+KERNEL() void copyChangedVels(const FlagGrid& flags, const MACGrid& velDst, MACGrid& vel) { if (flags.isOutflow(i,j,k)) vel(i, j, k) = velDst(i, j, k); }
 
 //! extrapolate normal velocity components into open boundary cells (marked as outflow cells)
-void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double timeStep, int bWidth=1) {
+void applyOutflowBC(const FlagGrid& flags, MACGrid& vel, const MACGrid& velPrev, double timeStep, int bWidth=1) {
 	MACGrid velDst(vel.getParent()); // do not overwrite vel while it is read
 	extrapolateVelConvectiveBC(flags, vel, velDst, velPrev, max(1.0,timeStep*4), bWidth);
 	copyChangedVels(flags,velDst,vel);
@@ -360,18 +360,18 @@ void applyOutflowBC(FlagGrid& flags, MACGrid& vel, MACGrid& velPrev, double time
 // advection helpers
 
 //! prevent parts of the surface getting "stuck" in obstacle regions
-KERNEL() void knResetPhiInObs (FlagGrid& flags, Grid<Real>& sdf) {
+KERNEL() void knResetPhiInObs (const FlagGrid& flags, Grid<Real>& sdf) {
 	if( flags.isObstacle(i,j,k) && (sdf(i,j,k)<0.) ) {
 		sdf(i,j,k) = 0.1;
 	}
 }
-PYTHON() void resetPhiInObs (FlagGrid& flags, Grid<Real>& sdf) { knResetPhiInObs(flags, sdf); }
+PYTHON() void resetPhiInObs (const FlagGrid& flags, Grid<Real>& sdf) { knResetPhiInObs(flags, sdf); }
 
 // advection main calls
 
 //! template function for performing SL advection: specialized version for MAC grids
 template<> 
-void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid& vel, MACGrid& orig, int order, Real strength, int orderSpace, bool openBounds, int bWidth, int clampMode) {
+void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, const FlagGrid& flags, const MACGrid& vel, MACGrid& orig, int order, Real strength, int orderSpace, bool openBounds, int bWidth, int clampMode) {
 	Real dt = parent->getDt();
 	
 	// forward step
@@ -406,7 +406,7 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, FlagGrid& flags, MACGrid
 //! Perform semi-lagrangian advection of target Real- or Vec3 grid
 //! Open boundary handling needs information about width of border
 //! Clamping modes: 1 regular clamp leading to more overshoot and sharper results, 2 revert to 1st order slightly smoother less overshoot (enable when 1 gives artifacts)
-PYTHON() void advectSemiLagrange (FlagGrid* flags, MACGrid* vel, GridBase* grid,
+PYTHON() void advectSemiLagrange (const FlagGrid* flags, const MACGrid* vel, GridBase* grid,
 						   int order = 1, Real strength = 1.0, int orderSpace = 1, bool openBounds = false, int boundaryWidth = 1, int clampMode = 2)
 {    
 	assertMsg(order==1 || order==2, "AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");

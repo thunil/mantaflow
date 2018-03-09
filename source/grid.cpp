@@ -43,7 +43,7 @@ template<> inline GridBase::GridType typeList<Vec3>()  { return GridBase::TypeVe
 
 template<class T>
 Grid<T>::Grid(FluidSolver* parent, bool show)
-	: GridBase(parent)
+        : GridBase(parent), externalData(false)
 {
 	mType = typeList<T>();
 	mSize = parent->getGridSize();
@@ -56,7 +56,21 @@ Grid<T>::Grid(FluidSolver* parent, bool show)
 }
 
 template<class T>
-Grid<T>::Grid(const Grid<T>& a) : GridBase(a.getParent()) {
+Grid<T>::Grid(FluidSolver* parent, T* data, bool show)
+        : GridBase(parent), mData(data), externalData(true)
+{
+        mType = typeList<T>();
+        mSize = parent->getGridSize();
+
+        mStrideZ = parent->is2D() ? 0 : (mSize.x * mSize.y);
+        mDx = 1.0 / mSize.max();
+
+        setHidden(!show);
+}
+
+template<class T>
+Grid<T>::Grid(const Grid<T>& a)
+        : GridBase(a.getParent()), externalData(false) {
 	mSize = a.mSize;
 	mType = a.mType;
 	mStrideZ = a.mStrideZ;
@@ -68,7 +82,9 @@ Grid<T>::Grid(const Grid<T>& a) : GridBase(a.getParent()) {
 
 template<class T>
 Grid<T>::~Grid() {
-	mParent->freeGridPointer<T>(mData);
+    if(!externalData)  {
+        mParent->freeGridPointer<T>(mData);
+    }
 }
 
 template<class T>
@@ -81,9 +97,13 @@ void Grid<T>::swap(Grid<T>& other) {
 	if (other.getSizeX() != getSizeX() || other.getSizeY() != getSizeY() || other.getSizeZ() != getSizeZ())
 		errMsg("Grid::swap(): Grid dimensions mismatch.");
 	
+        if(externalData || other.externalData)
+            errMsg("Grid::swap(): Cannot swap if one grid stores externalData.");
+
 	T* dswap = other.mData;
 	other.mData = mData;
 	mData = dswap;
+
 }
 
 template<class T>
@@ -127,35 +147,35 @@ void Grid<T>::save(string name) {
 
 //! Kernel: Compute min value of Real grid
 KERNEL(idx, reduce=min) returns(Real minVal=std::numeric_limits<Real>::max())
-Real CompMinReal(Grid<Real>& val) {
+Real CompMinReal(const Grid<Real>& val) {
 	if (val[idx] < minVal)
 		minVal = val[idx];
 }
 
 //! Kernel: Compute max value of Real grid
 KERNEL(idx, reduce=max) returns(Real maxVal=-std::numeric_limits<Real>::max())
-Real CompMaxReal(Grid<Real>& val) {
+Real CompMaxReal(const Grid<Real>& val) {
 	if (val[idx] > maxVal)
 		maxVal = val[idx];
 }
 
 //! Kernel: Compute min value of int grid
 KERNEL(idx, reduce=min) returns(int minVal=std::numeric_limits<int>::max())
-int CompMinInt(Grid<int>& val) {
+int CompMinInt(const Grid<int>& val) {
 	if (val[idx] < minVal)
 		minVal = val[idx];
 }
 
 //! Kernel: Compute max value of int grid
 KERNEL(idx, reduce=max) returns(int maxVal=-std::numeric_limits<int>::max())
-int CompMaxInt(Grid<int>& val) {
+int CompMaxInt(const Grid<int>& val) {
 	if (val[idx] > maxVal)
 		maxVal = val[idx];
 }
 
 //! Kernel: Compute min norm of vec grid
 KERNEL(idx, reduce=min) returns(Real minVal=std::numeric_limits<Real>::max())
-Real CompMinVec(Grid<Vec3>& val) {
+Real CompMinVec(const Grid<Vec3>& val) {
 	const Real s = normSquare(val[idx]);
 	if (s < minVal)
 		minVal = s;
@@ -163,7 +183,7 @@ Real CompMinVec(Grid<Vec3>& val) {
 
 //! Kernel: Compute max norm of vec grid
 KERNEL(idx, reduce=max) returns(Real maxVal=-std::numeric_limits<Real>::max())
-Real CompMaxVec(Grid<Vec3>& val) {
+Real CompMaxVec(const Grid<Vec3>& val) {
 	const Real s = normSquare(val[idx]);
 	if (s > maxVal)
 		maxVal = s;
@@ -227,33 +247,33 @@ template<class T> void Grid<T>::stomp(const T& threshold) {
 	knGridStomp<T>(*this, threshold);
 }
 
-template<> Real Grid<Real>::getMax() {
+template<> Real Grid<Real>::getMax() const {
 	return CompMaxReal (*this);
 }
-template<> Real Grid<Real>::getMin() {
+template<> Real Grid<Real>::getMin() const {
 	return CompMinReal (*this);
 }
-template<> Real Grid<Real>::getMaxAbs() {
+template<> Real Grid<Real>::getMaxAbs() const {
 	Real amin = CompMinReal (*this);
 	Real amax = CompMaxReal (*this);
 	return max( fabs(amin), fabs(amax));
 }
-template<> Real Grid<Vec3>::getMax() {
+template<> Real Grid<Vec3>::getMax() const {
 	return sqrt(CompMaxVec (*this));
 }
-template<> Real Grid<Vec3>::getMin() { 
+template<> Real Grid<Vec3>::getMin() const {
 	return sqrt(CompMinVec (*this));
 }
-template<> Real Grid<Vec3>::getMaxAbs() {
+template<> Real Grid<Vec3>::getMaxAbs() const {
 	return sqrt(CompMaxVec (*this));
 }
-template<> Real Grid<int>::getMax() {
+template<> Real Grid<int>::getMax() const {
 	return (Real) CompMaxInt (*this);
 }
-template<> Real Grid<int>::getMin() {
+template<> Real Grid<int>::getMin() const {
 	return (Real) CompMinInt (*this);
 }
-template<> Real Grid<int>::getMaxAbs() {
+template<> Real Grid<int>::getMaxAbs() const {
 	int amin = CompMinInt (*this);
 	int amax = CompMaxInt (*this);
 	return max( fabs((Real)amin), fabs((Real)amax));
@@ -398,13 +418,12 @@ PYTHON() void copyRealToVec3 (Grid<Real> &sourceX, Grid<Real> &sourceY, Grid<Rea
 }
 PYTHON() void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertLevelsetToReal... use copyLevelsetToReal instead",1); copyLevelsetToReal(source,target); }
 
-template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex) {
+template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex, int bnd) {
 	std::ostringstream out;
 	out << std::endl;
-	const int bnd = 1;
 	FOR_IJK_BND(*this,bnd) {
 		IndexInt idx = (*this).index(i,j,k);
-		if(zSlice>=0 && k==zSlice) { 
+		if((zSlice>=0 && k==zSlice) || (zSlice<0)) { 
 			out << " ";
 			if(printIndex &&  this->is3D()) out << "  "<<i<<","<<j<<","<<k <<":";
 			if(printIndex && !this->is3D()) out << "  "<<i<<","<<j<<":";

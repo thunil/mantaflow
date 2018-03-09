@@ -46,7 +46,7 @@ public:
 	//! Get Stride in Z dimension
 	inline IndexInt getStrideZ() const { return mStrideZ; }
 	
-	inline Real getDx() { return mDx; }
+	inline Real getDx() const { return mDx; }
 	
 	//! Check if indices are within bounds, otherwise error (should only be called when debugging)
 	inline void checkIndex(int i, int j, int k) const;
@@ -94,6 +94,8 @@ class Grid : public GridBase {
 public:
 	//! init new grid, values are set to zero
 	PYTHON() Grid(FluidSolver* parent, bool show = true);
+	//! init new grid with an existing array
+	Grid(FluidSolver* parent, T* data, bool show = true);
 	//! create new & copy content from another grid
 	Grid(const Grid<T>& a);
 	//! return memory to solver
@@ -174,11 +176,11 @@ public:
 	
 	// common compound operators
 	//! get absolute max value in grid 
-	PYTHON() Real getMaxAbs();
+	PYTHON() Real getMaxAbs() const;
 	//! get max value in grid 
-	PYTHON() Real getMax();
+	PYTHON() Real getMax() const;
 	//! get min value in grid 
-	PYTHON() Real getMin();
+	PYTHON() Real getMin() const;
 	//! calculate L1 norm of grid content
 	PYTHON() Real getL1(int bnd=0);
 	//! calculate L2 norm of grid content
@@ -192,8 +194,8 @@ public:
 	//! get data pointer of grid
 	PYTHON() std::string getDataPointer();
 	
-	//! debugging helper, print grid from python
-	PYTHON() void printGrid(int zSlice=-1,  bool printIndex=false); 
+	//! debugging helper, print grid from python. skip boundary of width bnd
+	PYTHON() void printGrid(int zSlice=-1,  bool printIndex=false, int bnd=1); 
 
 	// c++ only operators
 	template<class S> Grid<T>& operator+=(const Grid<S>& a);
@@ -215,6 +217,7 @@ public:
 
 protected:
 	T* mData;
+	bool externalData;		// True if mData is managed outside of the Fluidsolver
 };
 
 // Python doesn't know about templates: explicit aliases needed
@@ -227,6 +230,8 @@ PYTHON() class MACGrid : public Grid<Vec3> {
 public:
 	PYTHON() MACGrid(FluidSolver* parent, bool show=true) : Grid<Vec3>(parent, show) { 
 		mType = (GridType)(TypeMAC | TypeVec3); }
+        MACGrid(FluidSolver* parent, Vec3* data, bool show=true) : Grid<Vec3>(parent, data, show) { 
+		mType = (GridType)(TypeMAC | TypeVec3); }
 	
 	// specialized functions for interpolating MAC information
 	inline Vec3 getCentered(int i, int j, int k) const;
@@ -236,7 +241,7 @@ public:
 	inline Vec3 getAtMACZ(int i, int j, int k) const;
 	// interpolation
 	inline Vec3 getInterpolated(const Vec3& pos) const { return interpolMAC(mData, mSize, mStrideZ, pos); }
-	inline void setInterpolated(const Vec3& pos, const Vec3& val, Vec3* tmp) { return setInterpolMAC(mData, mSize, mStrideZ, pos, val, tmp); }
+	inline void setInterpolated(const Vec3& pos, const Vec3& val, Vec3* tmp) const { return setInterpolMAC(mData, mSize, mStrideZ, pos, val, tmp); }
 	inline Vec3 getInterpolatedHi(const Vec3& pos, int order) const { 
 		switch(order) {
 		case 1:  return interpolMAC     (mData, mSize, mStrideZ, pos); 
@@ -264,7 +269,9 @@ PYTHON() class FlagGrid : public Grid<int> {
 public:
 	PYTHON() FlagGrid(FluidSolver* parent, int dim=3, bool show=true) : Grid<int>(parent, show) { 
 		mType = (GridType)(TypeFlags | TypeInt); }
-	
+	FlagGrid(FluidSolver* parent, int* data, int dim = 3, bool show=true) : Grid<int>(parent, data, show) { 
+            mType = (GridType)(TypeFlags | TypeInt); }	
+
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
 	enum CellType { 
 		TypeNone     = 0,
@@ -516,7 +523,7 @@ inline Vec3 getGradient(const Grid<Real>& data, int i, int j, int k) {
 
 // interpolate grid from one size to another size
 KERNEL() template<class S>
-void knInterpolateGridTempl(Grid<S>& target, Grid<S>& source, const Vec3& sourceFactor , Vec3 offset, int orderSpace=1 ) {
+void knInterpolateGridTempl(Grid<S>& target, const Grid<S>& source, const Vec3& sourceFactor , Vec3 offset, int orderSpace=1 ) {
 	Vec3 pos = Vec3(i,j,k) * sourceFactor + offset;
 	if(!source.is3D()) pos[2] = 0; // allow 2d -> 3d
 	target(i,j,k) = source.getInterpolatedHi(pos, orderSpace);

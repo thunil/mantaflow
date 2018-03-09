@@ -23,6 +23,8 @@ class Mesh;
 PYTHON() class LevelsetGrid : public Grid<Real> {
 public:
 	PYTHON() LevelsetGrid(FluidSolver* parent, bool show = true);
+
+        LevelsetGrid(FluidSolver* parent, Real* data, bool show = true);
 	
 	//! reconstruct the levelset using fast marching
 	PYTHON() void reinitMarching(const FlagGrid& flags, Real maxTime=4.0, 

@@ -22,7 +22,7 @@ namespace Manta {
    
 //! Kernel: Invert real values, if positive and fluid
 KERNEL(idx) 
-void InvertCheckFluid (FlagGrid& flags, Grid<Real>& grid) 
+void InvertCheckFluid (const FlagGrid& flags, Grid<Real>& grid)
 {
 	if (flags.isFluid(idx) && grid[idx] > 0)
 		grid[idx] = 1.0 / grid[idx];
@@ -30,7 +30,7 @@ void InvertCheckFluid (FlagGrid& flags, Grid<Real>& grid)
 
 //! Kernel: Squared sum over grid
 KERNEL(idx, reduce=+) returns(double sum=0)
-double GridSumSqr (Grid<Real>& grid) {
+double GridSumSqr (const Grid<Real>& grid) {
 	sum += square((double)grid[idx]);
 }
 

@@ -70,7 +70,7 @@ PYTHON() void normalizeSumTo(Grid<Real>& height, Real target) {
 
 //! Kernel: Construct the right-hand side of the poisson equation
 KERNEL(bnd=1)
-void MakeRhsWE(FlagGrid& flags, Grid<Real>& rhs, Grid<Real>& ut, Grid<Real>& utm1,
+void MakeRhsWE(const FlagGrid& flags, Grid<Real>& rhs, const Grid<Real>& ut, const Grid<Real>& utm1,
 			Real s, bool crankNic=false) 
 {
 	rhs(i,j,k) = ( 2.*ut(i,j,k) - utm1(i,j,k) );
@@ -84,7 +84,7 @@ void MakeRhsWE(FlagGrid& flags, Grid<Real>& rhs, Grid<Real>& ut, Grid<Real>& utm
 
 
 //! do a CG solve for the wave equation (note, out grid only there for debugging... could be removed)
-PYTHON() void cgSolveWE(FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<Real>& out,
+PYTHON() void cgSolveWE(const FlagGrid& flags, Grid<Real>& ut, Grid<Real>& utm1, Grid<Real>& out,
 						bool crankNic     = false,
 						Real cSqr         = 0.25,
 						Real cgMaxIterFac = 1.5,

@@ -31,9 +31,9 @@ public:
 	
 	// accessors
 	PYTHON() Vec3i getGridSize() { return mGridSize; }
-	inline Real  getDt()       { return mDt; }
-	inline Real  getDx()       { return 1.0 / mGridSize.max(); }
-	inline Real  getTime()     { return mTimeTotal; }
+	inline Real  getDt() const      { return mDt; }
+	inline Real  getDx() const      { return 1.0 / mGridSize.max(); }
+	inline Real  getTime() const    { return mTimeTotal; }
 
 	//! Check dimensionality
 	inline bool is2D() const { return mDim==2; }

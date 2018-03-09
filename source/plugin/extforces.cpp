@@ -21,7 +21,7 @@ using namespace std;
 namespace Manta { 
 
 //! add Forces between fl/fl and fl/em cells (interpolate cell centered forces to MAC grid)
-KERNEL(bnd=1) void KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
+KERNEL(bnd=1) void KnAddForceField(const FlagGrid& flags, MACGrid& vel, const Grid<Vec3>& force) {
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curEmpty = flags.isEmpty(i,j,k);
 	if (!curFluid && !curEmpty) return;
@@ -35,7 +35,7 @@ KERNEL(bnd=1) void KnAddForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& fo
 }
 
 //! add constant force between fl/fl and fl/em cells
-KERNEL(bnd=1) void KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
+KERNEL(bnd=1) void KnAddForce(const FlagGrid& flags, MACGrid& vel, Vec3 force) {
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curEmpty = flags.isEmpty(i,j,k);
 	if (!curFluid && !curEmpty) return;
@@ -49,7 +49,7 @@ KERNEL(bnd=1) void KnAddForce(FlagGrid& flags, MACGrid& vel, Vec3 force) {
 }
 
 //! add gravity forces to all fluid cells, automatically adapts to different grid sizes
-PYTHON() void addGravity(FlagGrid& flags, MACGrid& vel, Vec3 gravity) {    
+PYTHON() void addGravity(const FlagGrid& flags, MACGrid& vel, Vec3 gravity) {
 	Vec3 f = gravity * flags.getParent()->getDt() / flags.getDx();
 	KnAddForce(flags, vel, f);
 }
@@ -60,7 +60,7 @@ PYTHON() void addGravityNoScale(FlagGrid& flags, MACGrid& vel, const Vec3& gravi
 }
 
 //! kernel to add Buoyancy force 
-KERNEL(bnd=1) void KnAddBuoyancy(FlagGrid& flags, Grid<Real>& factor, MACGrid& vel, Vec3 strength) {    
+KERNEL(bnd=1) void KnAddBuoyancy(const FlagGrid& flags, const Grid<Real>& factor, MACGrid& vel, Vec3 strength) {
 	if (!flags.isFluid(i,j,k)) return;
 	if (flags.isFluid(i-1,j,k))
 		vel(i,j,k).x += (0.5 * strength.x) * (factor(i,j,k)+factor(i-1,j,k));
@@ -71,7 +71,7 @@ KERNEL(bnd=1) void KnAddBuoyancy(FlagGrid& flags, Grid<Real>& factor, MACGrid& v
 }
 
 //! add Buoyancy force based on fctor (e.g. smoke density)
-PYTHON() void addBuoyancy(FlagGrid& flags, Grid<Real>& density, MACGrid& vel, Vec3 gravity, Real coefficient=1.) {
+PYTHON() void addBuoyancy(const FlagGrid& flags, const Grid<Real>& density, MACGrid& vel, Vec3 gravity, Real coefficient=1.) {
 	Vec3 f = -gravity * flags.getParent()->getDt() / flags.getParent()->getDx() * coefficient;
 	KnAddBuoyancy(flags,density, vel, f);
 }
@@ -173,7 +173,7 @@ PYTHON() void setInflowBcs(MACGrid& vel, string dir, Vec3 value) {
 // set obstacle boundary conditions
 
 //! set no-stick wall boundary condition between ob/fl and ob/ob cells
-KERNEL() void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
+KERNEL() void KnSetWallBcs(const FlagGrid& flags, MACGrid& vel) {
 
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
@@ -200,8 +200,8 @@ KERNEL() void KnSetWallBcs(FlagGrid& flags, MACGrid& vel) {
 }
 
 //! set wall BCs for fill fraction mode, note - only needs obstacle SDF
-KERNEL() void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget,
-							Grid<Real>* phiObs, const int &boundaryWidth=0) 
+KERNEL() void KnSetWallBcsFrac(const FlagGrid& flags, const MACGrid& vel, MACGrid& velTarget,
+                                                        const Grid<Real>* phiObs, const int &boundaryWidth=0)
 { 
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
@@ -287,7 +287,7 @@ KERNEL() void KnSetWallBcsFrac(FlagGrid& flags, MACGrid& vel, MACGrid& velTarget
 
 //! set zero normal velocity boundary condition on walls
 // (optionally with second order accuracy using the obstacle SDF , fractions grid currentlyl not needed)
-PYTHON() void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, Grid<Real>* phiObs = 0, int boundaryWidth=0) {
+PYTHON() void setWallBcs(const FlagGrid& flags, MACGrid& vel, const MACGrid* fractions = 0, const Grid<Real>* phiObs = 0, int boundaryWidth=0) {
 	if(!phiObs) {
 		KnSetWallBcs(flags, vel);
 	} else {
@@ -298,7 +298,7 @@ PYTHON() void setWallBcs(FlagGrid& flags, MACGrid& vel, MACGrid* fractions = 0, 
 }
 
 //! add obstacle velocity between obs/obs, obs/fl and/or obs,em cells. expects centered obsvels, sets staggered vels
-KERNEL() void KnSetObstacleVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& obsvel, int borderWidth)
+KERNEL() void KnSetObstacleVelocity(const FlagGrid& flags, MACGrid& vel, const Grid<Vec3>& obsvel, int borderWidth)
 {
 	bool curFluid = flags.isFluid(i,j,k);
 	bool curObs   = flags.isObstacle(i,j,k);
@@ -344,7 +344,7 @@ KERNEL() void KnSetObstacleVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& o
 	}
 }
 
-PYTHON() void setObstacleVelocity(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& obsvel, int borderWidth=0) {
+PYTHON() void setObstacleVelocity(const FlagGrid& flags, MACGrid& vel, const Grid<Vec3>& obsvel, int borderWidth=0) {
 	KnSetObstacleVelocity(flags, vel, obsvel, borderWidth);
 }
 
@@ -357,7 +357,7 @@ KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const 
 	force(i,j,k) = str * cross(grad, curl(i,j,k));
 }
 
-PYTHON() void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength) {
+PYTHON() void vorticityConfinement(MACGrid& vel, const FlagGrid& flags, Real strength) {
 	Grid<Vec3> velCenter(flags.getParent()), curl(flags.getParent()), force(flags.getParent());
 	Grid<Real> norm(flags.getParent());
 	
@@ -368,7 +368,7 @@ PYTHON() void vorticityConfinement(MACGrid& vel, FlagGrid& flags, Real strength)
 	KnAddForceField(flags, vel, force);
 }
 
-PYTHON() void addForceField(FlagGrid& flags, MACGrid& vel, Grid<Vec3>& force) {
+PYTHON() void addForceField(const FlagGrid& flags, MACGrid& vel, const Grid<Vec3>& force) {
 	KnAddForceField(flags, vel, force);
 }
 

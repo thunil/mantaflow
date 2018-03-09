@@ -25,7 +25,7 @@ namespace Manta {
 	
 //! Apply noise to grid
 KERNEL() 
-void KnApplyNoiseInfl(const FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, const Grid<Real>& sdf, Real scale, Real sigma) 
+void KnApplyNoiseInfl(const FlagGrid& flags, Grid<Real>& density, const WaveletNoiseField& noise, const Grid<Real>& sdf, Real scale, Real sigma)
 {
 	if (!flags.isFluid(i,j,k) || sdf(i,j,k) > sigma) return;
 	Real factor = clamp(1.0-0.5/sigma * (sdf(i,j,k)+sigma), 0.0, 1.0);
@@ -36,32 +36,32 @@ void KnApplyNoiseInfl(const FlagGrid& flags, Grid<Real>& density, WaveletNoiseFi
 }
 
 //! Init noise-modulated density inside shape
-PYTHON() void densityInflow(const FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Shape* shape, Real scale=1.0, Real sigma=0)
+PYTHON() void densityInflow(const FlagGrid& flags, Grid<Real>& density, const WaveletNoiseField& noise, Shape* shape, Real scale=1.0, Real sigma=0)
 {
 	Grid<Real> sdf = shape->computeLevelset();
 	KnApplyNoiseInfl(flags, density, noise, sdf, scale, sigma);
 }
 //! Apply noise to real grid based on an SDF
-KERNEL() void KnAddNoise(const FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, const Grid<Real>* sdf, Real scale) {
+KERNEL() void KnAddNoise(const FlagGrid& flags, Grid<Real>& density, const WaveletNoiseField& noise, const Grid<Real>* sdf, Real scale) {
 	if (!flags.isFluid(i,j,k) || (sdf && (*sdf)(i,j,k) > 0.) ) return;
 	density(i,j,k) += noise.evaluate(Vec3(i,j,k)) * scale;
 }
-PYTHON() void addNoise(const FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, const Grid<Real>* sdf=NULL, Real scale=1.0 ) {
+PYTHON() void addNoise(const FlagGrid& flags, Grid<Real>& density, const WaveletNoiseField& noise, const Grid<Real>* sdf=NULL, Real scale=1.0 ) {
 	KnAddNoise(flags, density, noise, sdf, scale );
 }
 
 //! sample noise field and set pdata with its values (for convenience, scale the noise values)
 KERNEL(pts) template<class T>
-void knSetPdataNoise(BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale) {
+void knSetPdataNoise(const BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, const WaveletNoiseField& noise, Real scale) {
 	pdata[idx] = noise.evaluate( parts.getPos(idx) ) * scale;
 }
 KERNEL(pts) template<class T>
-void knSetPdataNoiseVec(BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, WaveletNoiseField& noise, Real scale) {
+void knSetPdataNoiseVec(const BasicParticleSystem& parts, ParticleDataImpl<T>& pdata, const WaveletNoiseField& noise, Real scale) {
 	pdata[idx] = noise.evaluateVec( parts.getPos(idx) ) * scale;
 }
-PYTHON() void setNoisePdata    (BasicParticleSystem& parts, ParticleDataImpl<Real>& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoise<Real>(parts, pd,noise,scale); }
-PYTHON() void setNoisePdataVec3(BasicParticleSystem& parts, ParticleDataImpl<Vec3>& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoiseVec<Vec3>(parts, pd,noise,scale); }
-PYTHON() void setNoisePdataInt (BasicParticleSystem& parts, ParticleDataImpl<int >& pd, WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoise<int> (parts, pd,noise,scale); }
+PYTHON() void setNoisePdata    (const BasicParticleSystem& parts, ParticleDataImpl<Real>& pd, const WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoise<Real>(parts, pd,noise,scale); }
+PYTHON() void setNoisePdataVec3(const BasicParticleSystem& parts, ParticleDataImpl<Vec3>& pd, const WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoiseVec<Vec3>(parts, pd,noise,scale); }
+PYTHON() void setNoisePdataInt (const BasicParticleSystem& parts, ParticleDataImpl<int >& pd, const WaveletNoiseField& noise, Real scale=1.) { knSetPdataNoise<int> (parts, pd,noise,scale); }
 
 //! SDF gradient from obstacle flags, for turbulence.py
 //  FIXME, slow, without kernel...
@@ -107,7 +107,7 @@ PYTHON() LevelsetGrid obstacleLevelset(const FlagGrid& flags) {
 // blender init functions 
 
 KERNEL() 
-void KnApplyEmission(FlagGrid& flags, Grid<Real>& density, Grid<Real>& emission, bool isAbsolute) 
+void KnApplyEmission(const FlagGrid& flags, Grid<Real>& density, const Grid<Real>& emission, bool isAbsolute)
 {
 	if (!flags.isFluid(i,j,k) || emission(i,j,k) == 0.) return;
 	if (isAbsolute)
@@ -125,13 +125,13 @@ PYTHON() void applyEmission(FlagGrid& flags, Grid<Real>& density, Grid<Real>& em
 // blender init functions for meshes
 
 KERNEL() 
-void KnApplyDensity(FlagGrid& flags, Grid<Real>& density, Grid<Real>& sdf, Real value, Real sigma) 
+void KnApplyDensity(const FlagGrid& flags, Grid<Real>& density, const Grid<Real>& sdf, Real value, Real sigma)
 {
 	if (!flags.isFluid(i,j,k) || sdf(i,j,k) > sigma) return;
 	density(i,j,k) = value;
 }
 //! Init noise-modulated density inside mesh
-PYTHON() void densityInflowMeshNoise(FlagGrid& flags, Grid<Real>& density, WaveletNoiseField& noise, Mesh* mesh, Real scale=1.0, Real sigma=0)
+PYTHON() void densityInflowMeshNoise(const FlagGrid& flags, Grid<Real>& density, const WaveletNoiseField& noise, Mesh* mesh, Real scale=1.0, Real sigma=0)
 {
 	LevelsetGrid sdf(density.getParent(), false);
 	mesh->computeLevelset(sdf, 1.);
@@ -139,7 +139,7 @@ PYTHON() void densityInflowMeshNoise(FlagGrid& flags, Grid<Real>& density, Wavel
 }
 
 //! Init constant density inside mesh
-PYTHON() void densityInflowMesh(FlagGrid& flags, Grid<Real>& density, Mesh* mesh, Real value=1., Real cutoff = 7, Real sigma=0)
+PYTHON() void densityInflowMesh(const FlagGrid& flags, Grid<Real>& density, Mesh* mesh, Real value=1., Real cutoff = 7, Real sigma=0)
 {
 	LevelsetGrid sdf(density.getParent(), false);
 	mesh->computeLevelset(sdf, 2., cutoff);
@@ -234,11 +234,11 @@ PYTHON() void checkSymmetryVec3( Grid<Vec3>& a, Grid<Real>* err=NULL, bool symme
 
 
 // from simpleimage.cpp
-void projectImg( SimpleImage& img, Grid<Real>& val, int shadeMode=0, Real scale=1.);
+void projectImg( SimpleImage& img, const Grid<Real>& val, int shadeMode=0, Real scale=1.);
 
 //! output shaded (all 3 axes at once for 3D)
 //! shading modes: 0 smoke, 1 surfaces
-PYTHON() void projectPpmFull( Grid<Real>& val, string name, int shadeMode=0, Real scale=1.)
+PYTHON() void projectPpmFull( const Grid<Real>& val, string name, int shadeMode=0, Real scale=1.)
 {
 	SimpleImage img;
 	projectImg( img, val, shadeMode, scale );
@@ -258,7 +258,7 @@ PYTHON() void addTestParts( BasicParticleSystem& parts, int num)
 }
 
 //! calculate the difference between two pdata fields (note - slow!, not parallelized)
-PYTHON() Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
+PYTHON() Real pdataMaxDiff ( const ParticleDataBase* a, const ParticleDataBase* b )
 {    
 	double maxVal = 0.;
 	//debMsg(" PD "<< a->getType()<<"  as"<<a->getSizeSlow()<<"  bs"<<b->getSizeSlow() , 1);
@@ -267,21 +267,21 @@ PYTHON() Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
 	
 	if (a->getType() & ParticleDataBase::TypeReal) 
 	{
-		ParticleDataImpl<Real>& av = *dynamic_cast<ParticleDataImpl<Real>*>(a);
-		ParticleDataImpl<Real>& bv = *dynamic_cast<ParticleDataImpl<Real>*>(b);
+                const ParticleDataImpl<Real>& av = *dynamic_cast<const ParticleDataImpl<Real>*>(a);
+                const ParticleDataImpl<Real>& bv = *dynamic_cast<const ParticleDataImpl<Real>*>(b);
 		FOR_PARTS(av) {
 			maxVal = std::max(maxVal, (double)fabs( av[idx]-bv[idx] ));
 		}
 	} else if (a->getType() & ParticleDataBase::TypeInt) 
 	{
-		ParticleDataImpl<int>& av = *dynamic_cast<ParticleDataImpl<int>*>(a);
-		ParticleDataImpl<int>& bv = *dynamic_cast<ParticleDataImpl<int>*>(b);
+                const ParticleDataImpl<int>& av = *dynamic_cast<const ParticleDataImpl<int>*>(a);
+                const ParticleDataImpl<int>& bv = *dynamic_cast<const ParticleDataImpl<int>*>(b);
 		FOR_PARTS(av) {
 			maxVal = std::max(maxVal, (double)fabs( (double)av[idx]-bv[idx] ));
 		}
 	} else if (a->getType() & ParticleDataBase::TypeVec3) {
-		ParticleDataImpl<Vec3>& av = *dynamic_cast<ParticleDataImpl<Vec3>*>(a);
-		ParticleDataImpl<Vec3>& bv = *dynamic_cast<ParticleDataImpl<Vec3>*>(b);
+                const ParticleDataImpl<Vec3>& av = *dynamic_cast<const ParticleDataImpl<Vec3>*>(a);
+                const ParticleDataImpl<Vec3>& bv = *dynamic_cast<const ParticleDataImpl<Vec3>*>(b);
 		FOR_PARTS(av) {
 			double d = 0.;
 			for(int c=0; c<3; ++c) { 
@@ -298,7 +298,7 @@ PYTHON() Real pdataMaxDiff ( ParticleDataBase* a, ParticleDataBase* b )
 
 
 //! calculate center of mass given density grid, for re-centering
-PYTHON() Vec3 calcCenterOfMass(Grid<Real>& density)
+PYTHON() Vec3 calcCenterOfMass(const Grid<Real>& density)
 {
 	Vec3 p(0.0f);
 	Real w = 0.0f;
@@ -459,7 +459,7 @@ KERNEL() void kninitVortexVelocity(const Grid<Real> &phiObs, MACGrid& vel, const
 
 }
 
-PYTHON() void initVortexVelocity(Grid<Real> &phiObs, MACGrid& vel, const Vec3 &center, const Real &radius) {
+PYTHON() void initVortexVelocity(const Grid<Real> &phiObs, MACGrid& vel, const Vec3 &center, const Real &radius) {
 	kninitVortexVelocity(phiObs,  vel, center, radius);
 }
 

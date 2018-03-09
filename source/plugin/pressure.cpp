@@ -30,8 +30,8 @@ inline static Real surfTensHelper(const IndexInt idx, const int offset, const Gr
 
 //! Kernel: Construct the right-hand side of the poisson equation
 KERNEL(bnd=1, reduce=+) returns(int cnt=0) returns(double sum=0)
-void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel, 
-			  Grid<Real>* perCellCorr, MACGrid* fractions,
+void MakeRhs (const FlagGrid& flags, Grid<Real>& rhs, const MACGrid& vel,
+                          const Grid<Real>* perCellCorr, const MACGrid* fractions,
 			  // note - all of the following are necessary for surface tension
               const Grid<Real> *phi, const Grid<Real> *curv, const Real surfTens, const Real gfClamp)
 {
@@ -80,7 +80,7 @@ void MakeRhs (FlagGrid& flags, Grid<Real>& rhs, MACGrid& vel,
 
 //! Kernel: make velocity divergence free by subtracting pressure gradient
 KERNEL(bnd = 1)
-void CorrectVelocity(FlagGrid& flags, MACGrid& vel, Grid<Real>& pressure) 
+void knCorrectVelocity(const FlagGrid& flags, MACGrid& vel, const Grid<Real>& pressure)
 {
 	IndexInt idx = flags.index(i,j,k);
 	if (flags.isFluid(idx))
@@ -150,7 +150,7 @@ void ApplyGhostFluidDiagonal(Grid<Real> &A0, const FlagGrid &flags, const Grid<R
 
 //! Kernel: Apply velocity update: ghost fluid contribution
 KERNEL(bnd=1)
-void CorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp,
+void knCorrectVelocityGhostFluid(MACGrid &vel, const FlagGrid &flags, const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp,
                                const Grid<Real> *curv, const Real surfTens)
 {
 	const IndexInt X = flags.getStrideX(), Y = flags.getStrideY(), Z = flags.getStrideZ();
@@ -199,7 +199,7 @@ inline static Real ghostFluidWasClamped(IndexInt idx, int offset, const Grid<Rea
 }
 
 KERNEL(bnd=1)
-void ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags, 
+void knReplaceClampedGhostFluidVels(MACGrid &vel, const FlagGrid &flags,
 		const Grid<Real> &pressure, const Grid<Real> &phi, Real gfClamp )
 {
 	const IndexInt idx = flags.index(i,j,k);
@@ -225,12 +225,12 @@ void ReplaceClampedGhostFluidVels(MACGrid &vel, FlagGrid &flags,
 
 //! Kernel: Compute min value of Real grid
 KERNEL(idx, reduce=+) returns(int numEmpty=0)
-int CountEmptyCells(FlagGrid& flags) {
+int CountEmptyCells(const FlagGrid& flags) {
 	if (flags.isEmpty(idx) ) numEmpty++;
 }
 
 // *****************************************************************************
-// Main pressure solve
+// Misc helpers
 
 //! Change 'A' and 'rhs' such that pressure at 'fixPidx' is fixed to 'value'
 void fixPressure (int fixPidx, Real value, Grid<Real>& rhs, Grid<Real>& A0, Grid<Real>& Ai, Grid<Real>& Aj, Grid<Real>& Ak)
@@ -277,7 +277,37 @@ PYTHON() void releaseMG(FluidSolver* solver=nullptr) {
 }
 
 
-//! Perform pressure projection of the velocity grid
+// *****************************************************************************
+// Main pressure solve
+
+// Note , all three pressure solve helper functions take
+// identical parameters, apart from the RHS grid (and different const values)
+
+
+//! Compute rhs for pressure solve
+PYTHON() void computePressureRhs(Grid<Real>& rhs, const MACGrid& vel, 
+	const Grid<Real>& pressure, const FlagGrid& flags, Real cgAccuracy = 1e-3,
+    const Grid<Real>* phi = 0,
+    const Grid<Real>* perCellCorr = 0,
+    const MACGrid* fractions = 0,
+    Real gfClamp = 1e-04,
+    Real cgMaxIterFac = 1.5,
+    bool precondition = true, // Deprecated, use preconditioner instead
+	int preconditioner = PcMIC,
+	bool enforceCompatibility = false,
+    bool useL2Norm = false, 
+	bool zeroPressureFixing = false,
+	const Grid<Real> *curv = NULL,
+	const Real surfTens = 0. )
+{
+	// compute divergence and init right hand side
+	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, fractions,  phi, curv, surfTens, gfClamp );
+	
+	if (enforceCompatibility)
+		rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
+}
+	
+//! Build and solve pressure system of equations
 //! perCellCorr: a divergence correction for each cell, optional
 //! fractions: for 2nd order obstacle boundaries, optional
 //! gfClamp: clamping threshold for ghost fluid method
@@ -288,10 +318,11 @@ PYTHON() void releaseMG(FluidSolver* solver=nullptr) {
 //! curv: curvature for surface tension effects
 //! surfTens: surface tension coefficient
 //! retRhs: return RHS divergence, e.g., for debugging; optional
-PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags, Real cgAccuracy = 1e-3,
-    Grid<Real>* phi = 0, 
-    Grid<Real>* perCellCorr = 0, 
-    MACGrid* fractions = 0,
+PYTHON() void solvePressureSystem(Grid<Real>& rhs, MACGrid& vel, 
+	Grid<Real>& pressure, const FlagGrid& flags, Real cgAccuracy = 1e-3,
+	const Grid<Real>* phi = 0,
+    const Grid<Real>* perCellCorr = 0,
+    const MACGrid* fractions = 0,
     Real gfClamp = 1e-04,
     Real cgMaxIterFac = 1.5,
     bool precondition = true, // Deprecated, use preconditioner instead
@@ -300,8 +331,7 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
     bool useL2Norm = false, 
 	bool zeroPressureFixing = false,
 	const Grid<Real> *curv = NULL,
-	const Real surfTens = 0.,
-	Grid<Real>* retRhs = NULL )
+	const Real surfTens = 0.)
 {
 	if (precondition==false) preconditioner = PcNone; // for backwards compatibility
 
@@ -314,7 +344,6 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	Grid<Real> Aj(parent);
 	Grid<Real> Ak(parent);
 	Grid<Real> tmp(parent);
-	Grid<Real> rhs(parent);
 		
 	// setup matrix and boundaries 
 	MakeLaplaceMatrix(flags, A0, Ai, Aj, Ak, fractions);
@@ -322,12 +351,6 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	if (phi) {
 		ApplyGhostFluidDiagonal(A0, flags, *phi, gfClamp);
 	}
-	
-	// compute divergence and init right hand side
-	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, fractions,  phi, curv, surfTens, gfClamp );
-	
-	if (enforceCompatibility)
-		rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
 	
 	// check whether we need to fix some pressure value...
 	// (manually enable, or automatically for high accuracy, can cause asymmetries otherwise)
@@ -429,13 +452,64 @@ PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, FlagGrid& flags,
 	// PcMGDynamic: always delete multigrid solver after use
 	// PcMGStatic: keep multigrid solver for next solve
 	if (pmg && preconditioner==PcMGDynamic) releaseMG(parent);
+}
 
-	CorrectVelocity(flags, vel, pressure ); 
+//! Apply pressure gradient to make velocity field divergence free
+PYTHON() void correctVelocity(MACGrid& vel, Grid<Real>& pressure, const FlagGrid& flags, Real cgAccuracy = 1e-3,
+    const Grid<Real>* phi = 0,
+    const Grid<Real>* perCellCorr = 0,
+    const MACGrid* fractions = 0,
+    Real gfClamp = 1e-04,
+    Real cgMaxIterFac = 1.5,
+    bool precondition = true, // Deprecated, use preconditioner instead
+	int preconditioner = PcMIC,
+	bool enforceCompatibility = false,
+    bool useL2Norm = false, 
+	bool zeroPressureFixing = false,
+	const Grid<Real> *curv = NULL,
+	const Real surfTens = 0. )
+{
+	knCorrectVelocity(flags, vel, pressure ); 
 	if (phi) {
-		CorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp,  curv, surfTens );
+		knCorrectVelocityGhostFluid (vel, flags, pressure, *phi, gfClamp,  curv, surfTens );
 		// improve behavior of clamping for large time steps:
-		ReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
+		knReplaceClampedGhostFluidVels (vel, flags, pressure, *phi, gfClamp);
 	}
+}
+
+//! Perform pressure projection of the velocity grid, calls
+//! all three pressure helper functions in a row.
+PYTHON() void solvePressure(MACGrid& vel, Grid<Real>& pressure, const FlagGrid& flags, Real cgAccuracy = 1e-3,
+    const Grid<Real>* phi = 0,
+    const Grid<Real>* perCellCorr = 0,
+    const MACGrid* fractions = 0,
+    Real gfClamp = 1e-04,
+    Real cgMaxIterFac = 1.5,
+    bool precondition = true, // Deprecated, use preconditioner instead
+	int preconditioner = PcMIC,
+	bool enforceCompatibility = false,
+    bool useL2Norm = false, 
+	bool zeroPressureFixing = false,
+	const Grid<Real> *curv = NULL,
+	const Real surfTens = 0.,
+	Grid<Real>* retRhs = NULL )
+{
+	Grid<Real> rhs(vel.getParent());
+
+	computePressureRhs(rhs, vel, pressure, flags, cgAccuracy,
+		phi, perCellCorr, fractions, gfClamp,
+		cgMaxIterFac, precondition, preconditioner, enforceCompatibility,
+		useL2Norm, zeroPressureFixing, curv, surfTens);
+
+	solvePressureSystem(rhs, vel, pressure, flags, cgAccuracy,
+		phi, perCellCorr, fractions, gfClamp,
+		cgMaxIterFac, precondition, preconditioner, enforceCompatibility,
+		useL2Norm, zeroPressureFixing, curv, surfTens);
+
+	correctVelocity(vel, pressure, flags, cgAccuracy,
+		phi, perCellCorr, fractions, gfClamp,
+		cgMaxIterFac, precondition, preconditioner, enforceCompatibility,
+		useL2Norm, zeroPressureFixing, curv, surfTens);
 
 	// optionally , return RHS
 	if(retRhs) {
