@@ -380,11 +380,6 @@ void WrapperRegistry::addConstants(PyObject* module) {
 	PyModule_AddObject(module,"SCENEFILE",Manta::toPy(mScriptName));
 
 	// expose compile flags
-#ifdef CUDA
-	PyModule_AddObject(module,"CUDA",Manta::toPy<bool>(true));
-#else
-	PyModule_AddObject(module,"CUDA",Manta::toPy<bool>(false));
-#endif
 #ifdef DEBUG
 	PyModule_AddObject(module,"DEBUG",Manta::toPy<bool>(true));
 #else
@@ -405,6 +400,8 @@ void WrapperRegistry::addConstants(PyObject* module) {
 #else
 	PyModule_AddObject(module,"DOUBLEPRECISION",Manta::toPy<bool>(false));
 #endif
+	// cuda off for now
+	PyModule_AddObject(module,"CUDA",Manta::toPy<bool>(false));
 }
 
 void WrapperRegistry::runPreInit() {

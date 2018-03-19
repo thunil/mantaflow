@@ -79,9 +79,6 @@ IF(NOPYTHON)
 	SET(BUILD_STATIC ON)
 ENDIF()
 
-# CUDA is deprecated, and not tested - enable at own risk... (needs cmake version >2.8)
-#OPTION(CUDA "Compile with CUDA plugins" OFF)
-
 # check consistency of MT options
 SET(MT OFF)
 SET(MT_TYPE "NONE")
@@ -128,7 +125,6 @@ MESSAGE(STATUS "Options - "
 	" -DNUMPY='${NUMPY}' "
 	" -DNOPYTHON='${NOPYTHON}' "
 	)
-# " -DCUDA='${CUDA}' "
 MESSAGE(STATUS "Multithreading type : ${MT_TYPE}")
 MESSAGE(STATUS "")
 
@@ -278,21 +274,11 @@ if (GUI)
 	list(APPEND PP_HEADERS ${QT_HEADERS})
 endif()
 
-# CUDA sources , deprectated
-if (CUDA)
-	list(APPEND PP_SOURCES
-		source/cuda/meshtools.cu
-		source/cuda/buoyancy.cu
-		source/cuda/particle.cu
-	)
-endif()
-
 # include dirs
 SET(INCLUDE_PATHS
 	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
 	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/util
 	source/pwrapper
-	source/cuda
 	source/util
 )
 
@@ -310,7 +296,6 @@ if (NOPYTHON)
 		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
 		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/util
 		source/nopython
-		source/cuda
 		source/util
 	)
 
@@ -482,29 +467,6 @@ if (0)
 	add_definitions(-DNO_ZLIB=1)
 endif()
 
-# CUDA , warning - deprecated...
-if(CUDA)
-	add_definitions( -DCUDA=1 )
-	find_package(CUDA QUIET REQUIRED)
-	set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
-	# ? if (USE64) set(CUDA_64_BIT_DEVICE_CODE ON) endif()
-	if(WIN32)
-		if(DEBUG)
-			set(CUDA_NVCC_FLAGS -DDEBUG;--compiler-options;-Wall)
-		else()
-			set(CUDA_NVCC_FLAGS --use_fast_math;-DNDEBUG;--compiler-options;-Wall;-O2)
-		endif()
-	else()
-		# CUDA does not support gcc > 4.5 yet
-		if(DEBUG)
-			set(CUDA_NVCC_FLAGS --pre-include;/usr/local/include/undef_atomics_int128.h;-g;-DDEBUG;-keep;--maxrregcount=31;--compiler-options;-Wall)
-		else()
-			 #set(CUDA_NVCC_FLAGS -ccbin;gcc-4.5;--use_fast_math;-arch=sm_20;-DNDEBUG;--compiler-options;-Wall;-O3)
-			 set(CUDA_NVCC_FLAGS --pre-include;/usr/local/include/undef_atomics_int128.h;--use_fast_math;-DNDEBUG;--compiler-options;-Wall;-O3)
-		endif()
-	endif()
-endif()
-
 # increase FP precision?
 if(DOUBLEPRECISION)
 	add_definitions(-DFLOATINGPOINT_PRECISION=2)
@@ -645,22 +607,15 @@ link_directories( ${F_LIB_PATHS} )
 IF(NOT NOPYTHON)
 	# build regular executable
 
-	if(CUDA)
-		#cuda_include_directories(pp/source/cuda)
-		cuda_add_executable( ${EXECCMD} ${SOURCES})
-		target_link_libraries( ${EXECCMD} ${F_LIBS} )
-		cuda_build_clean_target()
+	if (WIN32)
+		# make nice folders for Visual Studio
+		set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} ${NOPP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
+		add_executable(${EXECCMD} ${SOURCES} ${PP_SOURCES} ${PP_HEADERS})
+		source_group(Generated FILES ${SOURCES} ${HEADERS})
 	else()
-		if (WIN32)
-			# make nice folders for Visual Studio
-			set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} ${NOPP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
-			add_executable(${EXECCMD} ${SOURCES} ${PP_SOURCES} ${PP_HEADERS})
-			source_group(Generated FILES ${SOURCES} ${HEADERS})
-		else()
-			add_executable(${EXECCMD} ${SOURCES} ${GITINFO})
-		endif()
-		target_link_libraries( ${EXECCMD} ${F_LIBS} )
+		add_executable(${EXECCMD} ${SOURCES} ${GITINFO})
 	endif()
+	target_link_libraries( ${EXECCMD} ${F_LIBS} )
 
 	# fix for "el capitan" TBB and changed dynamic library env vars, lookup of TBB can cause problems without @rpath
 	IF(APPLE)
