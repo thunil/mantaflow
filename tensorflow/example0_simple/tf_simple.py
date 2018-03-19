@@ -4,8 +4,8 @@
 # Copyright 2017 Nils Thuerey
 #
 # This program is free software, distributed under the terms of the
-# GNU General Public License (GPL) 
-# http://www.gnu.org/licenses
+# Apache License, Version 2.0 
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # As-simple-as-possible manta- & tensor-flow example
 # Hard coded for 2d 64*64 density data

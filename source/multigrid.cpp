@@ -4,8 +4,8 @@
  * Multigrid solver
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Copyright 2016, by Florian Ferstl (florian.ferstl.ff@gmail.com)
  *

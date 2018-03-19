@@ -4,7 +4,7 @@
  * Copyright 2011 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
+ * Apache License, Version 2.0 
  * http://www.ynu.org/licenses
  *
  * Turbulence particles

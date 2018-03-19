@@ -4,8 +4,8 @@
  * Copyright 2011-2014 Tobias Pfaff, Nils Thuerey 
  *
  * This program is free software, distributed under the terms of the
- * GNU General Public License (GPL) 
- * http://www.gnu.org/licenses
+ * Apache License, Version 2.0 
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Preprocessor: Process replacement text of PYTHON keywords
  * nopython mode disables output of glue code (eg for linking manta as static library)

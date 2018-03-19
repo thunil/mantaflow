@@ -4,8 +4,8 @@
 # Copyright 2017 Daniel Hook, Nils Thuerey
 #
 # This program is free software, distributed under the terms of the
-# GNU General Public License (GPL) 
-# http://www.gnu.org/licenses
+# Apache License, Version 2.0 
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Manta & tensor flow example with tiles using Keras
 # (note, this is a slightly simplified version of the tf_train script, with a deeper network and better regularization)

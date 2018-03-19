@@ -4,8 +4,8 @@
 * Copyright 2017 Steffen Wiewel, Moritz Baecher 
 *
 * This program is free software, distributed under the terms of the
-* GNU General Public License (GPL) 
-* http://www.gnu.org/licenses
+* Apache License, Version 2.0 
+* http://www.apache.org/licenses/LICENSE-2.0
 *
 * Plugins to convert mantaflow grids to/from numpy arrays, also support pdata fields  
 # (only compiled if NUMPY is enabled)
