@@ -14,10 +14,10 @@
 #include "grid.h"
 #include "levelset.h"
 #include "kernel.h"
+#include "io.h"
 #include <limits>
 #include <sstream>
 #include <cstring>
-#include "fileio/io.h"
 
 using namespace std;
 namespace Manta {

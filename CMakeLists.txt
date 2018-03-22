@@ -278,8 +278,10 @@ endif()
 SET(INCLUDE_PATHS
 	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
 	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/util
+	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/fileio
 	source/pwrapper
 	source/util
+	source/fileio
 )
 
 # reduced version without python
@@ -295,8 +297,10 @@ if (NOPYTHON)
 	SET(INCLUDE_PATHS
 		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
 		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/util
+		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/fileio
 		source/nopython
 		source/util
+		source/fileio
 	)
 
 	add_definitions( -DNOPYTHON=1 )

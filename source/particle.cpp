@@ -18,7 +18,7 @@
 #endif
 #include "particle.h"
 #include "levelset.h"
-#include "fileio/io.h"
+#include "io.h"
 
 using namespace std;
 namespace Manta {

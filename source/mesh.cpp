@@ -16,7 +16,7 @@
 
 #include "mesh.h"
 #include "integrator.h"
-#include "fileio/io.h"
+#include "io.h"
 #include "kernel.h"
 #include "shapes.h"
 #include "noisefield.h"
