@@ -68,13 +68,13 @@ for t in range(25000):
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel    , order=2, strength=1.0)
 
 	if(secOrderBc):
-		extrapolateMACSimple( flags=flags, vel=vel, distance=2 , intoObs=True);
+		extrapolateMACSimple( flags=flags, vel=vel, distance=2 , intoObs=True)
 		setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)
 
 		setInflowBcs(vel=vel,dir='xX',value=velInflow)
 		solvePressure( flags=flags, vel=vel, pressure=pressure, fractions=fractions, cgAccuracy=cgAcc, cgMaxIterFac=cgIter)
 
-		extrapolateMACSimple( flags=flags, vel=vel, distance=5 , intoObs=True);
+		extrapolateMACSimple( flags=flags, vel=vel, distance=5 , intoObs=True)
 		setWallBcs(flags=flags, vel=vel, fractions=fractions, phiObs=phiObs)
 	else:
 		setWallBcs(flags=flags, vel=vel)

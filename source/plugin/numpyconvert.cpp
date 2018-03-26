@@ -1,7 +1,7 @@
 /******************************************************************************
 *
 * MantaFlow fluid solver framework
-* Copyright 2017 Steffen Wiewel, Moritz Baecher 
+* Copyright 2017 Steffen Wiewel, Moritz Becher 
 *
 * This program is free software, distributed under the terms of the
 * Apache License, Version 2.0 
