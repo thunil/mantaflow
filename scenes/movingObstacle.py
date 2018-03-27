@@ -3,7 +3,7 @@
 #
 from manta import *
 
-dim = 3
+dim = 2
 res = 50
 gs  = vec3(res,res, 1 if dim==2 else res )
 s   = Solver(name='main', gridSize = gs, dim=dim)
