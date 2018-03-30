@@ -347,7 +347,8 @@ endif()
 if(NUMPY)
 	# if the python command below doesnt work, manually set path, e.g., use "numpy.get_include()" to find path 
 	# set(NUMPY_INCLUDE_DIR "${PYTHON_INCLUDE_DIRS}/dist-packages/numpy/core/include") 
-	execute_process(COMMAND python${PYTHON_FORCE_VERSION} -c "import numpy; print(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR) 
+	execute_process(COMMAND python${PYTHON_FORCE_VERSION} -c "import numpy, sys; sys.stdout.write(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR) 
+	message("Using numpy include path '${NUMPY_INCLUDE_DIR}' ")  
 	list(APPEND INCLUDE_PATHS ${NUMPY_INCLUDE_DIR}) 
 	list(APPEND   PP_SOURCES source/plugin/numpyconvert.cpp)
 	list(APPEND   PP_SOURCES source/plugin/tfplugins.cpp)
@@ -442,6 +443,7 @@ endif()
 find_package(PythonLibs ${PYTHON_FORCE_VERSION} REQUIRED)
 list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
 list(APPEND F_LIBS ${PYTHON_LIBRARIES})
+message("Using python include path '${PYTHON_INCLUDE_DIRS}' and libs '${PYTHON_LIBRARIES}' ") 
 
 # Z lib compression
 if (1)

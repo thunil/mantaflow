@@ -30,16 +30,20 @@
 	#undef _DEBUG
 	#define NDEBUG
 	#include <Python.h>
+	#if NUMPY==1
+	#	define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+	#	include "numpy/arrayobject.h" 
+	#endif
 	#define _DEBUG
 	#undef NDEBUG
 
 #else
 	#include <Python.h>
+	#if NUMPY==1
+	#	define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+	#	include "numpy/arrayobject.h" 
+	#endif
 #endif
 
-#if NUMPY==1
-#	define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#	include "numpy/arrayobject.h" 
-#endif
 
 #endif
