@@ -347,8 +347,7 @@ endif()
 if(NUMPY)
 	# if the python command below doesnt work, manually set path, e.g., use "numpy.get_include()" to find path 
 	# set(NUMPY_INCLUDE_DIR "${PYTHON_INCLUDE_DIRS}/dist-packages/numpy/core/include") 
-	execute_process(COMMAND python${PYTHON_FORCE_VERSION} -c "import numpy, sys; sys.stdout.write(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR) 
-	# SET (NUMPY_INCLUDE_DIR "...") # alternatively, set manually here
+	execute_process(COMMAND python${PYTHON_VERSION} -c "import numpy, sys; sys.stdout.write(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR) 
 	if("${NUMPY_INCLUDE_DIR}" STREQUAL "")
 		message(FATAL_ERROR "No numpy path found, please manually set NUMPY_INCLUDE_DIR in CMakeLists.txt")
 	endif()
@@ -430,28 +429,37 @@ endif(DOXYGEN_FOUND)
 #******************************************************************************
 # Link libraries
 
-# enforce certain python version, if necessary
-if(NOT PYTHON_VERSION)
-  set(PYTHON_FORCE_VERSION) # use any...
-else()
-  set(PYTHON_FORCE_VERSION ${PYTHON_VERSION})
-endif()
-
 # Python 
+# note - if configuration fails, comment out the auto block below, and manually set the following two paths:
+#set(PYTHON_INCLUDE_DIRS "PYTHON_PATH/include")
+#set(PYTHON_LIBRARY "PYTHON_PATH/libs/pythonX.Y.lib/so")
+# auto block
 if (WIN32)
 	# convenience override for windows, typically the auto find doesnt work, so fall back to WIN_PYTHON_PATH
-	find_package(PythonLibs ${PYTHON_FORCE_VERSION} QUIET)
+	find_package(PythonLibs ${PYTHON_VERSION} QUIET)
 	if(NOT PYTHONLIBS_FOUND)
-		set(PYTHON_INCLUDE_DIR "${WIN_PYTHON_PATH}/include")
-		set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${PYTHON_FORCE_VERSION}.lib")
+		set(PYTHON_INCLUDE_DIRS "${WIN_PYTHON_PATH}/include")
+		set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${PYTHON_VERSION}.lib")
 	endif()
 else()
 	if(NOT PYTHON_VERSION)
 		find_package(PythonLibs REQUIRED) # use any
 	else()
-		find_package(PythonLibs ${PYTHON_FORCE_VERSION} EXACT REQUIRED) # fixed version
+		find_package(PythonLibs ${PYTHON_VERSION} EXACT QUIET) # fixed version
+		if(NOT PYTHONLIBS_FOUND)
+			message("Right Python version ${PYTHON_VERSION} not found, searching manually")
+			# try to configure from python itself
+			execute_process(COMMAND python${PYTHON_VERSION} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('INCLUDEPY'))" OUTPUT_VARIABLE PYTHON_INCLUDE_DIRS) 
+			execute_process(COMMAND python${PYTHON_VERSION} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LIBDIR'))" OUTPUT_VARIABLE PYTHON_LIB1) 
+			execute_process(COMMAND python${PYTHON_VERSION} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LDLIBRARY'))" OUTPUT_VARIABLE PYTHON_LIB2) 
+			set(PYTHON_LIBRARIES "${PYTHON_LIB1}/${PYTHON_LIB2}")
+			if("${PYTHON_INCLUDE_DIRS}" STREQUAL "" OR "${PYTHON_LIB1}" STREQUAL "" OR "${PYTHON_LIB2}" STREQUAL "") 
+				message(FATAL_ERROR "Unable to find python version '${PYTHON_VERSION}' , better configure manually! ") 
+			endif()
+		endif()
 	endif()
 endif()
+# end auto block, python config done
 list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
 list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 message("Using python include path '${PYTHON_INCLUDE_DIRS}' and libs '${PYTHON_LIBRARIES}' ") 
