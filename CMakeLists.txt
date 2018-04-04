@@ -348,6 +348,10 @@ if(NUMPY)
 	# if the python command below doesnt work, manually set path, e.g., use "numpy.get_include()" to find path 
 	# set(NUMPY_INCLUDE_DIR "${PYTHON_INCLUDE_DIRS}/dist-packages/numpy/core/include") 
 	execute_process(COMMAND python${PYTHON_FORCE_VERSION} -c "import numpy, sys; sys.stdout.write(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR) 
+	# SET (NUMPY_INCLUDE_DIR "...") # alternatively, set manually here
+	if("${NUMPY_INCLUDE_DIR}" STREQUAL "")
+		message(FATAL_ERROR "No numpy path found, please manually set NUMPY_INCLUDE_DIR in CMakeLists.txt")
+	endif()
 	message("Using numpy include path '${NUMPY_INCLUDE_DIR}' ")  
 	list(APPEND INCLUDE_PATHS ${NUMPY_INCLUDE_DIR}) 
 	list(APPEND   PP_SOURCES source/plugin/numpyconvert.cpp)
