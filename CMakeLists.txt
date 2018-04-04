@@ -216,7 +216,7 @@ SET(PP_HEADERS
 	source/kernel.h
 	source/timing.h
 	source/movingobs.h
-	source/fileio/io.h
+	source/fileio/mantaio.h
 	source/edgecollapse.h
 	source/vortexpart.h
 	source/turbulencepart.h

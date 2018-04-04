@@ -21,7 +21,7 @@ extern "C" {
 }
 #endif
 
-#include "io.h"
+#include "mantaio.h"
 #include "grid.h"
 #include "particle.h"
 #include "vector4d.h"

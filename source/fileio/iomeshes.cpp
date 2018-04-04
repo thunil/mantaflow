@@ -20,7 +20,7 @@ extern "C" {
 }
 #endif
 
-#include "io.h"
+#include "mantaio.h"
 #include "grid.h"
 #include "mesh.h"
 #include "vortexsheet.h"

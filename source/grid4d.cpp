@@ -18,7 +18,7 @@
 #include "grid4d.h"
 #include "levelset.h"
 #include "kernel.h"
-#include "io.h" 
+#include "mantaio.h" 
 
 using namespace std;
 namespace Manta {

@@ -26,7 +26,7 @@ extern "C" {
 #include "openvdb/openvdb.h"
 #endif
 
-#include "io.h"
+#include "mantaio.h"
 #include "grid.h"
 #include "vector4d.h"
 #include "grid4d.h"
