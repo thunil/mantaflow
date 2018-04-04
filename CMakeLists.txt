@@ -25,8 +25,8 @@ SET(MANTAVERSION "0.12")
 # - allow override from command line on OsX, eg use "cmake ..  -DCMAKE_PREFIX_PATH=/Users/someone/qt5.2.1/5.2.1/clang_64/
 
 IF(WIN32)
-	SET(WIN_QT_PATH        "C:/Qt/5.5/msvc2013_64_opengl") # qt5/win64
-	SET(WIN_PYTHON_PATH    "C:/Python34")
+	SET(WIN_QT_PATH        "C:/Qt/5.9/msvc2013_64_opengl") # qt5/win64
+	SET(WIN_PYTHON_PATH    "C:/Python36")
 	# choose python version with PYTHON_VERSION above
 	SET(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
 	SET(CMAKE_PREFIX_PATH ${WIN_QT_PATH})
@@ -438,13 +438,20 @@ else()
 endif()
 
 # Python 
-# old: set(Python_ADDITIONAL_VERSIONS 3.4) , now select with cmake option PYTHON_VERSION
-find_package(PythonLibs ${PYTHON_FORCE_VERSION} QUIET)
-if((NOT PYTHONLIBS_FOUND) AND WIN32)
-	set(PYTHON_INCLUDE_DIR "${WIN_PYTHON_PATH}/include")
-	set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${PYTHON_FORCE_VERSION}.lib")
+if (WIN32)
+	# convenience override for windows, typically the auto find doesnt work, so fall back to WIN_PYTHON_PATH
+	find_package(PythonLibs ${PYTHON_FORCE_VERSION} QUIET)
+	if(NOT PYTHONLIBS_FOUND)
+		set(PYTHON_INCLUDE_DIR "${WIN_PYTHON_PATH}/include")
+		set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${PYTHON_FORCE_VERSION}.lib")
+	endif()
+else()
+	if(NOT PYTHON_VERSION)
+		find_package(PythonLibs REQUIRED) # use any
+	else()
+		find_package(PythonLibs ${PYTHON_FORCE_VERSION} EXACT REQUIRED) # fixed version
+	endif()
 endif()
-find_package(PythonLibs ${PYTHON_FORCE_VERSION} REQUIRED)
 list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
 list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 message("Using python include path '${PYTHON_INCLUDE_DIRS}' and libs '${PYTHON_LIBRARIES}' ") 
