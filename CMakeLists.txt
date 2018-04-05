@@ -349,24 +349,6 @@ if(MT)
 endif()
 
 #******************************************************************************
-# optional - compile with numpy support?
-if(NUMPY)
-	# if the python command below doesnt work, manually set path, e.g., use "numpy.get_include()" to find path 
-	# set(NUMPY_INCLUDE_DIR "${PYTHON_INCLUDE_DIRS}/dist-packages/numpy/core/include") 
-	execute_process(COMMAND python${PYTHON_VER_ID} -c "import numpy, sys; sys.stdout.write(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR) 
-	if("${NUMPY_INCLUDE_DIR}" STREQUAL "")
-		message(FATAL_ERROR "No numpy path found, please manually set NUMPY_INCLUDE_DIR in CMakeLists.txt")
-	endif()
-	message("Using numpy include path '${NUMPY_INCLUDE_DIR}' ")  
-	list(APPEND INCLUDE_PATHS ${NUMPY_INCLUDE_DIR}) 
-	list(APPEND   PP_SOURCES source/plugin/numpyconvert.cpp)
-	list(APPEND   PP_SOURCES source/plugin/tfplugins.cpp)
-	list(APPEND NOPP_SOURCES source/pwrapper/numpyWrap.cpp)
-	list(APPEND NOPP_HEADERS source/pwrapper/numpyWrap.h)
-	add_definitions( -DNUMPY=1 )
-endif()
-
-#******************************************************************************
 # optional - openvdb support
 
 IF(OPENVDB)
@@ -467,6 +449,25 @@ list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
 list(APPEND F_LIBS ${PYTHON_LIBRARIES})
 message("Using python include path '${PYTHON_INCLUDE_DIRS}' and libs '${PYTHON_LIBRARIES}' ") 
 
+#******************************************************************************
+# optional - compile with numpy support?
+if(NUMPY)
+	# if the python command below doesnt work, manually set path, e.g., use "numpy.get_include()" to find path 
+	# set(NUMPY_INCLUDE_DIR "${PYTHON_INCLUDE_DIRS}/dist-packages/numpy/core/include") 
+	execute_process(COMMAND python${PYTHON_VER_ID} -c "import numpy, sys; sys.stdout.write(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR) 
+	if("${NUMPY_INCLUDE_DIR}" STREQUAL "")
+		message(FATAL_ERROR "No numpy path found, please manually set NUMPY_INCLUDE_DIR in CMakeLists.txt")
+	endif()
+	message("Using numpy include path '${NUMPY_INCLUDE_DIR}' ")  
+	list(APPEND INCLUDE_PATHS ${NUMPY_INCLUDE_DIR}) 
+	list(APPEND   PP_SOURCES source/plugin/numpyconvert.cpp)
+	list(APPEND   PP_SOURCES source/plugin/tfplugins.cpp)
+	list(APPEND NOPP_SOURCES source/pwrapper/numpyWrap.cpp)
+	list(APPEND NOPP_HEADERS source/pwrapper/numpyWrap.h)
+	add_definitions( -DNUMPY=1 )
+endif()
+
+#******************************************************************************
 # Z lib compression
 if (1)
 	# default: build from own sources
