@@ -26,8 +26,7 @@ SET(MANTAVERSION "0.12")
 
 IF(WIN32)
 	SET(WIN_QT_PATH        "C:/Qt/5.9/msvc2013_64_opengl") # qt5/win64
-	SET(WIN_PYTHON_PATH    "C:/Python36")
-	# choose python version with PYTHON_VERSION above
+	SET(WIN_PYTHON_PATH    "C:/Python36") # choose python version with PYTHON_VERSION above
 	SET(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
 	SET(CMAKE_PREFIX_PATH ${WIN_QT_PATH})
 ENDIF()
@@ -111,6 +110,13 @@ ENDIF()
 IF(BLENDER)
 	add_definitions ( -DBLENDER=1 )
 ENDIF()
+
+# translate option into python version string
+if(NOT PYTHON_VERSION)
+  set(PYTHON_VER_ID) # use any...
+else()
+  set(PYTHON_VER_ID ${PYTHON_VERSION})
+endif()
 
 
 MESSAGE(STATUS "")
@@ -347,7 +353,7 @@ endif()
 if(NUMPY)
 	# if the python command below doesnt work, manually set path, e.g., use "numpy.get_include()" to find path 
 	# set(NUMPY_INCLUDE_DIR "${PYTHON_INCLUDE_DIRS}/dist-packages/numpy/core/include") 
-	execute_process(COMMAND python${PYTHON_VERSION} -c "import numpy, sys; sys.stdout.write(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR) 
+	execute_process(COMMAND python${PYTHON_VER_ID} -c "import numpy, sys; sys.stdout.write(numpy.get_include())" OUTPUT_VARIABLE NUMPY_INCLUDE_DIR) 
 	if("${NUMPY_INCLUDE_DIR}" STREQUAL "")
 		message(FATAL_ERROR "No numpy path found, please manually set NUMPY_INCLUDE_DIR in CMakeLists.txt")
 	endif()
@@ -436,25 +442,25 @@ endif(DOXYGEN_FOUND)
 # auto block
 if (WIN32)
 	# convenience override for windows, typically the auto find doesnt work, so fall back to WIN_PYTHON_PATH
-	find_package(PythonLibs ${PYTHON_VERSION} QUIET)
+	find_package(PythonLibs ${PYTHON_VER_ID} QUIET)
 	if(NOT PYTHONLIBS_FOUND)
 		set(PYTHON_INCLUDE_DIRS "${WIN_PYTHON_PATH}/include")
-		set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${PYTHON_VERSION}.lib")
+		set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${PYTHON_VER_ID}.lib")
 	endif()
 else()
 	if(NOT PYTHON_VERSION)
 		find_package(PythonLibs REQUIRED) # use any
 	else()
-		find_package(PythonLibs ${PYTHON_VERSION} EXACT QUIET) # fixed version
+		find_package(PythonLibs ${PYTHON_VER_ID} EXACT QUIET) # fixed version
 		if(NOT PYTHONLIBS_FOUND)
-			message("Right Python version ${PYTHON_VERSION} not found, searching manually")
+			message("Right Python version ${PYTHON_VER_ID} not found, searching manually")
 			# try to configure from python itself
-			execute_process(COMMAND python${PYTHON_VERSION} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('INCLUDEPY'))" OUTPUT_VARIABLE PYTHON_INCLUDE_DIRS) 
-			execute_process(COMMAND python${PYTHON_VERSION} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LIBDIR'))" OUTPUT_VARIABLE PYTHON_LIB1) 
-			execute_process(COMMAND python${PYTHON_VERSION} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LDLIBRARY'))" OUTPUT_VARIABLE PYTHON_LIB2) 
+			execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('INCLUDEPY'))" OUTPUT_VARIABLE PYTHON_INCLUDE_DIRS) 
+			execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LIBDIR'))" OUTPUT_VARIABLE PYTHON_LIB1) 
+			execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LDLIBRARY'))" OUTPUT_VARIABLE PYTHON_LIB2) 
 			set(PYTHON_LIBRARIES "${PYTHON_LIB1}/${PYTHON_LIB2}")
 			if("${PYTHON_INCLUDE_DIRS}" STREQUAL "" OR "${PYTHON_LIB1}" STREQUAL "" OR "${PYTHON_LIB2}" STREQUAL "") 
-				message(FATAL_ERROR "Unable to find python version '${PYTHON_VERSION}' , better configure manually! ") 
+				message(FATAL_ERROR "Unable to find python version '${PYTHON_VER_ID}' , better configure manually! ") 
 			endif()
 		endif()
 	endif()
@@ -504,8 +510,10 @@ endif()
 IF(NOT WIN32)
 	set(GITINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/gitinfo.h")
 	MESSAGE(STATUS "Git info target header ${GITINFO}")
+	#message("chmod 755 ${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py") # make sure permissions are ok
+	#execute_process(COMMAND "chmod 755 ${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py") # make sure permissions are ok
 	add_custom_command(OUTPUT ${GITINFO}
-					   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py" "${GITINFO}"
+					   COMMAND python${PYTHON_VER_ID} ${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py ${GITINFO} 
 					   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS}
 					   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} )
 ENDIF()
