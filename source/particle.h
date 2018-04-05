@@ -34,9 +34,9 @@ public:
 	enum ParticleStatus {
 		PNONE         = 0,
 		PNEW          = (1<<0),  // particles newly created in this step
-		PDROPLET      = (1<<1),  // secondary particle types
+		PSPRAY        = (1<<1),  // secondary particle types
 		PBUBBLE       = (1<<2),
-		PFLOATER      = (1<<3),
+		PFOAM         = (1<<3),
 		PTRACER       = (1<<4),
 		PDELETE       = (1<<10), // mark as deleted, will be deleted in next compress() step
 		PINVALID      = (1<<30), // unused
@@ -120,9 +120,9 @@ public:
 	//! query status
 	inline int  getStatus(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx].flag; }
 	inline bool isActive(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PDELETE) == 0; }
-	inline bool isDroplet(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PDROPLET); }
+	inline bool isSpray(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PSPRAY); }
 	inline bool isBubble(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PBUBBLE); }
-	inline bool isFloater(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PFLOATER); }
+	inline bool isFoam(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PFOAM); }
 	inline bool isTracer(IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return (mData[idx].flag & PTRACER); }
 
 	//! update status

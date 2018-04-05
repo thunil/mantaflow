@@ -50,11 +50,8 @@ PcMGDynamic = 2
 PcMGStatic  = 3
 
 # particles
-PtypeNone    = 0
-PtypeNew     = 1
-PtypeDroplet = 2
+PtypeSpray   = 2
 PtypeBubble  = 4
-PtypeFloater = 8
+PtypeFoam    = 8
 PtypeTracer  = 16
-
 
