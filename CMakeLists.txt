@@ -433,14 +433,24 @@ else()
 	# try to configure from python itself first
 	execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('INCLUDEPY'))" OUTPUT_VARIABLE PYTHON_INCLUDE_DIRS) 
 	execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LIBDIR'))"    OUTPUT_VARIABLE PYTHON_LIB1) 
-	execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LDLIBRARY'))" OUTPUT_VARIABLE PYTHON_LIB2) 
+	if(APPLE)
+		# LDLIBRARY doesnt seem to work for Macs...
+		set(PYTHON_LIB2 "../Python")
+	else()
+		execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LDLIBRARY'))" OUTPUT_VARIABLE PYTHON_LIB2) 
+	endif()
 	set(PYTHON_LIBRARIES "${PYTHON_LIB1}/${PYTHON_LIB2}")
-	if("${PYTHON_INCLUDE_DIRS}" STREQUAL "" OR "${PYTHON_LIB1}" STREQUAL "" OR "${PYTHON_LIB2}" STREQUAL "") 
+	if(EXISTS "${PYTHON_INCLUDE_DIRS}" AND EXISTS "${PYTHON_LIBRARIES}")
+		message("Found python configuration")
+	else()
 		# otherwise, fall back to cmake find
 		if(NOT PYTHON_VERSION)
 			find_package(PythonLibs REQUIRED) # use any
 		else()
 			find_package(PythonLibs ${PYTHON_VER_ID} EXACT QUIET) # fixed version
+		endif()
+		if(NOT PYTHONLIBS_FOUND)
+			message(FATAL_ERROR "No python found, please manually set PYTHON_VERSION for cmake, or PYTHON_ paths in CMakeLists.txt")
 		endif()
 	endif()
 endif()
@@ -511,7 +521,7 @@ IF(NOT WIN32)
 	#message("chmod 755 ${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py") # make sure permissions are ok
 	#execute_process(COMMAND "chmod 755 ${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py") # make sure permissions are ok
 	add_custom_command(OUTPUT ${GITINFO}
-					   COMMAND python${PYTHON_VER_ID} ${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py ${GITINFO} 
+					   COMMAND python${PYTHON_VER_ID} "${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py" "${GITINFO}"
 					   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS}
 					   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} )
 ENDIF()
