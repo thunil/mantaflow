@@ -448,20 +448,17 @@ if (WIN32)
 		set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${PYTHON_VER_ID}.lib")
 	endif()
 else()
-	if(NOT PYTHON_VERSION)
-		find_package(PythonLibs REQUIRED) # use any
-	else()
-		find_package(PythonLibs ${PYTHON_VER_ID} EXACT QUIET) # fixed version
-		if(NOT PYTHONLIBS_FOUND)
-			message("Right Python version ${PYTHON_VER_ID} not found, searching manually")
-			# try to configure from python itself
-			execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('INCLUDEPY'))" OUTPUT_VARIABLE PYTHON_INCLUDE_DIRS) 
-			execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LIBDIR'))" OUTPUT_VARIABLE PYTHON_LIB1) 
-			execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LDLIBRARY'))" OUTPUT_VARIABLE PYTHON_LIB2) 
-			set(PYTHON_LIBRARIES "${PYTHON_LIB1}/${PYTHON_LIB2}")
-			if("${PYTHON_INCLUDE_DIRS}" STREQUAL "" OR "${PYTHON_LIB1}" STREQUAL "" OR "${PYTHON_LIB2}" STREQUAL "") 
-				message(FATAL_ERROR "Unable to find python version '${PYTHON_VER_ID}' , better configure manually! ") 
-			endif()
+	# try to configure from python itself first
+	execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('INCLUDEPY'))" OUTPUT_VARIABLE PYTHON_INCLUDE_DIRS) 
+	execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LIBDIR'))"    OUTPUT_VARIABLE PYTHON_LIB1) 
+	execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LDLIBRARY'))" OUTPUT_VARIABLE PYTHON_LIB2) 
+	set(PYTHON_LIBRARIES "${PYTHON_LIB1}/${PYTHON_LIB2}")
+	if("${PYTHON_INCLUDE_DIRS}" STREQUAL "" OR "${PYTHON_LIB1}" STREQUAL "" OR "${PYTHON_LIB2}" STREQUAL "") 
+		# otherwise, fall back to cmake find
+		if(NOT PYTHON_VERSION)
+			find_package(PythonLibs REQUIRED) # use any
+		else()
+			find_package(PythonLibs ${PYTHON_VER_ID} EXACT QUIET) # fixed version
 		endif()
 	endif()
 endif()
