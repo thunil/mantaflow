@@ -79,7 +79,7 @@ for t in range(25000):
 	else:
 		setWallBcs(flags=flags, vel=vel)
 		setInflowBcs(vel=vel,dir='xX',value=velInflow)
-		solvePressure( flags=flags, vel=vel, pressure=pressure, cgAccuracy=cgAcc, cgMaxIterFac=cgiter ) 
+		solvePressure( flags=flags, vel=vel, pressure=pressure, cgAccuracy=cgAcc, cgMaxIterFac=cgIter ) 
 		setWallBcs(flags=flags, vel=vel)
 
 	setInflowBcs(vel=vel,dir='xX',value=velInflow)
