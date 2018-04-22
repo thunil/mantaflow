@@ -128,7 +128,7 @@ def backupFile(name, test_path):
 # particle data
 
 def RP_read_header(bytestream):
-    ID = bytestream.read(4) 
+	ID = bytestream.read(4) 
 	if(PY3K): ID = ID.decode("utf-8") 
 	if ID=="PD01":
 		# unpack header struct object
@@ -140,26 +140,26 @@ def RP_read_header(bytestream):
 		print("read_particle_header error - unknown uni file header '%s' " % ID)
 		exit(1)
 
-    return header
+	return header
 
 def RP_read_content(bytestream, header, data_type=None): # data_type = {None: BasicParticleSystem; "float32": Real; "int32": Int}
-    assert(header['bytesPerElement']==16 or header['bytesPerElement']==12 or header['bytesPerElement']==4)
+	assert(header['bytesPerElement']==16 or header['bytesPerElement']==12 or header['bytesPerElement']==4)
 
-    if(header['elementType']==0): # BasicParticleSystem
-        print('(BasicParticleSystem) ' )
-        data = np.frombuffer(bytestream.read(), dtype=np.dtype([('f1',(np.float32,3)),('f2',(np.int32,1))]))['f1']
-    else:                         # header['elementType']==1: ParticleDataImpl<T>, where T = {float32: Real(4) or Vec3(12); int32: Int(4)}
-        print('(ParticleDataImpl<T={}{}>) '.format(data_type, 'x3' if (header['bytesPerElement']==12) else '') )
-        data = np.reshape(np.frombuffer(bytestream.read(), dtype=data_type), (-1, 3 if (header['bytesPerElement']==12) else 1))
+	if(header['elementType']==0): # BasicParticleSystem
+		print('(BasicParticleSystem) ' )
+		data = np.frombuffer(bytestream.read(), dtype=np.dtype([('f1',(np.float32,3)),('f2',(np.int32,1))]))['f1']
+	else:                         # header['elementType']==1: ParticleDataImpl<T>, where T = {float32: Real(4) or Vec3(12); int32: Int(4)}
+		print('(ParticleDataImpl<T={}{}>) '.format(data_type, 'x3' if (header['bytesPerElement']==12) else '') )
+		data = np.reshape(np.frombuffer(bytestream.read(), dtype=data_type), (-1, 3 if (header['bytesPerElement']==12) else 1))
 
-    return data
+	return data
 
 def readParticles(filename, data_type=None):
-    #print('Reading {} ... '.format(filename) )
-    with gzip.open(filename, 'rb') as bytestream:
-        head = RP_read_header(bytestream)
-        data     = RP_read_content(bytestream, head, data_type) 
-        return head, data
+	#print('Reading {} ... '.format(filename) )
+	with gzip.open(filename, 'rb') as bytestream:
+		head = RP_read_header(bytestream)
+		data     = RP_read_content(bytestream, head, data_type) 
+		return head, data
 
 #******************************************************************************
 # numpy array files

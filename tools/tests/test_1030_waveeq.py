@@ -29,9 +29,9 @@ flags.fillGrid()
 
 timings = Timings()
 if 0 and (GUI):
-    gui = Gui()
-    gui.show()
-    gui.pause()
+	gui = Gui()
+	gui.show()
+	gui.pause()
 
 source = s.create(Box, p0=gs*vec3(0.3,0.3,0.3), p1=gs*vec3(0.5,0.5,0.5))
 source.applyToGrid(grid=h,     value=1)
@@ -67,7 +67,7 @@ for t in range(40):
 	#timings.display()
 	s.step()
 
-    
+	
 doTestGrid( sys.argv[0], "height" , s, h  , threshold=1e-08 , thresholdStrict=1e-10  )
 doTestGrid( sys.argv[0], "vel"    , s, vel, threshold=1e-08 , thresholdStrict=1e-10  )
 

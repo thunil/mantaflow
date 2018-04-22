@@ -28,22 +28,22 @@ obstacle1.applyToGrid( grid=flags, value=FlagObstacle)
 obstacle2.applyToGrid( grid=flags, value=FlagObstacle)
 
 if 0 and (GUI):
-    gui = Gui()
-    gui.show(); gui.pause()
-    
+	gui = Gui()
+	gui.show(); gui.pause()
+	
 #main loop
 for t in range(10):
-    source.applyToGrid( grid=density, value=3.72)
-        
-    advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2, clampMode=1)    
-    advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, clampMode=1)
-    
-    setWallBcs(flags=flags, vel=vel)    
-    addBuoyancy(density=density, vel=vel, gravity=vec3(0,-5e-2,0), flags=flags)
-    
-    solvePressure(flags=flags, vel=vel, pressure=pressure)
-    setWallBcs(flags=flags, vel=vel)
-    s.step()
+	source.applyToGrid( grid=density, value=3.72)
+		
+	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2, clampMode=1)    
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, clampMode=1)
+	
+	setWallBcs(flags=flags, vel=vel)    
+	addBuoyancy(density=density, vel=vel, gravity=vec3(0,-5e-2,0), flags=flags)
+	
+	solvePressure(flags=flags, vel=vel, pressure=pressure)
+	setWallBcs(flags=flags, vel=vel)
+	s.step()
 
 
 # check final state

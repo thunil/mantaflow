@@ -36,11 +36,11 @@ if (genRefFiles==1):
 	rlg1.setConst( 1.1 )
 	rlg2.setConst( 1.2 )
 	rlg3.setConst( 2.9 )
-           
+		   
 	vcg1.setConst( vec3(1.2, 1.2, 1.2) )
 	vcg2.setConst( vec3(0.5, 0.5, 0.5) )
 	vcg3.setConst( vec3(1.95, 1.95, 1.95) )
-           
+		   
 	int1.setConst( 125 )
 	int2.setConst( 6 )
 	int3.setConst( 143 )
