@@ -18,6 +18,7 @@
 #include "randomstream.h"
 #include "levelset.h"
 #include "shapes.h"
+#include "matrixbase.h"
 
 using namespace std;
 namespace Manta {
@@ -342,12 +343,13 @@ PYTHON() void unionParticleLevelset(const BasicParticleSystem& parts, const Part
 	phi.setBound(0.5, 0);
 }
 
-
+//! kernel for computing averaged particle level set weights
 KERNEL()
 void ComputeAveragedLevelsetWeight(const BasicParticleSystem& parts,
 				   const Grid<int>& index, const ParticleIndexSystem& indexSys,
 				   LevelsetGrid& phi, const Real radius,
-				   const ParticleDataImpl<int>* ptype, const int exclude)
+				   const ParticleDataImpl<int>* ptype, const int exclude,
+				   Grid<Vec3>* save_pAcc = NULL, Grid<Real>* save_rAcc = NULL)
 {
 	const Vec3 gridPos = Vec3(i,j,k) + Vec3(0.5); // shifted by half cell
 	Real phiv = radius * 1.0; // outside 
@@ -388,6 +390,9 @@ void ComputeAveragedLevelsetWeight(const BasicParticleSystem& parts,
 		racc /= wacc;
 		pacc /= wacc;
 		phiv = fabs( norm(gridPos-pacc) )-racc;
+
+		if (save_pAcc) (*save_pAcc)(i, j, k) = pacc;
+		if (save_rAcc) (*save_rAcc)(i, j, k) = racc;
 	}
 	phi(i,j,k) = phiv;
 }
@@ -421,7 +426,7 @@ void knSmoothGridNeg(const Grid<T>& me, Grid<T>& tmp, Real factor) {
 	else               tmp(i,j,k) = me(i,j,k);
 }
 
- 
+//! Zhu & Bridson particle level set creation 
 PYTHON() void averagedParticleLevelset(const BasicParticleSystem& parts, const ParticleIndexSystem& indexSys,
 				       const FlagGrid& flags, const Grid<int>& index, LevelsetGrid& phi, const Real radiusFactor=1.,
 				       const int smoothen=1, const int smoothenNeg=1,
@@ -445,6 +450,74 @@ PYTHON() void averagedParticleLevelset(const BasicParticleSystem& parts, const P
 	} 
 	phi.setBound(0.5, 0);
 }
+
+//! kernel for improvedParticleLevelset
+KERNEL(bnd=1)
+void correctLevelset(LevelsetGrid& phi, const Grid<Vec3>& pAcc, const Grid<Real>& rAcc,
+					const Real radius, const Real t_low, const Real t_high)
+{
+	if (rAcc(i, j, k) <= VECTOR_EPSILON) return; //outside nothing happens
+	Real x = pAcc(i, j, k).x;
+	
+	// create jacobian of pAcc via central differences
+	Matrix3x3f jacobian = Matrix3x3f(
+		0.5 * (pAcc(i+1, j,   k  ).x - pAcc(i-1, j,   k  ).x),
+		0.5 * (pAcc(i,   j+1, k  ).x - pAcc(i,   j-1, k  ).x),
+		0.5 * (pAcc(i,   j  , k+1).x - pAcc(i,   j,   k-1).x),
+		0.5 * (pAcc(i+1, j,   k  ).y - pAcc(i-1, j,   k  ).y),
+		0.5 * (pAcc(i,   j+1, k  ).y - pAcc(i,   j-1, k  ).y),
+		0.5 * (pAcc(i,   j,   k+1).y - pAcc(i,   j,   k-1).y),
+		0.5 * (pAcc(i+1, j,   k  ).z - pAcc(i-1, j,   k  ).z),
+		0.5 * (pAcc(i,   j+1, k  ).z - pAcc(i,   j-1, k  ).z),
+		0.5 * (pAcc(i,   j,   k+1).z - pAcc(i,   j,   k-1).z)
+	);
+
+	// compute largest eigenvalue of jacobian
+	Vec3 EV = jacobian.eigenvalues();
+	Real maxEV = std::max(std::max(EV.x, EV.y), EV.z);
+
+	// calculate correction factor
+	Real correction = 1;
+	if (maxEV >= t_low) {
+		Real t = (t_high - maxEV) / (t_high - t_low);
+		correction = t*t*t - 3 * t*t + 3 * t;
+	}
+	correction = (correction < 0) ? 0 : correction; // enforce correction factor to [0,1] (not explicitly in paper)
+
+	const Vec3 gridPos = Vec3(i, j, k) + Vec3(0.5); // shifted by half cell
+	const Real correctedPhi = fabs(norm(gridPos - pAcc(i, j, k))) - rAcc(i, j, k) * correction;
+	phi(i, j, k) = (correctedPhi > radius) ? radius : correctedPhi; // adjust too high outside values when too few particles are
+																	// nearby to make smoothing possible (not in paper)
+}
+
+//! Approach from "A unified particle model for fluid-solid interactions" by Solenthaler et al. in 2007
+PYTHON() void improvedParticleLevelset(const BasicParticleSystem& parts, const ParticleIndexSystem& indexSys, const FlagGrid& flags,
+	const Grid<int>& index, LevelsetGrid& phi, const Real radiusFactor = 1., const int smoothen = 1,const int smoothenNeg = 1,
+	const Real t_low = 0.4, const Real t_high = 3.5, const ParticleDataImpl<int>* ptype = NULL, const int exclude = 0)
+{
+	// create temporary grids to store values from levelset weight computation
+	Grid<Vec3> save_pAcc(flags.getParent());
+	Grid<Real> save_rAcc(flags.getParent());
+
+	const Real radius = 0.5 * calculateRadiusFactor(phi, radiusFactor); // use half a cell diagonal as base radius
+	ComputeAveragedLevelsetWeight(parts, index, indexSys, phi, radius, ptype, exclude, &save_pAcc, &save_rAcc);
+	correctLevelset(phi, save_pAcc, save_rAcc, radius, t_low, t_high);
+
+	// post-process level-set
+	for (int i = 0; i<std::max(smoothen, smoothenNeg); ++i) {
+		LevelsetGrid tmp(flags.getParent());
+		if (i<smoothen) {
+			knSmoothGrid    <Real>(phi, tmp, 1. / (phi.is3D() ? 7. : 5.));
+			phi.swap(tmp);
+		}
+		if (i<smoothenNeg) {
+			knSmoothGridNeg <Real>(phi, tmp, 1. / (phi.is3D() ? 7. : 5.));
+			phi.swap(tmp);
+		}
+	}
+	phi.setBound(0.5, 0);
+}
+
 
 KERNEL(pts)
 void knPushOutofObs(BasicParticleSystem& parts, const FlagGrid& flags, const Grid<Real>& phiObs, const Real shift, const Real thresh,
