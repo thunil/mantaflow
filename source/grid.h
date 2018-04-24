@@ -369,7 +369,7 @@ void setComponent(const Grid<Real>& source, Grid<Vec3>& target, int component);
 // Implementation of inline functions
 
 inline void GridBase::checkIndex(int i, int j, int k) const {
-	if (i<0 || j<0  || i>=mSize.x || j>=mSize.y || (is3D() && (k<0|| k>= mSize.z))) {
+	if (i<0 || j<0 || k<0 || i>=mSize.x || j>=mSize.y || k>=mSize.z) {
 		std::ostringstream s;
 		s << "Grid " << mName << " dim " << mSize << " : index " << i << "," << j << "," << k << " out of bound ";
 		errMsg(s.str());
