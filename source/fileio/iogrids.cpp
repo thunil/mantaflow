@@ -758,7 +758,12 @@ void readGrid4dRaw(const string& name, Grid4d<T>* grid) {
 
 template <class T>
 void writeGridVDB(const string& name, Grid<T>* grid) { 
-	debMsg("Writing grid " << grid->getName() << " to vdb file " << name <<" not yet supported!", 1);
+	debMsg("Writing grid " << grid->getName() << " to vdb file " << name << " not yet supported!", 1);
+}
+
+template <class T>
+void readGridVDB(const string& name, Grid<T>* grid) {
+	debMsg("Reading grid " << grid->getName() << " from vdb file " << name << " not yet supported!", 1);
 }
 
 template <>
@@ -796,8 +801,44 @@ void writeGridVDB(const string& name, Grid<Real>* grid) {
 };
 
 template <>
+void readGridVDB(const string& name, Grid<Real>* grid) {
+	debMsg("Reading real grid " << grid->getName() << " from vdb file " << name, 1);
+
+	openvdb::initialize();
+	openvdb::io::File file(name);
+	file.open();
+
+	openvdb::GridBase::Ptr baseGrid;
+	for (openvdb::io::File::NameIterator nameIter = file.beginName(); nameIter != file.endName(); ++nameIter)
+	{
+	#ifndef BLENDER
+		// Read in only the grid we are interested in.
+		if (nameIter.gridName() == grid->getName()) {
+			baseGrid = file.readGrid(nameIter.gridName());
+		} else {
+			debMsg("skipping grid " << nameIter.gridName(), 1);
+		}
+	#else
+		// For Blender, skip name check and pick first grid from loop
+		baseGrid = file.readGrid(nameIter.gridName());
+		break;
+	#endif
+	}
+	file.close();
+	openvdb::FloatGrid::Ptr gridVDB = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+
+	openvdb::FloatGrid::Accessor accessor = gridVDB->getAccessor();
+
+	FOR_IJK(*grid) {
+		openvdb::Coord xyz(i, j, k);
+		float v = accessor.getValue(xyz);
+		(*grid)(i, j, k) = v;
+	}
+};
+
+template <>
 void writeGridVDB(const string& name, Grid<Vec3>* grid) {
-	debMsg("Writing real grid " << grid->getName() << " to vdb file " << name, 1);
+	debMsg("Writing vec3 grid " << grid->getName() << " to vdb file " << name, 1);
 
 	openvdb::initialize(); 
 	openvdb::Vec3SGrid::Ptr gridVDB = openvdb::Vec3SGrid::create();
@@ -824,6 +865,44 @@ void writeGridVDB(const string& name, Grid<Vec3>* grid) {
 
 	file.write(gridsVDB);
 	file.close();
+};
+
+template <>
+void readGridVDB(const string& name, Grid<Vec3>* grid) {
+	debMsg("Reading vec3 grid " << grid->getName() << " from vdb file " << name, 1);
+
+	openvdb::initialize();
+	openvdb::io::File file(name);
+	file.open();
+
+	openvdb::GridBase::Ptr baseGrid;
+	for (openvdb::io::File::NameIterator nameIter = file.beginName(); nameIter != file.endName(); ++nameIter)
+	{
+	#ifndef BLENDER
+		// Read in only the grid we are interested in.
+		if (nameIter.gridName() == grid->getName()) {
+			baseGrid = file.readGrid(nameIter.gridName());
+		} else {
+			debMsg("skipping grid " << nameIter.gridName(), 1);
+		}
+	#else
+		// For Blender, skip name check and pick first grid from loop
+		baseGrid = file.readGrid(nameIter.gridName());
+		break;
+	#endif
+	}
+	file.close();
+	openvdb::Vec3SGrid::Ptr gridVDB = openvdb::gridPtrCast<openvdb::Vec3SGrid>(baseGrid);
+
+	openvdb::Vec3SGrid::Accessor accessor = gridVDB->getAccessor();
+
+	FOR_IJK(*grid) {
+		openvdb::Coord xyz(i, j, k);
+		openvdb::Vec3f v = accessor.getValue(xyz);
+		(*grid)(i, j, k).x = (float)v[0];
+		(*grid)(i, j, k).y = (float)v[1];
+		(*grid)(i, j, k).z = (float)v[2];
+	}
 };
 
 #endif // OPENVDB==1
@@ -895,6 +974,10 @@ template void writeGrid4dRaw<Vec4>(const string& name, Grid4d<Vec4>* grid);
 template void writeGridVDB<int>(const string& name, Grid<int>*  grid);
 template void writeGridVDB<Vec3>(const string& name, Grid<Vec3>* grid);
 template void writeGridVDB<Real>(const string& name, Grid<Real>* grid);
+
+template void readGridVDB<int>(const string& name, Grid<int>*  grid);
+template void readGridVDB<Vec3>(const string& name, Grid<Vec3>* grid);
+template void readGridVDB<Real>(const string& name, Grid<Real>* grid);
 #endif // OPENVDB==1
 
 } //namespace

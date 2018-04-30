@@ -117,6 +117,10 @@ void Grid<T>::load(string name) {
 		readGridUni(name, this);
 	else if (ext == ".vol")
 		readGridVol(name, this);
+#	if OPENVDB==1
+	else if (ext == ".vdb")
+		readGridVDB(name, this);
+#	endif // OPENVDB==1
 	else
 		errMsg("file '" + name +"' filetype not supported");
 }
