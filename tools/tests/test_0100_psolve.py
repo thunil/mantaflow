@@ -41,7 +41,7 @@ doTestGrid( sys.argv[0], "pressure0" , s, pressure , threshold=1e-04, thresholdS
 doTestGrid( sys.argv[0], "vel0"      , s, vel      , threshold=1e-04, thresholdStrict=1e-10)
 
 # ============================
-    
+	
 # second solve , with BCs
 vel.setConst( vec3(0,0,0) )
 velSource.applyToGrid(grid=vel, value=vec3(1.5, 3, 2.1) )

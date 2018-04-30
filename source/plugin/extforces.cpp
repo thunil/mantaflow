@@ -29,7 +29,10 @@ KERNEL(bnd=1) void KnApplyForceField(const FlagGrid& flags, MACGrid& vel, const 
 
 	Real forceX = (isMAC) ? force(i,j,k).x : 0.5*(force(i-1,j,k).x + force(i,j,k).x);
 	Real forceY = (isMAC) ? force(i,j,k).y : 0.5*(force(i,j-1,k).y + force(i,j,k).y);
-	Real forceZ = (isMAC) ? force(i,j,k).z : 0.5*(force(i,j,k-1).z + force(i,j,k).z);
+
+	Real forceZ = 0.;
+	if(vel.is3D())  
+		forceZ =  (isMAC) ? force(i,j,k).z : 0.5*(force(i,j,k-1).z + force(i,j,k).z);
 
 	if (flags.isFluid(i-1,j,k) || (curFluid && flags.isEmpty(i-1,j,k))) 
 		vel(i,j,k).x = (additive) ? vel(i,j,k).x+forceX : forceX;

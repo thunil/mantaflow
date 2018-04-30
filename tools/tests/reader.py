@@ -81,7 +81,7 @@ if 1 and (GUI):
 	gui = Gui()
 	gui.show()
 	gui.pause()
-    
+	
 if(buildInfo==1):
 	printBuildInfo() # more detailed build info , about what's running
 
@@ -120,4 +120,4 @@ for t in range(startFrame, endFrame):
 		tryToLoad( parts2 , basename2, "parts"  , t, appendNumber, buildInfo )
 
 	s.step()
-    
+	
