@@ -518,8 +518,6 @@ endif()
 IF(NOT WIN32)
 	set(GITINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/gitinfo.h")
 	MESSAGE(STATUS "Git info target header ${GITINFO}")
-	#message("chmod 755 ${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py") # make sure permissions are ok
-	#execute_process(COMMAND "chmod 755 ${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py") # make sure permissions are ok
 	add_custom_command(OUTPUT ${GITINFO}
 					   COMMAND python${PYTHON_VER_ID} "${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py" "${GITINFO}"
 					   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS}
