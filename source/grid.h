@@ -145,6 +145,7 @@ public:
 		case 1:  return interpol     <T>(mData, mSize, mStrideZ, pos); 
 		case 2:  return interpolCubic<T>(mData, mSize, mStrideZ, pos); 
 		default: assertMsg(false, "Unknown interpolation order "<<order); }
+		T r; r=0.; return r; // should never be reached, just to prevent compiler warnings
 	}
 	
 	// assignment / copy
