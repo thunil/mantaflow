@@ -1,7 +1,8 @@
 Here's a quick guide how to run this example. Note that the scripts here assume
 that the executable is located in ".../mantaflow/build/", and most scripts were
 primarily developed for Unix systems (Windows will work, but require path
-modifications)..
+modifications). Also several of the scripts use relative paths, so make sure
+to run everything from the "example1_smoke_tiled" directory.
 
 First generate data by calling
 	>>> manta manta_genSimData.py
