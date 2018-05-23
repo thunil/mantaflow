@@ -385,7 +385,7 @@ void WrapperRegistry::addConstants(PyObject* module) {
 #else
 	PyModule_AddObject(module,"DEBUG",Manta::toPy<bool>(false));
 #endif
-#ifdef MT
+#ifdef MANTA_MT
 	PyModule_AddObject(module,"MT",Manta::toPy<bool>(true));
 #else
 	PyModule_AddObject(module,"MT",Manta::toPy<bool>(false));
