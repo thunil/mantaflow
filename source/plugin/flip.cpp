@@ -678,19 +678,18 @@ void knCombineVels(MACGrid& vel, const Grid<Vec3>& w, MACGrid& combineVel, const
 	for(int c=0; c<3; ++c)
 	{
 			// Correct narrow-band FLIP
-			Vec3 pos(i,j,k);
-			pos[(c+1)%3] += Real(0.5);
-			pos[(c+2)%3] += Real(0.5);
-			Real p = phi->getInterpolated(pos);
-
-			if (p < -narrowBand) { vel[idx][c] = 0; continue; }
+			if(phi) {
+				Vec3 pos(i,j,k);
+				pos[(c+1)%3] += Real(0.5);
+				pos[(c+2)%3] += Real(0.5);
+				Real p = phi->getInterpolated(pos);
+				if (p < -narrowBand) { vel[idx][c] = 0; continue; }
+			} 
 
 			if (w[idx][c] > thresh) {
 				combineVel[idx][c] = vel[idx][c];
 				vel[idx][c] = -1;
-			}
-			else
-			{
+			} else {
 				vel[idx][c] = 0;
 			}
 	}
