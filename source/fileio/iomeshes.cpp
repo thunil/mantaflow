@@ -280,6 +280,7 @@ void readObjFile(const std::string& name, Mesh* mesh, bool append) {
 	if (!append)
 		mesh->clear();
 	int nodebase = mesh->numNodes();
+	int cnt = nodebase;
 	while(ifs.good() && !ifs.eof()) {
 		string id;
 		ifs >> id;
@@ -292,7 +293,12 @@ void readObjFile(const std::string& name, Mesh* mesh, bool append) {
 		if (id == "vt") {
 			// tex coord, ignore            
 		} else if (id == "vn") {
-			// normals, ignore            
+			// normals
+			if (!mesh->numNodes())
+				errMsg("invalid amount of nodes");
+			Node n = mesh->nodes(cnt);
+			ifs >> n.normal.x >> n.normal.y >> n.normal.z;
+			cnt++;
 		} else if (id == "v") {
 			// vertex
 			Node n;
@@ -346,9 +352,14 @@ void writeObjFile(const string& name, Mesh* mesh) {
 		pos *= dx;
 		ofs << "v "<< pos.value[0] <<" "<< pos.value[1] <<" "<< pos.value[2] <<" "<< "\n";
 	}
-	
-	// no normals for now
-	
+
+	// write normals
+	for (int i=0; i<numVerts; i++) {
+		Vector3D<float> n = toVec3f(mesh->nodes(i).normal);
+		// normalize to unit cube around 0
+		ofs << "vn "<< n.value[0] <<" "<< n.value[1] <<" "<< n.value[2] <<" "<< "\n";
+	}
+
 	// write tris
 	int numTris = mesh->numTris();
 	for(int t=0; t<numTris; t++) {
