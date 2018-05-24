@@ -923,7 +923,17 @@ void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
 	};
 }
 	
-
+// Blender data pointer accessors
+std::string Mesh::getNodesDataPointer() {
+	std::ostringstream out;
+	out << &mNodes;
+	return out.str();
+}
+std::string Mesh::getTrisDataPointer() {
+	std::ostringstream out;
+	out << &mTris;
+	return out.str();
+}
 
 // mesh data
 

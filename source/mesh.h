@@ -151,7 +151,12 @@ public:
 	PYTHON() void computeLevelset(LevelsetGrid& levelset, Real sigma, Real cutoff=-1.);
 	//! map mesh to grid with sdf
 	PYTHON() void applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags=0, Real cutoff=-1.);
-    
+
+	//! get data pointer of nodes
+	PYTHON() std::string getNodesDataPointer();
+	//! get data pointer of tris
+	PYTHON() std::string getTrisDataPointer();
+
     // ops
     Mesh& operator=(const Mesh& o);
     
