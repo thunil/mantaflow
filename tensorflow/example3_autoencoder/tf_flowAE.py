@@ -21,7 +21,7 @@ import numpy as np
 
 # load manta tools
 sys.path.append("../tools")
-import tilecreator_t as tc
+import tilecreator as tc
 import uniio
 import paramhelpers as ph
 from GAN import GAN, lrelu
@@ -144,6 +144,8 @@ if toSim==-1:
 channelLayout_low = 'd'
 lowfilename = "density_low_%04d.uni"
 highfilename = "density_high_%04d.uni"
+lowfilename = "density_low_%04d.npz"
+highfilename = "density_high_%04d.npz" # NT_DEBUG
 mfl = ["density"]
 mfh = ["density"]
 if outputOnly: 
@@ -235,10 +237,10 @@ ph.writeParams(test_path+"params.json") # export parameters in human readable fo
 if outputOnly:
 	print('*****OUTPUT ONLY*****')
 
-if not outputOnly:
+if 0 and not outputOnly:
 	os.makedirs(test_path+"/zbu_src")
 	uniio.backupFile(__file__, test_path+"/zbu_src/")
-	uniio.backupFile("../tools/tilecreator_t.py", test_path+"/zbu_src/")
+	uniio.backupFile("../tools/tilecreator.py", test_path+"/zbu_src/")
 	uniio.backupFile("../tools/GAN.py", test_path+"/zbu_src/") 
 	uniio.backupFile("../tools/fluiddataloader.py", test_path+"/zbu_src/")
 
@@ -251,7 +253,7 @@ def save_img(out_path, img):
 	img = np.clip(img * 255.0, 0, 255).astype(np.uint8)
 	scipy.misc.imsave(out_path, img)
 
-def save_img_3d(out_path, img): # y ↓ x →， z ↓ x →, z ↓ y →，3 in a column
+def save_img_3d(out_path, img): 
 	data = np.concatenate([np.sum(img, axis=0), np.sum(img, axis=1), np.sum(img, axis=2)], axis=0)
 	save_img(out_path, data)
 	
@@ -534,7 +536,7 @@ if not outputOnly:
 		disc_sigmoid = tf.reduce_mean(tf.nn.sigmoid(disc))
 		gen_sigmoid = tf.reduce_mean(tf.nn.sigmoid(gen))
 
-		#loss of the discriminator with real inputθ
+		# loss of the discriminator with real input 
 		disc_loss_disc = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=disc, labels=tf.ones_like(disc)))
 		#loss of the discriminator with input from generator
 		disc_loss_gen = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=gen, labels=tf.zeros_like(gen)))
@@ -729,7 +731,7 @@ if not outputOnly:
 		outTest_disc_gen = tf.summary.scalar("generator-out test", gen_sigmoid)
 	
 	if(useTempoD): # all temporal losses
-		# training losses， discriminator, generator
+		# training losses, disc & gen
 		lossTrain_disc_t = tf.summary.scalar("T discriminator-loss train", t_disc_loss)
 		lossTrain_gen_t = tf.summary.scalar("T generator-loss train", t_gen_loss)
 		

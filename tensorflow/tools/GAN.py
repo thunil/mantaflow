@@ -14,6 +14,7 @@
 import numpy as np
 import tensorflow as tf
 import math
+from keras import backend as kb
 
 class GAN(object):
 	#---------------------------------------------------------------------------------
