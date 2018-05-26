@@ -72,8 +72,6 @@ k2_l1		   = float(ph.getParam( "lambda2_l1",		   1.0))						 # influence/weight 
 k2_l2		   = float(ph.getParam( "lambda2_l2",		   1.0))						 # influence/weight of L2 layer term on discriminator loss
 k2_l3		   = float(ph.getParam( "lambda2_l3",		   1.0))						 # influence/weight of L3 layer term on discriminator loss
 k2_l4		   = float(ph.getParam( "lambda2_l4",		   1.0))						 # influence/weight of L4 layer term on discriminator loss
-kt			  = float(ph.getParam("lambda_t", 1.0))				    # tempo discriminator loss; 1.0 is good, 0.0 will disable
-kt_l		  = float(ph.getParam("lambda_t_l2", 0.0))				# l2 tempo loss (as naive alternative to discriminator); 1.0 is good, 0.0 will disable
 batch_size	  = int(ph.getParam( "batchSize",  	  128 ))			# batch size for pretrainig and output, default for batchSizeDisc and batchSizeGen
 batch_size_disc = int(ph.getParam( "batchSizeDisc",   batch_size )) 	# batch size for disc runs when training gan
 batch_size_gen  = int(ph.getParam( "batchSizeGen",	batch_size )) 	# batch size for gen runs when training gan
@@ -120,16 +118,6 @@ overlap         = int(ph.getParam( "overlap",		   3 )) # parameter for 3d unifil
 
 ph.checkUnusedParams()
 
-useTempoD = False
-useTempoL2 = False
-if(kt > 1e-6):
-	useTempoD = True
-if(kt_l > 1e-6):
-	useTempoD = True
-if(kt > 1e-6 and kt_l > 1e-6):
-	print("please choose right temporal loss!")
-	exit(1)
-
 # initialize
 simSizeHigh 	= simSizeLow * upRes
 tileSizeHigh	= tileSizeLow  * upRes
@@ -159,28 +147,13 @@ dirIDs = np.linspace(fromSim, toSim, (toSim-fromSim+1),dtype='int16')
 
 if (outputOnly): 
 	data_fraction = 1.0
-	kt = 0.0
-	kt_l = 0.0
 	useTempoD = False
 	useTempoL2 = False
 	useDataAugmentation = 0
 
-if ((not useTempoD) and (not useTempoL2)): # should use the full sequence, not use multi_files
-	tiCr = tc.TileCreator(tileSizeLow=tileSizeLow, simSizeLow=simSizeLow , dim =dataDimension, dim_t = 1, channelLayout_low = channelLayout_low, upres=upRes, premadeTiles=premadeTiles)
-	floader = FDL.FluidDataLoader( print_info=1, base_path=packedSimPath, filename=lowfilename, oldNamingScheme=False, filename_y=highfilename, filename_index_min=frame_min, filename_index_max=frame_max, indices=dirIDs, data_fraction=data_fraction, multi_file_list=mfl, multi_file_list_y=mfh)
-else:
-	lowparalen = len(mfl)
-	highparalen = len(mfh)
-	mfl_tempo= np.append(mfl, mfl)
-	mfl= np.append(mfl_tempo, mfl)
-	mol = np.append(np.zeros(lowparalen), np.ones(lowparalen))
-	mol = np.append(mol, np.ones(lowparalen)*2)
-	mfh_tempo = np.append(mfh, mfh)
-	mfh= np.append(mfh_tempo, mfh)
-	moh = np.append(np.zeros(highparalen), np.ones(highparalen))
-	moh = np.append(moh, np.ones(highparalen)*2)
-	tiCr = tc.TileCreator(tileSizeLow=tileSizeLow, simSizeLow=simSizeLow , dim =dataDimension, dim_t = 3, channelLayout_low = channelLayout_low, upres=upRes, premadeTiles=premadeTiles)
-	floader = FDL.FluidDataLoader( print_info=1, base_path=packedSimPath, filename=lowfilename, oldNamingScheme=False, filename_y=highfilename, filename_index_max=frame_max, indices=dirIDs, data_fraction=data_fraction, multi_file_list=mfl, multi_file_idxOff=mol, multi_file_list_y=mfh , multi_file_idxOff_y=moh) # data_fraction=0.1
+#if ((not useTempoD) and (not useTempoL2)): # should use the full sequence, not use multi_files
+tiCr = tc.TileCreator(tileSizeLow=tileSizeLow, simSizeLow=simSizeLow , dim =dataDimension, dim_t = 1, channelLayout_low = channelLayout_low, upres=upRes, premadeTiles=premadeTiles)
+floader = FDL.FluidDataLoader( print_info=1, base_path=packedSimPath, filename=lowfilename, oldNamingScheme=False, filename_y=highfilename, filename_index_min=frame_min, filename_index_max=frame_max, indices=dirIDs, data_fraction=data_fraction, multi_file_list=mfl, multi_file_list_y=mfh)
 
 if useDataAugmentation:
 	tiCr.initDataAugmentation(rot=rot, minScale=minScale, maxScale=maxScale ,flip=flip)
@@ -574,103 +547,6 @@ if not outputOnly:
 	if use_spatialdisc:
 		dis_update_ops = update_ops[:]
 		d_var = [var for var in vars if "d_" in var.name]
-
-	if (useTempoD or useTempoL2):# temporal loss here
-		disT_update_ops = []
-		ori_gen_loss_complete = gen_loss_complete
-		# currently, the update_op gathering is very ungly and very sensitive to the operation order. 
-		# TODO: make it flexible!
-		n_t = 3
-		device_str = '/device:GPU:0'
-		if(dataDimension == 3): # have to use a second GPU!
-			device_str = '/device:GPU:1'
-		with tf.device(device_str): 
-			x_t = tf.placeholder(tf.float32, shape=[None, n_input])
-			gen_part_t = gen_model(x_t, reuse=True, use_batch_norm=bn, train=train)
-		if(ADV_flag):
-			y_pos = tf.placeholder(tf.float32, shape=[None, n_output * dataDimension])
-			if dataDimension == 2:
-				gen_part_t_shape = tf.reshape(gen_part_t, shape=[-1, tileSizeHigh, tileSizeHigh, 1])
-				pos_array = tf.reshape(y_pos, shape=[-1, tileSizeHigh, tileSizeHigh, 2])
-			elif dataDimension == 3:  # check in 3D
-				gen_part_t_shape = tf.reshape(gen_part_t, shape=[-1, tileSizeHigh, tileSizeHigh, tileSizeHigh, 1])
-				pos_array = tf.reshape(y_pos, shape=[-1, tileSizeHigh, tileSizeHigh, tileSizeHigh, 3])
-
-			gen_part_t = tensorResample(gen_part_t_shape, pos_array)
-
-		gen_part_t = tf.reshape(gen_part_t, shape = [-1, n_t, n_output])
-		gen_part_t = tf.transpose(gen_part_t, perm=[0, 2, 1]) # batch, n_output, channels
-
-		if (useTempoL2): # l2 tempo_loss
-			update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-			#print(update_ops)
-			for update_op in update_ops:
-				if ("/g_" in update_op.name) and ("generator" in update_op.name) and (not ( update_op in gen_update_ops )):
-					gen_update_ops.append(update_op)
-			
-			gen_part_t_list = tf.unstack(gen_part_t, axis = -1) # should have n_t dim
-			tl_gen_loss = tf.reduce_mean( tf.square( gen_part_t_list[0] - gen_part_t_list[1] ) )
-			for ti in range( 1, n_t-1 ):
-				tl_gen_loss = tl_gen_loss + tf.reduce_mean( tf.square( gen_part_t_list[ti] - gen_part_t_list[ti + 1] ) )
-			gen_loss_complete = gen_loss_complete + kktl * tl_gen_loss
-			
-		if (useTempoD):
-			# real input for disc
-			y_t = tf.placeholder(tf.float32, shape=[None, n_output])
-			if (ADV_flag):
-				if dataDimension == 2:
-					y_t_shape = tf.reshape(y_t, shape=[-1, tileSizeHigh, tileSizeHigh, 1])
-				elif dataDimension == 3:  # check in 3D
-					y_t_shape = tf.reshape(y_t, shape=[-1, tileSizeHigh, tileSizeHigh, tileSizeHigh, 1])
-				y_tR = tensorResample(y_t_shape, pos_array)
-			else:
-				y_tR = y_t
-			y_tR =tf.reshape(y_tR, shape = [-1, n_t, n_output])
-			y_tR = tf.transpose(y_tR, perm=[0, 2, 1]) # batch, n_output, channels
-			
-			gen_t = disc_time_model(gen_part_t, n_t_channels = n_t, use_batch_norm=bn, train=train)
-			
-			update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-			#print(update_ops)
-			for update_op in update_ops:
-				if ("/g_" in update_op.name) and ("generator" in update_op.name) and (not ( update_op in gen_update_ops )):
-					gen_update_ops.append(update_op)
-					disT_update_ops.append(update_op)
-					
-				if ("/t_" in update_op.name) and ("discriminatorTempo" in update_op.name):
-					gen_update_ops.append(update_op)
-				
-				
-			# discrimiinator for tempo only
-			disc_t = disc_time_model(y_tR, n_t_channels = n_t, reuse=True, use_batch_norm=bn, train=train)
-			
-			update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-			for update_op in update_ops:
-				if ("/t_" in update_op.name) and ("discriminatorTempo" in update_op.name):
-					disT_update_ops.append(update_op)
-					
-			t_disc_sigmoid = tf.reduce_mean(tf.nn.sigmoid(disc_t))
-			t_gen_sigmoid = tf.reduce_mean(tf.nn.sigmoid(gen_t))
-			vars = tf.trainable_variables()
-			t_var = [var for var in vars if "t_" in var.name]
-			# loss of the discriminator with real input
-			t_disc_loss_disc = tf.reduce_mean(
-				tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_t, labels=tf.ones_like(disc_t)))
-			# loss of the discriminator with input from generator
-			t_disc_loss_gen = tf.reduce_mean(
-				tf.nn.sigmoid_cross_entropy_with_logits(logits=gen_t, labels=tf.zeros_like(gen_t)))
-			t_disc_loss = t_disc_loss_disc * weight_dld + t_disc_loss_gen
-			
-			t_gen_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=gen_t, labels=tf.ones_like(gen_t)))
-			
-			gen_loss_complete = gen_loss_complete + kkt * t_gen_loss
-			
-			with tf.control_dependencies(disT_update_ops):
-				t_disc_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta).minimize(t_disc_loss, var_list=t_var)
-				
-			with tf.control_dependencies(ori_gen_update_ops): #gen_update_ops):
-				# optimizer for generator, can only change variables of the generator,
-				ori_gen_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta).minimize(ori_gen_loss_complete, var_list=g_var)
 				
 		#print("disT_update_ops")
 		#print(disT_update_ops)
@@ -730,31 +606,6 @@ if not outputOnly:
 		outTest_disc_real = tf.summary.scalar("discriminator-out test", disc_sigmoid)
 		outTest_disc_gen = tf.summary.scalar("generator-out test", gen_sigmoid)
 	
-	if(useTempoD): # all temporal losses
-		# training losses, disc & gen
-		lossTrain_disc_t = tf.summary.scalar("T discriminator-loss train", t_disc_loss)
-		lossTrain_gen_t = tf.summary.scalar("T generator-loss train", t_gen_loss)
-		
-		# testing losses, discriminator( positive, negative ), generator
-		lossTest_disc_disc_t = tf.summary.scalar("T discriminator-loss test real", t_disc_loss_disc)
-		lossTest_disc_gen_t = tf.summary.scalar("T discriminator-loss test generated", t_disc_loss_gen)
-		lossTest_disc_t = tf.summary.scalar("T discriminator-loss test", t_disc_loss)
-		lossTest_gen_t = tf.summary.scalar("T generator-loss test", t_gen_loss)
-
-		# discriminator output [0,1] for real input, during training
-		outTrain_disc_real_t = tf.summary.scalar("T discriminator-out train", t_disc_sigmoid)
-		# discriminator output [0,1] for generated input
-		outTrain_disc_gen_t = tf.summary.scalar("T generator-out train", t_gen_sigmoid)
-
-		# discriminator output [0,1] for real input, during testing
-		outTest_disc_real_t = tf.summary.scalar("T discriminator-out test", t_disc_sigmoid)
-		# discriminator output [0,1] for generated input
-		outTest_disc_gen_t = tf.summary.scalar("T generator-out test", t_gen_sigmoid)
-	
-	if (useTempoL2):  # all temporal losses
-		lossTrain_gen_t_l = tf.summary.scalar("T generator-loss train l2", tl_gen_loss)
-		lossTest_gen_t_l = tf.summary.scalar("T generator-loss test l2", tl_gen_loss)
-
 	merged_summary_op = tf.summary.merge_all()
 	summary_writer    = tf.summary.FileWriter(test_path, sess.graph)
 
@@ -1049,8 +900,6 @@ if not outputOnly and trainGAN:
 		avgTemCost_gen = 0
 		avgTemCost_gen_l = 0
 		avgTemCost_disc = 0
-		kktin = kt
-		kktin_l = kt_l
 
 		avgOut_disc_t = 0
 		avgOut_gen_t = 0
@@ -1081,23 +930,11 @@ if not outputOnly and trainGAN:
 					summary_writer.add_summary(summary, epoch)
 					if saveMD: summary_writer.add_run_metadata(run_metadata, 'dstep%d' % epoch)
 
-			# temporal discriminator
-			if(useTempoD):
-				for runs in range(discRuns):
-					batch_xts, batch_yts, batch_y_pos = getTempoinput(batch_size_disc, n_t = 3, dt=0.5, useVelocities = useVelocities, useVorticities = useVorticities, useDataAugmentation = useDataAugmentation)
-					dict_train = {x_t:batch_xts, y_t:batch_yts, keep_prob: dropout, train: True}
-					if(ADV_flag): dict_train[y_pos] = batch_y_pos
-					_, t_disc_cost, summary, t_disc_sig, t_gen_sig = sess.run(
-						[t_disc_optimizer, t_disc_loss, lossTrain_disc_t, t_disc_sigmoid, t_gen_sigmoid], feed_dict=dict_train)
-					avgTemCost_disc += t_disc_cost
-					summary_writer.add_summary(summary, epoch)
-					
 			# generator variables
 			for runs in range(genRuns):
 				batch_xs, batch_ys = getInput(batch_size = batch_size_disc, useDataAugmentation = useDataAugmentation, useVelocities = useVelocities, useVorticities = useVorticities)
 				kkin = k_f*kkin
 				kk2in = k2_f*kk2in
-				# TODO a decay for weights, kktin = kt_f * kktin (kt_f<1.0)
 				
 				train_dict = {x: batch_xs, x_disc: batch_xs, y: batch_ys, keep_prob: dropout, train: True, kk: kkin,
 							  kk2: kk2in, lr_global_step: lrgs}
@@ -1105,44 +942,16 @@ if not outputOnly and trainGAN:
 					getlist = [gen_optimizer, gen_loss, disc_loss_layer, gen_l1_loss, lossTrain_gen, gen_l2_loss]
 				else:
 					getlist = [gen_optimizer, gen_l1_loss, gen_l2_loss]
-				if(useTempoD or useTempoL2):
-					batch_xts, batch_yts, batch_y_pos = getTempoinput(batch_size_disc, n_t = 3, dt=0.5, useVelocities = useVelocities, useVorticities = useVorticities, useDataAugmentation=useDataAugmentation)
-					train_dict[x_t] = batch_xts
-					if(ADV_flag):
-						train_dict[y_pos] = batch_y_pos
-					if(useTempoD): 
-						train_dict[kkt] = kktin
-						getlist.append(t_gen_loss)
-					if(useTempoL2): 
-						train_dict[kktl] = kktin_l
-						getlist.append(tl_gen_loss)
 
 				result_list = sess.run(getlist, feed_dict=train_dict, options=run_options, run_metadata=run_metadata)
-				if (useTempoD and (not useTempoL2)):
-					if use_spatialdisc:
-						_, gen_cost, layer_cost, gen_l1_cost, summary, gen_l2_cost, gen_tem_cost = result_list
-					else:
-						_, gen_l1_cost, gen_l2_cost, gen_tem_cost = result_list
-					gen_tem_cost_l = 0
-				elif ((not useTempoD) and useTempoL2):
-					if use_spatialdisc:
-						_, gen_cost, layer_cost, gen_l1_cost, summary, gen_l2_cost, gen_tem_cost_l = result_list
-					else:
-						_, gen_l1_cost, gen_l2_cost, gen_tem_cost_l = result_list
-					gen_tem_cost = 0
-				elif (useTempoD and useTempoL2):
-					if use_spatialdisc:
-						_, gen_cost, layer_cost, gen_l1_cost, summary, gen_l2_cost, gen_tem_cost, gen_tem_cost_l = result_list
-					else:
-						_, gen_l1_cost, gen_l2_cost, gen_tem_cost, gen_tem_cost_l = result_list
-					
+
+				if use_spatialdisc:
+					_, gen_cost, layer_cost, gen_l1_cost, summary, gen_l2_cost = result_list
 				else:
-					if use_spatialdisc:
-						_, gen_cost, layer_cost, gen_l1_cost, summary, gen_l2_cost = result_list
-					else:
-						_, gen_l1_cost, gen_l2_cost = result_list
-					gen_tem_cost = 0
-					gen_tem_cost_l = 0
+					_, gen_l1_cost, gen_l2_cost = result_list
+				gen_tem_cost = 0
+				gen_tem_cost_l = 0
+
 				avgL1Cost_gen += gen_l1_cost
 				avgTemCost_gen += gen_tem_cost
 				avgTemCost_gen_l += gen_tem_cost_l
@@ -1189,79 +998,12 @@ if not outputOnly and trainGAN:
 					summary_writer.add_summary(summary_test_out, epoch)
 					avgTestCost_disc_gen += disc_test_cost_gen
 					avgTestOut_disc_gen += disc_out_gen
-				
-				if(useTempoD): # temporal logs
-					# T disc output with training data
-					batch_xts, batch_yts, batch_y_pos = getTempoinput(numTests, useVelocities = useVelocities, useVorticities = useVorticities, n_t = 3, dt=0.5)
-					test_dict = {x_t: batch_xts, y_t: batch_yts, keep_prob: dropout, train: False}
-					if(ADV_flag):
-						test_dict[y_pos] = batch_y_pos
-					t_disc_out, summary_disc_out_t, t_gen_out, summary_gen_out_t = sess.run(
-						[t_disc_sigmoid, outTrain_disc_real_t, t_gen_sigmoid, outTrain_disc_gen_t],
-						feed_dict=test_dict)
-					summary_writer.add_summary(summary_disc_out_t, epoch)
-					summary_writer.add_summary(summary_gen_out_t, epoch)
-					avgOut_disc_t += t_disc_out
-					avgOut_gen_t += t_gen_out
-
-					# test data
-					batch_xts, batch_yts, batch_y_pos = getTempoinput(numTests, isTraining=False, useVelocities = useVelocities, useVorticities = useVorticities, n_t = 3, dt=0.5)
-					# disc with real input
-					test_dict = {x_t: batch_xts, y_t: batch_yts, keep_prob: dropout, train: False}
-					if(ADV_flag):
-						test_dict[y_pos] = batch_y_pos
-					t_disc_out_real, summary_test_out_t, t_disc_test_cost_real, summary_test_t = sess.run(
-						[t_disc_sigmoid, outTest_disc_real_t, t_disc_loss_disc, lossTest_disc_disc_t],
-						feed_dict=test_dict)
-					summary_writer.add_summary(summary_test_t, epoch)
-					summary_writer.add_summary(summary_test_out_t, epoch)
-					avgTestCost_disc_real_t += t_disc_test_cost_real
-					avgTestOut_disc_real_t += t_disc_out_real
-					# disc with generated input
-					test_dict = {x_t: batch_xts, y_t: batch_yts, keep_prob: dropout, train: False}
-					if(ADV_flag):
-						test_dict[y_pos] = batch_y_pos
-					t_disc_out_gen, summary_test_out_t, t_disc_test_cost_gen, summary_test_t = sess.run(
-						[t_gen_sigmoid, outTest_disc_gen_t, t_disc_loss_gen, lossTest_disc_gen_t],
-						feed_dict=test_dict)
-					summary_writer.add_summary(summary_test_t, epoch)
-					summary_writer.add_summary(summary_test_out_t, epoch)
-					avgTestCost_disc_gen_t += t_disc_test_cost_gen
-					avgTestOut_disc_gen_t += t_disc_out_gen
-					
+									
 				#gen
 				train_dict = {x: batch_xs, x_disc: batch_xs, keep_prob: dropoutOutput, train: False}
-				if (useTempoD or useTempoL2):  # add tempo logs
-					train_dict[x_t] = batch_xts
-					# train_dict[y_t] = batch_yts; # should be useless ?
-					if(ADV_flag):
-						train_dict[y_pos] = batch_y_pos
-					if (useTempoD):
-						train_dict[kkt] = kktin
-						if use_spatialdisc:
-							gen_test_cost, summary_test, gen_tem_cost, summary_test_gen \
-								= sess.run([gen_loss, lossTest_gen, t_gen_loss, lossTest_gen_t], feed_dict=train_dict)
-						else:
-							gen_tem_cost, summary_test_gen \
-								= sess.run([t_gen_loss, lossTest_gen_t], feed_dict=train_dict)
-						avgTestCost_gen_t += gen_tem_cost
-					if (useTempoL2):
-						train_dict[kktl] = kktin_l
-						if use_spatialdisc:
-							gen_test_cost, summary_test, gen_tem_cost, summary_test_gen \
-								= sess.run([gen_loss, lossTest_gen, tl_gen_loss, lossTest_gen_t_l], feed_dict=train_dict)
-						else:
-							gen_tem_cost, summary_test_gen \
-								= sess.run([tl_gen_loss, lossTest_gen_t_l], feed_dict=train_dict)
-						avgTestCost_gen_t_l += gen_tem_cost
-					summary_writer.add_summary(summary_test_gen, epoch)
-
-				else:
-					if use_spatialdisc:
-						gen_test_cost, summary_test = sess.run([gen_loss, lossTest_gen], feed_dict=train_dict)
-				if use_spatialdisc:	
-					summary_writer.add_summary(summary_test, epoch)
-					avgTestCost_gen += gen_test_cost
+				gen_test_cost, summary_test = sess.run([gen_loss, lossTest_gen], feed_dict=train_dict)
+				summary_writer.add_summary(summary_test, epoch)
+				avgTestCost_gen += gen_test_cost
 
 				tests += 1
 
@@ -1280,23 +1022,6 @@ if not outputOnly and trainGAN:
 					avgTestCost_gen /= tests
 					avgTestOut_disc_real /= tests
 					avgTestOut_disc_gen /= tests
-					
-				if(useTempoD):
-					avgTemCost_gen /= (outputInterval * genRuns)
-					avgTemCost_disc /= (outputInterval * discRuns)
-					if( not tests == 0):
-						avgOut_disc_t /= tests
-						avgOut_gen_t /= tests
-						avgTestCost_disc_real_t /= tests
-						avgTestOut_disc_real_t /= tests
-						avgTestCost_disc_gen_t /= tests
-						avgTestOut_disc_gen_t /= tests
-						avgTestCost_gen_t /= tests
-						
-				if (useTempoL2):
-					avgTemCost_gen_l /= (outputInterval * genRuns)
-					if (not tests == 0):
-						avgTestCost_gen_t_l /= tests
 						
 				print('\nEpoch {:05d}/{}, Cost:'.format((epoch + 1), trainingEpochs))
 				print('\tdisc: loss: train_loss={:.6f} - test-real={:.6f} - test-generated={:.6f}, out: train={:.6f} - test={:.6f}'.
@@ -1307,21 +1032,17 @@ if not outputOnly and trainGAN:
 					format(avgTestOut_disc_real_t, avgTestOut_disc_gen_t))
 				print('\t gen: loss: train={:.6f} - L1(*k)={:.3f} - test={:.6f}, DS out: train={:.6f} - test={:.6f}'
 					.format(avgCost_gen, avgL1Cost_gen * k, avgTestCost_gen, avgOut_gen, avgTestOut_disc_gen))
-				print('\t gen: loss[ -train (total Temp(*k)={:.6f}) -test (total Temp(*k)={:.6f})], DT out: real={:.6f} - gen={:.6f}'
-					.format(avgTemCost_gen * kt, avgTestCost_gen_t * kt, avgOut_disc_t, avgOut_gen_t))
+				#print('\t gen: loss[ -train (total Temp(*k)={:.6f}) -test (total Temp(*k)={:.6f})], DT out: real={:.6f} - gen={:.6f}'
+				#	.format(avgTemCost_gen * kt, avgTestCost_gen_t * kt, avgOut_disc_t, avgOut_gen_t))
 				if use_spatialdisc:
 					print('\tdisc: loss: disc=%f'%(disc_sig))
 					print('\tgen: loss: gen=%f'%(gen_sig))
 					print('\t layer_cost: %f'%(layer_cost))
-				if(useTempoD):
-					print('\tTdisc: loss: disc=%f' % (t_disc_sig))
-					print('\tTgen: loss: gen=%f' % (t_gen_sig))
 				
 				
-				if(useTempoD): print('\t tempo_cost: %f' % (gen_tem_cost))
 				print('\t l1_cost: %f'%(gen_l1_cost))
-				print('\t l2 tempo loss[ -train (total Temp(*k)={:.6f}) -test (total Temp(*k)={:.6f})]'
-					.format(avgTemCost_gen_l * kt_l, avgTestCost_gen_t_l * kt_l))
+				#print('\t l2 tempo loss[ -train (total Temp(*k)={:.6f}) -test (total Temp(*k)={:.6f})]'
+				#	.format(avgTemCost_gen_l * kt_l, avgTestCost_gen_t_l * kt_l))
 				
 				epochTime = (time.time() - startTime) / (epoch + 1)
 				print('\t{} epochs took {:.2f} seconds. (Est. next: {})'.format(outputInterval, (time.time() - intervalTime), time.ctime(time.time() + outputInterval * epochTime)))
@@ -1347,21 +1068,6 @@ if not outputOnly and trainGAN:
 				avgTestOut_disc_gen = 0
 				tests = 0
 				lastOut = 0
-				
-				if(useTempoD):
-					avgTemCost_gen = 0
-					avgTemCost_disc = 0
-					avgOut_disc_t = 0
-					avgOut_gen_t = 0
-					avgTestCost_disc_real_t = 0
-					avgTestOut_disc_real_t = 0
-					avgTestCost_disc_gen_t = 0
-					avgTestOut_disc_gen_t = 0
-					avgTestCost_gen_t = 0
-					
-				if (useTempoL2):
-					avgTemCost_gen_l = 0
-					avgTestCost_gen_t_l = 0
 
 			lastOut +=1
 
