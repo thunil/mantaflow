@@ -1,7 +1,7 @@
 #******************************************************************************
 #
-# tempoGAN: A Temporally Coherent, Volumetric GAN for Super-resolution Fluid Flow
-# Copyright 2018 You Xie, Erik Franz, Mengyu Chu, Nils Thuerey
+# simplified L2 conv net training examples
+# Copyright 2018 Nils Thuerey, You Xie, Erik Franz, Mengyu Chu
 #
 # This program is free software, distributed under the terms of the
 # Apache License, Version 2.0 
@@ -33,7 +33,7 @@ import fluiddataloader as FDL
 # initialize parameters / command line params
 outputOnly	  = int(ph.getParam( "out",			 False ))>0 		# output/generation mode, main mode switch
 
-basePath		=	 ph.getParam( "basePath",		'../2ddata_gan/' )
+basePath		=	 ph.getParam( "basePath",		'../data/' )
 randSeed		= int(ph.getParam( "randSeed",		1 )) 				# seed for np and tf initialization
 load_model_test = int(ph.getParam( "load_model_test", -1 )) 			# the number of the test to load a model from. can be used in training and output mode. -1 to not load a model
 load_model_no   = int(ph.getParam( "load_model_no",   -1 )) 			# nubmber of the model to load
@@ -43,36 +43,31 @@ tileSizeLow 	= int(ph.getParam( "tileSize", 		  16 )) 			# size of low res tiles
 upRes	  		= int(ph.getParam( "upRes", 		  4 )) 				# scaling factor
 dt			= float(ph.getParam( "dt", 		  0.5 )) 				# step time of training data
 #Data and Output
-packedSimPath		 =	 ph.getParam( "packedSimPath",		 '/data/share/GANdata/2ddata_sim/' ) 	# path to training data
-fromSim		 = int(ph.getParam( "fromSim",		 1000 )) 			# range of sim data to use, start index
+loadPath		 =	 ph.getParam( "loadPath",		 '../data/' ) 	# path to training data
+fromSim		   = int(ph.getParam( "fromSim",		 1000 )) 			# range of sim data to use, start index
 toSim		   = int(ph.getParam( "toSim",		   -1   )) 			# end index
 dataDimension   = int(ph.getParam( "dataDim",		 2 )) 				# dimension of dataset, can be 2 or 3. in case of 3D any scaling will only be applied to H and W (DHW)
 numOut			= int(ph.getParam( "numOut",		  200 )) 			# number ouf images to output (from start of sim)
-saveOut	  	= int(ph.getParam( "saveOut",		 False ))>0 		# save output of output mode as .npz in addition to images
+saveOut	  	    = int(ph.getParam( "saveOut",		 False ))>0 		# save output of output mode as .npz in addition to images
 loadOut			= int(ph.getParam( "loadOut",		 -1 )) 			# load output from npz to use in output mode instead of tiles. number or output dir, -1 for not use output data
 outputImages	=int(ph.getParam( "img",  			  True ))>0			# output images
 outputGif		= int(ph.getParam( "gif",  			  False ))>0		# output gif
 outputRef		= int(ph.getParam( "ref",			 False ))>0 		# output "real" data for reference in output mode (may not work with 3D)
 #models
-genModel		 =	 ph.getParam( "genModel",		 'gen_test' ) 	# choose generator model
+genModel		=	 ph.getParam( "genModel",		 'gen_test' ) 	# choose generator model
 discModel		=	 ph.getParam( "discModel",		 'disc_test' ) 	# choose discriminator model
 #Training
 learning_rate   = float(ph.getParam( "learningRate",  0.0002 ))
-decayLR		= int(ph.getParam( "decayLR",			 False ))>0 		# decay learning rate?
+decayLR		    = int(ph.getParam( "decayLR",			 False ))>0 		# decay learning rate?
 dropout   		= float(ph.getParam( "dropout",  	  1.0 )) 			# keep prop for all dropout layers during training
 dropoutOutput   = float(ph.getParam( "dropoutOutput", dropout )) 		# affects testing, full sim output and progressive output during training
 beta			= float(ph.getParam( "adam_beta1",	 0.5 ))			#1. momentum of adam optimizer
 
 weight_dld		= float(ph.getParam( "weight_dld",	1.0)) 			# ? discriminator loss factor ?
 k				= float(ph.getParam( "lambda",		  1.0)) 			# influence/weight of l1 term on generator loss
-k2				= float(ph.getParam( "lambda2",		  0.0)) 			# influence/weight of d_loss term on generator loss
-k_f				= float(ph.getParam( "lambda_f",		  1.0)) 			# changing factor of k
-k2_f			= float(ph.getParam( "lambda2_f",		  1.0)) 			# changing factor of k2
-k2_l1		   = float(ph.getParam( "lambda2_l1",		   1.0))						 # influence/weight of L1 layer term on discriminator loss
-k2_l2		   = float(ph.getParam( "lambda2_l2",		   1.0))						 # influence/weight of L2 layer term on discriminator loss
-k2_l3		   = float(ph.getParam( "lambda2_l3",		   1.0))						 # influence/weight of L3 layer term on discriminator loss
-k2_l4		   = float(ph.getParam( "lambda2_l4",		   1.0))						 # influence/weight of L4 layer term on discriminator loss
-batch_size	  = int(ph.getParam( "batchSize",  	  128 ))			# batch size for pretrainig and output, default for batchSizeDisc and batchSizeGen
+#k2				= float(ph.getParam( "lambda2",		  0.0)) 			# influence/weight of d_loss term on generator loss
+#k_f				= float(ph.getParam( "lambda_f",		  1.0)) 			# changing factor of k
+batch_size	    = int(ph.getParam( "batchSize",  	  128 ))			# batch size for pretrainig and output, default for batchSizeDisc and batchSizeGen
 batch_size_disc = int(ph.getParam( "batchSizeDisc",   batch_size )) 	# batch size for disc runs when training gan
 batch_size_gen  = int(ph.getParam( "batchSizeGen",	batch_size )) 	# batch size for gen runs when training gan
 trainGAN		= int(ph.getParam( "trainGAN",   	  True ))>0 		# GAN trainng can be switched off to use pretrainig only
@@ -84,8 +79,6 @@ bn_decay		= float(ph.getParam( "bnDecay",	   0.999 ))			# decay of batch norm EM
 use_spatialdisc = int(ph.getParam( "use_spatialdisc",		   True )) #use spatial discriminator or not
 
 useVelocities   = int(ph.getParam( "useVelocities",   0  )) 			# use velocities or not
-useVorticities  = int(ph.getParam( "useVorticities",   0  )) 			# use vorticities or not
-premadeTiles	= int(ph.getParam( "premadeTiles",   0  ))		 		# use pre-made tiles?
 
 useDataAugmentation = int(ph.getParam( "dataAugmentation", 0 ))		 # use dataAugmentation or not
 minScale = float(ph.getParam( "minScale",	  0.85 ))				 # augmentation params...
@@ -95,8 +88,8 @@ flip	 =   int(ph.getParam( "flip",		  1	 ))
 
 #Pretraining
 pretrain		= int(ph.getParam( "pretrain",		0 )) 				# train generator with L2 loss before alternating training, number of epochs
-pretrain_disc	= int(ph.getParam( "pretrainDisc",   0 )) 				# train discriminator before alternating training
-pretrain_gen	= int(ph.getParam( "pretrainGen",	0 ))				# train generator using pretrained discriminator before alternating training
+#pretrain_disc	= int(ph.getParam( "pretrainDisc",   0 )) 				# train discriminator before alternating training
+#pretrain_gen	= int(ph.getParam( "pretrainGen",	0 ))				# train generator using pretrained discriminator before alternating training
 
 #Test and Save
 testPathStartNo = int(ph.getParam( "testPathStartNo", 0  ))
@@ -152,8 +145,8 @@ if (outputOnly):
 	useDataAugmentation = 0
 
 #if ((not useTempoD) and (not useTempoL2)): # should use the full sequence, not use multi_files
-tiCr = tc.TileCreator(tileSizeLow=tileSizeLow, simSizeLow=simSizeLow , dim =dataDimension, dim_t = 1, channelLayout_low = channelLayout_low, upres=upRes, premadeTiles=premadeTiles)
-floader = FDL.FluidDataLoader( print_info=1, base_path=packedSimPath, filename=lowfilename, oldNamingScheme=False, filename_y=highfilename, filename_index_min=frame_min, filename_index_max=frame_max, indices=dirIDs, data_fraction=data_fraction, multi_file_list=mfl, multi_file_list_y=mfh)
+tiCr = tc.TileCreator(tileSizeLow=tileSizeLow, simSizeLow=simSizeLow , dim =dataDimension, dim_t = 1, channelLayout_low = channelLayout_low, upres=upRes)
+floader = FDL.FluidDataLoader( print_info=1, base_path=loadPath, filename=lowfilename, oldNamingScheme=False, filename_y=highfilename, filename_index_min=frame_min, filename_index_max=frame_max, indices=dirIDs, data_fraction=data_fraction, multi_file_list=mfl, multi_file_list_y=mfh)
 
 if useDataAugmentation:
 	tiCr.initDataAugmentation(rot=rot, minScale=minScale, maxScale=maxScale ,flip=flip)
@@ -181,8 +174,6 @@ n_inputChannels = 1
 
 if useVelocities:
 	n_inputChannels += 3
-if useVorticities:
-	n_inputChannels += 3
 n_input *= n_inputChannels
 
 # init paths
@@ -198,7 +189,7 @@ if not load_model_test == -1:
 		test_path,_ = ph.getNextTestPath(testPathStartNo, basePath)
 
 else:
-	test_path,_ = ph.getNextTestPath(testPathStartNo, basePath)
+	test_path,load_model_test_new = ph.getNextTestPath(testPathStartNo, basePath)
 
 # logging & info
 sys.stdout = ph.Logger(test_path)
@@ -230,51 +221,6 @@ def save_img_3d(out_path, img):
 	data = np.concatenate([np.sum(img, axis=0), np.sum(img, axis=1), np.sum(img, axis=2)], axis=0)
 	save_img(out_path, data)
 	
-# build the tensorflow graph for tensor(value) re-sampling (at pos)
-# value shape (batch, ..., res_x2, res_x1, channels)
-# pos shape (batch, ..., res_x2, res_x1, dim)
-def tensorResample(value, pos, name='Resample'):
-	with tf.name_scope(name) as scope:
-		pos_shape = pos.get_shape().as_list()
-		dim = len(pos_shape) - 2  # batch and channels are ignored
-		assert (dim == pos_shape[-1])
-		floors = tf.cast(tf.floor(pos - 0.5), tf.int32)
-		ceils = floors + 1
-
-		# clamp min
-		floors = tf.maximum(floors, tf.zeros_like(floors))
-		ceils = tf.maximum(ceils, tf.zeros_like(ceils))
-
-		# clamp max
-		floors = tf.minimum(floors, tf.constant(value.get_shape().as_list()[1:dim + 1], dtype=tf.int32) - 1)
-		ceils = tf.minimum(ceils, tf.constant(value.get_shape().as_list()[1:dim + 1], dtype=tf.int32) - 1)
-
-		_broadcaster = tf.ones_like(ceils)
-		cell_value_list = []
-		cell_weight_list = []
-		for axis_x in range(int(pow(2, dim))):  # 3d, 0-7; 2d, 0-3;...
-			condition_list = [bool(axis_x & int(pow(2, i))) for i in range(dim)]
-			condition_ = (_broadcaster > 0) & condition_list
-			axis_idx = tf.cast(
-				tf.where(condition_, ceils, floors),
-				tf.int32)
-
-			# only support linear interpolation...
-			axis_wei = 1.0 - tf.abs((pos - 0.5) - tf.cast(axis_idx, tf.float32))  # shape (..., res_x2, res_x1, dim)
-			axis_wei = tf.reduce_prod(axis_wei, axis=-1, keep_dims=True)
-			cell_weight_list.append(axis_wei)  # single scalar(..., res_x2, res_x1, 1)
-			first_idx = tf.ones_like(axis_wei, dtype=tf.int32)
-			first_idx = tf.cumsum(first_idx, axis=0, exclusive=True)
-			cell_value_list.append(tf.concat([first_idx, axis_idx], -1))
-		#print(value.get_shape())
-		#print(cell_value_list[0].get_shape())
-		values_new = tf.gather_nd(value, cell_value_list[0]) * cell_weight_list[
-			0]  # broadcasting used, shape (..., res_x2, res_x1, channels )
-		for cell_idx in range(1, len(cell_value_list)):
-			values_new = values_new + tf.gather_nd(value, cell_value_list[cell_idx]) * cell_weight_list[cell_idx]
-		return values_new  # shape (..., res_x2, res_x1, channels)
-
-
 
 
 #input for gen
@@ -284,9 +230,6 @@ x_disc = tf.placeholder(tf.float32, shape=[None, n_input])
 #real input for disc
 y = tf.placeholder(tf.float32, shape=[None, n_output])
 kk = tf.placeholder(tf.float32)
-kk2 = tf.placeholder(tf.float32)
-kkt = tf.placeholder(tf.float32)
-kktl = tf.placeholder(tf.float32)
 #keep probablity for dropout
 keep_prob = tf.placeholder(tf.float32)
 
@@ -343,6 +286,32 @@ def gen_resnet(_in, reuse=False, use_batch_norm=False, train=None):
 		print("\tDOFs: %d , %f m " % ( gan.getDOFs() , gan.getDOFs()/1000000.) ) 
 		return resF
 
+
+def gen_resnetSm(_in, reuse=False, use_batch_norm=False, train=None):
+	global rbId
+	print("\n\tGenerator (resize-resnett3-deep)")
+	with tf.variable_scope("generator", reuse=reuse) as scope:
+
+		if dataDimension == 2:
+			_in = tf.reshape(_in, shape=[-1, tileSizeLow, tileSizeLow, n_inputChannels]) #NHWC
+			patchShape = [2,2]
+		elif dataDimension == 3:
+			_in = tf.reshape(_in, shape=[-1, tileSizeLow, tileSizeLow, tileSizeLow, n_inputChannels]) #NDHWC
+			patchShape = [2,2,2]
+		rbId = 0
+		gan = GAN(_in)
+		gan.max_depool()
+		inp = gan.max_depool()
+		ru1 = resBlock(gan, inp, n_inputChannels*2,n_inputChannels*8,  reuse, use_batch_norm,3)
+		ru2 = resBlock(gan, ru1, 16, 16,  reuse, use_batch_norm,3)
+		inRu3 = ru2
+		ru3 = resBlock(gan, inRu3, 8, 4,  reuse, use_batch_norm,3)
+		ru4 = resBlock(gan, ru3, 2, 1,  reuse, False,5)
+		resF = tf.reshape( ru4, shape=[-1, n_output] )
+		print("\tDOFs: %d , %f m " % ( gan.getDOFs() , gan.getDOFs()/1000000.) ) 
+		return resF
+
+
 ############################################discriminator network###############################################################
 def disc_binclass(in_low, in_high, reuse=False, use_batch_norm=False, train=None):
 	#in_low: low res reference input, same as generator input (condition)
@@ -385,8 +354,9 @@ def disc_binclass(in_low, in_high, reuse=False, use_batch_norm=False, train=None
 		gan.fully_connected_layer(1, None, name="d_l5")
 
 		print("\tDOFs: %d " % gan.getDOFs())
-		return gan.y(), d1, d2, d3, d4
+		return gan.y()
 		
+
 ############################################ Tempo discriminator network ############################################################
 def disc_binclass_cond_tempo(in_high, n_t_channels=3, reuse=False, use_batch_norm=False, train=None):
 	# NO in_low: low res reference input, same as generator input (no condition)
@@ -478,7 +448,7 @@ def disc_test(in_low, in_high, reuse=False, use_batch_norm=False, train=None):
 			d3 = tf.constant(1., shape = [batch_size, int(tileSizeLow/2),int(tileSizeLow/2),int(tileSizeLow/2),128])	
 			d4 = tf.constant(1., shape = [batch_size, int(tileSizeLow/2),int(tileSizeLow/2),int(tileSizeLow/2),256])
 		print("\tDOFs: %d " % gan.getDOFs())
-		return gan.y(), d1, d2, d3, d4
+		return gan.y()
 
 #change used models for gen and disc here #other models in NNmodels.py
 gen_model = locals()[genModel]
@@ -493,8 +463,8 @@ train = tf.placeholder(tf.bool)
 if not outputOnly: #setup for training
 	gen_part = gen_model(x, use_batch_norm=bn, train=train)
 	if use_spatialdisc:
-		disc, dy1, dy2, dy3, dy4 = disc_model(x_disc, y, use_batch_norm=bn, train=train)
-		gen, gy1, gy2, gy3, gy4 = disc_model(x_disc, gen_part, reuse=True, use_batch_norm=bn, train=train)
+		disc  = disc_model(x_disc, y, use_batch_norm=bn, train=train)
+		gen   = disc_model(x_disc, gen_part, reuse=True, use_batch_norm=bn, train=train)
 	if genTestImg > -1: sampler = gen_part
 else: #setup for generating output with trained model
 	sampler = gen_model(x, use_batch_norm=bn, train=False)
@@ -513,21 +483,20 @@ if not outputOnly:
 		disc_loss_disc = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=disc, labels=tf.ones_like(disc)))
 		#loss of the discriminator with input from generator
 		disc_loss_gen = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=gen, labels=tf.zeros_like(gen)))
-		disc_loss_layer = k2_l1*tf.reduce_mean(tf.nn.l2_loss(dy1 - gy1)) + k2_l2*tf.reduce_mean(tf.nn.l2_loss(dy2 - gy2)) + k2_l3*tf.reduce_mean(tf.nn.l2_loss(dy3 - gy3)) + k2_l4*tf.reduce_mean(tf.nn.l2_loss(dy4 - gy4))
 		disc_loss = disc_loss_disc * weight_dld + disc_loss_gen
 		#loss of the generator
 		gen_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=gen, labels=tf.ones_like(gen)))
 	
 	else:
 		gen_loss = tf.zeros([1])
-		disc_loss_layer = tf.zeros([1])
+		#disc_loss_layer = tf.zeros([1])
 
 	#additional generator losses
 	gen_l2_loss = tf.nn.l2_loss(y - gen_part)
 	gen_l1_loss = tf.reduce_mean(tf.abs(y - gen_part)) #use mean to normalize w.r.t. output dims. tf.reduce_sum(tf.abs(y - gen_part))
 
 	#uses sigmoid cross entropy and l1 - see cGAN paper
-	gen_loss_complete = gen_loss + gen_l1_loss*kk + disc_loss_layer*kk2
+	gen_loss_complete = gen_loss + gen_l1_loss*kk 
 
 	# set up decaying learning rate, if enabled
 	lr_global_step = tf.Variable(0, trainable=False)
@@ -548,21 +517,17 @@ if not outputOnly:
 		dis_update_ops = update_ops[:]
 		d_var = [var for var in vars if "d_" in var.name]
 				
-		#print("disT_update_ops")
-		#print(disT_update_ops)
 	if use_spatialdisc:
 		with tf.control_dependencies(dis_update_ops):
 			#optimizer for discriminator, uses combined loss, can only change variables of the disriminator
 			disc_optimizer_adam = tf.train.AdamOptimizer(learning_rate, beta1=beta)
 			disc_optimizer = disc_optimizer_adam.minimize(disc_loss, var_list=d_var)
-	#print("dis_update_ops")
-	#print(dis_update_ops)
-	with tf.control_dependencies(gen_update_ops): #gen_update_ops):
+
+	with tf.control_dependencies(gen_update_ops): 
 		# optimizer for generator, can only change variables of the generator,
 		gen_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta).minimize(gen_loss_complete, var_list=g_var)
-	#print("gen_update_ops")
-	#print(gen_update_ops)
-	with tf.control_dependencies(pre_update_ops): #gen_update_ops):
+
+	with tf.control_dependencies(pre_update_ops): 
 		pretrain_optimizer = tf.train.AdamOptimizer(learning_rate).minimize(gen_l2_loss, var_list=g_var)
 
 
@@ -605,6 +570,10 @@ if not outputOnly:
 	if use_spatialdisc:
 		outTest_disc_real = tf.summary.scalar("discriminator-out test", disc_sigmoid)
 		outTest_disc_gen = tf.summary.scalar("generator-out test", gen_sigmoid)
+
+	#pretrain losses
+	#lossPretrain_disc  = tf.summary.scalar("discriminator_pretrain_loss",     disc_loss)
+	lossPretrain_gen  = tf.summary.scalar("generator_L2_loss",     gen_l2_loss)
 	
 	merged_summary_op = tf.summary.merge_all()
 	summary_writer    = tf.summary.FileWriter(test_path, sess.graph)
@@ -618,220 +587,154 @@ else:
 image_no = 0
 if not outputOnly:
 	os.makedirs(test_path+'test_img/')
-	if pretrain>0 or pretrain_gen > 0 or pretrain_disc>0:
-		os.makedirs(test_path+'pretrain_test_img/')
-
-
-def addVorticity(Vel):
-	if dataDimension == 2:
-		vorout = np.zeros_like(Vel)
-		for l in range(vorout.shape[0]):
-			for i in range(1, vorout.shape[-3]-1):
-				for j in range(1, vorout.shape[-2]-1):
-					vorout[l][0][i][j][2] = 0.5 * ((Vel[l][0][i+1][j][1] - Vel[l][0][i-1][j][1]) - (Vel[l][0][i][j+1][0] - Vel[l][0][i][j-1][0]))
-	else:
-		vorout = np.zeros_like(Vel)
-		for l in range(vorout.shape[0]):
-			for i in range(1, vorout.shape[-4]-1):
-				for j in range(1, vorout.shape[-3]-1):
-					for k in range(1, vorout.shape[-2]-1):		
-						vorout[l][i][j][k][0] = 0.5 * ((Vel[l][i][j+1][k][2] - Vel[l][i][j-1][k][2]) - (Vel[l][i][j][k+1][1] - Vel[l][i][j][k-1][1]))
-						vorout[l][i][j][k][1] = 0.5 * ((Vel[l][i][j][k+1][0] - Vel[l][i][j][k-1][0]) - (Vel[l][i+1][j][k][2] - Vel[l][i-1][j][k][2]))
-						vorout[l][i][j][k][2] = 0.5 * ((Vel[l][i+1][j][k][1] - Vel[l][i-1][j][k][1]) - (Vel[l][i][j+1][k][0] - Vel[l][i][j-1][k][0]))
-	return vorout
+	if pretrain>0: # or pretrain_gen > 0 or pretrain_disc>0:
+		os.makedirs(test_path+'pretrain_test_img/') # NT_DEBUG ?
 
 def modifyVel(Dens,Vel):
 	return velout # not active right now...
 
-	if dataDimension == 2:
-		velout = Vel
-		for l in range(velout.shape[0]):
-			for i in range(0, velout.shape[-3]-1):
-				for j in range(0, velout.shape[-2]-1):
-					#add what you want
-					pass
-	else:
-		velout = Vel
-		for l in range(velout.shape[0]):
-			for i in range(0, velout.shape[-4]-1):
-				for j in range(0, velout.shape[-3]-1):
-					for k in range(0, velout.shape[-2]-1):
-						#add what you want
-						pass
-	return velout
-
-
-
-def getInput(index = 1, randomtile = True, isTraining = True, batch_size = 1, useDataAugmentation = False, modifyvelocity = False, useVelocities = False, useVorticities = False):
+tCnt=0
+def getInput(index = 1, randomtile = True, isTraining = True, batch_size = 1, useDataAugmentation = False, modifyvelocity = False, useVelocities = False):
+	global tCnt
 	if randomtile == False:
 		batch_xs, batch_ys = tiCr.getFrameTiles(index) 
 	else:
 		batch_xs, batch_ys = tiCr.selectRandomTiles(selectionSize = batch_size, augment=useDataAugmentation)	
 		
-	if useVelocities and useVorticities:
-		Velinput = batch_xs[:,:,:,:,1:4] # hard coded, use tiCr.c_lists[DATA_KEY_LOW][C_KEY_VELOCITY][0]
-		Vorinput = addVorticity(Velinput)
-		batch_xs = np.concatenate((batch_xs, Vorinput), axis = 4)
 	if useVelocities and modifyvelocity:
 		Densinput = batch_xs[:,:,:,:,0:1]
 		Velinput = batch_xs[:,:,:,:,1:4]
 		Veloutput = modifyVel(Densinput, Velinput)
 		batch_xs = np.concatenate((Densinput, Veloutput), axis = 4)
+
 	batch_xs = np.reshape(batch_xs, (-1, n_input))
 	batch_ys = np.reshape(batch_ys, (-1, n_output))
 	return batch_xs, batch_ys
 
-def getTempoinput(batch_size = 1, isTraining = True, useDataAugmentation = False, useVelocities = False, useVorticities = False, n_t = 3, dt=1.0):
-	batch_xts, batch_yts, batch_y_pos = tiCr.selectRandomTempoTiles(batch_size, isTraining, useDataAugmentation, n_t, dt)
-	if useVelocities and useVorticities:
-		real_batch_sz = batch_xts.shape[0]
-		if( dataDimension == 2):
-			batch_xts = np.reshape(batch_xts,[real_batch_sz,1,tileSizeLow,tileSizeLow,-1])
-		else:
-			batch_xts = np.reshape(batch_xts,[real_batch_sz,tileSizeLow,tileSizeLow,tileSizeLow,-1])
-		Velinput = batch_xts[:,:,:,:,1:4]
-		Vorinput = addVorticity(Velinput)
-		batch_xts = np.concatenate((batch_xts, Vorinput), axis = 4)
-		batch_xts = np.reshape(batch_xts,[real_batch_sz, -1])
-	return batch_xts, batch_yts, batch_y_pos
-
 #evaluate the generator (sampler) on the first step of the first simulation and output result
 def generateTestImage(sim_no = fromSim, frame_no = 1, outPath = test_path,imageindex = 0, modifyvelocity = False):
-	if premadeTiles:
-		#todo output for premadetiles
-		pass
+	if (not outputOnly):
+		batch_xs, _ = getInput(randomtile = False, index = (sim_no-fromSim)*frame_max + frame_no, modifyvelocity = modifyvelocity, useVelocities = useVelocities)
 	else:
-		if (not outputOnly):
-			batch_xs, _ = getInput(randomtile = False, index = (sim_no-fromSim)*frame_max + frame_no, modifyvelocity = modifyvelocity, useVelocities = useVelocities, useVorticities = useVorticities)
-		else:
-			batch_xs = inputx[frame_no]
-		resultTiles = []
-		for tileno in range(batch_xs.shape[0]):
-			batch_xs_in = np.reshape(batch_xs[tileno],[-1, n_input])
-			results = sess.run(sampler, feed_dict={x: batch_xs_in, keep_prob: dropoutOutput, train: False})
-			resultTiles.extend(results)
-		resultTiles = np.array(resultTiles)
-		if dataDimension == 2: # resultTiles may have a different size
-			imgSz = int(resultTiles.shape[1]**(1.0/2) + 0.5)
-			resultTiles = np.reshape(resultTiles,[resultTiles.shape[0],imgSz,imgSz, 1])
-		else:
-			imgSz = int(resultTiles.shape[1]**(1.0/3) + 0.5)
-			resultTiles = np.reshape(resultTiles,[resultTiles.shape[0],imgSz,imgSz,imgSz])
-		tiles_in_image=[int(simSizeHigh/tileSizeHigh),int(simSizeHigh/tileSizeHigh)]
-		tc.savePngsGrayscale(resultTiles,outPath, imageCounter=imageindex, tiles_in_image=tiles_in_image)
+		batch_xs = inputx[frame_no]
+	resultTiles = []
+	for tileno in range(batch_xs.shape[0]):
+		batch_xs_in = np.reshape(batch_xs[tileno],[-1, n_input])
+		results = sess.run(sampler, feed_dict={x: batch_xs_in, keep_prob: dropoutOutput, train: False})
+		resultTiles.extend(results)
+	resultTiles = np.array(resultTiles)
+	if dataDimension == 2: # resultTiles may have a different size
+		imgSz = int(resultTiles.shape[1]**(1.0/2) + 0.5)
+		resultTiles = np.reshape(resultTiles,[resultTiles.shape[0],imgSz,imgSz, 1])
+	else:
+		imgSz = int(resultTiles.shape[1]**(1.0/3) + 0.5)
+		resultTiles = np.reshape(resultTiles,[resultTiles.shape[0],imgSz,imgSz,imgSz])
+	tiles_in_image=[int(simSizeHigh/tileSizeHigh),int(simSizeHigh/tileSizeHigh)]
+	tc.savePngsGrayscale(resultTiles,outPath, imageCounter=imageindex, tiles_in_image=tiles_in_image)
 
 def generate3DUni(sim_no = fromSim, frame_no = 1, outPath = test_path,imageindex = 0):
 	if dataDimension == 2:
 		print("ERROR: only for 3D Uni files output!")	
 		exit(1)
-	if premadeTiles:
-		#todo output for premadetiles
-		pass
-	else:
-		if (overlap*2 > tileSizeLow) or (tileSizeLow > simLowLength):
-			print("Wrong parameters for 3d output!")	
-			exit(1)
-		batch_xs = inputx[frame_no]
-		if useVelocities and change_velocity:
-			batch_xs = np.reshape(batch_xs,[1,simLowLength,simLowWidth,simLowHeight,-1])
-			Densinput = batch_xs[:,:,:,:,0:1]
-			Velinput = batch_xs[:,:,:,:,1:4]
-			Veloutput = modifyVel(Densinput, Velinput)
-			batch_xs = np.concatenate((Densinput, Veloutput), axis = 4)
-			batch_xs = np.reshape(batch_xs,[simLowLength,simLowWidth,simLowHeight,4])
-		if useVelocities and useVorticities:
-			batch_xs = np.reshape(batch_xs,[1,simLowLength,simLowWidth,simLowHeight,-1])
-			Velinput = batch_xs[:,:,:,:,1:4]
-			Vorinput = addVorticity(Velinput)
-			batch_xs = np.concatenate((batch_xs, Vorinput), axis = 4)
-			batch_xs = np.reshape(batch_xs,[simLowLength,simLowWidth,simLowHeight,-1])
-		tiles = []
-		batch_xs=np.reshape(batch_xs,[simLowLength,simLowWidth,simLowHeight,-1])
 
-		lengthnum = ((simLowLength-overlap*2+tileSizeLow-overlap*2-1)//(tileSizeLow-overlap*2))
-		widthnum = ((simLowWidth-overlap*2+tileSizeLow-overlap*2-1)//(tileSizeLow-overlap*2))
-		heightnum = ((simLowHeight-overlap*2+tileSizeLow-overlap*2-1)//(tileSizeLow-overlap*2))
+	if (overlap*2 > tileSizeLow) or (tileSizeLow > simLowLength):
+		print("Wrong parameters for 3d output!")	
+		exit(1)
+	batch_xs = inputx[frame_no]
+	if useVelocities and change_velocity:
+		batch_xs = np.reshape(batch_xs,[1,simLowLength,simLowWidth,simLowHeight,-1])
+		Densinput = batch_xs[:,:,:,:,0:1]
+		Velinput = batch_xs[:,:,:,:,1:4]
+		Veloutput = modifyVel(Densinput, Velinput)
+		batch_xs = np.concatenate((Densinput, Veloutput), axis = 4)
+		batch_xs = np.reshape(batch_xs,[simLowLength,simLowWidth,simLowHeight,4])
+	tiles = []
+	batch_xs=np.reshape(batch_xs,[simLowLength,simLowWidth,simLowHeight,-1])
 
-		for i in range(lengthnum):
-			for j in range(widthnum):
-				for k in range(heightnum):
-					ifrom = (tileSizeLow-overlap*2)*i
-					ito = (tileSizeLow-overlap*2)*i+tileSizeLow
-					jfrom = (tileSizeLow-overlap*2)*j
-					jto = (tileSizeLow-overlap*2)*j+tileSizeLow
-					kfrom = (tileSizeLow-overlap*2)*k
-					kto = (tileSizeLow-overlap*2)*k+tileSizeLow
-					if ito >simLowLength:
-						ifrom = simLowLength-tileSizeLow
-						ito = simLowLength
-					if jto >simLowWidth:
-						jfrom = simLowWidth-tileSizeLow
-						jto = simLowWidth
-					if kto >simLowHeight:
-						kfrom = simLowHeight-tileSizeLow
-						kto = simLowHeight
-					low = batch_xs[ifrom:ito, jfrom:jto, kfrom:kto, :]
-					tiles.append(low)
-		batch_xs = np.array(tiles)
-		resultTiles = []
-		for tileno in range(batch_xs.shape[0]):
-			batch_xs_in = np.reshape(batch_xs[tileno],[-1, n_input])
-			results = sess.run(sampler, feed_dict={x: batch_xs_in, keep_prob: dropoutOutput, train : False})
-			results = np.array(results)
-			resultTiles.extend(results)
-		resultTiles = np.array(resultTiles)
-		resulttiles = np.reshape(resultTiles,[resultTiles.shape[0],tileSizeHigh,tileSizeHigh,tileSizeHigh])
-		high = np.zeros([simLowLength*upRes,simLowWidth*upRes,simLowHeight*upRes])
-		for i in range(lengthnum):
-			for j in range(widthnum):
-				for k in range(heightnum):
-					ihighfrom = (tileSizeLow-overlap*2)*upRes*(i-1)+(tileSizeLow-overlap)*upRes
-					ihighto = ihighfrom + (tileSizeLow-overlap*2)*upRes
-					jhighfrom = (tileSizeLow-overlap*2)*upRes*(j-1)+(tileSizeLow-overlap)*upRes
-					jhighto = jhighfrom+(tileSizeLow-overlap*2)*upRes
-					khighfrom = (tileSizeLow-overlap*2)*upRes*(k-1)+(tileSizeLow-overlap)*upRes
-					khighto = khighfrom+(tileSizeLow-overlap*2)*upRes
-					ifrom = overlap*upRes
+	lengthnum = ((simLowLength-overlap*2+tileSizeLow-overlap*2-1)//(tileSizeLow-overlap*2))
+	widthnum = ((simLowWidth-overlap*2+tileSizeLow-overlap*2-1)//(tileSizeLow-overlap*2))
+	heightnum = ((simLowHeight-overlap*2+tileSizeLow-overlap*2-1)//(tileSizeLow-overlap*2))
+
+	for i in range(lengthnum):
+		for j in range(widthnum):
+			for k in range(heightnum):
+				ifrom = (tileSizeLow-overlap*2)*i
+				ito = (tileSizeLow-overlap*2)*i+tileSizeLow
+				jfrom = (tileSizeLow-overlap*2)*j
+				jto = (tileSizeLow-overlap*2)*j+tileSizeLow
+				kfrom = (tileSizeLow-overlap*2)*k
+				kto = (tileSizeLow-overlap*2)*k+tileSizeLow
+				if ito >simLowLength:
+					ifrom = simLowLength-tileSizeLow
+					ito = simLowLength
+				if jto >simLowWidth:
+					jfrom = simLowWidth-tileSizeLow
+					jto = simLowWidth
+				if kto >simLowHeight:
+					kfrom = simLowHeight-tileSizeLow
+					kto = simLowHeight
+				low = batch_xs[ifrom:ito, jfrom:jto, kfrom:kto, :]
+				tiles.append(low)
+	batch_xs = np.array(tiles)
+	resultTiles = []
+	for tileno in range(batch_xs.shape[0]):
+		batch_xs_in = np.reshape(batch_xs[tileno],[-1, n_input])
+		results = sess.run(sampler, feed_dict={x: batch_xs_in, keep_prob: dropoutOutput, train : False})
+		results = np.array(results)
+		resultTiles.extend(results)
+	resultTiles = np.array(resultTiles)
+	resulttiles = np.reshape(resultTiles,[resultTiles.shape[0],tileSizeHigh,tileSizeHigh,tileSizeHigh])
+	high = np.zeros([simLowLength*upRes,simLowWidth*upRes,simLowHeight*upRes])
+	for i in range(lengthnum):
+		for j in range(widthnum):
+			for k in range(heightnum):
+				ihighfrom = (tileSizeLow-overlap*2)*upRes*(i-1)+(tileSizeLow-overlap)*upRes
+				ihighto = ihighfrom + (tileSizeLow-overlap*2)*upRes
+				jhighfrom = (tileSizeLow-overlap*2)*upRes*(j-1)+(tileSizeLow-overlap)*upRes
+				jhighto = jhighfrom+(tileSizeLow-overlap*2)*upRes
+				khighfrom = (tileSizeLow-overlap*2)*upRes*(k-1)+(tileSizeLow-overlap)*upRes
+				khighto = khighfrom+(tileSizeLow-overlap*2)*upRes
+				ifrom = overlap*upRes
+				ito = (tileSizeLow-overlap)*upRes
+				jfrom = overlap*upRes
+				jto = (tileSizeLow-overlap)*upRes
+				kfrom = overlap*upRes
+				kto = (tileSizeLow-overlap)*upRes
+				if i == 0:
+					ifrom = 0
 					ito = (tileSizeLow-overlap)*upRes
-					jfrom = overlap*upRes
+					ihighfrom = 0
+					ihighto = (tileSizeLow-overlap)*upRes
+				if j == 0:
+					jfrom = 0
 					jto = (tileSizeLow-overlap)*upRes
-					kfrom = overlap*upRes
+					jhighfrom = 0
+					jhighto = (tileSizeLow-overlap)*upRes
+				if k == 0:
+					kfrom = 0
 					kto = (tileSizeLow-overlap)*upRes
-					if i == 0:
-						ifrom = 0
-						ito = (tileSizeLow-overlap)*upRes
-						ihighfrom = 0
-						ihighto = (tileSizeLow-overlap)*upRes
-					if j == 0:
-						jfrom = 0
-						jto = (tileSizeLow-overlap)*upRes
-						jhighfrom = 0
-						jhighto = (tileSizeLow-overlap)*upRes
-					if k == 0:
-						kfrom = 0
-						kto = (tileSizeLow-overlap)*upRes
-						khighfrom = 0
-						khighto = (tileSizeLow-overlap)*upRes
-					if i == lengthnum-1:
-						ifrom = overlap*upRes
-						ito = tileSizeLow*upRes
-						ihighfrom = simLowLength*upRes-tileSizeLow*upRes+overlap*upRes
-						ihighto = simLowLength*upRes
-					if j == widthnum-1:
-						jfrom = overlap*upRes
-						jto = tileSizeLow*upRes
-						jhighfrom = simLowWidth*upRes-tileSizeLow*upRes+overlap*upRes
-						jhighto = simLowWidth*upRes
-					if k == heightnum-1:
-						kfrom = overlap*upRes
-						kto = tileSizeLow*upRes
-						khighfrom = simLowHeight*upRes-tileSizeLow*upRes+overlap*upRes
-						khighto = simLowHeight*upRes
-					high[ihighfrom: ihighto, jhighfrom:jhighto, khighfrom:khighto] = resulttiles[i*widthnum*heightnum+j*heightnum+k][ifrom:ito,jfrom:jto,kfrom:kto]
+					khighfrom = 0
+					khighto = (tileSizeLow-overlap)*upRes
+				if i == lengthnum-1:
+					ifrom = overlap*upRes
+					ito = tileSizeLow*upRes
+					ihighfrom = simLowLength*upRes-tileSizeLow*upRes+overlap*upRes
+					ihighto = simLowLength*upRes
+				if j == widthnum-1:
+					jfrom = overlap*upRes
+					jto = tileSizeLow*upRes
+					jhighfrom = simLowWidth*upRes-tileSizeLow*upRes+overlap*upRes
+					jhighto = simLowWidth*upRes
+				if k == heightnum-1:
+					kfrom = overlap*upRes
+					kto = tileSizeLow*upRes
+					khighfrom = simLowHeight*upRes-tileSizeLow*upRes+overlap*upRes
+					khighto = simLowHeight*upRes
+				high[ihighfrom: ihighto, jhighfrom:jhighto, khighfrom:khighto] = resulttiles[i*widthnum*heightnum+j*heightnum+k][ifrom:ito,jfrom:jto,kfrom:kto]
 
 		high = np.reshape(high,[simLowLength*upRes,simLowWidth*upRes,simLowHeight*upRes])
 		
-		head, _ = uniio.readUni(packedSimPath + "sim_%04d/density_high_%04d.uni"%(sim_no,frame_no+frame_min))
+		head, _ = uniio.readUni(loadPath + "sim_%04d/density_high_%04d.uni"%(sim_no,frame_no+frame_min))
 		head['dimX'] = simLowHeight*upRes
 		head['dimY'] = simLowWidth*upRes
 		head['dimZ'] = simLowLength*upRes
@@ -861,6 +764,31 @@ with open(basePath + 'test_overview.log', "a") as text_file:
 		text_file.write('Output:' + loaded_model + ' (' + test_path[-28:-1] + ')\n')
 		text_file.write('\ttile size: {}, seed: {}, dropout-out: {:.4f}'.format(tileSizeLow, randSeed, dropoutOutput) + '\n')
 
+	
+	
+#train generator using L2 loss
+if (not outputOnly) and pretrain>0:
+	print('\t Generator using L2')
+	print('{} epochs\n'.format(pretrain))
+	startTime = time.time()
+	epochTime = startTime
+	avgCost = 0
+	for epoch in range(pretrain):
+		batch_xs, batch_ys = getInput(batch_size = batch_size, useDataAugmentation = useDataAugmentation, useVelocities = useVelocities)
+		_, gen_cost, summary = sess.run([pretrain_optimizer, gen_l2_loss, lossPretrain_gen], feed_dict={x: batch_xs, x_disc: batch_xs, y: batch_ys, keep_prob: dropout, train: True})
+		summary_writer.add_summary(summary, epoch)
+		avgCost += gen_cost
+
+		if (epoch + 1) % saveInterval == 0:
+			print('%05d / %d: last interval: %.02f seconds, %.02f min remaining. avg cost: %.02f' % (epoch+1, pretrain, (time.time() - epochTime), ((pretrain - epoch) * (time.time() - startTime) / epoch / 60.0), (avgCost / outputInterval)))
+			epochTime = time.time()
+			avgCost = 0
+			print(saveModel(gen_cost, genTestImg, test_path+"pretrain_test_img/")) 
+
+	print(saveModel(gen_cost, genTestImg, test_path+"pretrain_test_img/"))
+	training_duration = (time.time() - startTime) / 60.0
+	print('Training needed %.02f minutes.' % (training_duration))
+	sys.stdout.flush()
 	
 # ---------------------------------------------
 # ---------------------------------------------
@@ -892,7 +820,6 @@ if not outputOnly and trainGAN:
 		saved = False
 		saveMsg = ''
 		kkin = k
-		kk2in = k2
 
 		disc_cost = 0
 		gen_cost = 0
@@ -924,7 +851,7 @@ if not outputOnly and trainGAN:
 			# discriminator variables; with real and generated input
 			if use_spatialdisc:
 				for runs in range(discRuns):
-					batch_xs, batch_ys = getInput(batch_size = batch_size_disc, useDataAugmentation = useDataAugmentation, useVelocities = useVelocities, useVorticities = useVorticities)
+					batch_xs, batch_ys = getInput(batch_size = batch_size_disc, useDataAugmentation = useDataAugmentation, useVelocities = useVelocities)
 					_, disc_cost, summary,disc_sig,gen_sig = sess.run([disc_optimizer, disc_loss, lossTrain_disc,disc_sigmoid,gen_sigmoid], feed_dict={x: batch_xs, x_disc: batch_xs, y: batch_ys, keep_prob: dropout, train: True, lr_global_step: lrgs}     , options=run_options, run_metadata=run_metadata )
 					avgCost_disc += disc_cost
 					summary_writer.add_summary(summary, epoch)
@@ -932,21 +859,19 @@ if not outputOnly and trainGAN:
 
 			# generator variables
 			for runs in range(genRuns):
-				batch_xs, batch_ys = getInput(batch_size = batch_size_disc, useDataAugmentation = useDataAugmentation, useVelocities = useVelocities, useVorticities = useVorticities)
-				kkin = k_f*kkin
-				kk2in = k2_f*kk2in
+				batch_xs, batch_ys = getInput(batch_size = batch_size_disc, useDataAugmentation = useDataAugmentation, useVelocities = useVelocities)
 				
 				train_dict = {x: batch_xs, x_disc: batch_xs, y: batch_ys, keep_prob: dropout, train: True, kk: kkin,
-							  kk2: kk2in, lr_global_step: lrgs}
+							lr_global_step: lrgs}
 				if use_spatialdisc:
-					getlist = [gen_optimizer, gen_loss, disc_loss_layer, gen_l1_loss, lossTrain_gen, gen_l2_loss]
+					getlist = [gen_optimizer, gen_loss, gen_l1_loss, lossTrain_gen, gen_l2_loss]
 				else:
 					getlist = [gen_optimizer, gen_l1_loss, gen_l2_loss]
 
 				result_list = sess.run(getlist, feed_dict=train_dict, options=run_options, run_metadata=run_metadata)
 
 				if use_spatialdisc:
-					_, gen_cost, layer_cost, gen_l1_cost, summary, gen_l2_cost = result_list
+					_, gen_cost, gen_l1_cost, summary, gen_l2_cost = result_list
 				else:
 					_, gen_l1_cost, gen_l2_cost = result_list
 				gen_tem_cost = 0
@@ -976,7 +901,7 @@ if not outputOnly and trainGAN:
 				if use_spatialdisc:
 					# gather statistics from training
 					# not yet part of testing!
-					batch_xs, batch_ys = getInput(batch_size = numTests, useVelocities = useVelocities, useVorticities = useVorticities)
+					batch_xs, batch_ys = getInput(batch_size = numTests, useVelocities = useVelocities)
 					disc_out, summary_disc_out, gen_out, summary_gen_out = sess.run([disc_sigmoid, outTrain_disc_real, gen_sigmoid, outTrain_disc_gen], feed_dict={x: batch_xs, x_disc: batch_xs, y: batch_ys, keep_prob: dropout, train: False})
 					summary_writer.add_summary(summary_disc_out, epoch)
 					summary_writer.add_summary(summary_gen_out, epoch)
@@ -985,7 +910,7 @@ if not outputOnly and trainGAN:
 
 					# testing starts here...
 					# get test data
-					batch_xs, batch_ys = getInput(batch_size = numTests, isTraining=False, useVelocities = useVelocities, useVorticities = useVorticities)
+					batch_xs, batch_ys = getInput(batch_size = numTests, isTraining=False, useVelocities = useVelocities)
 					#disc with real imput
 					disc_out_real, summary_test_out, disc_test_cost_real, summary_test = sess.run([disc_sigmoid, outTest_disc_real, disc_loss_disc, lossTest_disc_disc], feed_dict={x: batch_xs, x_disc: batch_xs, y: batch_ys, keep_prob: dropoutOutput, train: False})
 					summary_writer.add_summary(summary_test, epoch)
@@ -1032,17 +957,11 @@ if not outputOnly and trainGAN:
 					format(avgTestOut_disc_real_t, avgTestOut_disc_gen_t))
 				print('\t gen: loss: train={:.6f} - L1(*k)={:.3f} - test={:.6f}, DS out: train={:.6f} - test={:.6f}'
 					.format(avgCost_gen, avgL1Cost_gen * k, avgTestCost_gen, avgOut_gen, avgTestOut_disc_gen))
-				#print('\t gen: loss[ -train (total Temp(*k)={:.6f}) -test (total Temp(*k)={:.6f})], DT out: real={:.6f} - gen={:.6f}'
-				#	.format(avgTemCost_gen * kt, avgTestCost_gen_t * kt, avgOut_disc_t, avgOut_gen_t))
 				if use_spatialdisc:
 					print('\tdisc: loss: disc=%f'%(disc_sig))
 					print('\tgen: loss: gen=%f'%(gen_sig))
-					print('\t layer_cost: %f'%(layer_cost))
-				
-				
+								
 				print('\t l1_cost: %f'%(gen_l1_cost))
-				#print('\t l2 tempo loss[ -train (total Temp(*k)={:.6f}) -test (total Temp(*k)={:.6f})]'
-				#	.format(avgTemCost_gen_l * kt_l, avgTestCost_gen_t_l * kt_l))
 				
 				epochTime = (time.time() - startTime) / (epoch + 1)
 				print('\t{} epochs took {:.2f} seconds. (Est. next: {})'.format(outputInterval, (time.time() - intervalTime), time.ctime(time.time() + outputInterval * epochTime)))
@@ -1051,7 +970,6 @@ if not outputOnly and trainGAN:
 				if saved:
 					print('\t' + saveMsg) # print save massage here for clarity
 				if genTestImg > -1:
-					#if genTestImg <= lastOut:
 					generateTestImage(outPath = test_path+'test_img/', imageindex = image_no)
 					image_no +=1
 				sys.stdout.flush()
@@ -1080,7 +998,7 @@ if not outputOnly and trainGAN:
 	print('\n*****TRAINING FINISHED*****')
 	training_duration = (time.time() - startTime) / 60.0
 	print('Training needed %.02f minutes.' % (training_duration))
-	print('To apply the trained model, set "outputOnly" to True, and insert numbers for "load_model_test", and "load_model_no" ')
+	print('To apply the trained model, call the script with command line parameters "out=1 load_model_test=%d  load_model_no=%d " ' % (load_model_test_new, save_no) )
 	sys.stdout.flush()
 	with open(basePath + 'test_overview.log', "a") as text_file:
 		text_file.write('\ttraining duration: %.02f minutes' % training_duration + '\n')
@@ -1097,11 +1015,6 @@ elif outputOnly: #may not work if using tiles smaller than full sim size
 			generateTestImage(fromSim,layerno,outPath = test_path, imageindex = layerno, modifyvelocity = change_velocity)
 		else:
 			generate3DUni(fromSim,layerno,outPath = test_path, imageindex = layerno)
-
-	if outputGif: #write gif
-		print("Writing gif")
-		#pg.array_to_gif(test_path, output_complete[:numOut], tileSizeHigh)
-		pg.pngs_to_gif(test_path,end_idx = img_count)
 
 	print('Test finished, %d outputs written to %s.' % (frame_max-frame_min, test_path) )
 

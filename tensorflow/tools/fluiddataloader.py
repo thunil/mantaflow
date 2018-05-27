@@ -476,11 +476,17 @@ class FluidDataLoader(object):
 		if self.print_info:
 			print("Loaded "+format(self.x.shape[0])+" datasets" + (", shuffled" if self.shuffle_on_load else "") )
 			print("\tData shape x " + format(self.x.shape))
-			print("\tx mean & std dev: " + format(self.arrayStats(self.x)))
+			m,s = self.arrayStats(self.x)
+			print("\tx mean & std dev: " + format([m,s]))
+			if m<1e-10 and s<1e-10: # sanity check, any non-zero values?
+				raise FluidDataLoaderError("FluidDataLoader error: aborting, input data x is all zero")
 			self.perChannelStats(self.x, "\tPer channel mean & std dev x: ")
 			if self.have_y_npz: 
 				print("\tData shape y " + format(self.y.shape))
-				print("\ty mean & std dev: " + format(self.arrayStats(self.y)))
+				m,s = self.arrayStats(self.y)
+				print("\ty mean & std dev: " + format([m,s]))
+				if m<1e-10 and s<1e-10: # sanity check, any non-zero values?
+					raise FluidDataLoaderError("FluidDataLoader error: aborting, input data y is all zero")
 
 	def get(self):
 		""" After loading, return arrays 

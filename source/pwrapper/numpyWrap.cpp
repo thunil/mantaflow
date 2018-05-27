@@ -28,7 +28,7 @@ template<> PyArrayContainer fromPy<PyArrayContainer>(PyObject* obj) {
 	}
 	
 	PyArrayContainer abuf;
-	PyArrayObject* obj_p = reinterpret_cast<PyArrayObject*>(PyArray_CheckFromAny( obj, NULL, 0, 0, NPY_ARRAY_ENSURECOPY | NPY_ARRAY_ENSUREARRAY | NPY_ARRAY_NOTSWAPPED, NULL));
+	PyArrayObject* obj_p = reinterpret_cast<PyArrayObject*>(PyArray_CheckFromAny( obj, NULL, 0, 0, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_ENSUREARRAY | NPY_ARRAY_NOTSWAPPED, NULL));
 
 	abuf.TotalSize = PyArray_SIZE(obj_p);
 	int source_typ = PyArray_TYPE(obj_p);
