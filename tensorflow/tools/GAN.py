@@ -261,9 +261,7 @@ class GAN(object):
 	# outChannels: int
 	# _patchShape: 2D: [H,W]; 3D: [D,H,W]
 	# stride 3D: if 1D: [DHW], if 2D:[D,HW], if 3D:[D,H,W]
-	def deconvolutional_layer(self, outChannels, _patchShape, activation_function=tf.nn.tanh, stride=[1], name="deconv",reuse=False, batch_norm=False, train=None, init_mean=0., strideOverride=None):
-		if init_mean==1.:
-			name = name+"_EXCLUDE_ME_"
+	def deconvolutional_layer(self, outChannels, _patchShape, activation_function=tf.nn.tanh, stride=[1], name="deconv",reuse=False, batch_norm=False, train=None, strideOverride=None):
 		with tf.variable_scope(name):
 			self.layer_num += 1
 			shape = self.layer.get_shape()
@@ -279,7 +277,7 @@ class GAN(object):
 				if len(stride) == 1:
 					stride = [stride[0],stride[0]]
 				# create a weight matrix
-				W = self.weight_variable([_patchShape[0], _patchShape[1], outChannels, inChannels], name=name, init_mean=init_mean)
+				W = self.weight_variable([_patchShape[0], _patchShape[1], outChannels, inChannels], name=name)
 				self.layer = self.deconv2d(self.layer, W, [self.batch_size, int(shape[1]*stride[0]), int(shape[2]*stride[1]), outChannels], dcStride)
 				self.DOFs += _patchShape[0]* _patchShape[1]* outChannels* inChannels
 			if len(_patchShape) == 3:
@@ -288,7 +286,7 @@ class GAN(object):
 				elif len(stride) == 2:
 					stride = [stride[0],stride[1],stride[1]]
 				# create a weight matrix
-				W = self.weight_variable([_patchShape[0], _patchShape[1], _patchShape[2], outChannels, inChannels], name=name, init_mean=init_mean)
+				W = self.weight_variable([_patchShape[0], _patchShape[1], _patchShape[2], outChannels, inChannels], name=name)
 				self.layer = self.deconv3d(self.layer, W, [self.batch_size, int(shape[1]*stride[0]), int(shape[2]*stride[1]), int(shape[3]*stride[2]), outChannels], dcStride)
 				self.DOFs += _patchShape[0]* _patchShape[1]* _patchShape[2]* outChannels* inChannels
 				#batch_norm = False
@@ -355,12 +353,10 @@ class GAN(object):
 
 	#---------------------------------------------------------------------------------
 	# generate random valued weight field
-	def weight_variable(self, shape, name="w", init_mean=0.):
+	def weight_variable(self, shape, name="w"):
 		# use tf.get_variable() instead of tf.Variable() to be able to reuse variables
 		s = 0.04
-		if init_mean==1.:
-			s = 0. # enforce value
-		v = tf.get_variable("weight", shape, initializer=tf.random_normal_initializer(stddev=s, mean=init_mean))
+		v = tf.get_variable("weight", shape, initializer=tf.random_normal_initializer(stddev=s, mean=0.))
 		return v
 
 	#---------------------------------------------------------------------------------

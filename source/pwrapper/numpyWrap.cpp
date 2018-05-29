@@ -31,10 +31,10 @@ template<> PyArrayContainer fromPy<PyArrayContainer>(PyObject* obj) {
 	PyArrayObject* obj_p = reinterpret_cast<PyArrayObject*>(PyArray_CheckFromAny( obj, NULL, 0, 0, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_ENSUREARRAY | NPY_ARRAY_NOTSWAPPED, NULL));
 
 	abuf.TotalSize = PyArray_SIZE(obj_p);
-	int source_typ = PyArray_TYPE(obj_p);
+	int source_type= PyArray_TYPE(obj_p);
 	abuf.pData = PyArray_DATA(obj_p);
 	
-	switch (source_typ) {
+	switch (source_type) {
 		case NPY_FLOAT:
 			abuf.DataType = N_FLOAT;
 			break;

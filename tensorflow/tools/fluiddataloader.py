@@ -18,7 +18,7 @@ import scipy.ndimage
 # necessary for loading uni files , could easily be disabled if necessary
 import uniio 
 # data type for new python arrays
-FDG_DTYPE = np.float
+FDG_DTYPE = np.float32
 
 
 class FluidDataLoader(object):
@@ -477,14 +477,14 @@ class FluidDataLoader(object):
 			print("Loaded "+format(self.x.shape[0])+" datasets" + (", shuffled" if self.shuffle_on_load else "") )
 			print("\tData shape x " + format(self.x.shape))
 			m,s = self.arrayStats(self.x)
-			print("\tx mean & std dev: " + format([m,s]))
+			print("\tx mean & var: " + format([m,s]))
 			if m<1e-10 and s<1e-10: # sanity check, any non-zero values?
 				raise FluidDataLoaderError("FluidDataLoader error: aborting, input data x is all zero")
-			self.perChannelStats(self.x, "\tPer channel mean & std dev x: ")
+			self.perChannelStats(self.x, "\tPer channel mean & var for x: ")
 			if self.have_y_npz: 
 				print("\tData shape y " + format(self.y.shape))
 				m,s = self.arrayStats(self.y)
-				print("\ty mean & std dev: " + format([m,s]))
+				print("\tmean & var for y: " + format([m,s]))
 				if m<1e-10 and s<1e-10: # sanity check, any non-zero values?
 					raise FluidDataLoaderError("FluidDataLoader error: aborting, input data y is all zero")
 

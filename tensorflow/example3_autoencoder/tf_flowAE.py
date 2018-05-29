@@ -9,35 +9,27 @@
 #
 #******************************************************************************
 
-import time
-import os
-import shutil
-import sys
-import math
-
+import time, os, sys, math
+import numpy as np
 import tensorflow as tf
 from tensorflow.python.client import timeline
-import numpy as np
 
 # load manta tools
 sys.path.append("../tools")
 import tilecreator as tc
-import uniio
 import paramhelpers as ph
 from GAN import GAN, lrelu
 import fluiddataloader as FDL
 
 
 # ---------------------------------------------
-
 # initialize parameters / command line params
-outputOnly	  = int(ph.getParam( "out",			 False ))>0 		# output/generation mode, main mode switch
 
+outputOnly	  = int(ph.getParam( "out",			 False ))>0 		# output/generation mode, main mode switch
 basePath		=	 ph.getParam( "basePath",		'../data/' )
 randSeed		= int(ph.getParam( "randSeed",		1 )) 				# seed for np and tf initialization
 load_model_test = int(ph.getParam( "load_model_test", -1 )) 			# the number of the test to load a model from. can be used in training and output mode. -1 to not load a model
 load_model_no   = int(ph.getParam( "load_model_no",   -1 )) 			# nubmber of the model to load
-
 simSizeLow  	= int(ph.getParam( "simSize", 		  64 )) 			# tiles of low res sim
 tileSizeLow 	= int(ph.getParam( "tileSize", 		  16 )) 			# size of low res tiles
 upRes	  		= int(ph.getParam( "upRes", 		  4 )) 				# scaling factor
@@ -51,28 +43,25 @@ numOut			= int(ph.getParam( "numOut",		  200 )) 			# number ouf images to output
 saveOut	  	    = int(ph.getParam( "saveOut",		 False ))>0 		# save output of output mode as .npz in addition to images
 loadOut			= int(ph.getParam( "loadOut",		 -1 )) 			# load output from npz to use in output mode instead of tiles. number or output dir, -1 for not use output data
 outputImages	=int(ph.getParam( "img",  			  True ))>0			# output images
-#models
-genModel		=	 ph.getParam( "genModel",		 'gen_test' ) 	# choose generator model
 #Training
+genModel		=	 ph.getParam( "genModel",		 'gen_test' ) 	# choose generator model
 learning_rate   = float(ph.getParam( "learningRate",  0.0002 ))
 decayLR		    = int(ph.getParam( "decayLR",			 False ))>0 		# decay learning rate?
 dropout   		= float(ph.getParam( "dropout",  	  1.0 )) 			# keep prop for all dropout layers during training
 dropoutOutput   = float(ph.getParam( "dropoutOutput", dropout )) 		# affects testing, full sim output and progressive output during training
 beta			= float(ph.getParam( "adam_beta1",	 0.5 ))			#1. momentum of adam optimizer
-
 k				= float(ph.getParam( "lambda",		  1.0)) 			# influence/weight of l1 term on generator loss
-batch_size	    = int(ph.getParam( "batchSize",  	  128 ))			# batch size for pretrainig and output, default for batchSizeDisc and batchSizeGen
+batch_size	    = int(ph.getParam( "batchSize",  	  32 ))			# batch size for pretrainig and output, default for batchSizeDisc and batchSizeGen
 trainingEpochs  = int(ph.getParam( "trainingEpochs",  10000 )) 		# for GAN training
 batch_norm		= int(ph.getParam( "batchNorm",	   True ))>0			# apply batch normalization to conv and deconv layers
 use_spatialdisc = int(ph.getParam( "use_spatialdisc",		   True )) #use spatial discriminator or not
-
 useVelocities   = int(ph.getParam( "useVelocities",   0  )) 			# use velocities or not
 
 useDataAugmentation = int(ph.getParam( "dataAugmentation", 0 ))		 # use dataAugmentation or not
-minScale = float(ph.getParam( "minScale",	  0.85 ))				 # augmentation params...
-maxScale = float(ph.getParam( "maxScale",	  1.15 ))
-rot	     = int(ph.getParam( "rot",		  2	 ))		#rot: 1: 90 degree rotations; 2: full rotation; else: nop rotation 
-flip	 =   int(ph.getParam( "flip",		  1	 ))
+minScale        = float(ph.getParam( "minScale",	  0.85 ))				 # augmentation params...
+maxScale        = float(ph.getParam( "maxScale",	  1.15 ))
+rot	            = int(ph.getParam( "rot",		  2	 ))		#rot: 1: 90 degree rotations; 2: full rotation; else: nop rotation 
+flip            = int(ph.getParam( "flip",		  1	 ))
 
 #Test and Save
 testPathStartNo = int(ph.getParam( "testPathStartNo", 0  ))
@@ -180,12 +169,6 @@ ph.writeParams(test_path+"params.json") # export parameters in human readable fo
 if outputOnly:
 	print('*****OUTPUT ONLY*****')
 
-if 0 and not outputOnly:
-	os.makedirs(test_path+"/zbu_src")
-	uniio.backupFile(__file__, test_path+"/zbu_src/")
-	uniio.backupFile("../tools/tilecreator.py", test_path+"/zbu_src/")
-	uniio.backupFile("../tools/GAN.py", test_path+"/zbu_src/") 
-	uniio.backupFile("../tools/fluiddataloader.py", test_path+"/zbu_src/")
 
 # ---------------------------------------------
 # TENSORFLOW SETUP
@@ -239,6 +222,7 @@ def resBlock(gan, inp, s1,s2, reuse, use_batch_norm, filter_size=3):
 	rbId += 1
 	return resUnit1
 
+############################################ resnet ###############################################################
 def gen_resnet(_in, reuse=False, use_batch_norm=False, train=None):
 	global rbId
 	print("\n\tGenerator (resize-resnett3-deep)")
@@ -252,12 +236,13 @@ def gen_resnet(_in, reuse=False, use_batch_norm=False, train=None):
 			patchShape = [2,2,2]
 		rbId = 0
 		gan = GAN(_in)
-	
-		gan.max_depool()
-		inp = gan.max_depool()
+
+		for i in range( int(math.log(upRes, 2)) ):
+			inp = gan.max_depool()
+
 		ru1 = resBlock(gan, inp, n_inputChannels*2,n_inputChannels*8,  reuse, use_batch_norm,5)# with tf.device('/device:GPU:1'):  after here, gpu1 crash
 
-		ru2 = resBlock(gan, ru1, 128, 128,  reuse, use_batch_norm,5)# with tf.device('/device:GPU:1'):  after here, gpu0 crash
+		ru2 = resBlock(gan, ru1, 64, 64,  reuse, use_batch_norm,5)# with tf.device('/device:GPU:1'):  after here, gpu0 crash
 		inRu3 = ru2
 		ru3 = resBlock(gan, inRu3, 32, 8,  reuse, use_batch_norm,5)
 		ru4 = resBlock(gan, ru3, 2, 1,  reuse, False,5)
@@ -279,8 +264,10 @@ def gen_resnetSm(_in, reuse=False, use_batch_norm=False, train=None):
 			patchShape = [2,2,2]
 		rbId = 0
 		gan = GAN(_in)
-		gan.max_depool()
-		inp = gan.max_depool()
+
+		for i in range( int(math.log(upRes, 2)) ):
+			inp = gan.max_depool()
+
 		ru1 = resBlock(gan, inp, n_inputChannels*2,n_inputChannels*8,  reuse, use_batch_norm,3)
 		ru2 = resBlock(gan, ru1, 16, 16,  reuse, use_batch_norm,3)
 		inRu3 = ru2
@@ -313,9 +300,8 @@ def gen_test(_in, reuse=False, use_batch_norm=False, train=None):
 		return 	tf.reshape( inp, shape=[-1, n_output] )
 
 
-#change used models for gen and disc here #other models in NNmodels.py
+# change used models for gen and disc here #other models in NNmodels.py
 gen_model = locals()[genModel]
-#training or testing for batch norm
 train = tf.placeholder(tf.bool)
 
 if not outputOnly: #setup for training
@@ -327,13 +313,9 @@ else: #setup for generating output with trained model
 sys.stdout.flush()
 
 if not outputOnly:
-
-	#additional generator losses
 	gen_l2_loss = tf.nn.l2_loss(y - gen_part)
-	gen_l1_loss = tf.reduce_mean(tf.abs(y - gen_part)) #use mean to normalize w.r.t. output dims. tf.reduce_sum(tf.abs(y - gen_part))
-
-	#uses sigmoid cross entropy and l1 - see cGAN paper
-	gen_loss_complete = gen_l1_loss*kk 
+	#gen_l1_loss = tf.reduce_mean(tf.abs(y - gen_part)) #use mean to normalize w.r.t. output dims. tf.reduce_sum(tf.abs(y - gen_part))
+	#gen_loss_complete = gen_l1_loss*kk 
 
 	# set up decaying learning rate, if enabled
 	lr_global_step = tf.Variable(0, trainable=False)
@@ -370,8 +352,6 @@ else:
 	saver.restore(sess, load_path)
 	print("Model restored from %s." % load_path)
 
-
-
 if not outputOnly:
 	lossPretrain_gen  = tf.summary.scalar("generator_L2_loss",     gen_l2_loss)	
 	merged_summary_op = tf.summary.merge_all()
@@ -386,8 +366,6 @@ else:
 image_no = 0
 if not outputOnly:
 	os.makedirs(test_path+'test_img/')
-	#if pretrain>0: # or pretrain_gen > 0 or pretrain_disc>0:
-	#	os.makedirs(test_path+'pretrain_test_img/') # NT_DEBUG ?
 
 def modifyVel(Dens,Vel):
 	return velout # not active right now...
@@ -454,7 +432,7 @@ training_duration = 0.0
 #train generator using L2 loss
 if (not outputOnly): # and pretrain>0:
 	try:
-		print('Generator using L2' + '{} epochs\n'.format(trainingEpochs))
+		print('Using generator with L2 loss, ' + '{} epochs\n'.format(trainingEpochs))
 		print('\n*****TRAINING STARTED***** (stop with ctrl-c)\n')
 
 		startTime = time.time()
@@ -473,10 +451,6 @@ if (not outputOnly): # and pretrain>0:
 				avgCost = 0
 				saved = True
 				print(saveModel(gen_cost, genTestImg, test_path+"test_img/")) 
-
-		#training_duration = (time.time() - startTime) / 60.0
-		#print('Training needed %.02f minutes.' % (training_duration))
-		#sys.stdout.flush()
 
 	except KeyboardInterrupt:
 		print("training interrupted")

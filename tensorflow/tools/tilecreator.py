@@ -282,7 +282,7 @@ class TileCreator(object):
 		
 	
 	
-	def addData(self, low, high, flip_vel_z=True ):
+	def addData(self, low, high, flip_vel_z=False ):
 		'''
 			add data, tiles if premadeTiles, frames otherwise.
 			low, high: list of or single 3D data np arrays
@@ -870,7 +870,7 @@ class TileCreator(object):
 	def getTileDensity(self, tile):
 		if self.data_flags[DATA_KEY_LOW]['channels'] > 1:
 			tile = np.split(tile, [1], axis=-1)[0]
-		return tile.sum( dtype=np.float64 )
+		return tile.sum( dtype=np.float32 )
 	
 	def getFrameTiles(self, index):
 		''' returns the frame as tiles'''
