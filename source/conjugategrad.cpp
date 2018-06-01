@@ -17,7 +17,7 @@
 using namespace std;
 namespace Manta {
 
-const int CG_DEBUGLEVEL = 2;
+const int CG_DEBUGLEVEL = 3;
 	
 //*****************************************************************************
 //  Precondition helpers

@@ -145,7 +145,7 @@ public:
 		case 1:  return interpol     <T>(mData, mSize, mStrideZ, pos); 
 		case 2:  return interpolCubic<T>(mData, mSize, mStrideZ, pos); 
 		default: assertMsg(false, "Unknown interpolation order "<<order); }
-		T r; r=0.; return r; // should never be reached, just to prevent compiler warnings
+		return T(0.); // should never be reached, just to prevent compiler warnings
 	}
 	
 	// assignment / copy
@@ -248,6 +248,7 @@ public:
 		case 1:  return interpolMAC     (mData, mSize, mStrideZ, pos); 
 		case 2:  return interpolCubicMAC(mData, mSize, mStrideZ, pos); 
 		default: assertMsg(false, "Unknown interpolation order "<<order); }
+		return Vec3(0.); // should never be reached, just to prevent compiler warnings
 	}
 	// specials for mac grid:
 	template<int comp> inline Real getInterpolatedComponent(Vec3 pos) const { return interpolComponent<comp>(mData, mSize, mStrideZ, pos); }
@@ -256,6 +257,7 @@ public:
 		case 1:  return interpolComponent<comp>(mData, mSize, mStrideZ, pos); 
 		case 2:  return interpolCubicMAC(mData, mSize, mStrideZ, pos)[comp];  // warning - not yet optimized
 		default: assertMsg(false, "Unknown interpolation order "<<order); }
+		return 0.; // should never be reached, just to prevent compiler warnings
 	}
 
 	//! set all boundary cells of a MAC grid to certain value (Dirchlet). Respects staggered grid locations
