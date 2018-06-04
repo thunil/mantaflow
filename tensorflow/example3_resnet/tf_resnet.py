@@ -18,15 +18,17 @@ from tensorflow.python.client import timeline
 sys.path.append("../tools")
 import tilecreator as tc
 import paramhelpers as ph
-from GAN import GAN, lrelu
 import fluiddataloader as FDL
+
+# there's no GAN here, but this script simplified the setup of conv nets
+from GAN import GAN, lrelu
 
 
 # ---------------------------------------------
 # initialize parameters / command line params
 
-outputOnly	  = int(ph.getParam( "out",			 False ))>0 		# output/generation mode, main mode switch
-basePath		=	 ph.getParam( "basePath",		'../data/' )
+outputOnly      = int(ph.getParam( "out",			 False ))>0 		# output/generation mode, main mode switch
+basePath		= ph.getParam( "basePath",		'../data/' )
 randSeed		= int(ph.getParam( "randSeed",		1 )) 				# seed for np and tf initialization
 load_model_test = int(ph.getParam( "load_model_test", -1 )) 			# the number of the test to load a model from. can be used in training and output mode. -1 to not load a model
 load_model_no   = int(ph.getParam( "load_model_no",   -1 )) 			# nubmber of the model to load
@@ -35,16 +37,16 @@ tileSizeLow 	= int(ph.getParam( "tileSize", 		  16 )) 			# size of low res tiles
 upRes	  		= int(ph.getParam( "upRes", 		  4 )) 				# scaling factor
 
 #Data and Output
-loadPath		 =	 ph.getParam( "loadPath",		 '../data/' ) 	# path to training data
-fromSim		   = int(ph.getParam( "fromSim",		 1000 )) 			# range of sim data to use, start index
-toSim		   = int(ph.getParam( "toSim",		   -1   )) 			# end index
+loadPath		= ph.getParam( "loadPath",		 '../data/' ) 	# path to training data
+fromSim		    = int(ph.getParam( "fromSim",		 1000 )) 			# range of sim data to use, start index
+toSim		    = int(ph.getParam( "toSim",		     -1   )) 			# end index
 dataDimension   = int(ph.getParam( "dataDim",		 2 )) 				# dimension of dataset, can be 2 or 3. in case of 3D any scaling will only be applied to H and W (DHW)
 numOut			= int(ph.getParam( "numOut",		  200 )) 			# number ouf images to output (from start of sim)
 saveOut	  	    = int(ph.getParam( "saveOut",		 False ))>0 		# save output of output mode as .npz in addition to images
 loadOut			= int(ph.getParam( "loadOut",		 -1 )) 			# load output from npz to use in output mode instead of tiles. number or output dir, -1 for not use output data
-outputImages	=int(ph.getParam( "img",  			  True ))>0			# output images
+outputImages	= int(ph.getParam( "img",  			  True ))>0			# output images
 #Training
-genModel		=	 ph.getParam( "genModel",		 'gen_test' ) 	# choose generator model
+genModel		= ph.getParam( "genModel",		 'gen_test' ) 	# choose generator model
 learning_rate   = float(ph.getParam( "learningRate",  0.0002 ))
 decayLR		    = int(ph.getParam( "decayLR",			 False ))>0 		# decay learning rate?
 dropout   		= float(ph.getParam( "dropout",  	  1.0 )) 			# keep prop for all dropout layers during training
@@ -294,9 +296,6 @@ else: #setup for generating output with trained model
 	train = False
 
 G = gen_model(x, use_batch_norm=batch_norm, train=train)
-# sampler = gen_model(x, use_batch_norm=batch_norm, train=False)
-
-sys.stdout.flush()
 
 if not outputOnly:
 	gen_l2_loss = tf.nn.l2_loss(y - G)
@@ -316,6 +315,8 @@ if not outputOnly:
 
 	with tf.control_dependencies(gen_update_ops): 
 		pretrain_optimizer = tf.train.AdamOptimizer(learning_rate).minimize(gen_l2_loss, var_list=g_var)
+
+sys.stdout.flush()
 
 
 # create session and saver
@@ -346,8 +347,8 @@ image_no = 0
 if not outputOnly:
 	os.makedirs(test_path+'test_img/')
 
-def modifyVel(Dens,Vel):
-	return velout # not active right now...
+def modifyVel(dens,vel):
+	return vel # not active right now...
 
 def getInput(index = 1, randomtile = True, isTraining = True, batch_size = 1, useDataAugmentation = False):
 	if randomtile == False:
