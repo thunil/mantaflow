@@ -10,7 +10,7 @@ the training data for tensorflow is prepared with:
 	>>> manta manta_gendata.py
 
 Then use it to train a first model with:
-	>>>python tf_train.py ../data/manta-flip/training_data/ 
+	>>> python tf_train.py ../data/manta-flip/training_data/ 
 the last parameter contains the extracted data from the previous step, you can also enter multiple ones here.
 
 Once the model is trained, you can use it in a new sim with

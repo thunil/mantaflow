@@ -49,12 +49,9 @@ learning_rate   = float(ph.getParam( "learningRate",  0.0002 ))
 decayLR		    = int(ph.getParam( "decayLR",			 False ))>0 		# decay learning rate?
 dropout   		= float(ph.getParam( "dropout",  	  1.0 )) 			# keep prop for all dropout layers during training
 dropoutOutput   = float(ph.getParam( "dropoutOutput", dropout )) 		# affects testing, full sim output and progressive output during training
-beta			= float(ph.getParam( "adam_beta1",	 0.5 ))			#1. momentum of adam optimizer
-k				= float(ph.getParam( "lambda",		  1.0)) 			# influence/weight of l1 term on generator loss
 batch_size	    = int(ph.getParam( "batchSize",  	  32 ))			# batch size for pretrainig and output, default for batchSizeDisc and batchSizeGen
 trainingEpochs  = int(ph.getParam( "trainingEpochs",  10000 )) 		# for GAN training
 batch_norm		= int(ph.getParam( "batchNorm",	   True ))>0			# apply batch normalization to conv and deconv layers
-use_spatialdisc = int(ph.getParam( "use_spatialdisc",		   True )) #use spatial discriminator or not
 useVelocities   = int(ph.getParam( "useVelocities",   0  )) 			# use velocities or not
 
 useDataAugmentation = int(ph.getParam( "dataAugmentation", 0 ))		 # use dataAugmentation or not
@@ -74,7 +71,7 @@ maxToKeep		= int(ph.getParam( "keepMax",		 3  )) 			# maximum number of model sa
 genTestImg		= int(ph.getParam( "genTestImg",	  -1 )) 			# if > -1 generate test image every output interval
 note			= ph.getParam( "note",		   "" )					# optional info about the current test run, printed in log and overview
 data_fraction	= float(ph.getParam( "data_fraction",		   0.3 ))
-frame_max		= int(ph.getParam( "frame_max",		   200 ))
+frame_max		= int(ph.getParam( "frame_max",		   120 ))
 frame_min		= int(ph.getParam( "frame_min",		   0 ))
 
 ph.checkUnusedParams()
@@ -97,34 +94,26 @@ lowfilename = "density_low_%04d.npz"
 highfilename = "density_high_%04d.npz" # NT_DEBUG
 mfl = ["density"]
 mfh = ["density"]
-if outputOnly: 
-	highfilename = None
-	mfh = None
 if useVelocities:
 	channelLayout_low += ',vx,vy,vz'
 	mfl= np.append(mfl, "velocity")
 
-dirIDs = np.linspace(fromSim, toSim, (toSim-fromSim+1),dtype='int16')
-
 if (outputOnly): 
+	highfilename = None
+	mfh = None
 	data_fraction = 1.0
 	useTempoD = False
 	useTempoL2 = False
 	useDataAugmentation = 0
 
-#if ((not useTempoD) and (not useTempoL2)): # should use the full sequence, not use multi_files
+dirIDs = np.linspace(fromSim, toSim, (toSim-fromSim+1),dtype='int16')
 tiCr = tc.TileCreator(tileSizeLow=tileSizeLow, simSizeLow=simSizeLow , dim =dataDimension, dim_t = 1, channelLayout_low = channelLayout_low, upres=upRes)
 floader = FDL.FluidDataLoader( print_info=1, base_path=loadPath, filename=lowfilename, oldNamingScheme=False, filename_y=highfilename, filename_index_min=frame_min, filename_index_max=frame_max, indices=dirIDs, data_fraction=data_fraction, multi_file_list=mfl, multi_file_list_y=mfh)
 
 if useDataAugmentation:
 	tiCr.initDataAugmentation(rot=rot, minScale=minScale, maxScale=maxScale ,flip=flip)
 inputx, y, xFilenames  = floader.get()
-if (not outputOnly): 
-	tiCr.addData(inputx,y)
-elif dataDimension == 3:
-	simLowLength = inputx.shape[1]
-	simLowWidth = inputx.shape[2]
-	simLowHeight = inputx.shape[3]
+tiCr.addData(inputx,y)
 
 print("Random seed: {}".format(randSeed))
 np.random.seed(randSeed)
@@ -152,9 +141,8 @@ if not load_model_test == -1:
 	if outputOnly:
 		out_path_prefix = 'out_%04d-%04d' % (load_model_test,load_model_no)
 		test_path,_ = ph.getNextGenericPath(out_path_prefix, 0, basePath + 'test_%04d/' % load_model_test)
-
 	else:
-		test_path,_ = ph.getNextTestPath(testPathStartNo, basePath)
+		test_path,load_model_test_new = ph.getNextTestPath(testPathStartNo, basePath)
 
 else:
 	test_path,load_model_test_new = ph.getNextTestPath(testPathStartNo, basePath)
@@ -201,7 +189,6 @@ print("x: {}".format(x.get_shape()))
 rbId = 0
 def resBlock(gan, inp, s1,s2, reuse, use_batch_norm, filter_size=3):
 	global rbId
-	# note - leaky relu (lrelu) not too useful here
 
 	# convolutions of resnet block
 	if dataDimension == 2:
@@ -212,13 +199,11 @@ def resBlock(gan, inp, s1,s2, reuse, use_batch_norm, filter_size=3):
 		filter1 = [1,1,1]
 
 	gc1,_ = gan.convolutional_layer(  s1, filter, tf.nn.relu, stride=[1], name="g_cA%d"%rbId, in_layer=inp, reuse=reuse, batch_norm=use_batch_norm, train=train) #->16,64
-	#gc1,_ = gan.convolutional_layer(  s1, filter, lrelu, stride=[1], name="g_cA%d"%rbId, in_layer=inp, reuse=reuse, batch_norm=use_batch_norm, train=train) #->16,64
 	gc2,_ = gan.convolutional_layer(  s2, filter, None      , stride=[1], name="g_cB%d"%rbId,               reuse=reuse, batch_norm=use_batch_norm, train=train) #->8,128
 
 	# shortcut connection
 	gs1,_ = gan.convolutional_layer(s2, filter1 , None       , stride=[1], name="g_s%d"%rbId, in_layer=inp, reuse=reuse, batch_norm=use_batch_norm, train=train) #->16,64
 	resUnit1 = tf.nn.relu( tf.add( gc2, gs1 )  )
-	#resUnit1 = lrelu( tf.add( gc2, gs1 )  )
 	rbId += 1
 	return resUnit1
 
@@ -302,20 +287,19 @@ def gen_test(_in, reuse=False, use_batch_norm=False, train=None):
 
 # change used models for gen and disc here #other models in NNmodels.py
 gen_model = locals()[genModel]
-train = tf.placeholder(tf.bool)
 
 if not outputOnly: #setup for training
-	gen_part = gen_model(x, use_batch_norm=batch_norm, train=train)
-	if genTestImg > -1: sampler = gen_part
+	train = tf.placeholder(tf.bool)
 else: #setup for generating output with trained model
-	sampler = gen_model(x, use_batch_norm=batch_norm, train=False)
+	train = False
+
+G = gen_model(x, use_batch_norm=batch_norm, train=train)
+# sampler = gen_model(x, use_batch_norm=batch_norm, train=False)
 
 sys.stdout.flush()
 
 if not outputOnly:
-	gen_l2_loss = tf.nn.l2_loss(y - gen_part)
-	#gen_l1_loss = tf.reduce_mean(tf.abs(y - gen_part)) #use mean to normalize w.r.t. output dims. tf.reduce_sum(tf.abs(y - gen_part))
-	#gen_loss_complete = gen_l1_loss*kk 
+	gen_l2_loss = tf.nn.l2_loss(y - G)
 
 	# set up decaying learning rate, if enabled
 	lr_global_step = tf.Variable(0, trainable=False)
@@ -325,17 +309,12 @@ if not outputOnly:
 
 	update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 	gen_update_ops = update_ops[:]
-	ori_gen_update_ops = update_ops[:]
-	pre_update_ops = update_ops[:]
 
 	#variables to be used in the different otimization steps
 	vars = tf.trainable_variables()
 	g_var = [var for var in vars if "g_" in var.name]
-	if use_spatialdisc:
-		dis_update_ops = update_ops[:]
-		d_var = [var for var in vars if "d_" in var.name]
 
-	with tf.control_dependencies(pre_update_ops): 
+	with tf.control_dependencies(gen_update_ops): 
 		pretrain_optimizer = tf.train.AdamOptimizer(learning_rate).minimize(gen_l2_loss, var_list=g_var)
 
 
@@ -389,7 +368,7 @@ def generateTestImage(sim_no = fromSim, frame_no = 1, outPath = test_path,imagei
 	resultTiles = []
 	for tileno in range(batch_xs.shape[0]):
 		batch_xs_in = np.reshape(batch_xs[tileno],[-1, n_input])
-		results = sess.run(sampler, feed_dict={x: batch_xs_in, keep_prob: dropoutOutput, train: False})
+		results = sess.run(G, feed_dict={x: batch_xs_in, keep_prob: dropoutOutput, train: False})
 		resultTiles.extend(results)
 	resultTiles = np.array(resultTiles)
 	if dataDimension == 2: # resultTiles may have a different size
@@ -418,7 +397,6 @@ with open(basePath + 'test_overview.log', "a") as text_file:
 	if not outputOnly:
 		text_file.write(test_path[-10:-1] + ': {}D, \"{}\"\n'.format(dataDimension, note))
 		text_file.write('\t{} Epochs, gen: {} '.format(trainingEpochs, gen_model.__name__) + loaded_model + '\n')
-		text_file.write('\tlambda: {}, dropout: {:.4f}({:.4f})'.format(k, dropout, dropoutOutput) + '\n')
 	else:
 		text_file.write('Output:' + loaded_model + ' (' + test_path[-28:-1] + ')\n')
 		text_file.write('\ttile size: {}, seed: {}, dropout-out: {:.4f}'.format(tileSizeLow, randSeed, dropoutOutput) + '\n')
