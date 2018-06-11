@@ -174,12 +174,12 @@ def save_img_3d(out_path, img):
 	save_img(out_path, data)
 	
 
+# in/out data is treated by long vector by default, reshaped into spatial
+# grid in generator model
 
-#input for gen
+# low res input for generator
 x = tf.placeholder(tf.float32, shape=[None, n_input])
-#reference input for disc
-x_disc = tf.placeholder(tf.float32, shape=[None, n_input])
-#real input for disc
+# reference output
 y = tf.placeholder(tf.float32, shape=[None, n_output])
 kk = tf.placeholder(tf.float32)
 #keep probablity for dropout
@@ -212,7 +212,7 @@ def resBlock(gan, inp, s1,s2, reuse, use_batch_norm, filter_size=3):
 ############################################ resnet ###############################################################
 def gen_resnet(_in, reuse=False, use_batch_norm=False, train=None):
 	global rbId
-	print("\n\tGenerator (resize-resnett3-deep)")
+	print("\n\tGenerator (resnet-std)")
 	with tf.variable_scope("generator", reuse=reuse) as scope:
 
 		if dataDimension == 2:
@@ -240,8 +240,8 @@ def gen_resnet(_in, reuse=False, use_batch_norm=False, train=None):
 
 def gen_resnetSm(_in, reuse=False, use_batch_norm=False, train=None):
 	global rbId
-	print("\n\tGenerator (resize-resnett3-deep)")
-	with tf.variable_scope("generator", reuse=reuse) as scope:
+	print("\n\tGenerator (resnet-sm)")
+	with tf.variable_scope("generatorSm", reuse=reuse) as scope:
 
 		if dataDimension == 2:
 			_in = tf.reshape(_in, shape=[-1, tileSizeLow, tileSizeLow, n_inputChannels]) #NHWC
@@ -280,19 +280,20 @@ def gen_test(_in, reuse=False, use_batch_norm=False, train=None):
 		rbId = 0
 		gan = GAN(_in)
 
-		gan.max_depool()
-		i2np,_ = gan.deconvolutional_layer(32, patchShape, None, stride=[1,1], name="g_D1", reuse=reuse, batch_norm=False, train=train, init_mean=0.99) #, strideOverride=[1,1] )
-		gan.max_depool()
-		inp,_  = gan.deconvolutional_layer(1                   , patchShape, None, stride=[1,1], name="g_D2", reuse=reuse, batch_norm=False, train=train, init_mean=0.99) #, strideOverride=[1,1] )
-		return 	tf.reshape( inp, shape=[-1, n_output] )
+		for i in range( int(math.log(upRes, 2)) ):
+			inp = gan.max_depool()
+
+		gan.deconvolutional_layer(32, patchShape, None, stride=[1,1], name="g_D1", reuse=reuse, batch_norm=False, train=train) 
+		outp,_  = gan.deconvolutional_layer(1 , patchShape, None, stride=[1,1], name="g_D2", reuse=reuse, batch_norm=False, train=train) 
+		return 	tf.reshape( outp, shape=[-1, n_output] )
 
 
-# change used models for gen and disc here #other models in NNmodels.py
+# init generator models from command line
 gen_model = locals()[genModel]
 
-if not outputOnly: #setup for training
+if not outputOnly: 
 	train = tf.placeholder(tf.bool)
-else: #setup for generating output with trained model
+else: 
 	train = False
 
 G = gen_model(x, use_batch_norm=batch_norm, train=train)
@@ -420,14 +421,16 @@ if (not outputOnly): # and pretrain>0:
 		for epoch in range(trainingEpochs):
 			batch_xs, batch_ys = getInput(batch_size = batch_size, useDataAugmentation = useDataAugmentation)
 			saved=False
-			_, gen_cost, summary = sess.run([pretrain_optimizer, gen_l2_loss, lossPretrain_gen], feed_dict={x: batch_xs, x_disc: batch_xs, y: batch_ys, keep_prob: dropout, train: True})
+			_, gen_cost, summary = sess.run([pretrain_optimizer, gen_l2_loss, lossPretrain_gen], feed_dict={x: batch_xs, y: batch_ys, keep_prob: dropout, train: True})
 			summary_writer.add_summary(summary, epoch)
 			avgCost += gen_cost
 
-			if (epoch + 1) % saveInterval == 0:
+			if (epoch + 1) % outputInterval == 0:
 				print('%05d / %d: last interval: %.02f seconds, %.02f min remaining. avg cost: %.02f' % (epoch+1, trainingEpochs, (time.time() - epochTime), ((trainingEpochs - epoch) * (time.time() - startTime) / epoch / 60.0), (avgCost / outputInterval)))
 				epochTime = time.time()
 				avgCost = 0
+
+			if (epoch + 1) % saveInterval == 0:
 				saved = True
 				print(saveModel(gen_cost, genTestImg, test_path+"test_img/")) 
 
