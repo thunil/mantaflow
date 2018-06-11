@@ -699,7 +699,6 @@ IF(NOT WIN32)
 ENDIF()
 
 # use c++11 for all pre-processed c++ sources
-# TODO, enable by default
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
