@@ -1,10 +1,10 @@
 /******************************************************************************
  *
  * MantaFlow fluid solver framework
- * Copyright 2017 Kiwon Um, Nils Thuerey 
+ * Copyright 2017-2018 Kiwon Um, Nils Thuerey
  *
  * This program is free software, distributed under the terms of the
- * Apache License, Version 2.0 
+ * Apache License, Version 2.0
  * http://www.apache.org/licenses/LICENSE-2.0
  *
  * tensorflor/numpy plugins, mostly for MLFLIP for now  (only compiled if NUMPY is enabled)
@@ -16,14 +16,9 @@
 #include "particle.h"
 #include <cmath>
 
-using namespace std;
-
 namespace Manta {
 
-
-
-
-//! simple test kernel and kernel with numpy array 
+//! simple test kernel and kernel with numpy array
 KERNEL(bnd=0)
 void knSimpleNumpyTest(Grid<Real>& grid, PyArrayContainer npAr, Real scale)
 {
@@ -31,11 +26,11 @@ void knSimpleNumpyTest(Grid<Real>& grid, PyArrayContainer npAr, Real scale)
 	grid(i,j,k) += scale * (Real)p[j*grid.getSizeX()+i]; // calc access into numpy array, no size check here!
 }
 
-//! simple test function and kernel with numpy array 
-PYTHON() void simpleNumpyTest( Grid<Real>& grid, PyArrayContainer npAr, Real scale) {
+//! simple test function and kernel with numpy array
+PYTHON() void simpleNumpyTest( Grid<Real>& grid, PyArrayContainer npAr, Real scale)
+{
 	knSimpleNumpyTest(grid, npAr, scale);
 }
-
 
 
 //! extract feature vectors
@@ -43,7 +38,8 @@ PYTHON() void simpleNumpyTest( Grid<Real>& grid, PyArrayContainer npAr, Real sca
 KERNEL(pts)
 void knExtractFeatureVel(
 	const BasicParticleSystem &p, Real *fv, const IndexInt N_row, const IndexInt off_begin,
-	const MACGrid &vel, const Real scale, const ParticleDataImpl<int> *ptype, const int exclude, const int window) {
+	const MACGrid &vel, const Real scale, const ParticleDataImpl<int> *ptype, const int exclude, const int window)
+{
 	if(!p.isActive(idx) || (ptype && ((*ptype)[idx] & exclude))) return;
 
 	const int _k = (vel.is3D()) ? -window : 0, K = (vel.is3D()) ? window : 0;
@@ -72,7 +68,8 @@ void knExtractFeatureVel(
 KERNEL(pts)
 void knExtractFeaturePhi(
 	const BasicParticleSystem &p, Real *fv, const IndexInt N_row, const IndexInt off_begin,
-	const Grid<Real> &phi, const Real scale, const ParticleDataImpl<int> *ptype, const int exclude, const int window) {
+	const Grid<Real> &phi, const Real scale, const ParticleDataImpl<int> *ptype, const int exclude, const int window)
+{
 	if(!p.isActive(idx) || (ptype && ((*ptype)[idx] & exclude))) return;
 
 	const int _k = (phi.is3D()) ? -window : 0, K = (phi.is3D()) ? window : 0;
@@ -98,7 +95,8 @@ void knExtractFeaturePhi(
 KERNEL(pts)
 void knExtractFeatureGeo(
 	const BasicParticleSystem &p, Real *fv, const IndexInt N_row, const IndexInt off_begin,
-	const FlagGrid &geo, const Real scale, const ParticleDataImpl<int> *ptype, const int exclude, const int window) {
+	const FlagGrid &geo, const Real scale, const ParticleDataImpl<int> *ptype, const int exclude, const int window)
+{
 	if(!p.isActive(idx) || (ptype && ((*ptype)[idx] & exclude))) return;
 
 	const int _k = (geo.is3D()) ? -window : 0, K = (geo.is3D()) ? window : 0;
@@ -122,35 +120,40 @@ void knExtractFeatureGeo(
 }
 
 PYTHON()
-void extractFeatureVel(PyArrayContainer fv, const int N_row, const int off_begin,
-		       const BasicParticleSystem &p, const MACGrid &vel,
-		       const Real scale=1.0, const ParticleDataImpl<int> *ptype=NULL, const int exclude=0,
-		       const int window=1) {
+void extractFeatureVel(
+	PyArrayContainer fv, const int N_row, const int off_begin,
+	const BasicParticleSystem &p, const MACGrid &vel,
+	const Real scale=1.0, const ParticleDataImpl<int> *ptype=NULL, const int exclude=0,
+	const int window=1)
+{
 	knExtractFeatureVel(p, reinterpret_cast<Real*>(fv.pData), N_row, off_begin, vel, scale, ptype, exclude, window);
 }
 PYTHON()
-void extractFeaturePhi(PyArrayContainer fv, const int N_row, const int off_begin,
-		       const BasicParticleSystem &p, const Grid<Real> &phi,
-		       const Real scale=1.0, const ParticleDataImpl<int> *ptype=NULL, const int exclude=0,
-		       const int window=1) {
+void extractFeaturePhi(
+	PyArrayContainer fv, const int N_row, const int off_begin,
+	const BasicParticleSystem &p, const Grid<Real> &phi,
+	const Real scale=1.0, const ParticleDataImpl<int> *ptype=NULL, const int exclude=0,
+	const int window=1)
+{
 	knExtractFeaturePhi(p, reinterpret_cast<Real*>(fv.pData), N_row, off_begin, phi, scale, ptype, exclude, window);
 }
 PYTHON()
-void extractFeatureGeo(PyArrayContainer fv, const int N_row, const int off_begin,
-		       const BasicParticleSystem &p, const FlagGrid &flag,
-		       const Real scale=1.0, const ParticleDataImpl<int> *ptype=NULL, const int exclude=0,
-		       const int window=1) {
+void extractFeatureGeo(
+	PyArrayContainer fv, const int N_row, const int off_begin,
+	const BasicParticleSystem &p, const FlagGrid &flag,
+	const Real scale=1.0, const ParticleDataImpl<int> *ptype=NULL, const int exclude=0,
+	const int window=1)
+{
 	knExtractFeatureGeo(p, reinterpret_cast<Real*>(fv.pData), N_row, off_begin, flag, scale, ptype, exclude, window);
 }
-
-
 
 
 // non-numpy related helpers
 
 //! region detection functions
 
-void floodFillRegion(Grid<int> &r, const FlagGrid &flags, const IndexInt idx, const int c, const int type) {
+void floodFillRegion(Grid<int> &r, const FlagGrid &flags, const IndexInt idx, const int c, const int type)
+{
 	r(idx) = c;
 	if((flags(idx-flags.getStrideX()) & type) && !r[idx-flags.getStrideX()]) floodFillRegion(r, flags, idx-flags.getStrideX(), c, type);
 	if((flags(idx+flags.getStrideX()) & type) && !r[idx+flags.getStrideX()]) floodFillRegion(r, flags, idx+flags.getStrideX(), c, type);
@@ -161,7 +164,8 @@ void floodFillRegion(Grid<int> &r, const FlagGrid &flags, const IndexInt idx, co
 	if((flags(idx+flags.getStrideZ()) & type) && !r[idx+flags.getStrideZ()]) floodFillRegion(r, flags, idx+flags.getStrideZ(), c, type);
 }
 
-PYTHON() int getRegions(Grid<int> &r, const FlagGrid &flags, const int ctype) {
+PYTHON() int getRegions(Grid<int> &r, const FlagGrid &flags, const int ctype)
+{
 	r.clear();
 	int n_regions = 0;
 
@@ -171,7 +175,8 @@ PYTHON() int getRegions(Grid<int> &r, const FlagGrid &flags, const int ctype) {
 	return n_regions;
 }
 
-PYTHON() void getRegionalCounts(Grid<int> &r, const FlagGrid &flags, const int ctype) {
+PYTHON() void getRegionalCounts(Grid<int> &r, const FlagGrid &flags, const int ctype)
+{
 	const int n_regions = getRegions(r, flags, ctype);
 	std::vector<int> cnt(n_regions+1, 0);
 	FOR_IDX(flags) {
@@ -182,7 +187,8 @@ PYTHON() void getRegionalCounts(Grid<int> &r, const FlagGrid &flags, const int c
 	}
 }
 
-PYTHON() void extendRegion(FlagGrid &flags, const int region, const int exclude, const int depth) {
+PYTHON() void extendRegion(FlagGrid &flags, const int region, const int exclude, const int depth)
+{
 	const int I=flags.getSizeX()-1, J=flags.getSizeY()-1, K=flags.getSizeZ()-1;
 	for(int i_depth=0; i_depth<depth; ++i_depth) {
 		std::vector<int> update;
@@ -200,80 +206,17 @@ PYTHON() void extendRegion(FlagGrid &flags, const int region, const int exclude,
 	}
 }
 
-bool isIsolatedFluidCell(const IndexInt idx, const FlagGrid &flags) {
-	if(!flags.isFluid(idx)) return false;
-	if(flags.isFluid(idx-flags.getStrideX())) return false;
-	if(flags.isFluid(idx+flags.getStrideX())) return false;
-	if(flags.isFluid(idx-flags.getStrideY())) return false;
-	if(flags.isFluid(idx+flags.getStrideY())) return false;
-	if(!flags.is3D()) return true;
-	if(flags.isFluid(idx-flags.getStrideZ())) return false;
-	if(flags.isFluid(idx+flags.getStrideZ())) return false;
-	return true;
-}
-
 KERNEL(idx)
-void knMarkIsolatedFluidCell(FlagGrid &flags, const int mark) {
-	if(isIsolatedFluidCell(idx, flags)) flags[idx] = mark;
-}
-
-PYTHON()
-void markIsolatedFluidCell(FlagGrid &flags, const int mark) {
-	knMarkIsolatedFluidCell(flags, mark);
-}
-
-KERNEL(idx)
-void knMarkSmallRegions(FlagGrid &flags, const Grid<int> &rcnt, const int mark, const int exclude, const int th) {
+void knMarkSmallRegions(FlagGrid &flags, const Grid<int> &rcnt, const int mark, const int exclude, const int th)
+{
 	if(flags[idx] & exclude) return;
 	if(rcnt[idx] <= th) flags[idx] = mark;
 }
 
 PYTHON()
-void markSmallRegions(FlagGrid &flags, const Grid<int> &rcnt, const int mark, const int exclude, const int th=1) {
+void markSmallRegions(FlagGrid &flags, const Grid<int> &rcnt, const int mark, const int exclude, const int th=1)
+{
 	knMarkSmallRegions(flags, rcnt, mark, exclude, th);
 }
-
-// particle helpers
-
-KERNEL(pts)
-void KnAddForcePvel(ParticleDataImpl<Vec3> &v, const Vec3 &da, const ParticleDataImpl<int> *ptype, const int exclude) {
-	if(ptype && ((*ptype)[idx] & exclude)) return;
-	v[idx] += da;
-} 
-//! add force to vec3 particle data (ie, a velocity)
-PYTHON() void addForcePvel(ParticleDataImpl<Vec3> &vel, const Vec3 &a, const Real dt, const ParticleDataImpl<int> *ptype, const int exclude) {
-	KnAddForcePvel(vel, a*dt, ptype, exclude);
-}
-
-KERNEL(pts) 
-void KnUpdateVelocityFromDeltaPos(const BasicParticleSystem &p, ParticleDataImpl<Vec3> &v, const ParticleDataImpl<Vec3> &x_prev, const Real over_dt, const ParticleDataImpl<int> *ptype, const int exclude) {
-	if(ptype && ((*ptype)[idx] & exclude)) return;
-	v[idx] = (p[idx].pos - x_prev[idx])*over_dt;
-} 
-//! retrieve velocity from position change
-PYTHON() void updateVelocityFromDeltaPos(BasicParticleSystem& parts, ParticleDataImpl<Vec3> &vel, const ParticleDataImpl<Vec3> &x_prev, const Real dt, const ParticleDataImpl<int> *ptype, const int exclude) {
-	KnUpdateVelocityFromDeltaPos(parts, vel, x_prev, 1.0/dt, ptype, exclude);
-}
-
-//! simple foward Euler integration for particle system
-KERNEL(pts) 
-void KnStepEuler(BasicParticleSystem &p, const ParticleDataImpl<Vec3> &v, const Real dt, const ParticleDataImpl<int> *ptype, const int exclude) {
-	if(ptype && ((*ptype)[idx] & exclude)) return;
-	p[idx].pos += v[idx]*dt;
-}
-PYTHON() void eulerStep(BasicParticleSystem& parts, const ParticleDataImpl<Vec3> &vel, const ParticleDataImpl<int> *ptype, const int exclude) {
-	KnStepEuler(parts, vel, parts.getParent()->getDt(), ptype, exclude);
-}
-
-
-KERNEL(pts) 
-void KnSetType(ParticleDataImpl<int> &ptype, BasicParticleSystem &part, const int mark, const int stype, const FlagGrid &flags, const int cflag) {
-	if(flags.isInBounds(part.getPos(idx), 0) && (flags.getAt(part.getPos(idx))&cflag) && (ptype[idx]&stype)) ptype[idx] = mark;
-}
-
-PYTHON() void setPartType(BasicParticleSystem &parts, ParticleDataImpl<int> &ptype, const int mark, const int stype, const FlagGrid &flags, const int cflag) {
-	KnSetType(ptype, parts, mark, stype, flags, cflag);
-}
-
 
 } //namespace

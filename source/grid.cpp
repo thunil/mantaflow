@@ -774,6 +774,33 @@ void FlagGrid::fillGrid(int type) {
 	}
 }
 
+// flag grid helper
+
+bool isIsolatedFluidCell(const IndexInt idx, const FlagGrid &flags)
+{
+	if(!flags.isFluid(idx)) return false;
+	if(flags.isFluid(idx-flags.getStrideX())) return false;
+	if(flags.isFluid(idx+flags.getStrideX())) return false;
+	if(flags.isFluid(idx-flags.getStrideY())) return false;
+	if(flags.isFluid(idx+flags.getStrideY())) return false;
+	if(!flags.is3D()) return true;
+	if(flags.isFluid(idx-flags.getStrideZ())) return false;
+	if(flags.isFluid(idx+flags.getStrideZ())) return false;
+	return true;
+}
+
+KERNEL(idx)
+void knMarkIsolatedFluidCell(FlagGrid &flags, const int mark)
+{
+	if(isIsolatedFluidCell(idx, flags)) flags[idx] = mark;
+}
+
+PYTHON()
+void markIsolatedFluidCell(FlagGrid &flags, const int mark)
+{
+	knMarkIsolatedFluidCell(flags, mark);
+}
+
 // explicit instantiation
 template class Grid<int>;
 template class Grid<Real>;
