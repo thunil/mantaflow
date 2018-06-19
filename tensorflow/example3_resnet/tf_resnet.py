@@ -93,7 +93,7 @@ channelLayout_low = 'd'
 lowfilename = "density_low_%04d.uni"
 highfilename = "density_high_%04d.uni"
 lowfilename = "density_low_%04d.npz"
-highfilename = "density_high_%04d.npz" # NT_DEBUG
+highfilename = "density_high_%04d.npz" 
 mfl = ["density"]
 mfh = ["density"]
 if useVelocities:

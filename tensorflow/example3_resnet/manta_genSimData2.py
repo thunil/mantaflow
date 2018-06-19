@@ -1,6 +1,6 @@
 #******************************************************************************
 #
-# tempoGAN: A Temporally Coherent, Volumetric GAN for Super-resolution Fluid Flow
+# from tempoGAN: A Temporally Coherent, Volumetric GAN for Super-resolution Fluid Flow
 # Copyright 2018 You Xie, Erik Franz, Mengyu Chu, Nils Thuerey
 #
 # Varying density data gen, 2d/3d
