@@ -36,7 +36,6 @@ using namespace std;
 namespace Manta {
 
 static const int STR_LEN_GRID  = 252;
-static const int STR_LEN_PDATA = 256;
 
 //! uni file header, v4
 typedef struct {

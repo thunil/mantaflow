@@ -290,7 +290,7 @@ template<class T> std::string Grid<T>::getDataPointer() {
 template<class GRID>
 Real loop_calcL1Grid (const GRID &grid, int bnd)
 {
-	double accu = 0., cnt = 0.;
+	double accu = 0.;
 	FOR_IJKT_BND(grid, bnd) { accu += norm(grid(i,j,k,t)); }
 	return (Real)accu;
 }

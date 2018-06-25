@@ -608,6 +608,13 @@ template<> inline Vec3 nmod<Vec3>(const Vec3& a, const Vec3& b) {
 	return Vec3(nmod(a.x,b.x),nmod(a.y,b.y),nmod(a.z,b.z));
 }
 
+// static member instantiations
+template<> const Vector3D<int> Vector3D<int>::Zero;
+template<> const Vector3D<float> Vector3D<float>::Zero;
+template<> const Vector3D<double> Vector3D<double>::Zero;
+template<> const Vector3D<float> Vector3D<float>::Invalid;
+template<> const Vector3D<double> Vector3D<double>::Invalid;
+
 }; // namespace
 
 
