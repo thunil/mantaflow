@@ -37,29 +37,29 @@ tileSizeLow 	= int(ph.getParam( "tileSize", 		  16 )) 			# size of low res tiles
 upRes	  		= int(ph.getParam( "upRes", 		  4 )) 				# scaling factor
 
 #Data and Output
-loadPath		= ph.getParam( "loadPath",		 '../data/' ) 	# path to training data
+loadPath		= ph.getParam( "loadPath",		 '../data/' ) 			# path to training data
 fromSim		    = int(ph.getParam( "fromSim",		 1000 )) 			# range of sim data to use, start index
 toSim		    = int(ph.getParam( "toSim",		     -1   )) 			# end index
 dataDimension   = int(ph.getParam( "dataDim",		 2 )) 				# dimension of dataset, can be 2 or 3. in case of 3D any scaling will only be applied to H and W (DHW)
 numOut			= int(ph.getParam( "numOut",		  200 )) 			# number ouf images to output (from start of sim)
 saveOut	  	    = int(ph.getParam( "saveOut",		 False ))>0 		# save output of output mode as .npz in addition to images
-loadOut			= int(ph.getParam( "loadOut",		 -1 )) 			# load output from npz to use in output mode instead of tiles. number or output dir, -1 for not use output data
+loadOut			= int(ph.getParam( "loadOut",		 -1 )) 				# load output from npz to use in output mode instead of tiles. number or output dir, -1 for not use output data
 outputImages	= int(ph.getParam( "img",  			  True ))>0			# output images
 #Training
-genModel		= ph.getParam( "genModel",		 'gen_test' ) 	# choose generator model
+genModel		= ph.getParam( "genModel",		 'gen_test' ) 			# choose generator model
 learning_rate   = float(ph.getParam( "learningRate",  0.0002 ))
-decayLR		    = int(ph.getParam( "decayLR",			 False ))>0 		# decay learning rate?
+decayLR		    = int(ph.getParam( "decayLR",			 False ))>0 	# decay learning rate?
 dropout   		= float(ph.getParam( "dropout",  	  1.0 )) 			# keep prop for all dropout layers during training
 dropoutOutput   = float(ph.getParam( "dropoutOutput", dropout )) 		# affects testing, full sim output and progressive output during training
-batch_size	    = int(ph.getParam( "batchSize",  	  32 ))			# batch size for pretrainig and output, default for batchSizeDisc and batchSizeGen
-trainingEpochs  = int(ph.getParam( "trainingEpochs",  10000 )) 		# for GAN training
+batch_size	    = int(ph.getParam( "batchSize",  	  32 ))				# batch size for pretrainig and output, default for batchSizeDisc and batchSizeGen
+trainingEpochs  = int(ph.getParam( "trainingEpochs",  10000 )) 			# for GAN training
 batch_norm		= int(ph.getParam( "batchNorm",	   True ))>0			# apply batch normalization to conv and deconv layers
 useVelocities   = int(ph.getParam( "useVelocities",   0  )) 			# use velocities or not
 
-useDataAugmentation = int(ph.getParam( "dataAugmentation", 0 ))		 # use dataAugmentation or not
-minScale        = float(ph.getParam( "minScale",	  0.85 ))				 # augmentation params...
+useDataAugmentation = int(ph.getParam( "dataAugmentation", 0 ))		 	# use dataAugmentation or not
+minScale        = float(ph.getParam( "minScale",	  0.85 ))			# augmentation params...
 maxScale        = float(ph.getParam( "maxScale",	  1.15 ))
-rot	            = int(ph.getParam( "rot",		  2	 ))		#rot: 1: 90 degree rotations; 2: full rotation; else: nop rotation 
+rot	            = int(ph.getParam( "rot",		  2	 ))					#rot: 1: 90 degree rotations; 2: full rotation; else: nop rotation 
 flip            = int(ph.getParam( "flip",		  1	 ))
 
 #Test and Save
@@ -69,9 +69,9 @@ numTests		= int(ph.getParam( "numTests", 		  10  )) 			# number of tests to run 
 outputInterval	= int(ph.getParam( "outputInterval",  100  ))			# interval in epochs to output statistics
 saveInterval	= int(ph.getParam( "saveInterval",	  200  ))	 		# interval in epochs to save model
 alwaysSave	    = int(ph.getParam( "alwaysSave",	  True  )) 			#
-maxToKeep		= int(ph.getParam( "keepMax",		 3  )) 			# maximum number of model saves to keep in each test-run
+maxToKeep		= int(ph.getParam( "keepMax",		 3  )) 				# maximum number of model saves to keep in each test-run
 genTestImg		= int(ph.getParam( "genTestImg",	  -1 )) 			# if > -1 generate test image every output interval
-note			= ph.getParam( "note",		   "" )					# optional info about the current test run, printed in log and overview
+note			= ph.getParam( "note",		   "" )						# optional info about the current test run, printed in log and overview
 data_fraction	= float(ph.getParam( "data_fraction",		   0.3 ))
 frame_max		= int(ph.getParam( "frame_max",		   120 ))
 frame_min		= int(ph.getParam( "frame_min",		   0 ))
@@ -227,9 +227,9 @@ def gen_resnet(_in, reuse=False, use_batch_norm=False, train=None):
 		for i in range( int(math.log(upRes, 2)) ):
 			inp = gan.max_depool()
 
-		ru1 = resBlock(gan, inp, n_inputChannels*2,n_inputChannels*8,  reuse, use_batch_norm,5)# with tf.device('/device:GPU:1'):  after here, gpu1 crash
+		ru1 = resBlock(gan, inp, n_inputChannels*2,n_inputChannels*8,  reuse, use_batch_norm,5)
 
-		ru2 = resBlock(gan, ru1, 64, 64,  reuse, use_batch_norm,5)# with tf.device('/device:GPU:1'):  after here, gpu0 crash
+		ru2 = resBlock(gan, ru1, 64, 64,  reuse, use_batch_norm,5)
 		inRu3 = ru2
 		ru3 = resBlock(gan, inRu3, 32, 8,  reuse, use_batch_norm,5)
 		ru4 = resBlock(gan, ru3, 2, 1,  reuse, False,5)
