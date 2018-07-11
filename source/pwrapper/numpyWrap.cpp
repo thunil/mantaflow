@@ -1,7 +1,7 @@
 /******************************************************************************
 *
 * MantaFlow fluid solver framework
-* Copyright 2017 Steffen Wiewel, Moritz Baecher, Rachel Chu
+* Copyright 2017 Steffen Wiewel, Moritz Becher, Rachel Chu
 *
 * This program is free software, distributed under the terms of the
 * Apache License, Version 2.0 
@@ -14,11 +14,81 @@
 #include "manta.h"
 #include "pythonInclude.h"
 
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include "numpy/arrayobject.h"
+
 namespace Manta {
 
 PyMODINIT_FUNC initNumpy() { import_array(); }
 
-template<> PyArrayContainer fromPy<PyArrayContainer>(PyObject* obj) {
+// ------------------------------------------------------------------------
+// Class Functions
+// ------------------------------------------------------------------------
+PyArrayContainer::PyArrayContainer(void* _pParentPyArray) :
+	pParentPyArray(_pParentPyArray)
+{
+	ExtractData(pParentPyArray);
+}
+// ------------------------------------------------------------------------
+PyArrayContainer::PyArrayContainer(const PyArrayContainer& _Other) :
+	pParentPyArray(_Other.pParentPyArray)
+{
+	ExtractData(pParentPyArray);
+	Py_INCREF(pParentPyArray);
+}
+// ------------------------------------------------------------------------
+PyArrayContainer::~PyArrayContainer()
+{
+	Py_DECREF(pParentPyArray);
+}
+// ------------------------------------------------------------------------
+PyArrayContainer& PyArrayContainer::operator=(const PyArrayContainer& _Other)
+{
+	if (this != &_Other)  
+	{
+		// DecRef the existing resource
+		Py_DECREF(pParentPyArray);
+		
+		// Relink new data
+		pParentPyArray = _Other.pParentPyArray;
+		ExtractData(pParentPyArray);
+		Py_INCREF(pParentPyArray);
+	}  
+	return *this; 
+}
+// ------------------------------------------------------------------------
+void PyArrayContainer::ExtractData(void* _pParentPyArray)
+{
+	PyArrayObject* pParent = reinterpret_cast<PyArrayObject*>(pParentPyArray);
+
+	pData = PyArray_DATA(pParent);
+	TotalSize = PyArray_SIZE(pParent);
+
+	int iDataType = PyArray_TYPE(pParent);
+	switch (iDataType)
+	{
+	case NPY_FLOAT:
+		DataType = N_FLOAT;
+		break;
+	case NPY_DOUBLE:
+		DataType = N_DOUBLE;
+		break;
+	case NPY_INT:
+		DataType = N_INT;
+		break;
+	default:
+		errMsg("unknown type of Numpy array");
+		break;
+	}
+}
+
+
+// ------------------------------------------------------------------------
+// Conversion Functions
+// ------------------------------------------------------------------------
+template<>
+PyArrayContainer fromPy<PyArrayContainer>(PyObject* obj)
+{
 	if (PyArray_API == NULL){
 		initNumpy();
 	}
@@ -26,40 +96,22 @@ template<> PyArrayContainer fromPy<PyArrayContainer>(PyObject* obj) {
 	if (!PyArray_Check(obj)) {
 		errMsg("argument is not an numpy array");
 	}
-	
-	PyArrayContainer abuf;
-	PyArrayObject* obj_p = reinterpret_cast<PyArrayObject*>(PyArray_CheckFromAny( obj, NULL, 0, 0, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_ENSUREARRAY | NPY_ARRAY_NOTSWAPPED, NULL));
 
-	abuf.TotalSize = PyArray_SIZE(obj_p);
-	int source_type= PyArray_TYPE(obj_p);
-	abuf.pData = PyArray_DATA(obj_p);
+	PyArrayObject* obj_p = reinterpret_cast<PyArrayObject*>(PyArray_CheckFromAny( obj, NULL, 0, 0, /*NPY_ARRAY_ENSURECOPY*/ NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_ENSUREARRAY | NPY_ARRAY_NOTSWAPPED, NULL));
+	PyArrayContainer container = PyArrayContainer(obj_p);
 	
-	switch (source_type) {
-		case NPY_FLOAT:
-			abuf.DataType = N_FLOAT;
-			break;
-		case NPY_DOUBLE:
-			abuf.DataType = N_DOUBLE;
-			break;
-		case NPY_INT:
-			abuf.DataType = N_INT;
-			break;
-		default:
-			errMsg("unknown type of Numpy array");
-			break;
-	}
-	
-	return abuf;
+	return container;
 }
 
-template<> PyArrayContainer* fromPyPtr<PyArrayContainer>(PyObject* obj, std::vector<void*>* tmp)
-{
-	if (!tmp) throw Error("dynamic de-ref not supported for this type");
-	void* ptr = malloc(sizeof(PyArrayContainer));
-	tmp->push_back(ptr);
+// template<> PyArrayContainer* fromPyPtr<PyArrayContainer>(PyObject* obj, std::vector<void*>* tmp)
+// {
+// 	if (!tmp) throw Error("dynamic de-ref not supported for this type");
+// 	void* ptr = malloc(sizeof(PyArrayContainer));
+// 	tmp->push_back(ptr);
 	
-	*((PyArrayContainer*) ptr) = fromPy<PyArrayContainer>(obj);
-	return (PyArrayContainer*) ptr;
-}
+// 	*((PyArrayContainer*) ptr) = fromPy<PyArrayContainer>(obj);
+// 	return (PyArrayContainer*) ptr;
+// }
 
 }
+

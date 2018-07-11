@@ -45,14 +45,26 @@ enum NumpyTypes
 
 namespace Manta
 {
-    struct PyArrayContainer
-    {
-        unsigned int TotalSize;
-        NumpyTypes DataType;
-        void* pData;
-    };
+	class PyArrayContainer
+	{
+		public:
+			/// Constructors
+			PyArrayContainer(void *_pParentPyArray);
+			PyArrayContainer(const PyArrayContainer& _Other);
+			~PyArrayContainer();
+			/// Operators
+			PyArrayContainer& operator=(const PyArrayContainer& _Other);
+		private:
+			void ExtractData(void* _pParentPyArray);
+		public:
+			void *pData;
+			NumpyTypes DataType;
+			unsigned int TotalSize;
+		private:
+			void *pParentPyArray;
+	};
     
-    template<> PyArrayContainer* fromPyPtr<PyArrayContainer>(PyObject* obj, std::vector<void*>* tmp);
+    //template<> PyArrayContainer* fromPyPtr<PyArrayContainer>(PyObject* obj, std::vector<void*>* tmp);
     template<> PyArrayContainer fromPy<PyArrayContainer>(PyObject* obj);
 } // namespace
 
