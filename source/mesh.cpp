@@ -21,6 +21,7 @@
 #include "shapes.h"
 #include "noisefield.h"
 #include <stack>
+#include <cstring>
 
 using namespace std;
 namespace Manta {
@@ -28,7 +29,15 @@ namespace Manta {
 Mesh::Mesh(FluidSolver* parent) : PbClass(parent) {  
 }
 
-Mesh::~Mesh() {
+Mesh::~Mesh()
+{
+	for(IndexInt i=0; i<(IndexInt)mMeshData.size(); ++i)
+		mMeshData[i]->setMesh(NULL);
+
+	if(mFreeMdata) {
+		for(IndexInt i=0; i<(IndexInt)mMeshData.size(); ++i)
+			delete mMeshData[i];
+	}
 }
 
 Mesh* Mesh::clone() {
@@ -36,6 +45,78 @@ Mesh* Mesh::clone() {
 	*nm = *this;
 	nm->setName(getName());
 	return nm;
+}
+
+void Mesh::deregister(MeshDataBase* mdata) {
+	bool done = false;
+	// remove pointer from mesh data list
+	for(IndexInt i=0; i<(IndexInt)mMeshData.size(); ++i) {
+		if(mMeshData[i] == mdata) {
+			if(i<(IndexInt)mMeshData.size()-1)
+				mMeshData[i] = mMeshData[mMeshData.size()-1];
+			mMeshData.pop_back();
+			done = true;
+		}
+	}
+	if(!done)
+		errMsg("Invalid pointer given, not registered!");
+}
+
+// create and attach a new mdata field to this mesh
+PbClass* Mesh::create(PbType t, PbTypeVec T, const string& name) {
+#	if NOPYTHON!=1
+	_args.add("nocheck",true);
+	if (t.str() == "")
+		errMsg("Specify mesh data type to create");
+	//debMsg( "Mdata creating '"<< t.str <<" with size "<< this->getSizeSlow(), 5 );
+
+	PbClass* pyObj = PbClass::createPyObject(t.str() + T.str(), name, _args, this->getParent() );
+
+	MeshDataBase* mdata = dynamic_cast<MeshDataBase*>(pyObj);
+	if(!mdata) {
+		errMsg("Unable to get mesh data pointer from newly created object. Only create MeshData type with a Mesh.creat() call, eg, MdataReal, MdataVec3 etc.");
+		delete pyObj;
+		return NULL;
+	} else {
+		this->registerMdata(mdata);
+	}
+
+	// directly init size of new mdata field:
+	mdata->resize( this->getSizeSlow() );
+#	else
+	PbClass* pyObj = NULL;
+#	endif
+	return pyObj;
+}
+
+void Mesh::registerMdata(MeshDataBase* mdata) {
+	mdata->setMesh(this);
+	mMeshData.push_back(mdata);
+
+	if( mdata->getType() == MeshDataBase::TypeReal ) {
+		MeshDataImpl<Real>* pd = dynamic_cast< MeshDataImpl<Real>* >(mdata);
+		if(!pd) errMsg("Invalid mdata object posing as real!");
+		this->registerMdataReal(pd);
+	}
+	else if( mdata->getType() == MeshDataBase::TypeInt ) {
+		MeshDataImpl<int>* pd = dynamic_cast< MeshDataImpl<int>* >(mdata);
+		if(!pd) errMsg("Invalid mdata object posing as int!");
+		this->registerMdataInt(pd);
+	}
+	else if( mdata->getType() == MeshDataBase::TypeVec3 ) {
+		MeshDataImpl<Vec3>* pd = dynamic_cast< MeshDataImpl<Vec3>* >(mdata);
+		if(!pd) errMsg("Invalid mdata object posing as vec3!");
+		this->registerMdataVec3(pd);
+	}
+}
+void Mesh::registerMdataReal(MeshDataImpl<Real>* pd) { mMdataReal.push_back(pd); }
+void Mesh::registerMdataVec3(MeshDataImpl<Vec3>* pd) { mMdataVec3.push_back(pd); }
+void Mesh::registerMdataInt (MeshDataImpl<int >* pd) { mMdataInt .push_back(pd); }
+
+void Mesh::addAllMdata() {
+	for(IndexInt i=0; i<(IndexInt)mMeshData.size(); ++i) {
+		mMeshData[i]->addEntry();
+	}
 }
 
 Real Mesh::computeCenterOfMass(Vec3& cm) const {
@@ -67,6 +148,14 @@ void Mesh::clear() {
 		mNodeChannels[i]->resize(0);
 	for(size_t i=0; i<mTriChannels.size(); i++)
 		mTriChannels[i]->resize(0);
+
+	// clear mdata fields as well
+	for (size_t i=0; i<mMdataReal.size(); i++)
+		mMdataReal[i]->resize(0);
+	for (size_t i=0; i<mMdataVec3.size(); i++)
+		mMdataVec3[i]->resize(0);
+	for (size_t i=0; i<mMdataInt.size(); i++)
+		mMdataInt[i]->resize(0);
 }
 
 Mesh& Mesh::operator=(const Mesh& o) {
@@ -430,6 +519,10 @@ int Mesh::addNode(Node a) {
 	mNodes.push_back(a);
 	if (m1RingLookup.size() < mNodes.size())
 		m1RingLookup.resize(mNodes.size());
+
+	// if mdata exists, add zero init for every node
+	addAllMdata();
+
 	return mNodes.size()-1;
 }
 
@@ -830,6 +923,372 @@ void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
 	};
 }
 	
+
+
+// mesh data
+
+MeshDataBase::MeshDataBase(FluidSolver* parent) :
+		PbClass(parent) , mMesh(NULL) {
+}
+
+MeshDataBase::~MeshDataBase()
+{
+	// notify parent of deletion
+	if(mMesh)
+		mMesh->deregister(this);
+}
+
+// actual data implementation
+
+template<class T>
+MeshDataImpl<T>::MeshDataImpl(FluidSolver* parent) :
+	MeshDataBase(parent) , mpGridSource(NULL), mGridSourceMAC(false) {
+}
+
+template<class T>
+MeshDataImpl<T>::MeshDataImpl(FluidSolver* parent, MeshDataImpl<T>* other) :
+	MeshDataBase(parent) , mpGridSource(NULL), mGridSourceMAC(false) {
+	this->mData = other->mData;
+	setName(other->getName());
+}
+
+template<class T>
+MeshDataImpl<T>::~MeshDataImpl() {
+}
+
+template<class T>
+IndexInt MeshDataImpl<T>::getSizeSlow() const {
+	return mData.size();
+}
+template<class T>
+void MeshDataImpl<T>::addEntry() {
+	// add zero'ed entry
+	T tmp = T(0.);
+	// for debugging, force init:
+	//tmp = T(0.02 * mData.size()); // increasing
+	//tmp = T(1.); // constant 1
+	return mData.push_back(tmp);
+}
+template<class T>
+void MeshDataImpl<T>::resize(IndexInt s) {
+	mData.resize(s);
+}
+template<class T>
+void MeshDataImpl<T>::copyValueSlow(IndexInt from, IndexInt to) {
+	this->copyValue(from,to);
+}
+template<class T>
+MeshDataBase* MeshDataImpl<T>::clone() {
+	MeshDataImpl<T>* npd = new MeshDataImpl<T>( getParent(), this );
+	return npd;
+}
+
+template<class T>
+void MeshDataImpl<T>::setSource(Grid<T>* grid, bool isMAC ) {
+	mpGridSource = grid;
+	mGridSourceMAC = isMAC;
+	if(isMAC) assertMsg( dynamic_cast<MACGrid*>(grid) != NULL , "Given grid is not a valid MAC grid");
+}
+
+template<class T>
+void MeshDataImpl<T>::initNewValue(IndexInt idx, Vec3 pos) {
+	if(!mpGridSource)
+		mData[idx] = 0;
+	else {
+		mData[idx] = mpGridSource->getInterpolated(pos);
+	}
+}
+
+// special handling needed for velocities
+template<>
+void MeshDataImpl<Vec3>::initNewValue(IndexInt idx, Vec3 pos) {
+	if(!mpGridSource)
+		mData[idx] = 0;
+	else {
+		if(!mGridSourceMAC)
+			mData[idx] = mpGridSource->getInterpolated(pos);
+		else
+			mData[idx] = ((MACGrid*)mpGridSource)->getInterpolated(pos);
+	}
+}
+
+//! update additional mesh data
+void Mesh::updateDataFields() {
+	for(size_t i=0; i<mNodes.size(); ++i) {
+		Vec3 pos = mNodes[i].pos;
+		for(IndexInt md=0; md<(IndexInt)mMdataReal.size(); ++md)
+			mMdataReal[md]->initNewValue(i, mNodes[i].pos);
+		for(IndexInt md=0; md<(IndexInt)mMdataVec3.size(); ++md)
+			mMdataVec3[md]->initNewValue(i, mNodes[i].pos);
+		for(IndexInt md=0; md<(IndexInt)mMdataInt.size(); ++md)
+			mMdataInt[md]->initNewValue(i, mNodes[i].pos);
+	}
+}
+
+template<typename T>
+void MeshDataImpl<T>::load(string name) {
+	if (name.find_last_of('.') == string::npos)
+		errMsg("file '" + name + "' does not have an extension");
+	string ext = name.substr(name.find_last_of('.'));
+	if ( ext == ".uni")
+		readMdataUni<T>(name, this);
+	else if ( ext == ".raw") // raw = uni for now
+		readMdataUni<T>(name, this);
+	else
+		errMsg("mesh data '" + name +"' filetype not supported for loading");
+}
+
+template<typename T>
+void MeshDataImpl<T>::save(string name) {
+	if (name.find_last_of('.') == string::npos)
+		errMsg("file '" + name + "' does not have an extension");
+	string ext = name.substr(name.find_last_of('.'));
+	if (ext == ".uni")
+		writeMdataUni<T>(name, this);
+	else if (ext == ".raw") // raw = uni for now
+		writeMdataUni<T>(name, this);
+	else
+		errMsg("mesh data '" + name +"' filetype not supported for saving");
+}
+
+// specializations
+
+template<>
+MeshDataBase::MdataType MeshDataImpl<Real>::getType() const {
+	return MeshDataBase::TypeReal;
+}
+template<>
+MeshDataBase::MdataType MeshDataImpl<int>::getType() const {
+	return MeshDataBase::TypeInt;
+}
+template<>
+MeshDataBase::MdataType MeshDataImpl<Vec3>::getType() const {
+	return MeshDataBase::TypeVec3;
+}
+
+KERNEL(pts) template<class T> void knSetMdataConst(MeshDataImpl<T>& mdata, T value) { mdata[idx] = value; }
+
+KERNEL(pts) template<class T, class S> void knMdataSet  (MeshDataImpl<T>& me, const MeshDataImpl<S>& other) { me[idx] += other[idx]; }
+KERNEL(pts) template<class T, class S> void knMdataAdd  (MeshDataImpl<T>& me, const MeshDataImpl<S>& other) { me[idx] += other[idx]; }
+KERNEL(pts) template<class T, class S> void knMdataSub  (MeshDataImpl<T>& me, const MeshDataImpl<S>& other) { me[idx] -= other[idx]; }
+KERNEL(pts) template<class T, class S> void knMdataMult (MeshDataImpl<T>& me, const MeshDataImpl<S>& other) { me[idx] *= other[idx]; }
+KERNEL(pts) template<class T, class S> void knMdataDiv  (MeshDataImpl<T>& me, const MeshDataImpl<S>& other) { me[idx] /= other[idx]; }
+
+KERNEL(pts) template<class T, class S> void knMdataSetScalar (MeshDataImpl<T>& me, const S& other)  { me[idx]  = other; }
+KERNEL(pts) template<class T, class S> void knMdataAddScalar (MeshDataImpl<T>& me, const S& other)  { me[idx] += other; }
+KERNEL(pts) template<class T, class S> void knMdataMultScalar(MeshDataImpl<T>& me, const S& other)  { me[idx] *= other; }
+KERNEL(pts) template<class T, class S> void knMdataScaledAdd (MeshDataImpl<T>& me, const MeshDataImpl<T>& other, const S& factor) { me[idx] += factor * other[idx]; }
+
+KERNEL(pts) template<class T> void knMdataSafeDiv (MeshDataImpl<T>& me, const MeshDataImpl<T>& other) { me[idx] = safeDivide(me[idx], other[idx]); }
+KERNEL(pts) template<class T> void knMdataSetConst(MeshDataImpl<T>& mdata, T value) { mdata[idx] = value; }
+
+KERNEL(pts) template<class T> void knMdataClamp (MeshDataImpl<T>& me, T min, T max) { me[idx] = clamp( me[idx], min, max); }
+KERNEL(pts) template<class T> void knMdataClampMin(MeshDataImpl<T>& me, const T vmin)               { me[idx] = std::max(vmin, me[idx]); }
+KERNEL(pts) template<class T> void knMdataClampMax(MeshDataImpl<T>& me, const T vmax)               { me[idx] = std::min(vmax, me[idx]); }
+KERNEL(pts)                   void knMdataClampMinVec3(MeshDataImpl<Vec3>& me, const Real vmin)     {
+	me[idx].x = std::max(vmin, me[idx].x);
+	me[idx].y = std::max(vmin, me[idx].y);
+	me[idx].z = std::max(vmin, me[idx].z);
+}
+KERNEL(pts)                   void knMdataClampMaxVec3(MeshDataImpl<Vec3>& me, const Real vmax)     {
+	me[idx].x = std::min(vmax, me[idx].x);
+	me[idx].y = std::min(vmax, me[idx].y);
+	me[idx].z = std::min(vmax, me[idx].z);
+}
+
+// python operators
+
+
+template<typename T>
+MeshDataImpl<T>& MeshDataImpl<T>::copyFrom(const MeshDataImpl<T>& a) {
+	assertMsg (a.mData.size() == mData.size() , "different mdata size "<<a.mData.size()<<" vs "<<this->mData.size() );
+	memcpy( &mData[0], &a.mData[0], sizeof(T) * mData.size() );
+	return *this;
+}
+
+template<typename T>
+void MeshDataImpl<T>::setConst(T s) {
+	knMdataSetScalar<T,T> op( *this, s );
+}
+
+template<typename T>
+void MeshDataImpl<T>::setConstRange(T s, const int begin, const int end) {
+	for(int i=begin; i<end; ++i) (*this)[i] = s;
+}
+
+// special set by flag
+KERNEL(pts) template<class T, class S> void knMdataSetScalarIntFlag(MeshDataImpl<T>& me, const S& other, const MeshDataImpl<int>& t, const int itype) {
+	if(t[idx]&itype) me[idx] = other;
+}
+template<typename T>
+void MeshDataImpl<T>::setConstIntFlag(T s, const MeshDataImpl<int>& t, const int itype) {
+	knMdataSetScalarIntFlag<T,T> op(*this, s, t, itype);
+}
+
+template<typename T>
+void MeshDataImpl<T>::add(const MeshDataImpl<T>& a) {
+	knMdataAdd<T,T> op( *this, a );
+}
+template<typename T>
+void MeshDataImpl<T>::sub(const MeshDataImpl<T>& a) {
+	knMdataSub<T,T> op( *this, a );
+}
+
+template<typename T>
+void MeshDataImpl<T>::addConst(T s) {
+	knMdataAddScalar<T,T> op( *this, s );
+}
+
+template<typename T>
+void MeshDataImpl<T>::addScaled(const MeshDataImpl<T>& a, const T& factor) {
+	knMdataScaledAdd<T,T> op( *this, a, factor );
+}
+
+template<typename T>
+void MeshDataImpl<T>::mult( const MeshDataImpl<T>& a) {
+	knMdataMult<T,T> op( *this, a );
+}
+
+template<typename T>
+void MeshDataImpl<T>::safeDiv(const MeshDataImpl<T>& a) {
+	knMdataSafeDiv<T> op( *this, a );
+}
+
+template<typename T>
+void MeshDataImpl<T>::multConst(T s) {
+	knMdataMultScalar<T,T> op( *this, s );
+}
+
+
+template<typename T>
+void MeshDataImpl<T>::clamp(Real vmin, Real vmax) {
+	knMdataClamp<T> op( *this, vmin, vmax );
+}
+
+template<typename T>
+void MeshDataImpl<T>::clampMin(Real vmin) {
+	knMdataClampMin<T> op( *this, vmin );
+}
+template<typename T>
+void MeshDataImpl<T>::clampMax(Real vmax) {
+	knMdataClampMax<T> op( *this, vmax );
+}
+
+template<>
+void MeshDataImpl<Vec3>::clampMin(Real vmin) {
+	knMdataClampMinVec3 op( *this, vmin );
+}
+template<>
+void MeshDataImpl<Vec3>::clampMax(Real vmax) {
+	knMdataClampMaxVec3 op( *this, vmax );
+}
+
+template<typename T> KERNEL(pts, reduce=+) returns(T result=T(0.)) T    KnPtsSum(const MeshDataImpl<T>& val, const MeshDataImpl<int> *t, const int itype) { if(t && !((*t)[idx]&itype)) return; result += val[idx]; }
+template<typename T> KERNEL(pts, reduce=+) returns(Real result=0.) Real KnPtsSumSquare(const MeshDataImpl<T>& val)    { result += normSquare(val[idx]); }
+template<typename T> KERNEL(pts, reduce=+) returns(Real result=0.) Real KnPtsSumMagnitude(const MeshDataImpl<T>& val) { result += norm(val[idx]); }
+
+template<typename T>
+T MeshDataImpl<T>::sum(const MeshDataImpl<int> *t, const int itype) const {
+	return KnPtsSum<T>(*this, t, itype);
+}
+template<typename T>
+Real MeshDataImpl<T>::sumSquare() const {
+	return KnPtsSumSquare<T>(*this);
+}
+template<typename T>
+Real MeshDataImpl<T>::sumMagnitude() const {
+	return KnPtsSumMagnitude<T>(*this);
+}
+
+template<typename T>
+KERNEL(pts, reduce=min) returns(Real minVal=std::numeric_limits<Real>::max())
+Real CompMdata_Min(const MeshDataImpl<T>& val) {
+	if (val[idx] < minVal)
+		minVal = val[idx];
+}
+
+template<typename T>
+KERNEL(pts, reduce=max) returns(Real maxVal=-std::numeric_limits<Real>::max())
+Real CompMdata_Max(const MeshDataImpl<T>& val) {
+	if (val[idx] > maxVal)
+		maxVal = val[idx];
+}
+
+template<typename T>
+Real MeshDataImpl<T>::getMin() {
+	return CompMdata_Min<T> (*this);
+}
+
+template<typename T>
+Real MeshDataImpl<T>::getMaxAbs() {
+	Real amin = CompMdata_Min<T> (*this);
+	Real amax = CompMdata_Max<T> (*this);
+	return max( fabs(amin), fabs(amax));
+}
+
+template<typename T>
+Real MeshDataImpl<T>::getMax() {
+	return CompMdata_Max<T> (*this);
+}
+
+template<typename T>
+void MeshDataImpl<T>::printMdata(IndexInt start, IndexInt stop, bool printIndex)
+{
+	std::ostringstream sstr;
+	IndexInt s = (start>0 ? start : 0                      );
+	IndexInt e = (stop>0  ? stop  : (IndexInt)mData.size() );
+	s = Manta::clamp(s, (IndexInt)0, (IndexInt)mData.size());
+	e = Manta::clamp(e, (IndexInt)0, (IndexInt)mData.size());
+
+	for(IndexInt i=s; i<e; ++i) {
+		if(printIndex) sstr << i<<": ";
+		sstr<<mData[i]<<" "<<"\n";
+	}
+	debMsg( sstr.str() , 1 );
+}
+template<class T> std::string MeshDataImpl<T>::getDataPointer() {
+	std::ostringstream out;
+	out << &mData;
+	return out.str();
+}
+
+// specials for vec3
+// work on length values, ie, always positive (in contrast to scalar versions above)
+
+KERNEL(pts, reduce=min) returns(Real minVal=-std::numeric_limits<Real>::max())
+Real CompMdata_MinVec3(const MeshDataImpl<Vec3>& val) {
+	const Real s = normSquare(val[idx]);
+	if (s < minVal)
+		minVal = s;
+}
+
+KERNEL(pts, reduce=max) returns(Real maxVal=-std::numeric_limits<Real>::min())
+Real CompMdata_MaxVec3(const MeshDataImpl<Vec3>& val) {
+	const Real s = normSquare(val[idx]);
+	if (s > maxVal)
+		maxVal = s;
+}
+
+template<>
+Real MeshDataImpl<Vec3>::getMin() {
+	return sqrt(CompMdata_MinVec3 (*this));
+}
+
+template<>
+Real MeshDataImpl<Vec3>::getMaxAbs() {
+	return sqrt(CompMdata_MaxVec3 (*this));  // no minimum necessary here
+}
+
+template<>
+Real MeshDataImpl<Vec3>::getMax() {
+	return sqrt(CompMdata_MaxVec3 (*this));
+}
+
+
+// explicit instantiation
+template class MeshDataImpl<int>;
+template class MeshDataImpl<Real>;
+template class MeshDataImpl<Vec3>;
 
 
 } //namespace
