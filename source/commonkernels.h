@@ -79,6 +79,27 @@ KERNEL (bnd=1) void LaplaceOp(Grid<Real>& laplace, const Grid<Real>& grid) {
 	laplace(i, j, k) += grid(i, j, k+1) - 2.0*grid(i, j, k) + grid(i, j, k-1); }
 }
 
+//! Kernel: Curvature operator
+KERNEL (bnd=1) void CurvatureOp(Grid<Real>& curv, const Grid<Real>& grid, const Real h) {
+	const Real over_h = 1.0/h;
+	const Real x = 0.5*(grid(i+1, j, k) - grid(i-1, j, k))*over_h;
+	const Real y = 0.5*(grid(i, j+1, k) - grid(i, j-1, k))*over_h;
+	const Real xx = (grid(i+1, j, k) - 2.0*grid(i, j, k) + grid(i-1, j, k))*over_h*over_h;
+	const Real yy = (grid(i, j+1, k) - 2.0*grid(i, j, k) + grid(i, j-1, k))*over_h*over_h;
+	const Real xy = 0.25*(grid(i+1, j+1, k)+grid(i-1, j-1, k)-grid(i-1, j+1, k)-grid(i+1, j-1, k))*over_h*over_h;
+	curv(i, j, k) = x*x*yy + y*y*xx - 2.0*x*y*xy;
+	Real denom = x*x + y*y;
+	if(grid.is3D()) {
+		const Real z = 0.5*(grid(i, j, k+1) - grid(i, j, k-1))*over_h;
+		const Real zz = (grid(i, j, k+1) - 2.0*grid(i, j, k) + grid(i, j, k-1))*over_h*over_h;
+		const Real xz = 0.25*(grid(i+1, j, k+1)+grid(i-1, j, k-1)-grid(i-1, j, k+1)-grid(i+1, j, k-1))*over_h*over_h;
+		const Real yz = 0.25*(grid(i, j+1, k+1)+grid(i, j-1, k-1)-grid(i, j+1, k-1)-grid(i, j-1, k+1))*over_h*over_h;
+		curv(i, j, k) += x*x*zz + z*z*xx + y*y*zz + z*z*yy - 2.0*(x*z*xz + y*z*yz);
+		denom += z*z;
+	}
+	curv(i, j, k) /= std::pow(std::max(denom, VECTOR_EPSILON), 1.5);
+}
+
 //! Kernel: get component at MAC positions
 KERNEL(bnd=1) void GetShiftedComponent(const Grid<Vec3>& grid, Grid<Real>& comp, int dim) {
 	Vec3i ishift(i,j,k);

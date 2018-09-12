@@ -68,7 +68,7 @@ for t in range(1000):
 	
 	setWallBcs(flags=flags, vel=vel)
 
-	getLaplacian(laplacian=curv, grid=phi)
+	getCurvature(curv=curv, grid=phi)
 	solvePressure(flags=flags, vel=vel, pressure=pressure, phi=phi, curv=curv, surfTens=surfaceTension, cgAccuracy=accuracy)
 	
 	if (dim==3):

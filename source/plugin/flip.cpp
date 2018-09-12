@@ -706,6 +706,9 @@ PYTHON() void getLaplacian(Grid<Real> &laplacian, const Grid<Real> &grid) {
 	LaplaceOp(laplacian, grid);
 }
 
+PYTHON() void getCurvature(Grid<Real> &curv, const Grid<Real> &grid, const Real h=1.0) {
+	CurvatureOp(curv, grid, h);
+}
 
 } // namespace
 
