@@ -308,6 +308,9 @@ void MainWnd::windowSize(int w, int h) {
 	mGlWidget->setMaximumSize( w,h );
 	mGlWidget->resize( w,h );
 }
+void MainWnd::setPlane(int plane) {
+	mGlWidget->setPlane(plane);
+}
 
 MainWnd::~MainWnd() {
 }

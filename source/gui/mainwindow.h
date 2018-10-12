@@ -66,7 +66,8 @@ public slots:
 	void setCamPos(float x, float y, float z);
 	void setCamRot(float x, float y, float z);
 	void windowSize(int w, int h);
-	
+	void setPlane(int plane);
+
 signals:
 	void painterEvent(int e, int param=0);    
 	void wakeMain();

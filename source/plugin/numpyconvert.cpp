@@ -37,6 +37,9 @@ void copyArrayToGridScalar(const PyArrayContainer source, T& target)
 
 	switch (eDataType)
 	{
+		case NumpyTypes::N_INT:
+			FOR_IDX(target) { target(idx) = (reinterpret_cast<int*>(source.pData))[idx]; }
+			break;
 		case NumpyTypes::N_FLOAT:
 			FOR_IDX(target) { target(idx) = (reinterpret_cast<float*>(source.pData))[idx]; }
 			break;
@@ -53,12 +56,15 @@ template<typename T>
 void copyGridToArrayScalar(const T& source, PyArrayContainer target)
 {
 	unsigned int uGridsize = source.getSizeX() * source.getSizeY() * source.getSizeZ();
-	assertMsg(target.TotalSize == uGridsize, "The size of the numpy array doesn't match the size of the grid!");
+	assertMsg(target.TotalSize == uGridsize, "The size of the numpy array "+to_string(target.TotalSize)+" doesn't match the size of the grid!");
 	
 	NumpyTypes eDataType = target.DataType;
 
 	switch (eDataType)
 	{
+		case NumpyTypes::N_INT:
+			FOR_IDX(source) { reinterpret_cast<int*>(target.pData)[idx] = source(idx); }
+			break;
 		case NumpyTypes::N_FLOAT:
 			FOR_IDX(source) { reinterpret_cast<float*>(target.pData)[idx] = source(idx); }
 			break;
@@ -123,6 +129,7 @@ void copyGridToArrayVector(const T& source, PyArrayContainer target)
 	}
 }
 
+
 //====================================================================================================
 // Python interface
 //----------------------------------------------------------------------------------------------------
@@ -133,6 +140,14 @@ PYTHON() void copyArrayToGridReal(const PyArrayContainer source, Grid<Real>& tar
 
 PYTHON() void copyGridToArrayReal(const Grid<Real>& source, PyArrayContainer target) {
 	copyGridToArrayScalar<Grid<Real>>(source, target);
+}
+
+PYTHON() void copyArrayToGridFlag(const PyArrayContainer source, FlagGrid& target) {
+	copyArrayToGridScalar<FlagGrid>(source, target);
+}
+
+PYTHON() void copyGridToArrayFlag(const FlagGrid& source, PyArrayContainer target) {
+	copyGridToArrayScalar<FlagGrid>(source, target);
 }
 
 PYTHON() void copyArrayToGridLevelset(const PyArrayContainer source, LevelsetGrid& target) {

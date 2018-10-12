@@ -179,6 +179,9 @@ void Gui::setCamRot(float x, float y, float z) {
 void Gui::windowSize(int w, int h) {
 	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "windowSize", Q_ARG(int, w), Q_ARG(int, h));    
 }
+void Gui::setPlane(int plane) {
+	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "setPlane", Q_ARG(int, plane));
+}
 
 PbClass* Gui::addControl(PbType t) {
 	_args.add("nocheck",true);

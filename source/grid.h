@@ -22,7 +22,7 @@
 
 namespace Manta {
 class LevelsetGrid;
-	
+
 //! Base class for all grids
 PYTHON() class GridBase : public PbClass {
 public:
@@ -31,13 +31,13 @@ public:
 	PYTHON() GridBase(FluidSolver* parent);
 	
 	//! Get the grids X dimension
-	inline int getSizeX() const { return mSize.x; }
+	PYTHON() inline int getSizeX() const { return mSize.x; }
 	//! Get the grids Y dimension
-	inline int getSizeY() const { return mSize.y; }
+	PYTHON() inline int getSizeY() const { return mSize.y; }
 	//! Get the grids Z dimension
-	inline int getSizeZ() const { return mSize.z; }
+	PYTHON() inline int getSizeZ() const { return mSize.z; }
 	//! Get the grids dimensions
-	inline Vec3i getSize() const { return mSize; }
+	PYTHON() inline Vec3i getSize() const { return mSize; }
 	
 	//! Get Stride in X dimension
 	inline IndexInt getStrideX() const { return 1; }
@@ -64,7 +64,7 @@ public:
 	//! Get the type of grid
 	inline GridType getType() const { return mType; }
 	//! Check dimensionality
-	inline bool is3D() const { return m3D; }
+	PYTHON() inline bool is3D() const { return m3D; }
 	
 	//! Get index into the data
 	inline IndexInt index(int i, int j, int k) const { DEBUG_ONLY(checkIndex(i,j,k)); return (IndexInt)i + (IndexInt)mSize.x * j + (IndexInt)mStrideZ * k; }
@@ -72,9 +72,9 @@ public:
 	inline IndexInt index(const Vec3i& pos) const    { DEBUG_ONLY(checkIndex(pos.x,pos.y,pos.z)); return (IndexInt)pos.x + (IndexInt)mSize.x * pos.y + (IndexInt)mStrideZ * pos.z; }
 
 	//! grid4d compatibility functions 
-	inline bool is4D() const { return false; }
-	inline int getSizeT() const { return 1; }
-	inline int getStrideT() const { return 0; }
+	PYTHON() inline bool is4D() const { return false; }
+	PYTHON() inline int getSizeT() const { return 1; }
+	PYTHON() inline int getStrideT() const { return 0; }
 	inline int index(int i, int j, int k, int unused) const { return index(i,j,k); }
 	inline bool isInBounds(int i,int j, int k, int t, int bnd) const { if(t!=0) return false; return isInBounds( Vec3i(i,j,k), bnd ); }
 

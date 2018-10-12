@@ -39,6 +39,8 @@ public:
 	void setCamPos(Vec3 pos) { mCamPos = pos; }
 	void setCamRot(Vec3 pos) { mRotX = pos.x; mRotY = pos.y; }
 
+	void setPlane(int plane) { updatePlane(plane); }
+
 public slots:
 	void setViewport(const Vec3i& gridsize);
 	void keyPressEvent(QKeyEvent* e);
