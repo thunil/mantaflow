@@ -23,27 +23,57 @@ namespace Manta {
 
 //! Semi-Lagrange interpolation kernel
 KERNEL(bnd=1) template<class T> 
-void SemiLagrange (const FlagGrid& flags, const MACGrid& vel, Grid<T>& dst, const Grid<T>& src, Real dt, bool isLevelset, int orderSpace)
+void SemiLagrange (const FlagGrid& flags, const MACGrid& vel, Grid<T>& dst, const Grid<T>& src, Real dt, bool isLevelset, int orderSpace, int orderTrace)
 {
-	// traceback position
-	Vec3 pos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getCentered(i,j,k) * dt;
-	dst(i,j,k) = src.getInterpolatedHi(pos, orderSpace);
+    if (orderTrace == 1) {
+        // traceback position
+        Vec3 pos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getCentered(i,j,k) * dt;
+        dst(i,j,k) = src.getInterpolatedHi(pos, orderSpace);
+    } else if (orderTrace == 2) {
+        // backtracing using explicit midpoint
+        Vec3 p0 = Vec3(i+0.5f,j+0.5f,k+0.5f);
+        Vec3 p1 = p0 - vel.getCentered(i,j,k)*dt*0.5;
+        Vec3 p2 = p0 - vel.getInterpolated(p1)*dt;
+        dst(i,j,k) = src.getInterpolatedHi(p2, orderSpace);
+    } else {
+        assertMsg(false, "Unknown backtracing order "<<orderTrace);
+    }
 }
 
 //! Semi-Lagrange interpolation kernel for MAC grids
 KERNEL(bnd=1)
-void SemiLagrangeMAC(const FlagGrid& flags, const MACGrid& vel, MACGrid& dst, const MACGrid& src, Real dt, int orderSpace)
+void SemiLagrangeMAC(const FlagGrid& flags, const MACGrid& vel, MACGrid& dst, const MACGrid& src, Real dt, int orderSpace, int orderTrace)
 {
-	// get currect velocity at MAC position
-	// no need to shift xpos etc. as lookup field is also shifted
-	Vec3 xpos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getAtMACX(i,j,k) * dt;
-	Real vx = src.getInterpolatedComponentHi<0>(xpos, orderSpace);
-	Vec3 ypos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getAtMACY(i,j,k) * dt;
-	Real vy = src.getInterpolatedComponentHi<1>(ypos, orderSpace);
-	Vec3 zpos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getAtMACZ(i,j,k) * dt;
-	Real vz = src.getInterpolatedComponentHi<2>(zpos, orderSpace);
+    if (orderTrace == 1) {
+        // get currect velocity at MAC position
+        // no need to shift xpos etc. as lookup field is also shifted
+        Vec3 xpos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getAtMACX(i,j,k) * dt;
+        Real vx = src.getInterpolatedComponentHi<0>(xpos, orderSpace);
+        Vec3 ypos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getAtMACY(i,j,k) * dt;
+        Real vy = src.getInterpolatedComponentHi<1>(ypos, orderSpace);
+        Vec3 zpos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getAtMACZ(i,j,k) * dt;
+        Real vz = src.getInterpolatedComponentHi<2>(zpos, orderSpace);
 	
-	dst(i,j,k) = Vec3(vx,vy,vz);
+        dst(i,j,k) = Vec3(vx,vy,vz);
+    } else if (orderTrace == 2) {
+        Vec3 p0 = Vec3(i+0.5,j+0.5,k+0.5);
+        Vec3 xp0 = Vec3(i,j+0.5f,k+0.5f);
+        Vec3 xp1 = xp0 - src.getAtMACX(i,j,k)*dt*0.5;
+        Vec3 xp2 = p0 - src.getInterpolated(xp1)*dt;
+        Real vx = src.getInterpolatedComponentHi<0>(xp2, orderSpace);
+        Vec3 yp0 = Vec3(i+0.5f,j,k+0.5f);
+        Vec3 yp1 = yp0 - src.getAtMACY(i,j,k)*dt*0.5;
+        Vec3 yp2 = p0 - src.getInterpolated(yp1)*dt;
+        Real vy = src.getInterpolatedComponentHi<1>(yp2, orderSpace);
+        Vec3 zp0 = Vec3(i+0.5f,j+0.5f,k);
+        Vec3 zp1 = zp0 - src.getAtMACZ(i,j,k)*dt*0.5;
+        Vec3 zp2 = p0 - src.getInterpolated(zp1)*dt;
+        Real vz = src.getInterpolatedComponentHi<2>(zp2, orderSpace);
+        
+        dst(i,j,k) = Vec3(vx,vy,vz);
+    } else {
+        assertMsg(false, "Unknown backtracing order "<<orderTrace);
+    }
 }
 
 
@@ -260,7 +290,7 @@ void MacCormackClampMAC (const FlagGrid& flags, const MACGrid& vel, MACGrid& dst
 //! template function for performing SL advection
 //! (Note boundary width only needed for specialization for MAC grids below)
 template<class GridType> 
-void fnAdvectSemiLagrange(FluidSolver* parent, const FlagGrid& flags, const MACGrid& vel, GridType& orig, int order, Real strength, int orderSpace, bool openBounds, int bWidth, int clampMode) {
+void fnAdvectSemiLagrange(FluidSolver* parent, const FlagGrid& flags, const MACGrid& vel, GridType& orig, int order, Real strength, int orderSpace, bool openBounds, int bWidth, int clampMode, int orderTrace) {
 	typedef typename GridType::BASETYPE T;
 	
 	Real dt = parent->getDt();
@@ -268,7 +298,7 @@ void fnAdvectSemiLagrange(FluidSolver* parent, const FlagGrid& flags, const MACG
 	
 	// forward step
 	GridType fwd(parent);
-	SemiLagrange<T> (flags, vel, fwd, orig, dt, levelset, orderSpace);
+	SemiLagrange<T> (flags, vel, fwd, orig, dt, levelset, orderSpace, orderTrace);
 	
 	if (order == 1) {
 		orig.swap(fwd);
@@ -278,7 +308,7 @@ void fnAdvectSemiLagrange(FluidSolver* parent, const FlagGrid& flags, const MACG
 		GridType newGrid(parent);
 	
 		// bwd <- backwards step
-		SemiLagrange<T> (flags, vel, bwd, fwd, -dt, levelset, orderSpace);
+		SemiLagrange<T> (flags, vel, bwd, fwd, -dt, levelset, orderSpace, orderTrace);
 		
 		// newGrid <- compute correction
 		MacCormackCorrect<T> (flags, newGrid, orig, fwd, bwd, strength, levelset);
@@ -371,12 +401,12 @@ PYTHON() void resetPhiInObs (const FlagGrid& flags, Grid<Real>& sdf) { knResetPh
 
 //! template function for performing SL advection: specialized version for MAC grids
 template<> 
-void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, const FlagGrid& flags, const MACGrid& vel, MACGrid& orig, int order, Real strength, int orderSpace, bool openBounds, int bWidth, int clampMode) {
+void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, const FlagGrid& flags, const MACGrid& vel, MACGrid& orig, int order, Real strength, int orderSpace, bool openBounds, int bWidth, int clampMode, int orderTrace) {
 	Real dt = parent->getDt();
 	
 	// forward step
 	MACGrid fwd(parent);    
-	SemiLagrangeMAC (flags, vel, fwd, orig, dt, orderSpace);
+	SemiLagrangeMAC (flags, vel, fwd, orig, dt, orderSpace, orderTrace);
 	
 	if (orderSpace != 1) { debMsg("Warning higher order for MAC grids not yet implemented...",1); }
 
@@ -389,7 +419,7 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, const FlagGrid& flags, c
 		MACGrid newGrid(parent);
 		
 		// bwd <- backwards step
-		SemiLagrangeMAC (flags, vel, bwd, fwd, -dt, orderSpace);
+		SemiLagrangeMAC (flags, vel, bwd, fwd, -dt, orderSpace, orderTrace);
 		
 		// newGrid <- compute correction
 		MacCormackCorrectMAC<Vec3> (flags, newGrid, orig, fwd, bwd, strength, false, true);
@@ -407,19 +437,19 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, const FlagGrid& flags, c
 //! Open boundary handling needs information about width of border
 //! Clamping modes: 1 regular clamp leading to more overshoot and sharper results, 2 revert to 1st order slightly smoother less overshoot (enable when 1 gives artifacts)
 PYTHON() void advectSemiLagrange (const FlagGrid* flags, const MACGrid* vel, GridBase* grid,
-						   int order = 1, Real strength = 1.0, int orderSpace = 1, bool openBounds = false, int boundaryWidth = 1, int clampMode = 2)
+                                  int order = 1, Real strength = 1.0, int orderSpace = 1, bool openBounds = false, int boundaryWidth = 1, int clampMode = 2, int orderTrace = 1)
 {    
 	assertMsg(order==1 || order==2, "AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");
 	
 	// determine type of grid    
 	if (grid->getType() & GridBase::TypeReal) {
-		fnAdvectSemiLagrange< Grid<Real> >(flags->getParent(), *flags, *vel, *((Grid<Real>*) grid), order, strength, orderSpace, openBounds, boundaryWidth, clampMode);
+		fnAdvectSemiLagrange< Grid<Real> >(flags->getParent(), *flags, *vel, *((Grid<Real>*) grid), order, strength, orderSpace, openBounds, boundaryWidth, clampMode, orderTrace);
 	}
 	else if (grid->getType() & GridBase::TypeMAC) {    
-		fnAdvectSemiLagrange< MACGrid >(flags->getParent(), *flags, *vel, *((MACGrid*) grid), order, strength, orderSpace, openBounds, boundaryWidth, clampMode);
+		fnAdvectSemiLagrange< MACGrid >(flags->getParent(), *flags, *vel, *((MACGrid*) grid), order, strength, orderSpace, openBounds, boundaryWidth, clampMode, orderTrace);
 	}
 	else if (grid->getType() & GridBase::TypeVec3) {    
-		fnAdvectSemiLagrange< Grid<Vec3> >(flags->getParent(), *flags, *vel, *((Grid<Vec3>*) grid), order, strength, orderSpace, openBounds, boundaryWidth, clampMode);
+		fnAdvectSemiLagrange< Grid<Vec3> >(flags->getParent(), *flags, *vel, *((Grid<Vec3>*) grid), order, strength, orderSpace, openBounds, boundaryWidth, clampMode, orderTrace);
 	}
 	else
 		errMsg("AdvectSemiLagrange: Grid Type is not supported (only Real, Vec3, MAC, Levelset)");    
