@@ -26,7 +26,7 @@ class LevelsetGrid;
 //! Base class for all grids
 PYTHON() class GridBase : public PbClass {
 public:
-	enum GridType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4, TypeMAC = 8, TypeLevelset = 16, TypeFlags = 32 };
+	PYTHON() enum GridType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4, TypeMAC = 8, TypeLevelset = 16, TypeFlags = 32 };
 		
 	PYTHON() GridBase(FluidSolver* parent);
 	
@@ -276,7 +276,7 @@ public:
             mType = (GridType)(TypeFlags | TypeInt); }	
 
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
-	enum CellType { 
+	PYTHON() enum CellType { 
 		TypeNone     = 0,
 		TypeFluid    = 1,
 		TypeObstacle = 2,

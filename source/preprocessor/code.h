@@ -104,6 +104,20 @@ struct Class : Text {
 	virtual std::string dynamicClass() { return "Class"; }
 };
 
+struct EnumEntry : Text {
+	EnumEntry() {};
+
+	std::string name;
+	int value;
+};
+
+struct Enum : Text {
+	Enum() {};
+
+	std::string name;
+	std::vector<EnumEntry> entries;
+};
+
 struct Block : Text {
 	Block() {};
 

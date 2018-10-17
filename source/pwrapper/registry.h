@@ -83,6 +83,8 @@ struct Register {
 	Register(const std::string& className, const std::string& property, Getter getter, Setter setter);
 	//! register class
 	Register(const std::string& className, const std::string& pyName, const std::string& baseClass);
+	//! register enum entry
+	Register(const std::string& name, const int value);
 	//! register python code
 	Register(const std::string& file, const std::string& pythonCode);
 	//! register external code
