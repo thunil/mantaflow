@@ -19,6 +19,10 @@
 
 namespace Manta {
 
+#if PY_VERSION_HEX < 0x03000000
+PyMODINIT_FUNC initNumpy() { import_array(); }
+#endif
+
 // ------------------------------------------------------------------------
 // Class Functions
 // ------------------------------------------------------------------------
@@ -88,7 +92,11 @@ PyArrayContainer
 fromPy<PyArrayContainer>(PyObject *obj)
 {
 	if(PyArray_API == NULL) {
-		import_array();
+#if PY_VERSION_HEX >= 0x03000000
+		import_array(); // python 3 uses the return value
+#else
+		initNumpy();
+#endif
 	}
 
 	if(!PyArray_Check(obj)) {
