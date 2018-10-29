@@ -41,7 +41,7 @@ for t in range(400):
 	mantaMsg('\nFrame %i' % (s.frame))
 		
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2) 
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=bWidth)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2)
 	resetOutflow(flags=flags,real=density) 
 
 	if t<=100:

@@ -69,7 +69,7 @@ for t in range(1000):
 	flags.updateFromLevelset(phi)
 	
 	# velocity self-advection
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2, openBounds=doOpen, boundaryWidth=bWidth )
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel, order=2)
 	addGravity(flags=flags, vel=vel, gravity=Vec3(0,-0.025,0))
 	#addGravity(flags=flags, vel=vel, gravity=Vec3(-0.025,0,0)) # Y
 	

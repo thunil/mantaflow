@@ -85,7 +85,7 @@ while s.frame < frames:
 	advectSemiLagrange( flags=flags, vel=vel, grid=heat,   order=2 )
 	advectSemiLagrange( flags=flags, vel=vel, grid=fuel,   order=2 )
 	advectSemiLagrange( flags=flags, vel=vel, grid=react, order=2 )
-	advectSemiLagrange( flags=flags, vel=vel, grid=vel,   order=2, openBounds=doOpen, boundaryWidth=bWidth )
+	advectSemiLagrange( flags=flags, vel=vel, grid=vel,   order=2 )
 
 	if doOpen:
 		resetOutflow( flags=flags, real=density )

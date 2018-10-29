@@ -127,7 +127,7 @@ for t in range(200):
 		wltStrength = sliderStr.get()
 	
 	advectSemiLagrange(flags=flags, vel=vel, grid=density,  order=2)	
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,      order=2, openBounds=True, boundaryWidth=bWidth )
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,      order=2)
 
 	for i in range(uvs):
 		advectSemiLagrange(flags=flags, vel=vel, grid=uv[i], order=2) 

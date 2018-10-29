@@ -78,7 +78,7 @@ for t in range(numFrames):
 	densityInflow(flags=flags, density=density, noise=noise, shape=source, scale=1, sigma=0.5)
 		
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=bWidth+1)
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2)
 	resetOutflow(flags=flags,real=density) 
 	
 	setWallBcs(flags=flags, vel=vel)

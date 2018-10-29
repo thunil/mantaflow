@@ -103,7 +103,7 @@ for t in range(200):
 	mantaMsg('\nFrame %i, simulation time %f' % (sm.frame, sm.timeTotal))
 		
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2)    
-	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2, openBounds=True, boundaryWidth=bWidth )
+	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2)
 	
 	applyInflow=False
 	if (sm.timeTotal>=0 and sm.timeTotal<50.):
