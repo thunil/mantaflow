@@ -440,9 +440,10 @@ void fnAdvectSemiLagrange<MACGrid>(FluidSolver* parent, const FlagGrid& flags, c
 //! Open boundary handling needs information about width of border
 //! Clamping modes: 1 regular clamp leading to more overshoot and sharper results, 2 revert to 1st order slightly smoother less overshoot (enable when 1 gives artifacts)
 PYTHON() void advectSemiLagrange (const FlagGrid* flags, const MACGrid* vel, GridBase* grid,
-                                  int order = 1, Real strength = 1.0, int orderSpace = 1, int clampMode = 2, int orderTrace = 1)
+                                  int order = 1, Real strength = 1.0, int orderSpace = 1, bool openBounds = false, int boundaryWidth = -1, int clampMode = 2, int orderTrace = 1)
 {    
 	assertMsg(order==1 || order==2, "AdvectSemiLagrange: Only order 1 (regular SL) and 2 (MacCormack) supported");
+	if((boundaryWidth!=-1)||(openBounds)) { debMsg("Warning: boundaryWidth and openBounds parameters in AdvectSemiLagrange plugin are deprecated (and have no more effect), please remove.", 0); } 
 	
 	// determine type of grid    
 	if (grid->getType() & GridBase::TypeReal) {

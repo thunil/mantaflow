@@ -43,8 +43,8 @@ flags.initDomain()
 flags.fillGrid()
 
 bWidth = 1
-openB = 'xXyYzZ'
-setOpenBound(flags,bWidth,openB,FlagOutflow|FlagEmpty) 
+openB  = 'xXyYzZ'
+setOpenBound(flags, bWidth, openB, FlagOutflow|FlagEmpty) 
 
 if 0 and (GUI):
 	gui = Gui()
