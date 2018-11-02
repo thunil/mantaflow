@@ -1,6 +1,7 @@
 *.sublime-project
 *.sublime-workspace
 *.uni
+*.raw
 *.npz
 *.pyc
 *.bin

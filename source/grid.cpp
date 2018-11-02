@@ -660,7 +660,7 @@ void FlagGrid::initDomain( const int &boundaryWidth
 
 	if(phiWalls) phiWalls->setConst(1000000000);
 
-	for (char i = 0; i<6; ++i) {
+	for (int i = 0; i<6; ++i) {
 		//min x-direction
 		if(!set[0]) {
 			if(open[i]=='x')         {types[0] = TypeOpen;set[0] = true;}
