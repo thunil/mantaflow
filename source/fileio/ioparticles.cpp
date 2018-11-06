@@ -221,6 +221,10 @@ void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	char ID[5] = "PD01";
 	UniPartHeader head;
 	head.dim      = pdata->size();
+	Vec3i         gridSize = pdata->getParent()->getGridSize();
+	head.dimX     = gridSize.x;
+	head.dimY     = gridSize.y;
+	head.dimZ     = gridSize.z;
 	head.bytesPerElement = sizeof(T);
 	head.elementType = 1; // 1 for particle data, todo - add sub types?
 	snprintf( head.info, STR_LEN_PDATA, "%s", buildInfoString().c_str() );	
