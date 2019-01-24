@@ -157,6 +157,9 @@ public:
 
 	// helper functions to work with grids in scene files 
 
+	//! get grid type
+	PYTHON() int getGridType();
+
 	//! add/subtract other grid
 	PYTHON() void add(const Grid<T>& a);
 	PYTHON() void sub(const Grid<T>& a);

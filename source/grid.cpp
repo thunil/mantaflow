@@ -225,6 +225,10 @@ template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
 	return *this;
 }
 
+template<class T> int Grid<T>::getGridType() {
+	return static_cast<int>(mType);
+}
+
 template<class T> void Grid<T>::add(const Grid<T>& a) {
 	gridAdd<T,T>(*this, a);
 }

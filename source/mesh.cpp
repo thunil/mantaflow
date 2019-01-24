@@ -20,6 +20,7 @@
 #include "kernel.h"
 #include "shapes.h"
 #include "noisefield.h"
+//#include "grid.h"
 #include <stack>
 #include <cstring>
 
@@ -322,6 +323,83 @@ void Mesh::offset(Vec3 o) {
 	for (size_t i=0; i<mNodes.size(); i++)
 		mNodes[i].pos += o;
 }
+
+void Mesh::rotate(Vec3 thetas) {
+	// rotation thetas are in radians (e.g. pi is equal to 180 degrees)
+	auto rotate = [&](Real theta, unsigned int first_axis, unsigned int second_axis) 
+	{
+		if (theta == 0.0f)
+			return;
+
+		Real sin_t = sin(theta);
+		Real cos_t = cos(theta);
+
+		Real sin_sign = first_axis == 0u && second_axis == 2u ? -1.0f : 1.0f;
+		sin_t *= sin_sign;
+
+		size_t length = mNodes.size();
+		for (size_t n = 0; n < length; ++n)
+		{
+			Vec3& node = mNodes[n].pos;
+			Real first_axis_val = node[first_axis];
+			Real second_axis_val = node[second_axis];
+			node[first_axis]  = first_axis_val  * cos_t - second_axis_val * sin_t;
+			node[second_axis] = second_axis_val * cos_t + first_axis_val  * sin_t;
+		}
+	};
+
+	// rotate x
+	rotate(thetas[0], 1u, 2u);
+	// rotate y
+	rotate(thetas[1], 0u, 2u);
+	// rotate z
+	rotate(thetas[2], 0u, 1u);
+}
+
+//! Kernel: Apply a shape to a grid, setting value inside
+KERNEL()
+void MeanVelocity (MACGrid& valueGrid, Grid<int>& countGrid) {
+	if(countGrid(i,j,k) == 0){
+		valueGrid(i,j,k) = Vec3(0.);
+	}
+	else{
+		valueGrid(i,j,k) = valueGrid(i,j,k) / static_cast<Real>(countGrid(i,j,k));
+	}
+}
+
+void Mesh::computeVelocity(Mesh& oldMesh, MACGrid& vel) {
+	// Early return if sizes do not match
+	if(oldMesh.mNodes.size() != mNodes.size())
+		return;
+
+	// temp grid
+	Grid<int> veloMeanCounter(getParent());
+	bool bIs2D = getParent()->is2D();
+
+	// calculate velocities from previous to current frame (per vertex)
+	//std::vector<Vec3> velocities;
+	//velocities.reserve(mNodes.size());
+	for (size_t i=0; i<mNodes.size(); ++i)
+	{
+		Vec3i posInGrid = toVec3i(oldMesh.mNodes[i].pos);
+
+		Vec3 velo = mNodes[i].pos - oldMesh.mNodes[i].pos;
+		//velo += oldMesh.mNodes[i].pos - toVec3(posInGrid);
+		//velocities.push_back(mNodes[i].pos - oldMesh.mNodes[i].pos);
+		if(bIs2D == false || posInGrid.z == 0)
+		{
+			if(bIs2D)
+				velo.z = 0.0;
+			vel(posInGrid) += velo;
+			veloMeanCounter(posInGrid) += 1;
+		}
+	}
+
+	// discretize the vertex velocities by averaging them on the grid
+	//vel /= veloMeanCounter;
+	MeanVelocity(vel, veloMeanCounter);
+}
+
 
 void Mesh::removeTri(int tri) {
 	// delete triangles by overwriting them with elements from the end of the array.
@@ -761,10 +839,10 @@ void ApplyMeshToGrid (Grid<T>* grid, Grid<Real>& sdf, T value, FlagGrid* respect
 	}
 }
 
-void Mesh::applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags, Real cutoff) {
+void Mesh::applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags, Real cutoff, Real meshSigma) {
 	FluidSolver dummy(grid->getSize());
 	LevelsetGrid mesh_sdf(&dummy, false);
-	meshSDF(*this, mesh_sdf, 2., cutoff);
+	meshSDF(*this, mesh_sdf, meshSigma, cutoff);
 	
 #	if NOPYTHON!=1
 	if (grid->getType() & GridBase::TypeInt)
@@ -782,6 +860,12 @@ void Mesh::applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags, Real cutoff) 
 
 void Mesh::computeLevelset(LevelsetGrid& levelset, Real sigma, Real cutoff) {
 	meshSDF( *this, levelset, sigma, cutoff); 
+}
+
+LevelsetGrid Mesh::getLevelset(Real sigma, Real cutoff) {
+	LevelsetGrid phi(getParent());
+	meshSDF(*this, phi, sigma, cutoff);
+	return phi;
 }
 
 void meshSDF(Mesh& mesh, LevelsetGrid& levelset, Real sigma, Real cutoff)
