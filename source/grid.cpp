@@ -19,6 +19,9 @@
 #include <sstream>
 #include <cstring>
 
+#include "commonkernels.h"
+
+
 using namespace std;
 namespace Manta {
 
@@ -812,6 +815,29 @@ void markIsolatedFluidCell(FlagGrid &flags, const int mark)
 {
 	knMarkIsolatedFluidCell(flags, mark);
 }
+
+PYTHON()
+void copyMACData(const MACGrid &source, MACGrid &target, const FlagGrid& flags, const int flag, const int bnd)
+{
+	assertMsg (source.getSize().x == target.getSize().x && source.getSize().y == target.getSize().y && source.getSize().z == target.getSize().z, "different grid resolutions " << source.getSize() << " vs " << target.getSize() );
+
+	// Grid<Real> divGrid(target.getParent());
+	// DivergenceOpMAC(divGrid, target);
+	// Real fDivOrig = GridSumSqr(divGrid);
+
+	FOR_IJK_BND(target, bnd)
+	{
+		if(flags.get(i,j,k) & flag)
+		{
+			target(i,j,k) = source(i,j,k);
+		}
+	}
+
+	// DivergenceOpMAC(divGrid, target);
+	// Real fDivTransfer = GridSumSqr(divGrid);
+	// std::cout << "Divergence: " << fDivOrig << " -> " << fDivTransfer << std::endl;
+}
+
 
 // explicit instantiation
 template class Grid<int>;

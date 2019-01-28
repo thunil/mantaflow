@@ -356,50 +356,30 @@ void Mesh::rotate(Vec3 thetas) {
 	rotate(thetas[2], 0u, 1u);
 }
 
-//! Kernel: Apply a shape to a grid, setting value inside
-KERNEL()
-void MeanVelocity (MACGrid& valueGrid, Grid<int>& countGrid) {
-	if(countGrid(i,j,k) == 0){
-		valueGrid(i,j,k) = Vec3(0.);
-	}
-	else{
-		valueGrid(i,j,k) = valueGrid(i,j,k) / static_cast<Real>(countGrid(i,j,k));
-	}
-}
-
 void Mesh::computeVelocity(Mesh& oldMesh, MACGrid& vel) {
 	// Early return if sizes do not match
 	if(oldMesh.mNodes.size() != mNodes.size())
 		return;
 
 	// temp grid
-	Grid<int> veloMeanCounter(getParent());
+	Grid<Vec3> veloMeanCounter(getParent());
+	veloMeanCounter.setConst(0.0f);
+
 	bool bIs2D = getParent()->is2D();
 
 	// calculate velocities from previous to current frame (per vertex)
-	//std::vector<Vec3> velocities;
-	//velocities.reserve(mNodes.size());
 	for (size_t i=0; i<mNodes.size(); ++i)
 	{
-		Vec3i posInGrid = toVec3i(oldMesh.mNodes[i].pos);
-
 		Vec3 velo = mNodes[i].pos - oldMesh.mNodes[i].pos;
-		//velo += oldMesh.mNodes[i].pos - toVec3(posInGrid);
-		//velocities.push_back(mNodes[i].pos - oldMesh.mNodes[i].pos);
-		if(bIs2D == false || posInGrid.z == 0)
+		if(bIs2D && (mNodes[i].pos.z > -0.5f && mNodes[i].pos.z < 0.5f))
 		{
-			if(bIs2D)
-				velo.z = 0.0;
-			vel(posInGrid) += velo;
-			veloMeanCounter(posInGrid) += 1;
+			vel.setInterpolated(mNodes[i].pos, velo, &(veloMeanCounter[0]));
 		}
 	}
 
 	// discretize the vertex velocities by averaging them on the grid
-	//vel /= veloMeanCounter;
-	MeanVelocity(vel, veloMeanCounter);
+	vel.safeDivide(veloMeanCounter);
 }
-
 
 void Mesh::removeTri(int tri) {
 	// delete triangles by overwriting them with elements from the end of the array.
