@@ -524,6 +524,19 @@ if(DOUBLEPRECISION)
 	add_definitions(-DFLOATINGPOINT_PRECISION=2)
 endif()
 
+#******************************************************************************
+# cnpy support (import/export numpy arrays)
+if(NUMPY)
+	# default: build from own sources
+	list(APPEND SILENT_SOURCES dependencies/cnpy/cnpy.cpp)
+
+	set(CNPY_ADDFLAGS "-std=c++11")
+	set_source_files_properties(dependencies/cnpy/cnpy.cpp PROPERTIES COMPILE_FLAGS "${CNPY_ADDFLAGS}")
+
+	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
+	list(APPEND INCLUDE_PATHS dependencies/cnpy)
+endif()
 
 #******************************************************************************
 # generate git repository info , currently only for unix systems
