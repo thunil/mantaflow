@@ -39,6 +39,10 @@ template<class T> void writeGridTxt(const std::string& name, Grid<T>* grid);
 #if OPENVDB==1
 template<class T> void writeGridVDB(const std::string& name, Grid<T>* grid);
 #endif // OPENVDB==1
+#if NUMPY==1
+template<class T> void writeGridNumpy(const std::string& name, Grid<T>* grid);
+template<class T> void readGridNumpy (const std::string& name, Grid<T>* grid);
+#endif // NUMPY==1
 
 template<class T> void readGridUni (const std::string& name, Grid<T>* grid);
 template<class T> void readGridRaw (const std::string& name, Grid<T>* grid);

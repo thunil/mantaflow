@@ -117,6 +117,10 @@ void Grid<T>::load(string name) {
 		readGridUni(name, this);
 	else if (ext == ".vol")
 		readGridVol(name, this);
+#	if NUMPY==1
+	else if (ext == ".npz" || ext == ".npy")
+		readGridNumpy(name, this);
+#	endif // NUMPY==1
 	else
 		errMsg("file '" + name +"' filetype not supported");
 }
@@ -136,6 +140,10 @@ void Grid<T>::save(string name) {
 	else if (ext == ".vdb")
 		writeGridVDB(name, this);
 #	endif // OPENVDB==1
+#	if NUMPY==1
+	else if (ext == ".npz" || ext == ".npy")
+		writeGridNumpy(name, this);
+#	endif // NUMPY==1
 	else if (ext == ".txt")
 		writeGridTxt(name, this);
 	else

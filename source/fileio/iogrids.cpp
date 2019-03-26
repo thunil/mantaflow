@@ -26,6 +26,10 @@ extern "C" {
 #include "openvdb/openvdb.h"
 #endif
 
+#if NUMPY==1
+#include "cnpy.h"
+#endif
+
 #include "mantaio.h"
 #include "grid.h"
 #include "vector4d.h"
@@ -145,7 +149,7 @@ void gridReadConvert<double>(gzFile& gzf, Grid<double>& grid, void* ptr, int byt
 	float* ptrf = (float*)ptr;
 	for(int i=0; i<grid.getSizeX()*grid.getSizeY()*grid.getSizeZ(); ++i,++ptrf) {
 		grid[i] = (double)(*ptrf);
-	} 
+	}
 }
 
 template <>
@@ -157,7 +161,7 @@ void gridReadConvert<Vec3>(gzFile& gzf, Grid<Vec3>& grid, void* ptr, int bytesPe
 		Vec3 v;
 		for(int c=0; c<3; ++c) { v[c] = double(*ptrf); ptrf++; }
 		grid[i] = v;
-	} 
+	}
 }
 
 template <class T>
@@ -829,6 +833,98 @@ void writeGridVDB(const string& name, Grid<Vec3>* grid) {
 #endif // OPENVDB==1
 
 
+//*****************************************************************************
+// optional numpy export
+
+#if NUMPY==1
+
+template <class T>
+void writeGridNumpy(const string& name, Grid<T>* grid) {
+#	if NO_ZLIB==1
+	debMsg( "file format not supported without zlib" ,1);
+	return;
+#	endif
+
+	// find suffix to differentiate between npy <-> npz
+	std::string::size_type idx;
+	bool bUseNpz = false;
+	idx = name.rfind('.');
+	if(idx != std::string::npos)
+	{
+		bUseNpz = name.substr(idx+1) == "npz";
+		debMsg( "Writing grid " << grid->getName() << " to npz file " << name ,1);
+	}
+	else
+	{
+		debMsg( "Writing grid " << grid->getName() << " to npy file " << name ,1);
+	}
+
+	// Storage code
+	size_t uDim = 1;
+	if (grid->getType() & GridBase::TypeInt || grid->getType() & GridBase::TypeReal || grid->getType() & GridBase::TypeLevelset)
+		uDim = 1;
+	else if (grid->getType() & GridBase::TypeVec3 || grid->getType() & GridBase::TypeMAC)
+		uDim = 3;
+	else
+		errMsg("unknown element type");
+
+	const std::vector<size_t> shape = {static_cast<size_t>(grid->getSizeZ()), static_cast<size_t>(grid->getSizeY()), static_cast<size_t>(grid->getSizeX()), uDim};
+	if(bUseNpz){
+		T* ptr = &((*grid)[0]);
+		cnpy::npz_save(name, "grid", ptr, shape, "w");
+	}
+	else {
+		cnpy::npy_save(name, &grid[0], shape, "w");
+	}
+};
+
+template <class T>
+void readGridNumpy(const string& name, Grid<T>* grid) {
+#	if NO_ZLIB==1
+	debMsg( "file format not supported without zlib" ,1);
+	return;
+#	endif
+
+	// find suffix to differentiate between npy <-> npz
+	std::string::size_type idx;
+	bool bUseNpz = false;
+	idx = name.rfind('.');
+	if(idx != std::string::npos)
+	{
+		bUseNpz = name.substr(idx+1) == "npz";
+		debMsg( "Reading grid " << grid->getName() << " to npz file " << name ,1);
+	}
+	else
+	{
+		debMsg( "Reading grid " << grid->getName() << " to npy file " << name ,1);
+	}
+
+    cnpy::NpyArray gridArr;
+    if(bUseNpz) {
+		cnpy::npz_t fNpz = cnpy::npz_load(name);
+		gridArr = fNpz["grid"];
+    }
+    else {
+        gridArr = cnpy::npy_load(name);
+    }
+
+    // Check the file meta information
+    assertMsg (gridArr.shape[2] == grid->getSizeX() && gridArr.shape[1] == grid->getSizeY() && gridArr.shape[0] == grid->getSizeZ(), "grid dim doesn't match, " << Vec3(gridArr.shape[2], gridArr.shape[1], gridArr.shape[0]) << " vs " << grid->getSize() );
+    size_t uDim = 1;
+    if (grid->getType() & GridBase::TypeInt || grid->getType() & GridBase::TypeReal || grid->getType() & GridBase::TypeLevelset)
+        uDim = 1;
+    else if (grid->getType() & GridBase::TypeVec3 || grid->getType() & GridBase::TypeMAC)
+        uDim = 3;
+    else
+        errMsg("unknown element type");
+    assertMsg (gridArr.shape[3] == uDim, "grid data dim doesn't match, " << gridArr.shape[3] << " vs " << uDim );
+    assertMsg (gridArr.word_size == sizeof(T), "grid data size doesn't match, " << gridArr.word_size << " vs " << sizeof(T));
+
+    // TODO: beautify...
+    memcpy(&((*grid)[0]), gridArr.data<T>(), sizeof(T) * grid->getSizeX() * grid->getSizeY() * grid->getSizeZ() );
+};
+
+#endif // NUMPY==1
 
 //*****************************************************************************
 // helper functions
@@ -896,6 +992,16 @@ template void writeGridVDB<int>(const string& name, Grid<int>*  grid);
 template void writeGridVDB<Vec3>(const string& name, Grid<Vec3>* grid);
 template void writeGridVDB<Real>(const string& name, Grid<Real>* grid);
 #endif // OPENVDB==1
+
+#if NUMPY==1
+template void writeGridNumpy<int> (const string& name, Grid<int>*  grid);
+template void writeGridNumpy<Real>(const string& name, Grid<Real>* grid);
+template void writeGridNumpy<Vec3>(const string& name, Grid<Vec3>* grid);
+template void readGridNumpy<int>  (const string& name, Grid<int>*  grid);
+template void readGridNumpy<Real> (const string& name, Grid<Real>* grid);
+template void readGridNumpy<Vec3> (const string& name, Grid<Vec3>* grid);
+#endif // NUMPY==1
+
 
 } //namespace
 
