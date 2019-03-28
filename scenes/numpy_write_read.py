@@ -5,10 +5,11 @@
 from manta import *
 
 # solver params
-dim = 2
+dim = 3
 particleNumber = 2
 res = 64
 gs = vec3(res,res,res)
+gs = vec3(173,371,192)
 if (dim==2):
 	gs.z=1
 	particleNumber = 3      # use more particles in 2d
@@ -18,6 +19,7 @@ s.timestep = 0.5
 
 # prepare grids and particles
 flags    = s.create(FlagGrid)
+flags2   = s.create(FlagGrid)
 vel      = s.create(MACGrid)
 vel2      = s.create(MACGrid)
 velOld   = s.create(MACGrid)
@@ -46,7 +48,7 @@ flags.updateFromLevelset(phiInit)
 sampleFlagsWithParticles(flags=flags, parts=pp, discretization=particleNumber, randomness=0.2)
 
 
-if (GUI):
+if 0 and (GUI):
 	gui = Gui()
 	gui.show()
 	#gui.pause()
@@ -92,3 +94,16 @@ for t in range(2500):
 	mantaMsg('Min/Max New: %f %f' % (vel2.getMin(), vel2.getMax()))
 	vel2.sub(vel)
 	mantaMsg('Min/Max New (sub old): %f %f' % (vel2.getMin(), vel2.getMax()))
+
+	flags.save("flags_TEST.npz".format(t))
+	flags2.load("flags_TEST.npz".format(t))
+	mantaMsg('\nTesting Int Grid numpy write/read')
+	mantaMsg('Min/Max Orig: %f %f' % (flags.getMin(), flags.getMax()))
+	mantaMsg('Min/Max New: %f %f' % (flags2.getMin(), flags2.getMax()))
+	flags2.sub(flags)
+	mantaMsg('Min/Max New (sub old): %f %f' % (flags2.getMin(), flags2.getMax()))
+
+# test load in python with:
+#>>> import numpy as np
+#>>> v = np.load("velocity_TEST.npz")
+#>>> print(format(v["grid"].shape))

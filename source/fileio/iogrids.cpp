@@ -239,7 +239,7 @@ void writeGridTxt(const string& name, Grid<T>* grid) {
 
 	ofstream ofs(name.c_str());
 	if (!ofs.good())
-		errMsg("can't open file " << name);
+		errMsg("writeGridTxt: can't open file " << name);
 	FOR_IJK(*grid) {
 		ofs << Vec3i(i,j,k) <<" = "<< (*grid)(i,j,k) <<"\n";
 	}
@@ -252,7 +252,7 @@ void writeGridRaw(const string& name, Grid<T>* grid) {
 	
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-	if (!gzf) errMsg("can't open file " << name);
+	if (!gzf) errMsg("writeGridRaw: can't open file " << name);
 	gzwrite(gzf, &((*grid)[0]), sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ());
 	gzclose(gzf);
 #	else
@@ -266,7 +266,7 @@ void readGridRaw(const string& name, Grid<T>* grid) {
 	
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
-	if (!gzf) errMsg("can't open file " << name);
+	if (!gzf) errMsg("readGridRaw: can't open file " << name);
 	
 	IndexInt bytes = sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ();
 	IndexInt readBytes = gzread(gzf, &((*grid)[0]), bytes);
@@ -382,10 +382,10 @@ void writeGridUni(const string& name, Grid<T>* grid) {
 	else if (grid->getType() & GridBase::TypeVec3)
 		head.elementType = 2;
 	else 
-		errMsg("unknown element type");
+		errMsg("writeGridUni: unknown element type");
 	
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-	if (!gzf) errMsg("can't open file " << name);
+	if (!gzf) errMsg("writeGridUni: can't open file " << name);
 	
 	gzwrite(gzf, ID, 4);
 #	if FLOATINGPOINT_PRECISION!=1
@@ -412,7 +412,7 @@ void readGridUni(const string& name, Grid<T>* grid) {
 
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
-	if (!gzf) errMsg("can't open file " << name);
+	if (!gzf) errMsg("readGridUni: can't open file " << name);
 
 	char ID[5]={0,0,0,0,0};
 	gzread(gzf, ID, 4);
@@ -469,7 +469,7 @@ void readGridUni(const string& name, Grid<T>* grid) {
 		gzread(gzf, &((*grid)[0]), sizeof(T)*head.dimX*head.dimY*head.dimZ);
 #		endif
 	} else {
-		errMsg( "Unknown header '"<<ID<<"' " );
+		errMsg( "readGridUni: Unknown header '"<<ID<<"' " );
 	}
 	gzclose(gzf);
 #	else
@@ -480,7 +480,7 @@ void readGridUni(const string& name, Grid<T>* grid) {
 template <class T>
 void writeGridVol(const string& name, Grid<T>* grid) {
 	debMsg( "writing grid " << grid->getName() << " to vol file " << name ,1);
-	errMsg("Type not yet supported!");
+	errMsg("writeGridVol: Type not yet supported!");
 }
 
 struct volHeader { 
@@ -511,7 +511,7 @@ void writeGridVol<Real>(const string& name, Grid<Real>* grid) {
 
 	FILE* fp = fopen( name.c_str(), "wb" );
 	if (fp == NULL) {
-		errMsg("Cannot open '" << name << "'");
+		errMsg("writeGridVol: Cannot open '" << name << "'");
 		return;
 	}
 
@@ -535,7 +535,7 @@ void writeGridVol<Real>(const string& name, Grid<Real>* grid) {
 template <class T>
 void readGridVol(const string& name, Grid<T>* grid) {
 	debMsg( "writing grid " << grid->getName() << " to vol file " << name ,1);
-	errMsg("Type not yet supported!");
+	errMsg("readGridVol: Type not yet supported!");
 }
 
 template <>
@@ -545,7 +545,7 @@ void readGridVol<Real>(const string& name, Grid<Real>* grid) {
 	volHeader header; 
 	FILE* fp = fopen( name.c_str(), "rb" );
 	if (fp == NULL) {
-		errMsg("Cannot open '" << name << "'");
+		errMsg("readGridVol: Cannot open '" << name << "'");
 		return;
 	}
 
@@ -553,7 +553,7 @@ void readGridVol<Real>(const string& name, Grid<Real>* grid) {
 	assertMsg( fread( &header, 1, sizeof(volHeader) ,  fp) == sizeof(volHeader), "can't read file, no header present");
 	if( header.dimX != grid->getSizeX() || header.dimY != grid->getSizeY() || header.dimZ != grid->getSizeZ()) errMsg( "grid dim doesn't match, "<< Vec3(header.dimX,header.dimY,header.dimZ)<<" vs "<< grid->getSize() );
 #	if FLOATINGPOINT_PRECISION!=1
-	errMsg("Not yet supported");
+	errMsg("readGridVol: Double precision not yet supported");
 #	else
 	const unsigned int s = sizeof(float)*header.dimX*header.dimY*header.dimZ;
 	assertMsg( fread( &((*grid)[0]), 1, s, fp) == s, "can't read file, no / not enough data");
@@ -590,10 +590,10 @@ void writeGrid4dUni(const string& name, Grid4d<T>* grid) {
 	else if (grid->getType() & Grid4dBase::TypeVec4)
 		head.elementType = 2;
 	else 
-		errMsg("unknown element type");
+		errMsg("writeGrid4dUni: unknown element type");
 	
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-	if (!gzf) errMsg("can't open file " << name);
+	if (!gzf) errMsg("writeGrid4dUni: can't open file " << name);
 	
 	gzwrite(gzf, ID, 4);
 #	if FLOATINGPOINT_PRECISION!=1
@@ -629,7 +629,7 @@ void readGrid4dUni(const string& name, Grid4d<T>* grid, int readTslice, Grid4d<T
 	// optionally - reuse file handle, if valid one is passed in fileHandle pointer...
 	if( (!fileHandle) || (fileHandle && (*fileHandle == NULL)) ) {
 		gzf = gzopen(name.c_str(), "rb");
-		if (!gzf) errMsg("can't open file "<<name);
+		if (!gzf) errMsg("readGrid4dUni: can't open file "<<name);
 
 		gzread(gzf, ID, 4);
 		if( fileHandle) { *fileHandle = gzf; }
@@ -694,7 +694,7 @@ void readGrid4dUni(const string& name, Grid4d<T>* grid, int readTslice, Grid4d<T
 			assertMsg ( unifyGridType(head.gridType)==unifyGridType(slice->getType()) , "grid type doesn't match "<< head.gridType<<" vs "<< slice->getType() );
 
 #			if FLOATINGPOINT_PRECISION!=1
-			errMsg( "NYI (2)" ); // slice read not yet supported for double
+			errMsg( "readGrid4dUni: NYI (2)" ); // slice read not yet supported for double
 #			else
 			assertMsg( slice, "No 3d slice grid data given" );
 			assertMsg (readTslice < head.dimT, "grid dim4 slice too large "<< readTslice <<" vs "<< head.dimT );
@@ -729,7 +729,7 @@ void writeGrid4dRaw(const string& name, Grid4d<T>* grid) {
 	
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
-	if (!gzf) errMsg("can't open file " << name);
+	if (!gzf) errMsg("writeGrid4dRaw: can't open file " << name);
 	gzwrite(gzf, &((*grid)[0]), sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ()*grid->getSizeT());
 	gzclose(gzf);
 #	else
@@ -743,7 +743,7 @@ void readGrid4dRaw(const string& name, Grid4d<T>* grid) {
 	
 #	if NO_ZLIB!=1
 	gzFile gzf = gzopen(name.c_str(), "rb");
-	if (!gzf) errMsg("can't open file " << name);
+	if (!gzf) errMsg("readGrid4dRaw: can't open file " << name);
 	
 	IndexInt bytes = sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ()*grid->getSizeT();
 	IndexInt readBytes = gzread(gzf, &((*grid)[0]), bytes);
@@ -844,6 +844,9 @@ void writeGridNumpy(const string& name, Grid<T>* grid) {
 	debMsg( "file format not supported without zlib" ,1);
 	return;
 #	endif
+#	if FLOATINGPOINT_PRECISION!=1
+	errMsg("writeGridNumpy: Double precision not yet supported");
+#	endif
 
 	// find suffix to differentiate between npy <-> npz
 	std::string::size_type idx;
@@ -866,12 +869,19 @@ void writeGridNumpy(const string& name, Grid<T>* grid) {
 	else if (grid->getType() & GridBase::TypeVec3 || grid->getType() & GridBase::TypeMAC)
 		uDim = 3;
 	else
-		errMsg("unknown element type");
+		errMsg("writeGridNumpy: unknown element type");
 
 	const std::vector<size_t> shape = {static_cast<size_t>(grid->getSizeZ()), static_cast<size_t>(grid->getSizeY()), static_cast<size_t>(grid->getSizeX()), uDim};
+
 	if(bUseNpz){
-		T* ptr = &((*grid)[0]);
-		cnpy::npz_save(name, "grid", ptr, shape, "w");
+		if (grid->getType() & GridBase::TypeVec3 || grid->getType() & GridBase::TypeMAC) {
+			// cast to float* for export!
+			float* ptr = (float*)&((*grid)[0]);
+			cnpy::npz_save(name, "grid", ptr, shape, "w");
+		} else {
+			T* ptr = &((*grid)[0]);
+			cnpy::npz_save(name, "grid", ptr, shape, "w");
+		}
 	}
 	else {
 		cnpy::npy_save(name, &grid[0], shape, "w");
@@ -883,6 +893,9 @@ void readGridNumpy(const string& name, Grid<T>* grid) {
 #	if NO_ZLIB==1
 	debMsg( "file format not supported without zlib" ,1);
 	return;
+#	endif
+#	if FLOATINGPOINT_PRECISION!=1
+	errMsg("readGridNumpy: Double precision not yet supported");
 #	endif
 
 	// find suffix to differentiate between npy <-> npz
@@ -916,12 +929,19 @@ void readGridNumpy(const string& name, Grid<T>* grid) {
     else if (grid->getType() & GridBase::TypeVec3 || grid->getType() & GridBase::TypeMAC)
         uDim = 3;
     else
-        errMsg("unknown element type");
+        errMsg("readGridNumpy: unknown element type");
+	std::cerr<<"  aaa NT_DEBUG " <<	gridArr.shape[0]<<" "<<	gridArr.shape[1]<<" "<<	gridArr.shape[2]<<" "<<	gridArr.shape[3]<<" \n";
     assertMsg (gridArr.shape[3] == uDim, "grid data dim doesn't match, " << gridArr.shape[3] << " vs " << uDim );
-    assertMsg (gridArr.word_size == sizeof(T), "grid data size doesn't match, " << gridArr.word_size << " vs " << sizeof(T));
 
-    // TODO: beautify...
-    memcpy(&((*grid)[0]), gridArr.data<T>(), sizeof(T) * grid->getSizeX() * grid->getSizeY() * grid->getSizeZ() );
+	if (grid->getType() & GridBase::TypeVec3 || grid->getType() & GridBase::TypeMAC) {
+		// treated as float* for export , thus consider 3 elements
+	    assertMsg (3*gridArr.word_size == sizeof(T), "vec3 grid data size doesn't match, " << 3*gridArr.word_size << " vs " << sizeof(T));
+	} else {
+	    assertMsg (gridArr.word_size == sizeof(T), "grid data size doesn't match, " << gridArr.word_size << " vs " << sizeof(T));
+	}
+
+    // copy back, TODO: beautify...
+   	memcpy(&((*grid)[0]), gridArr.data<T>(), sizeof(T) * grid->getSizeX() * grid->getSizeY() * grid->getSizeZ() );
 };
 
 #endif // NUMPY==1
