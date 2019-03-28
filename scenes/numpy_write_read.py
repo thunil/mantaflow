@@ -1,15 +1,13 @@
 #
-# Very simple apic without level set
-# and without any particle resampling
+# NUMPY file format test
 #
 from manta import *
 
 # solver params
-dim = 3
+dim = 2
 particleNumber = 2
 res = 64
 gs = vec3(res,res,res)
-gs = vec3(173,371,192)
 if (dim==2):
 	gs.z=1
 	particleNumber = 3      # use more particles in 2d
@@ -103,7 +101,8 @@ for t in range(2500):
 	flags2.sub(flags)
 	mantaMsg('Min/Max New (sub old): %f %f' % (flags2.getMin(), flags2.getMax()))
 
-# test load in python with:
+# externally test load in python with:
 #>>> import numpy as np
 #>>> v = np.load("velocity_TEST.npz")
 #>>> print(format(v["grid"].shape))
+
