@@ -26,10 +26,7 @@ extern "C" {
 #include "openvdb/openvdb.h"
 #endif
 
-#if NUMPY==1
 #include "cnpy.h"
-#endif
-
 #include "mantaio.h"
 #include "grid.h"
 #include "vector4d.h"
@@ -834,9 +831,7 @@ void writeGridVDB(const string& name, Grid<Vec3>* grid) {
 
 
 //*****************************************************************************
-// optional numpy export
-
-#if NUMPY==1
+// npz file support
 
 template <class T>
 void writeGridNumpy(const string& name, Grid<T>* grid) {
@@ -877,10 +872,10 @@ void writeGridNumpy(const string& name, Grid<T>* grid) {
 		if (grid->getType() & GridBase::TypeVec3 || grid->getType() & GridBase::TypeMAC) {
 			// cast to float* for export!
 			float* ptr = (float*)&((*grid)[0]);
-			cnpy::npz_save(name, "grid", ptr, shape, "w");
+			cnpy::npz_save(name, "arr_0", ptr, shape, "w");
 		} else {
 			T* ptr = &((*grid)[0]);
-			cnpy::npz_save(name, "grid", ptr, shape, "w");
+			cnpy::npz_save(name, "arr_0", ptr, shape, "w");
 		}
 	}
 	else {
@@ -915,7 +910,7 @@ void readGridNumpy(const string& name, Grid<T>* grid) {
     cnpy::NpyArray gridArr;
     if(bUseNpz) {
 		cnpy::npz_t fNpz = cnpy::npz_load(name);
-		gridArr = fNpz["grid"];
+		gridArr = fNpz["arr_0"];
     }
     else {
         gridArr = cnpy::npy_load(name);
@@ -930,7 +925,6 @@ void readGridNumpy(const string& name, Grid<T>* grid) {
         uDim = 3;
     else
         errMsg("readGridNumpy: unknown element type");
-	std::cerr<<"  aaa NT_DEBUG " <<	gridArr.shape[0]<<" "<<	gridArr.shape[1]<<" "<<	gridArr.shape[2]<<" "<<	gridArr.shape[3]<<" \n";
     assertMsg (gridArr.shape[3] == uDim, "grid data dim doesn't match, " << gridArr.shape[3] << " vs " << uDim );
 
 	if (grid->getType() & GridBase::TypeVec3 || grid->getType() & GridBase::TypeMAC) {
@@ -944,7 +938,32 @@ void readGridNumpy(const string& name, Grid<T>* grid) {
    	memcpy(&((*grid)[0]), gridArr.data<T>(), sizeof(T) * grid->getSizeX() * grid->getSizeY() * grid->getSizeZ() );
 };
 
-#endif // NUMPY==1
+// adopted from getUniFileSize
+void getNpzFileSize(const string& name, int& x, int& y, int& z, int* t = NULL, std::string* info = NULL) {
+	x = y = z = 0;
+#	if NO_ZLIB!=1
+	debMsg( "file format not supported without zlib" ,1);
+	return;
+#	endif
+#	if FLOATINGPOINT_PRECISION!=1
+	errMsg("getNpzFileSize: Double precision not yet supported");
+#	endif
+	// find suffix to differentiate between npy <-> npz
+    cnpy::NpyArray gridArr;
+	cnpy::npz_t fNpz = cnpy::npz_load(name);
+	gridArr = fNpz["arr_0"];
+
+	z = gridArr.shape[0];
+	y = gridArr.shape[1];
+	x = gridArr.shape[2];
+	if(t) (*t) = 0; // unused for now
+}
+PYTHON() Vec3 getNpzFileSize(const string& name) {
+	int x,y,z;
+	getNpzFileSize(name, x,y,z); 
+	return Vec3( Real(x), Real(y), Real(z) );
+}
+
 
 //*****************************************************************************
 // helper functions
@@ -1007,21 +1026,18 @@ template void writeGrid4dRaw<Real>(const string& name, Grid4d<Real>* grid);
 template void writeGrid4dRaw<Vec3>(const string& name, Grid4d<Vec3>* grid);
 template void writeGrid4dRaw<Vec4>(const string& name, Grid4d<Vec4>* grid);
 
-#if OPENVDB==1
-template void writeGridVDB<int>(const string& name, Grid<int>*  grid);
-template void writeGridVDB<Vec3>(const string& name, Grid<Vec3>* grid);
-template void writeGridVDB<Real>(const string& name, Grid<Real>* grid);
-#endif // OPENVDB==1
-
-#if NUMPY==1
 template void writeGridNumpy<int> (const string& name, Grid<int>*  grid);
 template void writeGridNumpy<Real>(const string& name, Grid<Real>* grid);
 template void writeGridNumpy<Vec3>(const string& name, Grid<Vec3>* grid);
 template void readGridNumpy<int>  (const string& name, Grid<int>*  grid);
 template void readGridNumpy<Real> (const string& name, Grid<Real>* grid);
 template void readGridNumpy<Vec3> (const string& name, Grid<Vec3>* grid);
-#endif // NUMPY==1
 
+#if OPENVDB==1
+template void writeGridVDB<int>(const string& name, Grid<int>*  grid);
+template void writeGridVDB<Vec3>(const string& name, Grid<Vec3>* grid);
+template void writeGridVDB<Real>(const string& name, Grid<Real>* grid);
+#endif // OPENVDB==1
 
 } //namespace
 

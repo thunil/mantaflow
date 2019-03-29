@@ -12,12 +12,7 @@ import shutil
 # smaller helpers (filenames etc.)
 
 def outputFilename( file, gridname ):
-	return file +"_"+ gridname + "_out.uni" 
-
-# original, simpler...
-def referenceFilename_old( file, gridname ):
-	return file +"_"+ gridname + "_ref.uni" 
-
+	return file +"_"+ gridname + "_out.npz" 
 
 def getGenRefFileSetting( ):
 	# check env var for generate data setting
@@ -47,7 +42,7 @@ def getVisualSetting( ):
 def referenceFilename( file, gridname ):
 	(name,ext) = os.path.splitext( os.path.basename(file) )
 	ddir = dataDirectory(file)
-	suffix = "uni" 
+	suffix = "npz" 
 	# double prec mode uses raw files (uni is always single prec float!)
 	# uni files can be used to test IO , but strict threshold will cause "FAILs" then
 	if getFloatSetting()==2: 
