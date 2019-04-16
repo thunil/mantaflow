@@ -52,4 +52,20 @@ int main()
     double* mv1 = arr_mv1.data<double>();
     assert(arr_mv1.shape.size() == 1 && arr_mv1.shape[0] == 1);
     assert(mv1[0] == myVar1);
+
+    // std::cout << "Loading test.npz" << std::endl;
+    // cnpy::NpyArray test_npz_a = cnpy::npz_load("test.npz","a");
+    // cnpy::NpyArray test_npz_b = cnpy::npz_load("test.npz","b");
+
+    // std::cout << "test_npz_a: " << test_npz_a.word_size << std::endl;
+    // std::cout << "test_npz_b: " << test_npz_b.word_size << std::endl;
+
+    // auto b = test_npz_b.as_vec<float>();
+    // for ( auto b_entry : b)
+    // {
+    //     std::cout << b_entry << " ";
+    // }
+    // std::cout << std::endl;
+    // cnpy::npz_save("test_a.npz", "a", test_npz_a.data<float>(), test_npz_a.shape, "w"); //"w" overwrites any existing file
+    // cnpy::npz_save("test_a.npz", "b", test_npz_b.data<float>(), test_npz_b.shape, "a"); //"a" appends to the file we created above
 }
