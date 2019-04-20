@@ -50,7 +50,7 @@ if (GUI):
 	#gui.pause()
 
 source = s.create(Cylinder, center=gs*vec3(0.5,0.2,0.5), radius=gs.y*0.14, z=gs*vec3(0, 0.02*1.5, 0))
-getSpiralVelocity2D(flags=flags, vel=velT, strength=0.5*scale)
+getSpiralVelocity(flags=flags, vel=velT, strength=0.5*scale)
 
 setGradientYWeight(W=W, minY=0,     maxY=res/2, valAtMin=valAtMin, valAtMax=valAtMin)
 setGradientYWeight(W=W, minY=res/2, maxY=res,   valAtMin=valAtMax, valAtMax=valAtMax)
