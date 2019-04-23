@@ -910,7 +910,7 @@ void readGridVDB(const string& name, Grid<Vec3>* grid) {
 
 
 //*****************************************************************************
-// npz file support
+// npz file support (warning - read works, but write generates uncompressed npz; i.e. not recommended for large volumes)
 
 template <class T>
 void writeGridNumpy(const string& name, Grid<T>* grid) {
@@ -933,7 +933,7 @@ void writeGridNumpy(const string& name, Grid<T>* grid) {
 		debMsg( "Writing grid " << grid->getName() << " to npy file " << name ,1);
 	}
 
-	// Storage code
+	// storage code
 	size_t uDim = 1;
 	if (grid->getType() & GridBase::TypeInt || grid->getType() & GridBase::TypeReal || grid->getType() & GridBase::TypeLevelset)
 		uDim = 1;
@@ -945,6 +945,7 @@ void writeGridNumpy(const string& name, Grid<T>* grid) {
 	const std::vector<size_t> shape = {static_cast<size_t>(grid->getSizeZ()), static_cast<size_t>(grid->getSizeY()), static_cast<size_t>(grid->getSizeX()), uDim};
 
 	if(bUseNpz){
+		// note, the following generates a zip file without compression
 		if (grid->getType() & GridBase::TypeVec3 || grid->getType() & GridBase::TypeMAC) {
 			// cast to float* for export!
 			float* ptr = (float*)&((*grid)[0]);
