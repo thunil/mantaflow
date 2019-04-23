@@ -843,17 +843,14 @@ void writeGridNumpy(const string& name, Grid<T>* grid) {
 	errMsg("writeGridNumpy: Double precision not yet supported");
 #	endif
 
-	// find suffix to differentiate between npy <-> npz
+	// find suffix to differentiate between npy <-> npz , TODO: check for actual "npy" string
 	std::string::size_type idx;
 	bool bUseNpz = false;
 	idx = name.rfind('.');
-	if(idx != std::string::npos)
-	{
+	if(idx != std::string::npos) {
 		bUseNpz = name.substr(idx+1) == "npz";
 		debMsg( "Writing grid " << grid->getName() << " to npz file " << name ,1);
-	}
-	else
-	{
+	} else {
 		debMsg( "Writing grid " << grid->getName() << " to npy file " << name ,1);
 	}
 
@@ -877,8 +874,7 @@ void writeGridNumpy(const string& name, Grid<T>* grid) {
 			T* ptr = &((*grid)[0]);
 			cnpy::npz_save(name, "arr_0", ptr, shape, "w");
 		}
-	}
-	else {
+	} else {
 		cnpy::npy_save(name, &grid[0], shape, "w");
 	}
 };
@@ -897,22 +893,18 @@ void readGridNumpy(const string& name, Grid<T>* grid) {
 	std::string::size_type idx;
 	bool bUseNpz = false;
 	idx = name.rfind('.');
-	if(idx != std::string::npos)
-	{
+	if(idx != std::string::npos) {
 		bUseNpz = name.substr(idx+1) == "npz";
-		debMsg( "Reading grid " << grid->getName() << " to npz file " << name ,1);
-	}
-	else
-	{
-		debMsg( "Reading grid " << grid->getName() << " to npy file " << name ,1);
+		debMsg( "Reading grid " << grid->getName() << " as npz file " << name ,1);
+	} else {
+		debMsg( "Reading grid " << grid->getName() << " as npy file " << name ,1);
 	}
 
     cnpy::NpyArray gridArr;
     if(bUseNpz) {
 		cnpy::npz_t fNpz = cnpy::npz_load(name);
 		gridArr = fNpz["arr_0"];
-    }
-    else {
+    } else {
         gridArr = cnpy::npy_load(name);
     }
 
