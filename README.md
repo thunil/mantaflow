@@ -9,3 +9,5 @@ how to build convolutional neural network setups in conjunction with the [tensor
 For more information on how to install, run and code with Mantaflow, please head over to our home page at
 [http://mantaflow.com](http://mantaflow.com)
 
+![mantaflow logo](resources/resources/mantaflow-logo1.png)
+
