@@ -25,6 +25,7 @@ template<class T> class Grid;
 template<class T> class Grid4d;
 class BasicParticleSystem;
 template<class T> class ParticleDataImpl;
+template<class T> class MeshDataImpl;
 
 void writeObjFile(const std::string& name, Mesh* mesh);
 void writeBobjFile(const std::string& name, Mesh* mesh);
@@ -38,7 +39,10 @@ template<class T> void writeGridTxt(const std::string& name, Grid<T>* grid);
 
 #if OPENVDB==1
 template<class T> void writeGridVDB(const std::string& name, Grid<T>* grid);
+template<class T> void readGridVDB(const std::string& name, Grid<T>* grid);
 #endif // OPENVDB==1
+template<class T> void writeGridNumpy(const std::string& name, Grid<T>* grid);
+template<class T> void readGridNumpy (const std::string& name, Grid<T>* grid);
 
 template<class T> void readGridUni (const std::string& name, Grid<T>* grid);
 template<class T> void readGridRaw (const std::string& name, Grid<T>* grid);
@@ -55,6 +59,9 @@ void readParticlesUni (const std::string& name, BasicParticleSystem* parts );
 
 template <class T> void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata );
 template <class T> void readPdataUni (const std::string& name, ParticleDataImpl<T>* pdata );
+
+template <class T> void writeMdataUni(const std::string& name, MeshDataImpl<T>* mdata );
+template <class T> void readMdataUni (const std::string& name, MeshDataImpl<T>* mdata );
 
 void getUniFileSize(const std::string& name, int& x, int& y, int& z, int* t = NULL, std::string* info = NULL);
 

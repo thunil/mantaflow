@@ -55,7 +55,7 @@ void pbFinalizePlugin(FluidSolver *parent, const string& name, bool doTime) {
 }
 
 void pbSetError(const string& fn, const string& ex) {
-	cout << "Error in " << fn << endl;
+	debMsg("Error in " << fn, 1);
 	if (!ex.empty())
 		PyErr_SetString(PyExc_RuntimeError, ex.c_str());
 }

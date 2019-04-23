@@ -30,6 +30,7 @@ namespace Manta {
 
 int WaveletNoiseField::randomSeed = 13322223;
 Real* WaveletNoiseField::mNoiseTile = NULL;
+std::atomic<int> WaveletNoiseField::mNoiseReferenceCount(0);
 
 static Real _aCoeffs[32] = {
 	0.000334,-0.001528, 0.000410, 0.003545,-0.000938,-0.008233, 0.002172, 0.019120,
@@ -95,7 +96,7 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
 	const int n = NOISE_TILE_SIZE;
 	const int n3 = n*n*n, n3d=n3*3;
 
-	if(mNoiseTile) return;
+	if(mNoiseTile) { mNoiseReferenceCount++; return; }
 	Real *noise3 = new Real[n3d];
 	if(loadFromFile) {
 		FILE* fp = fopen(TILENAME,"rb"); 
@@ -104,6 +105,7 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
 			fclose(fp);
 			debMsg("Noise tile loaded from file " TILENAME , 1);
 			mNoiseTile = noise3;
+			mNoiseReferenceCount++;
 			return;
 		}
 	}
@@ -173,6 +175,7 @@ void WaveletNoiseField::generateTile( int loadFromFile) {
 	}
 	
 	mNoiseTile = noise3;
+	mNoiseReferenceCount++;
 	delete[] temp13;
 	delete[] temp23;
 	

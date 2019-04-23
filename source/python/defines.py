@@ -49,4 +49,9 @@ PcMIC       = 1
 PcMGDynamic = 2
 PcMGStatic  = 3
 
+# particles
+PtypeSpray   = 2
+PtypeBubble  = 4
+PtypeFoam    = 8
+PtypeTracer  = 16
 

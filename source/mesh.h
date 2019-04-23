@@ -29,6 +29,9 @@ class LevelsetGrid;
 class FlagGrid;
 class MACGrid;
 class Shape;
+class MeshDataBase;
+template<class T> class MeshDataImpl;
+
 
 //! Node position and flags
 struct Node {
@@ -148,7 +151,12 @@ public:
 	PYTHON() void computeLevelset(LevelsetGrid& levelset, Real sigma, Real cutoff=-1.);
 	//! map mesh to grid with sdf
 	PYTHON() void applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags=0, Real cutoff=-1.);
-    
+
+	//! get data pointer of nodes
+	PYTHON() std::string getNodesDataPointer();
+	//! get data pointer of tris
+	PYTHON() std::string getTrisDataPointer();
+
     // ops
     Mesh& operator=(const Mesh& o);
     
@@ -157,6 +165,12 @@ public:
     inline int numNodes() const { return mNodes.size(); }
     inline int numTriChannels() const { return mTriChannels.size(); }
     inline int numNodeChannels() const { return mNodeChannels.size(); }
+
+	//! return size of container
+	//! note , python binding disabled for now! cannot yet deal with long-long types
+	inline IndexInt size() const { return mNodes.size(); }
+	//! slow virtual function of base class, also returns size
+	virtual IndexInt getSizeSlow() const { return size(); }
     
     inline Triangle& tris(int i) { return mTris[i]; }
     inline Node& nodes(int i) { return mNodes[i]; }    
@@ -197,6 +211,29 @@ public:
     void addTriChannel(TriChannel* c) { mTriChannels.push_back(c); rebuildChannels(); }
     void addNodeChannel(NodeChannel* c) { mNodeChannels.push_back(c); rebuildChannels(); }
 
+	//! mesh data functions
+
+	//! create a mesh data object
+	PYTHON() PbClass* create(PbType type, PbTypeVec T=PbTypeVec(), const std::string& name = "");
+	//! add a mesh data field, set its parent mesh pointer
+	void registerMdata(MeshDataBase* mdata);
+	void registerMdataReal(MeshDataImpl<Real>* mdata);
+	void registerMdataVec3(MeshDataImpl<Vec3>* mdata);
+	void registerMdataInt (MeshDataImpl<int >* mdata);
+	//! remove a mesh data entry
+	void deregister(MeshDataBase* mdata);
+	//! add one zero entry to all data fields
+	void addAllMdata();
+	// note - deletion of mdata is handled in compress function
+
+	//! how many are there?
+	IndexInt getNumMdata() const { return mMeshData.size(); }
+	//! access one of the fields
+	MeshDataBase* getMdata(int i) { return mMeshData[i]; }
+
+	//! update data fields
+	void updateDataFields();
+
 protected:    
     void rebuildChannels();
     
@@ -206,9 +243,128 @@ protected:
     std::vector<NodeChannel*> mNodeChannels;
     std::vector<TriChannel*> mTriChannels;
     std::vector<OneRing> m1RingLookup;
+
+	//! store mesh data , each pointer has its own storage vector of a certain type (int, real, vec3)
+	std::vector<MeshDataBase*> mMeshData;
+	//! lists of different types, for fast operations w/o virtual function calls
+	std::vector< MeshDataImpl<Real> *> mMdataReal;
+	std::vector< MeshDataImpl<Vec3> *> mMdataVec3;
+	std::vector< MeshDataImpl<int> *>  mMdataInt;
+	//! indicate that mdata of this mesh is copied, and needs to be freed
+	bool mFreeMdata;
+};
+
+//******************************************************************************
+
+//! abstract interface for mesh data
+PYTHON() class MeshDataBase : public PbClass {
+public:
+	PYTHON() MeshDataBase(FluidSolver* parent);
+	virtual ~MeshDataBase();
+
+	//! data type IDs, in line with those for grids
+	enum MdataType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4 };
+
+	//! interface functions, using assert instead of pure virtual for python compatibility
+	virtual IndexInt  getSizeSlow() const { assertMsg( false , "Dont use, override..."); return 0; }
+	virtual void addEntry()   { assertMsg( false , "Dont use, override..."); return;   }
+	virtual MeshDataBase* clone() { assertMsg( false , "Dont use, override..."); return NULL; }
+	virtual MdataType getType() const { assertMsg( false , "Dont use, override..."); return TypeNone; }
+	virtual void resize(IndexInt size)     { assertMsg( false , "Dont use, override..."); return;  }
+	virtual void copyValueSlow(IndexInt from, IndexInt to) { assertMsg( false , "Dont use, override..."); return;  }
+
+	//! set base pointer
+	void setMesh(Mesh* set) { mMesh = set; }
+
+	//! debugging
+	inline void checkNodeIndex(IndexInt idx) const;
+
+protected:
+	Mesh* mMesh;
 };
 
 
+//! abstract interface for mesh data
+PYTHON() template<class T>
+class MeshDataImpl : public MeshDataBase {
+public:
+	PYTHON() MeshDataImpl(FluidSolver* parent);
+	MeshDataImpl(FluidSolver* parent, MeshDataImpl<T>* other);
+	virtual ~MeshDataImpl();
+
+	//! access data
+	inline       T& get(IndexInt idx)              { DEBUG_ONLY(checkNodeIndex(idx)); return mData[idx]; }
+	inline const T& get(IndexInt idx) const        { DEBUG_ONLY(checkNodeIndex(idx)); return mData[idx]; }
+	inline       T& operator[](IndexInt idx)       { DEBUG_ONLY(checkNodeIndex(idx)); return mData[idx]; }
+	inline const T& operator[](IndexInt idx) const { DEBUG_ONLY(checkNodeIndex(idx)); return mData[idx]; }
+
+	//! set all values to 0, note - different from meshSystem::clear! doesnt modify size of array (has to stay in sync with parent system)
+	PYTHON() void clear();
+
+	//! set grid from which to get data...
+	PYTHON() void setSource(Grid<T>* grid, bool isMAC=false );
+
+	//! mesh data base interface
+	virtual IndexInt  getSizeSlow() const;
+	virtual void addEntry();
+	virtual MeshDataBase* clone();
+	virtual MdataType getType() const;
+	virtual void resize(IndexInt s);
+	virtual void copyValueSlow(IndexInt from, IndexInt to);
+
+	IndexInt  size() const { return mData.size(); }
+
+	//! fast inlined functions for per mesh operations
+	inline void copyValue(IndexInt from, IndexInt to) { get(to) = get(from); }
+	void initNewValue(IndexInt idx, Vec3 pos);
+
+	//! python interface (similar to grid data)
+	PYTHON() void setConst(T s);
+	PYTHON() void setConstRange(T s, const int begin, const int end);
+	PYTHON() MeshDataImpl<T>& copyFrom(const MeshDataImpl<T>& a);
+	PYTHON() void add(const MeshDataImpl<T>& a);
+	PYTHON() void sub(const MeshDataImpl<T>& a);
+	PYTHON() void addConst(T s);
+	PYTHON() void addScaled(const MeshDataImpl<T>& a, const T& factor);
+	PYTHON() void mult( const MeshDataImpl<T>& a);
+	PYTHON() void multConst(T s);
+	PYTHON() void safeDiv(const MeshDataImpl<T>& a);
+	PYTHON() void clamp(Real min, Real max);
+	PYTHON() void clampMin(Real vmin);
+	PYTHON() void clampMax(Real vmax);
+
+	PYTHON() Real getMaxAbs();
+	PYTHON() Real getMax();
+	PYTHON() Real getMin();
+
+	PYTHON() T    sum(const MeshDataImpl<int> *t=NULL, const int itype=0) const;
+	PYTHON() Real sumSquare() const;
+	PYTHON() Real sumMagnitude() const;
+
+	//! special, set if int flag in t has "flag"
+	PYTHON() void setConstIntFlag(T s, const MeshDataImpl<int>& t, const int flag);
+
+	PYTHON() void printMdata(IndexInt start=-1, IndexInt stop=-1, bool printIndex=false);
+
+	//! file io
+	PYTHON() void save(const std::string name);
+	PYTHON() void load(const std::string name);
+
+	//! get data pointer of mesh data
+	PYTHON() std::string getDataPointer();
+protected:
+	//! data storage
+	std::vector<T> mData;
+
+	//! optionally , we might have an associated grid from which to grab new data
+	Grid<T>* mpGridSource;
+	//! unfortunately , we need to distinguish mac vs regular vec3
+	bool mGridSourceMAC;
+};
+
+PYTHON() alias MeshDataImpl<int>  MdataInt;
+PYTHON() alias MeshDataImpl<Real> MdataReal;
+PYTHON() alias MeshDataImpl<Vec3> MdataVec3;
 
 
 // ***************************************************************************************************************
@@ -223,6 +379,20 @@ void SimpleNodeChannel<T>::renumber(const std::vector<int>& newIndex, int newsiz
     data.resize(newsize);
 }
 
+inline void MeshDataBase::checkNodeIndex(IndexInt idx) const {
+	IndexInt mySize = this->getSizeSlow();
+	if (idx<0 || idx > mySize ) {
+		errMsg( "MeshData " << " size " << mySize << " : index " << idx << " out of bound " );
+	}
+	if ( mMesh && mMesh->getSizeSlow()!=mySize ) {
+		errMsg( "MeshData " << " size " << mySize << " does not match parent! (" << mMesh->getSizeSlow() << ") " );
+	}
+}
+
+template<class T>
+void MeshDataImpl<T>::clear() {
+	for(IndexInt i=0; i<(IndexInt)mData.size(); ++i) mData[i] = 0.;
+}
 
 
 } //namespace

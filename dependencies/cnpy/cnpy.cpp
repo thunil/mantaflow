@@ -313,7 +313,8 @@ cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
         }
         else {
             //skip past the data
-            uint32_t size = *(uint32_t*) &local_header[22];
+            //uint32_t size = *(uint32_t*) &local_header[22];
+            uint32_t size = *(uint32_t*) &local_header[18]; // using index 18 instead of 22 enables support for compressed data
             fseek(fp,size,SEEK_CUR);
         }
     }

@@ -167,21 +167,24 @@ Real getEpsDual(const Real eps_abs, const Real eps_rel, const MACGrid &y) {
 	return eps_dual;
 }
 
-//! Create a spiral velocity field in 2D as a test scene
-PYTHON() void getSpiralVelocity2D(const FlagGrid &flags, MACGrid &vel, Real strength = 1.0) {
-	int nx = flags.getSizeX(), ny = flags.getSizeY();
+//! Create a spiral velocity field in 2D as a test scene (optionally in 3D)
+PYTHON() void getSpiralVelocity(const FlagGrid &flags, MACGrid &vel, Real strength = 1.0, bool with3D=false) {
+	int nx = flags.getSizeX(), ny = flags.getSizeY(), nz = 1;
+	if (with3D) nz = flags.getSizeZ();
 	Real midX = 0.5*(Real)(nx - 1);
 	Real midY = 0.5*(Real)(ny - 1);
-	int k = 0;
+	Real midZ = 0.5*(Real)(nz - 1);
 	for (int i = 0; i < nx; i++) {
 		for (int j = 0; j < ny; j++) {
-			int idx = flags.index(i, j, k);
-			Real diffX = midX - i;
-			Real diffY = midY - j;
-			Real hypotenuse = sqrt(diffX*diffX + diffY*diffY);
-			if (hypotenuse > 0) {
-				vel[idx].x = diffY / hypotenuse;
-				vel[idx].y = -diffX / hypotenuse;
+			for (int k = 0; k < nz; k++) {
+				int idx = flags.index(i, j, k);
+				Real diffX = midX - i;
+				Real diffY = midY - j;
+				Real hypotenuse = sqrt(diffX*diffX + diffY*diffY);
+				if (hypotenuse > 0) {
+					vel[idx].x = diffY / hypotenuse;
+					vel[idx].y = -diffX / hypotenuse;
+				}
 			}
 		}
 	}
@@ -294,7 +297,7 @@ PYTHON() void PD_fluid_guiding(MACGrid& vel, MACGrid& velT,
 	Real epsRel = 1e-3, Real epsAbs = 1e-3, int maxIters = 200,
 	// duplicated for pressure solve
 	Grid<Real>* phi = 0, Grid<Real>* perCellCorr = 0, MACGrid* fractions = 0, Real gfClamp = 1e-04, Real cgMaxIterFac = 1.5, Real cgAccuracy = 1e-3,
-	int preconditioner = 1, bool zeroPressureFixing = false)
+	int preconditioner = 1, bool zeroPressureFixing = false, const Grid<Real> *curv = NULL, const Real surfTens = 0.)
 {
 	FluidSolver* parent = vel.getParent();
 
@@ -329,7 +332,7 @@ PYTHON() void PD_fluid_guiding(MACGrid& vel, MACGrid& velT,
 		Real cgAccuracyAdaptive = cgAccuracy;
 
 		solvePressure (z, pressure, flags, cgAccuracyAdaptive, phi, perCellCorr, fractions, gfClamp,
-		    cgMaxIterFac, true, preconditioner, false, false, zeroPressureFixing );
+		    cgMaxIterFac, true, preconditioner, false, false, zeroPressureFixing, curv, surfTens );
 
 		// y-update
 		y.copyFrom(z);
@@ -347,6 +350,13 @@ PYTHON() void PD_fluid_guiding(MACGrid& vel, MACGrid& velT,
 	vel.copyFrom(z);
 
 	debMsg("PD_fluid_guiding iterations:" << iter, 1);
+}
+
+//! reset precomputation
+PYTHON() void releaseBlurPrecomp() {
+	gBlurPrecomputed = false;
+	gBlurKernelRadius = -1;
+	gBlurKernel = 0.f;
 }
 
 

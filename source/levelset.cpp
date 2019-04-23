@@ -16,6 +16,7 @@
 #include "kernel.h"
 #include "mcubes.h"
 #include "mesh.h"
+#include <stack>
 
 using namespace std;
 namespace Manta {
@@ -235,6 +236,77 @@ void LevelsetGrid::initFromFlags(const FlagGrid& flags, bool ignoreWalls) {
 	}
 }
 
+void LevelsetGrid::fillHoles(int maxsize) {
+	Real cur, i1, i2, j1, j2, k1, k2;
+	Vec3i c, cTmp;
+	std::stack<Vec3i> undo;
+	std::stack<Vec3i> todo;
+
+	FOR_IJK_BND(*this, 1) {
+
+		cur = mData[index(i,j,k)];
+		i1 = mData[index(i-1,j,k)];
+		i2 = mData[index(i+1,j,k)];
+		j1 = mData[index(i,j-1,k)];
+		j2 = mData[index(i,j+1,k)];
+		k1 = mData[index(i,j,k-1)];
+		k2 = mData[index(i,j,k+1)];
+
+		/* Skip cells inside and cells outside with no inside neighbours early */
+		if (cur < 0.) continue;
+		if (cur > 0. && i1 > 0. && i2 > 0. && j1 > 0. && j2 > 0. && k1 > 0. && k2 > 0.) continue;
+
+		/* Current cell is outside and has inside neighbour(s) */
+		undo.push(Vec3i(i,j,k));
+		todo.push(Vec3i(i,j,k));
+
+		/* Cell at c is positive (outside) and has at least one negative (inside) neighbour cell */
+		c = Vec3i(i,j,k);
+
+		/* Enforce negative cell - if search depth gets exceeded this will be reverted to +0.5 */
+		mData[index(c.x, c.y, c.z)] = -0.5;
+
+		while(!todo.empty()) {
+
+			todo.pop();
+
+			/* Add neighbouring positive (inside) cells to stacks */
+			if (c.x > 0 && mData[index(c.x-1, c.y, c.z)] > 0.) { cTmp = Vec3i(c.x-1, c.y, c.z); undo.push(cTmp); todo.push(cTmp); mData[index(cTmp)] = -0.5;}
+			if (c.y > 0 && mData[index(c.x, c.y-1, c.z)] > 0.) { cTmp = Vec3i(c.x, c.y-1, c.z); undo.push(cTmp); todo.push(cTmp); mData[index(cTmp)] = -0.5; }
+			if (c.z > 0 && mData[index(c.x, c.y, c.z-1)] > 0.) { cTmp = Vec3i(c.x, c.y, c.z-1); undo.push(cTmp); todo.push(cTmp); mData[index(cTmp)] = -0.5; }
+			if (c.x < (*this).getSizeX()-1 && mData[index(c.x+1, c.y, c.z)] > 0.) { cTmp = Vec3i(c.x+1, c.y, c.z); undo.push(cTmp); todo.push(cTmp); mData[index(cTmp)] = -0.5; }
+			if (c.y < (*this).getSizeY()-1 && mData[index(c.x, c.y+1, c.z)] > 0.) { cTmp = Vec3i(c.x, c.y+1, c.z); undo.push(cTmp); todo.push(cTmp); mData[index(cTmp)] = -0.5; }
+			if (c.z < (*this).getSizeZ()-1 && mData[index(c.x, c.y, c.z+1)] > 0.) { cTmp = Vec3i(c.x, c.y, c.z+1); undo.push(cTmp); todo.push(cTmp); mData[index(cTmp)] = -0.5; }
+
+			/* Restore original value in cells if undo needed ie once cell undo count exceeds given limit */
+			if (undo.size() > maxsize) {
+				/* Clear todo stack */
+				while (!todo.empty()) {
+					todo.pop();
+				}
+				/* Clear undo stack and revert value */
+				while (!undo.empty()) {
+					c = undo.top();
+					undo.pop();
+					mData[index(c.x, c.y, c.z)] = 0.5;
+				}
+				break;
+			}
+
+			/* Ensure that undo stack is cleared at the end if no more items in todo stack left */
+			if (todo.empty()) {
+				while (!undo.empty()) {
+					undo.pop();
+				}
+			}
+			/* Pop value for next while iteration */
+			else {
+				c = todo.top();
+			}
+		}
+	}
+}
+
 //! run marching cubes to create a mesh for the 0-levelset
 void LevelsetGrid::createMesh(Mesh& mesh) {
 	assertMsg(is3D(), "Only 3D grids supported so far");
@@ -317,6 +389,9 @@ void LevelsetGrid::createMesh(Mesh& mesh) {
 	
 	//mesh.rebuildCorners();
 	//mesh.rebuildLookup();
+
+	// Update mdata fields
+	mesh.updateDataFields();
 }
 
 
