@@ -11,14 +11,6 @@ import shutil
 # ------------------------------------------------------------------------------------------
 # smaller helpers (filenames etc.)
 
-def outputFilename( file, gridname ):
-	return file +"_"+ gridname + "_out.uni" 
-
-# original, simpler...
-def referenceFilename_old( file, gridname ):
-	return file +"_"+ gridname + "_ref.uni" 
-
-
 def getGenRefFileSetting( ):
 	# check env var for generate data setting
 	ret = int(os.getenv('MANTA_GEN_TEST_DATA', 0))
