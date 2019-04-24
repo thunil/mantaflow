@@ -408,7 +408,7 @@ PYTHON() void updateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, M
 }
 
 KERNEL (bnd=1) 
-void KnUpdateFlagsObs(FlagGrid& flags, const MACGrid* fractions, const Grid<Real>& phiObs, const Grid<Real>* phiOut ) {
+void KnUpdateFlagsObs(FlagGrid& flags, const MACGrid* fractions, const Grid<Real>& phiObs, const Grid<Real>* phiOut, const Grid<Real>* phiIn) {
 
 	bool isObs = false;
 	if(fractions) {
@@ -426,17 +426,20 @@ void KnUpdateFlagsObs(FlagGrid& flags, const MACGrid* fractions, const Grid<Real
 	}
 
 	bool isOutflow = false;
- 	if (phiOut && (*phiOut)(i,j,k) < 0.) isOutflow = true;
+	bool isInflow = false;
+	if (phiOut && (*phiOut)(i,j,k) < 0.) isOutflow = true;
+	if (phiIn && (*phiIn)(i,j,k) < 0.) isInflow = true;
 
- 	if (isObs)          flags(i,j,k) = FlagGrid::TypeObstacle;
- 	else if (isOutflow) flags(i,j,k) = (FlagGrid::TypeEmpty | FlagGrid::TypeOutflow);
-  	else                flags(i,j,k) = FlagGrid::TypeEmpty;
+	if (isObs)          flags(i,j,k) = FlagGrid::TypeObstacle;
+	else if (isInflow)  flags(i,j,k) = (FlagGrid::TypeFluid | FlagGrid::TypeInflow);
+	else if (isOutflow) flags(i,j,k) = (FlagGrid::TypeEmpty | FlagGrid::TypeOutflow);
+	else                flags(i,j,k) = FlagGrid::TypeEmpty;
 }
 
 //! update obstacle and outflow flags from levelsets
 //! optionally uses fill fractions for obstacle
-PYTHON() void setObstacleFlags(FlagGrid& flags, const Grid<Real>& phiObs, const MACGrid* fractions=NULL, const Grid<Real>* phiOut=NULL ) {
-	KnUpdateFlagsObs(flags, fractions, phiObs, phiOut );
+PYTHON() void setObstacleFlags(FlagGrid& flags, const Grid<Real>& phiObs, const MACGrid* fractions=NULL, const Grid<Real>* phiOut=NULL, const Grid<Real>* phiIn=NULL) {
+	KnUpdateFlagsObs(flags, fractions, phiObs, phiOut, phiIn);
 }
 
 
