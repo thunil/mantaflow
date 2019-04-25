@@ -39,7 +39,7 @@ PyObject* getPyNone();
 
 // for PbClass-derived classes
 template<class T> T* fromPyPtr(PyObject* obj, std::vector<void*>* tmp) { 
-	if (PbClass::isNullRef(obj)) 
+	if (PbClass::isNullRef(obj) || PbClass::isNoneRef(obj))
 		return 0; 
 	PbClass* pbo = Pb::objFromPy(obj); 
 	const std::string& type = Namify<T>::S;
@@ -69,7 +69,7 @@ template<class T> PyObject* toPy(const T& v) {
 	return Pb::copyObject(co,type); 
 }
 template<class T> bool isPy(PyObject* obj) {
-	if (PbClass::isNullRef(obj)) 
+	if (PbClass::isNullRef(obj) || PbClass::isNoneRef(obj)) 
 		return false; 
 	PbClass* pbo = Pb::objFromPy(obj); 
 	const std::string& type = Namify<typename remove_pointers<T>::type>::S;
