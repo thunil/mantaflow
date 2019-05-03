@@ -22,6 +22,8 @@ import random
 import tensorflow as tf
 import numpy as np
 import scipy.misc
+
+random.seed(13)
 np.random.seed(13)
 tf.set_random_seed(13)
 
