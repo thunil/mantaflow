@@ -197,6 +197,7 @@ SET(PP_SOURCES
 	source/plugin/meshplugins.cpp
 	source/plugin/pressure.cpp
 	source/plugin/ptsplugins.cpp
+	source/plugin/secondaryparticles.cpp
 	source/plugin/surfaceturbulence.cpp
 	source/plugin/vortexplugins.cpp
 	source/plugin/waveletturbulence.cpp
@@ -433,14 +434,14 @@ endif(DOXYGEN_FOUND)
 # Python 
 # note - if configuration fails, comment out the auto block below, and manually set the following two paths:
 #set(PYTHON_INCLUDE_DIRS "PYTHON_PATH/include")
-#set(PYTHON_LIBRARY "PYTHON_PATH/libs/pythonX.Y.lib/so")
+#set(PYTHON_LIBRARIES "PYTHON_PATH/libs/pythonX.Y.lib/so")
 # auto block
 if (WIN32)
 	# convenience override for windows, typically the auto find doesnt work, so fall back to WIN_PYTHON_PATH
 	find_package(PythonLibs ${PYTHON_VER_ID} QUIET)
 	if(NOT PYTHONLIBS_FOUND)
 		set(PYTHON_INCLUDE_DIRS "${WIN_PYTHON_PATH}/include")
-		set(PYTHON_LIBRARY "${WIN_PYTHON_PATH}/libs/python${PYTHON_VER_ID}.lib")
+		set(PYTHON_LIBRARIES "${WIN_PYTHON_PATH}/libs/python${PYTHON_VER_ID}.lib")
 	endif()
 else()
 	# try to configure from python itself first
