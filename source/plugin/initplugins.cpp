@@ -107,12 +107,13 @@ PYTHON() LevelsetGrid obstacleLevelset(const FlagGrid& flags) {
 // blender init functions 
 
 KERNEL() 
-void KnApplyEmission(const FlagGrid& flags, Grid<Real>& target, const Grid<Real>& source, bool isAbsolute, int type)
+void KnApplyEmission(const FlagGrid& flags, Grid<Real>& target, const Grid<Real>& source, const Grid<Real>* emissionTexture, bool isAbsolute, int type)
 {
-	// if type is given, ony check apply emission when celltype matches type from flaggrid
+	// if type is given, only apply emission when celltype matches type from flaggrid
+	// and if emission texture is given, only apply emission when some emission is present at cell (important for emit from particles)
 	bool isInflow = (type & FlagGrid::TypeInflow && flags.isInflow(i,j,k));
 	bool isOutflow = (type & FlagGrid::TypeOutflow && flags.isOutflow(i,j,k));
-	if (type && !isInflow && !isOutflow) return;
+	if ( (type && !isInflow && !isOutflow) && (emissionTexture && !(*emissionTexture)(i,j,k)) ) return;
 
 	if (isAbsolute)
 		target(i,j,k) = source(i,j,k);
@@ -122,8 +123,8 @@ void KnApplyEmission(const FlagGrid& flags, Grid<Real>& target, const Grid<Real>
 
 //! Add emission values
 //isAbsolute: whether to add emission values to existing, or replace
-PYTHON() void applyEmission(FlagGrid& flags, Grid<Real>& target, Grid<Real>& source, bool isAbsolute=true, int type=0) {
-	KnApplyEmission(flags, target, source, isAbsolute, type);
+PYTHON() void applyEmission(FlagGrid& flags, Grid<Real>& target, Grid<Real>& source, Grid<Real>* emissionTexture=NULL, bool isAbsolute=true, int type=0) {
+	KnApplyEmission(flags, target, source, emissionTexture, isAbsolute, type);
 }
 
 // blender init functions for meshes
