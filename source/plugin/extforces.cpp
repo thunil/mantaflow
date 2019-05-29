@@ -418,10 +418,10 @@ PYTHON() void dissolveSmoke(const FlagGrid& flags, Grid<Real>& density, Grid<Rea
 				else if ((*heat)(i,j,k) > 0.0f) (*heat)(i,j,k) -= dydx;
 				else if ((*heat)(i,j,k) < 0.0f) (*heat)(i,j,k) += dydx;
 			}
-			if (red && d) {
-				(*red)(i,j,k) *= (density(i,j,k)/d);
+			if (red && notZero(d) ) {
+				(*red)(i,j,k)   *= (density(i,j,k)/d);
 				(*green)(i,j,k) *= (density(i,j,k)/d);
-				(*blue)(i,j,k) *= (density(i,j,k)/d);
+				(*blue)(i,j,k)  *= (density(i,j,k)/d);
 			}
 		}
 	}
