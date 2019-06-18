@@ -88,8 +88,6 @@ PyArrayContainer::ExtractData(void *_pParentPyArray)
 // Conversion Functions
 // ------------------------------------------------------------------------
 
-PyMODINIT_FUNC initNumpy() { import_array(); }
-
 template<>
 PyArrayContainer
 fromPy<PyArrayContainer>(PyObject *obj)

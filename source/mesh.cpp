@@ -819,10 +819,10 @@ void ApplyMeshToGrid (Grid<T>* grid, Grid<Real>& sdf, T value, FlagGrid* respect
 	}
 }
 
-void Mesh::applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags, Real cutoff, Real meshSigma) {
+void Mesh::applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags, Real cutoff) {
 	FluidSolver dummy(grid->getSize());
 	LevelsetGrid mesh_sdf(&dummy, false);
-	meshSDF(*this, mesh_sdf, meshSigma, cutoff);
+	meshSDF(*this, mesh_sdf, 2., cutoff); // meshSigma=2 fixed here
 	
 #	if NOPYTHON!=1
 	if (grid->getType() & GridBase::TypeInt)
