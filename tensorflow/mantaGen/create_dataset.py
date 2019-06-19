@@ -66,10 +66,9 @@ if not args.no_output:
     assert os.path.exists(dataset_path), ("Datasets directory {} does not exist".format(dataset_path)) 
     # set output parent directory name
     dataset_path += "/" + args.name
-    if os.path.exists(dataset_path):
-        warning("Dataset with name '{}' already exists. [{}]".format(args.name, dataset_path))
-        dataset_path = get_unique_path(dataset_path)
-        warning("Using the following path instead: {}".format(dataset_path))
+    # always append index
+    dataset_path = get_unique_path(dataset_path)
+    #warning("Dataset with name '{}' already exists. [{}]".format(args.name, dataset_path))
     
 
 # check for grids to be saved as outputs
@@ -109,7 +108,7 @@ def on_sim_step(scene, t):
         # it was already checked if the attribute is present in the scene
         grid = getattr(scene, grid_name)
         # save the grid to a npz file
-        grid_io.store_grid(grid, output_path + "/" + grid_name + "_" + output_name)
+        grid_io.write_grid(grid, output_path + "/" + grid_name + "_" + output_name)
 
 # reset seed -> same starting condition for scene creation -> reproducibility
 np.random.seed(seed=args.seed)

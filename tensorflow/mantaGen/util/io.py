@@ -104,7 +104,7 @@ class GridIO(object):
 
     #----------------------------------------------------------------------------------
     # Store grids as npz
-    def store_grid(self, grid, path):
+    def write_grid(self, grid, path):
         # check for support
         if grid._class != "Grid" and grid._class != "FlagGrid" and grid._class != "LevelsetGrid" and grid._class != "MACGrid":
             assert False, "grid._class {} is not supported".format(grid._class)
@@ -113,18 +113,21 @@ class GridIO(object):
         make_dir(os.path.dirname(path))
         # find buffer handle
         handle = self._get_buffer_handle(grid)
+        vec3content = False
         # copy grid to buffer
         if grid._class == "Grid":
             if grid._T == "Real":
                 copyGridToArrayReal(grid, self._buffer_list[handle])
             elif grid._T == "Vec3":
                 copyGridToArrayVec3(grid, self._buffer_list[handle])
+                vec3content = True
         elif grid._class == "FlagGrid":
             copyGridToArrayFlag(grid, self._buffer_list[handle])
         elif grid._class == "LevelsetGrid":
             copyGridToArrayLevelset(grid, self._buffer_list[handle])
         elif grid._class == "MACGrid":
             copyGridToArrayMAC(grid, self._buffer_list[handle])
+            vec3content = True
         else:
             print("Grid is not supported")
             self._print_grid_info(grid)
@@ -134,8 +137,9 @@ class GridIO(object):
         grid_desc = self._get_grid_description(grid)
         np_grid = self._buffer_list[handle]
         np_grid = np.swapaxes(np_grid, 0, 2) # transfer format from XYZD to ZYXD [YXD]
-        if np_grid.shape[0] == 1:
-            np_grid = np.reshape(np_grid, np_grid.shape[1:])
+        is2d = (np_grid.shape[0] == 1)
+        if vec3content and is2d:
+            np_grid = np_grid[...,0:2] # remove z component of vectors
+        if is2d:
+            np_grid = np.reshape(np_grid, np_grid.shape[1:]) # remove z axis
         np.savez_compressed(path, data=np_grid, header=grid_desc)
-
-
