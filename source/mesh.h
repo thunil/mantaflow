@@ -156,7 +156,7 @@ public:
 	PYTHON() LevelsetGrid getLevelset(Real sigma, Real cutoff = -1.);
 
 	//! map mesh to grid with sdf
-	PYTHON() void applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags=0, Real cutoff=-1.);
+	PYTHON() void applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags=0, Real cutoff=-1., Real meshSigma=2.);
 
 	//! get data pointer of nodes
 	PYTHON() std::string getNodesDataPointer();
