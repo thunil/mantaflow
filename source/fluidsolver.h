@@ -64,13 +64,20 @@ public:
 	PYTHON(name=timestepMin)  Real mDtMin;  
 	PYTHON(name=timestepMax)  Real mDtMax;  
 	PYTHON(name=frameLength)  Real mFrameLength;
+#ifdef BLENDER
+	//! Blender needs access in order to restore value in new solver object
+	PYTHON(name=timePerFrame) Real mTimePerFrame;
+#endif
 
 protected:
 	Vec3i     mGridSize;
 	const int mDim;
-	Real      mTimePerFrame;
 	bool      mLockDt;
-		
+#ifndef BLENDER
+	//! Blender needs public access to this field, see above
+	Real      mTimePerFrame;
+#endif
+
 	//! subclass for managing grid memory
 	//! stored as a stack to allow fast allocation
 	template<class T> struct GridStorage {
