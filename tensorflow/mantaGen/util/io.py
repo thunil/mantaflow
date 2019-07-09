@@ -89,8 +89,8 @@ class GridIO(object):
             assert False, "grid._class {} is not supported".format(grid._class)
             return
 
-        # search for buffer by comparing shapes
-        search_shape = (int(size.x), int(size.y), int(size.z), dimension) # resulting tuple for vel, e.g.: (64,64,128,3)
+        # search for buffer by comparing shapes (Numpy Format: z,y,x,d | Manta Format: x,y,z,d)
+        search_shape = (int(size.z), int(size.y), int(size.x), dimension) # resulting tuple for vel, e.g.: (64,64,128,3)
 
         for i in range(len(self._buffer_list)):
             if search_shape == self._buffer_list[i].shape and data_type == self._buffer_list[i].dtype:
@@ -136,10 +136,10 @@ class GridIO(object):
         # store buffer in npz
         grid_desc = self._get_grid_description(grid)
         np_grid = self._buffer_list[handle]
-        np_grid = np.swapaxes(np_grid, 0, 2) # transfer format from XYZD to ZYXD [YXD]
         is2d = (np_grid.shape[0] == 1)
         if vec3content and is2d:
             np_grid = np_grid[...,0:2] # remove z component of vectors
         if is2d:
-            np_grid = np.reshape(np_grid, np_grid.shape[1:]) # remove z axis
+            np_grid = np.squeeze(np_grid, axis=0) # remove z axis
+
         np.savez_compressed(path, data=np_grid, header=grid_desc)
