@@ -477,13 +477,17 @@ static inline Real computeUvRamp(Real t) {
 	return uvWeight;
 }
 
-KERNEL() void knResetUvGrid (Grid<Vec3>& target) { target(i,j,k) = Vec3((Real)i,(Real)j,(Real)k); }
-
-PYTHON() void resetUvGrid (Grid<Vec3> &target)
-{
-	knResetUvGrid reset(target); // note, llvm complains about anonymous declaration here... ?
+KERNEL() void knResetUvGrid (Grid<Vec3>& target, const Vec3* offset) {
+	Vec3 coord = Vec3((Real)i,(Real)j,(Real)k);
+	if (offset) coord += (*offset);
+	target(i,j,k) = coord;
 }
-PYTHON() void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv)
+
+PYTHON() void resetUvGrid (Grid<Vec3> &target, const Vec3* offset=NULL)
+{
+	knResetUvGrid reset(target, offset); // note, llvm complains about anonymous declaration here... ?
+}
+PYTHON() void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv, const Vec3* offset=NULL)
 {
 	const Real t   = uv.getParent()->getTime();
 	Real  timeOff  = resetTime/(Real)numUvs;
@@ -501,8 +505,8 @@ PYTHON() void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &
 	else                           uvWeight /= uvWTotal;
 
 	// check for reset
-	if( currt < lastt ) 
-		knResetUvGrid reset( uv );
+	if( currt < lastt )
+		knResetUvGrid reset(uv, offset);
 
 	// write new weight value to grid
 	uv[0] = Vec3( uvWeight, 0.,0.);
