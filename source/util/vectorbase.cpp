@@ -17,15 +17,11 @@ using namespace std;
 
 namespace Manta {
 
-#if (_MSC_VER >= 1910)
-	// already defined in header
-#else
-	template<> const Vector3D<int> Vector3D<int>::Zero(0, 0, 0);
-	template<> const Vector3D<float> Vector3D<float>::Zero(0.f, 0.f, 0.f);
-	template<> const Vector3D<double> Vector3D<double>::Zero(0., 0., 0.);
-	template<> const Vector3D<float> Vector3D<float>::Invalid(numeric_limits<float>::quiet_NaN(), numeric_limits<float>::quiet_NaN(), numeric_limits<float>::quiet_NaN());
-	template<> const Vector3D<double> Vector3D<double>::Invalid(numeric_limits<double>::quiet_NaN(), numeric_limits<double>::quiet_NaN(), numeric_limits<double>::quiet_NaN());
-#endif
+template<> const Vector3D<int> Vector3D<int>::Zero(0, 0, 0);
+template<> const Vector3D<float> Vector3D<float>::Zero(0.f, 0.f, 0.f);
+template<> const Vector3D<double> Vector3D<double>::Zero(0., 0., 0.);
+template<> const Vector3D<float> Vector3D<float>::Invalid(numeric_limits<float>::quiet_NaN(), numeric_limits<float>::quiet_NaN(), numeric_limits<float>::quiet_NaN());
+template<> const Vector3D<double> Vector3D<double>::Invalid(numeric_limits<double>::quiet_NaN(), numeric_limits<double>::quiet_NaN(), numeric_limits<double>::quiet_NaN());
 
 template<> bool Vector3D<float>::isValid() const { return !c_isnan(x) && !c_isnan(y) && !c_isnan(z); }
 template<> bool Vector3D<double>::isValid() const { return !c_isnan(x) && !c_isnan(y) && !c_isnan(z); }
