@@ -335,7 +335,7 @@ template<class T> Real Grid<T>::getL2(int bnd) {
 KERNEL(reduce=+) returns(int cnt=0)
 int knCountCells(const FlagGrid& flags, int flag, int bnd, Grid<Real>* mask) { 
 	if(mask) (*mask)(i,j,k) = 0.;
-	if( bnd>0 && (!flags.isInBounds(Vec3i(i,j,k))) ) return;
+	if( bnd>0 && (!flags.isInBounds(Vec3i(i,j,k), bnd)) ) return;
 	if (flags(i,j,k) & flag ) {
 		cnt++; 
 		if(mask) (*mask)(i,j,k) = 1.;

@@ -30,9 +30,14 @@ template<typename T>
 void copyArrayToGridScalar(const PyArrayContainer source, T& target)
 {
 	target.setConst(0.0f);
-	unsigned int uGridSize = target.getSizeX() * target.getSizeY() * target.getSizeZ();
+
+	unsigned int uSizeX = target.getSizeX();
+	unsigned int uSizeY = target.getSizeY();
+	unsigned int uSizeZ = target.getSizeZ();
+	unsigned int uGridSize = uSizeX * uSizeY * uSizeZ;
 	assertMsg(source.TotalSize == uGridSize, "The size of the numpy array doesn't match the size of the Grid!");
-	
+	assertMsg(source.Dims[0] == uSizeZ && source.Dims[1] == uSizeY && source.Dims[2] == uSizeX, "The dimensions of source numpy array ("+to_string(source.Dims[2])+", "+to_string(source.Dims[1])+", "+to_string(source.Dims[0])+") and target grid ("+to_string(uSizeX)+", "+to_string(uSizeY)+", "+to_string(uSizeZ)+") do not match!");
+
 	NumpyTypes eDataType  = source.DataType; 
 
 	switch (eDataType)
@@ -57,7 +62,8 @@ void copyGridToArrayScalar(const T& source, PyArrayContainer target)
 {
 	unsigned int uGridsize = source.getSizeX() * source.getSizeY() * source.getSizeZ();
 	assertMsg(target.TotalSize == uGridsize, "The size of the numpy array "+to_string(target.TotalSize)+" doesn't match the size of the grid!");
-	
+	assertMsg(target.Dims[0] == source.getSizeZ() && target.Dims[1] == source.getSizeY() && target.Dims[2] == source.getSizeX(), "The dimensions of source grid ("+to_string(source.getSizeX())+", "+to_string(source.getSizeY())+", "+to_string(source.getSizeZ())+") and target numpy array ("+to_string(target.Dims[2])+", "+to_string(target.Dims[1])+", "+to_string(target.Dims[0])+") do not match!");
+
 	NumpyTypes eDataType = target.DataType;
 
 	switch (eDataType)
@@ -86,7 +92,8 @@ void copyArrayToGridVector(const PyArrayContainer source, T& target)
 	unsigned int uSizeW = 3u;
 	
 	assertMsg(source.TotalSize == uSizeX * uSizeY * uSizeZ * uSizeW, "The size of the numpy array doesn't match the size of the grid!");
-	
+	assertMsg(source.Dims[0] == uSizeZ && source.Dims[1] == uSizeY && source.Dims[2] == uSizeX, "The dimensions of source numpy array ("+to_string(source.Dims[2])+", "+to_string(source.Dims[1])+", "+to_string(source.Dims[0])+") and target grid ("+to_string(uSizeX)+", "+to_string(uSizeY)+", "+to_string(uSizeZ)+") do not match!");
+
 	NumpyTypes eDataType = source.DataType;
 
 	switch (eDataType)
@@ -112,7 +119,8 @@ void copyGridToArrayVector(const T& source, PyArrayContainer target)
 	unsigned int uSizeW = 3u;
 
 	assertMsg(target.TotalSize == uSizeX * uSizeY * uSizeZ * uSizeW, "The size of the numpy array doesn't match the size of the grid!");
-	
+	assertMsg(target.Dims[0] == uSizeZ && target.Dims[1] == uSizeY && target.Dims[2] == uSizeX, "The dimensions of source grid ("+to_string(uSizeX)+", "+to_string(uSizeY)+", "+to_string(uSizeZ)+") and target numpy array ("+to_string(target.Dims[2])+", "+to_string(target.Dims[1])+", "+to_string(target.Dims[0])+") do not match!");
+
 	NumpyTypes eDataType = target.DataType;
 	
 	switch (eDataType)
