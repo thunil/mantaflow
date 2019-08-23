@@ -26,25 +26,26 @@ if(os.path.isfile(sys.argv[2])):
 	exit(1)
 
 a=np.load(filename); 
-a=a[a.files[-1]]
+a=a[a.files[-1]] # for npz files , note: not necessary for .npy
 print("Read npz file with shape & stats: "+format([a.shape, np.mean(a), np.std(a), np.min(a),np.max(a)] ))
 channels = a.shape[-1] # scalar
 
 if (len(a.shape)==4):
 	dim=3
 	if channels!=1 and channels!=3:
-		print("Error: invalid no of channels (only 1 or 3 allowed)")
+		print("Error: invalid no of channels in numpy array (only 1 or 3 allowed)")
 		exit(1)
 elif (len(a.shape)==3):
 	dim = 2
 	if channels!=1 and channels!=2:
-		print("Error: invalid no of channels (only 1 or 2 allowed for 2D)")
+		print("Error: invalid no of channels in numpy array (only 1 or 2 allowed for 2D)")
 		exit(1)
-	# append third coord for 2d vectors
-	#print("Current shape & stats: "+format([a.shape, np.mean(a),np.std(a), np.min(a),np.max(a)] ))
-	app = np.zeros([ a.shape[0], a.shape[1] , 1 ])
-	a = np.concatenate( [a,app], axis=-1)
-	#print("New shape & stats: "+format([a.shape, np.mean(a),np.std(a), np.min(a),np.max(a)] ))
+	if channels==2:
+		# append third coord for 2d vectors
+		print("Current shape & stats: "+format([a.shape, np.mean(a),np.std(a), np.min(a),np.max(a)] ))
+		app = np.zeros([ a.shape[0], a.shape[1] , 1 ])
+		a = np.concatenate( [a,app], axis=-1)
+		print("New shape & stats: "+format([a.shape, np.mean(a),np.std(a), np.min(a),np.max(a)] ))
 else:
 	print("Error: invalid shape")
 	exit(1)

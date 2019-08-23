@@ -10,7 +10,7 @@
 # Uni to numpy converter, 3 command line parameters:
 # 1) uni input
 # 2) npz output
-# [3) optional: no of channels, default 1, larger for vec3]
+# [3) optional: no of channels, default 1, 3 for vec3]
 # 
 #******************************************************************************
 
@@ -31,6 +31,9 @@ if(os.path.isfile(sys.argv[2])):
 channels = 1 # scalar
 if len(sys.argv)>3:
 	channels = int(sys.argv[3])
+	if channels!=1 and channels!=3:
+		print("Error: invalid no of channels (only 1 or 3 allowed)")
+		exit(1)
 
 def tryToGetSize( filename ):
 	rfile = filename 
@@ -85,4 +88,5 @@ if dim==2:
 print("Copied to np array "+format(data.shape))
 
 np.savez_compressed( sys.argv[2] , data )	
+#np.save( sys.argv[2] , data ) # for testing, write uncompressed .npy files
 print("Wrote '" + sys.argv[2] +"' ")
