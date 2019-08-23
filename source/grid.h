@@ -60,7 +60,7 @@ public:
 	inline bool isInBounds(const Vec3& p, int bnd = 0) const { return isInBounds(toVec3i(p), bnd); }
 	//! Check if linear index is in the range of the array
 	inline bool isInBounds(IndexInt idx) const;
-	
+
 	//! Get the type of grid
 	inline GridType getType() const { return mType; }
 	//! Check dimensionality
@@ -177,7 +177,9 @@ public:
 	PYTHON() void clamp(Real min, Real max);
 	//! reduce small values to zero
 	PYTHON() void stomp(const T& threshold);
-	
+	//! permute grid axes, e.g. switch y with z (0,2,1)
+	PYTHON() void permuteAxes(int axis0, int axis1, int axis2);
+
 	// common compound operators
 	//! get absolute max value in grid 
 	PYTHON() Real getMaxAbs() const;

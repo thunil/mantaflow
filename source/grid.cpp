@@ -223,6 +223,13 @@ template<typename T> inline void stomp(T &v, const T &th) { if(v<th) v=0; }
 template<> inline void stomp<Vec3>(Vec3 &v, const Vec3 &th) { if(v[0]<th[0]) v[0]=0; if(v[1]<th[1]) v[1]=0; if(v[2]<th[2]) v[2]=0; }
 KERNEL(idx) template<class T> void knGridStomp(Grid<T>& me, const T& threshold) { stomp(me[idx], threshold); }
 
+KERNEL() template<class T> void knPermuteAxes (Grid<T>& self, Grid<T>& target, int axis0, int axis1, int axis2) {
+	int i0 = axis0 == 0 ? i : (axis0 == 1 ? j : k);
+	int i1 = axis1 == 0 ? i : (axis1 == 1 ? j : k);
+	int i2 = axis2 == 0 ? i : (axis2 == 1 ? j : k);
+	target(i,j,k) = self(i0,i1,i2);
+}
+
 template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
 	knGridSafeDiv<T> (*this, a);
 	return *this;
@@ -260,6 +267,15 @@ template<class T> void Grid<T>::clamp(Real min, Real max) {
 }
 template<class T> void Grid<T>::stomp(const T& threshold) {
 	knGridStomp<T>(*this, threshold);
+}
+template<class T> void Grid<T>::permuteAxes(int axis0, int axis1, int axis2) {
+	if(axis0 == axis1 || axis0 == axis2 || axis1 == axis2 || axis0  > 2 || axis1 > 2 || axis2 > 2 || axis0 < 0 || axis1 < 0  || axis2 < 0)
+		return;
+	Vec3i size = mParent->getGridSize();
+	assertMsg( mParent->is2D() ? size.x == size.y : size.x == size.y && size.y == size.z, "Grid must be cubic!");
+	Grid<T> tmp(mParent);
+	knPermuteAxes<T>(*this, tmp, axis0, axis1, axis2);
+	this->swap(tmp);
 }
 
 template<> Real Grid<Real>::getMax() const {
