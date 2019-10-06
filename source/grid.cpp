@@ -439,23 +439,29 @@ PYTHON() void copyLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
 		target(i,j,k) = source(i,j,k);
 	}
 }
+
+KERNEL() void knCopyVec3ToReal(Grid<Vec3> &source, Grid<Real> &targetX, Grid<Real> &targetY, Grid<Real> &targetZ)
+{
+	targetX(i,j,k) = source(i,j,k).x;
+	targetY(i,j,k) = source(i,j,k).y;
+	targetZ(i,j,k) = source(i,j,k).z;
+}
 PYTHON() void copyVec3ToReal (Grid<Vec3> &source, Grid<Real> &targetX, Grid<Real> &targetY, Grid<Real> &targetZ)
 {
-	FOR_IJK(source) {
-		targetX(i,j,k) = source(i,j,k).x;
-		targetY(i,j,k) = source(i,j,k).y;
-		targetZ(i,j,k) = source(i,j,k).z;
-	}
+	knCopyVec3ToReal(source, targetX, targetY, targetZ);
 }
 
+KERNEL() void knCopyRealToVec3(Grid<Real> &sourceX, Grid<Real> &sourceY, Grid<Real> &sourceZ, Grid<Vec3> &target)
+{
+	target(i,j,k).x = sourceX(i,j,k);
+	target(i,j,k).y = sourceY(i,j,k);
+	target(i,j,k).z = sourceZ(i,j,k);
+}
 PYTHON() void copyRealToVec3 (Grid<Real> &sourceX, Grid<Real> &sourceY, Grid<Real> &sourceZ, Grid<Vec3> &target)
 {
-	FOR_IJK(target) {
-		target(i,j,k).x = sourceX(i,j,k);
-		target(i,j,k).y = sourceY(i,j,k);
-		target(i,j,k).z = sourceZ(i,j,k);
-	}
+	knCopyRealToVec3(sourceX, sourceY, sourceZ, target);
 }
+
 PYTHON() void convertLevelsetToReal (LevelsetGrid &source , Grid<Real> &target) { debMsg("Deprecated - do not use convertLevelsetToReal... use copyLevelsetToReal instead",1); copyLevelsetToReal(source,target); }
 
 template<class T> void Grid<T>::printGrid(int zSlice, bool printIndex, int bnd) {
