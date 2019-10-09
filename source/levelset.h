@@ -41,7 +41,7 @@ public:
 	//! initialize levelset from flags (+/- 0.5 heaviside)
 	PYTHON() void initFromFlags(const FlagGrid& flags, bool ignoreWalls=false);
 	//! fill holes (pos cells enclosed by neg ones) up to given size with -0.5 (ie not preserving sdf)
-	PYTHON() void fillHoles(int maxsize=10);
+	PYTHON() void fillHoles(int maxDepth=10, int boundaryWidth=1);
 	
 	static Real invalidTimeValue();
 };
