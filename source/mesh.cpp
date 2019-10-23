@@ -370,11 +370,12 @@ void Mesh::computeVelocity(Mesh& oldMesh, MACGrid& vel) {
 	// calculate velocities from previous to current frame (per vertex)
 	for (size_t i=0; i<mNodes.size(); ++i)
 	{
+		// skip vertices that are not needed for 2D 
+		if(bIs2D && (mNodes[i].pos.z < -0.5f || mNodes[i].pos.z > 0.5f))
+			continue;
+
 		Vec3 velo = mNodes[i].pos - oldMesh.mNodes[i].pos;
-		if(bIs2D && (mNodes[i].pos.z > -0.5f && mNodes[i].pos.z < 0.5f))
-		{
-			vel.setInterpolated(mNodes[i].pos, velo, &(veloMeanCounter[0]));
-		}
+		vel.setInterpolated(mNodes[i].pos, velo, &(veloMeanCounter[0]));
 	}
 
 	// discretize the vertex velocities by averaging them on the grid
