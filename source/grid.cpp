@@ -227,7 +227,7 @@ KERNEL() template<class T> void knPermuteAxes (Grid<T>& self, Grid<T>& target, i
 	int i0 = axis0 == 0 ? i : (axis0 == 1 ? j : k);
 	int i1 = axis1 == 0 ? i : (axis1 == 1 ? j : k);
 	int i2 = axis2 == 0 ? i : (axis2 == 1 ? j : k);
-	target(i,j,k) = self(i0,i1,i2);
+	target(i0,i1,i2) = self(i,j,k);
 }
 
 template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
@@ -276,6 +276,15 @@ template<class T> void Grid<T>::permuteAxes(int axis0, int axis1, int axis2) {
 	Grid<T> tmp(mParent);
 	knPermuteAxes<T>(*this, tmp, axis0, axis1, axis2);
 	this->swap(tmp);
+}
+template<class T> void Grid<T>::permuteAxesCopyToGrid(int axis0, int axis1, int axis2, Grid<T>& out) {
+	if(axis0 == axis1 || axis0 == axis2 || axis1 == axis2 || axis0  > 2 || axis1 > 2 || axis2 > 2 || axis0 < 0 || axis1 < 0  || axis2 < 0)
+		return;
+	assertMsg( this->getGridType() == out.getGridType(), "Grids must have same data type!");
+	Vec3i size = mParent->getGridSize();
+	Vec3i sizeTarget = out.getParent()->getGridSize();
+	assertMsg( sizeTarget[axis0] == size[0] && sizeTarget[axis1] == size[1] && sizeTarget[axis2] == size[2], "Permuted grids must have the same dimensions!");
+	knPermuteAxes<T>(*this, out, axis0, axis1, axis2);
 }
 
 template<> Real Grid<Real>::getMax() const {

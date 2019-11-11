@@ -179,6 +179,8 @@ public:
 	PYTHON() void stomp(const T& threshold);
 	//! permute grid axes, e.g. switch y with z (0,2,1)
 	PYTHON() void permuteAxes(int axis0, int axis1, int axis2);
+	//! permute grid axes, e.g. switch y with z (0,2,1)
+	PYTHON() void permuteAxesCopyToGrid(int axis0, int axis1, int axis2, Grid<T>& out);
 
 	// common compound operators
 	//! get absolute max value in grid 
