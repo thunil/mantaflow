@@ -276,15 +276,16 @@ void prox_f(MACGrid& v, const FlagGrid &flags, const MACGrid& Q, const MACGrid& 
 // re-uses main pressure solve from pressure.cpp
 void solvePressure( 
         MACGrid& vel, Grid<Real>& pressure, const FlagGrid& flags, Real cgAccuracy = 1e-3,
-    const Grid<Real>* phi = 0,
-    const Grid<Real>* perCellCorr = 0,
-    const MACGrid* fractions = 0,
-    Real gfClamp = 1e-04,
-    Real cgMaxIterFac = 1.5,
-    bool precondition = true, 
+	const Grid<Real>* phi = 0,
+	const Grid<Real>* perCellCorr = 0,
+	const MACGrid* fractions = 0,
+	const MACGrid* obvel = 0,
+	Real gfClamp = 1e-04,
+	Real cgMaxIterFac = 1.5,
+	bool precondition = true,
 	int preconditioner = 1,
 	bool enforceCompatibility = false,
-    bool useL2Norm = false, 
+	bool useL2Norm = false, 
 	bool zeroPressureFixing = false,
 	const Grid<Real> *curv = NULL,
 	const Real surfTens = 0.0,
@@ -296,7 +297,7 @@ PYTHON() void PD_fluid_guiding(MACGrid& vel, MACGrid& velT,
 	Real theta = 1.0, Real tau = 1.0, Real sigma = 1.0,
 	Real epsRel = 1e-3, Real epsAbs = 1e-3, int maxIters = 200,
 	// duplicated for pressure solve
-	Grid<Real>* phi = 0, Grid<Real>* perCellCorr = 0, MACGrid* fractions = 0, Real gfClamp = 1e-04, Real cgMaxIterFac = 1.5, Real cgAccuracy = 1e-3,
+	Grid<Real>* phi = 0, Grid<Real>* perCellCorr = 0, MACGrid* fractions = 0, MACGrid* obvel = 0, Real gfClamp = 1e-04, Real cgMaxIterFac = 1.5, Real cgAccuracy = 1e-3,
 	int preconditioner = 1, bool zeroPressureFixing = false, const Grid<Real> *curv = NULL, const Real surfTens = 0.)
 {
 	FluidSolver* parent = vel.getParent();
@@ -331,7 +332,7 @@ PYTHON() void PD_fluid_guiding(MACGrid& vel, MACGrid& velT,
 		z.addScaled(x, -tau);
 		Real cgAccuracyAdaptive = cgAccuracy;
 
-		solvePressure (z, pressure, flags, cgAccuracyAdaptive, phi, perCellCorr, fractions, gfClamp,
+		solvePressure (z, pressure, flags, cgAccuracyAdaptive, phi, perCellCorr, fractions, obvel, gfClamp,
 		    cgMaxIterFac, true, preconditioner, false, false, zeroPressureFixing, curv, surfTens );
 
 		// y-update
