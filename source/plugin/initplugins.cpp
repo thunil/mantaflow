@@ -322,7 +322,7 @@ PYTHON() Vec3 calcCenterOfMass(const Grid<Real>& density)
 
 
 
-inline static Real calcFraction(Real phi1, Real phi2)
+inline static Real calcFraction(Real phi1, Real phi2, Real fracThreshold)
 {
 	if(phi1>0. && phi2>0.) return 1.;
 	if(phi1<0. && phi2<0.) return 0.;
@@ -333,18 +333,18 @@ inline static Real calcFraction(Real phi1, Real phi2)
 	if (denom > -1e-04) return 0.5; 
 
 	Real frac = 1. - phi1/denom;
-	if(frac<0.01) frac = 0.; // stomp small values , dont mark as fluid
+	if(frac<fracThreshold) frac = 0.; // stomp small values , dont mark as fluid
 	return std::min(Real(1), frac );
 }
 
 KERNEL (bnd=1) 
-void KnUpdateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth) {
+void KnUpdateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth, const Real fracThreshold) {
 
 	// walls at domain bounds and inner objects
-	fractions(i,j,k).x = calcFraction( phiObs(i,j,k) , phiObs(i-1,j,k));
-	fractions(i,j,k).y = calcFraction( phiObs(i,j,k) , phiObs(i,j-1,k));
+	fractions(i,j,k).x = calcFraction( phiObs(i,j,k) , phiObs(i-1,j,k), fracThreshold);
+	fractions(i,j,k).y = calcFraction( phiObs(i,j,k) , phiObs(i,j-1,k), fracThreshold);
     if(phiObs.is3D()) {
-	fractions(i,j,k).z = calcFraction( phiObs(i,j,k) , phiObs(i,j,k-1));
+	fractions(i,j,k).z = calcFraction( phiObs(i,j,k) , phiObs(i,j,k-1), fracThreshold);
 	}
 
 	// remaining BCs at the domain boundaries 
@@ -403,9 +403,9 @@ void KnUpdateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid&
 }
 
 //! update fill fraction values
-PYTHON() void updateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth=0) {
+PYTHON() void updateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth=0, const Real fracThreshold=0.01) {
 	fractions.setConst( Vec3(0.) );
-	KnUpdateFractions(flags, phiObs, fractions, boundaryWidth);
+	KnUpdateFractions(flags, phiObs, fractions, boundaryWidth, fracThreshold);
 }
 
 KERNEL (bnd=1) 
