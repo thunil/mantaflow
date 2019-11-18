@@ -36,7 +36,7 @@ public:
 	
 	//! union with another levelset
 	PYTHON() void join(const LevelsetGrid& o);
-	PYTHON() void subtract(const LevelsetGrid& o);
+	PYTHON() void subtract(const LevelsetGrid& o, const FlagGrid* flags=NULL, const int subtractType=0);
 	
 	//! initialize levelset from flags (+/- 0.5 heaviside)
 	PYTHON() void initFromFlags(const FlagGrid& flags, bool ignoreWalls=false);

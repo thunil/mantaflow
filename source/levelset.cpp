@@ -111,10 +111,11 @@ KERNEL(idx) void KnJoin(Grid<Real>& a, const Grid<Real>& b) {
 void LevelsetGrid::join(const LevelsetGrid& o) { KnJoin(*this, o); }
 
 //! subtract b, note does not preserve SDF!
-KERNEL(idx) void KnSubtract(Grid<Real>& a, const Grid<Real>& b) {
+KERNEL(idx) void KnSubtract(Grid<Real>& a, const Grid<Real>& b, const FlagGrid* flags, int subtractType) {
+	if(flags && ((*flags)(idx) & subtractType) == 0) return;
 	if(b[idx]<0.) a[idx] = b[idx] * -1.;
 } 
-void LevelsetGrid::subtract(const LevelsetGrid& o) { KnSubtract(*this, o); }
+void LevelsetGrid::subtract(const LevelsetGrid& o, const FlagGrid* flags, const int subtractType) { KnSubtract(*this, o, flags, subtractType); }
 
 //! re-init levelset and extrapolate velocities (in & out)
 //  note - uses flags to identify border (could also be done based on ls values)
