@@ -21,11 +21,13 @@
 #include "manta.h"
 #include "vectorbase.h"
 #include <set>
+#include "levelset.h"
+
 namespace Manta {
 
 // fwd decl
 class GridBase;
-class LevelsetGrid;
+//class LevelsetGrid;
 class FlagGrid;
 class MACGrid;
 class Shape;
@@ -147,10 +149,14 @@ public:
     PYTHON() void advectInGrid(FlagGrid& flags, MACGrid& vel, int integrationMode);
     PYTHON() void scale(Vec3 s);
     PYTHON() void offset(Vec3 o);
+	PYTHON() void rotate(Vec3 thetas);
+    PYTHON() void computeVelocity(Mesh& oldMesh, MACGrid& vel);
 
 	PYTHON() void computeLevelset(LevelsetGrid& levelset, Real sigma, Real cutoff=-1.);
+	PYTHON() LevelsetGrid getLevelset(Real sigma, Real cutoff = -1.);
+
 	//! map mesh to grid with sdf
-	PYTHON() void applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags=0, Real cutoff=-1.);
+	PYTHON() void applyMeshToGrid(GridBase* grid, FlagGrid* respectFlags=0, Real cutoff=-1., Real meshSigma=2.);
 
 	//! get data pointer of nodes
 	PYTHON() std::string getNodesDataPointer();

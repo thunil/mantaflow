@@ -131,6 +131,7 @@ public:
 	PYTHON() void setCamPos(float x, float y, float z);
 	PYTHON() void setCamRot(float x, float y, float z);  
 	PYTHON() void windowSize(int w, int h);
+	PYTHON() void setPlane(int plane);
 	
 protected:
 	GuiThread* mGuiPtr;

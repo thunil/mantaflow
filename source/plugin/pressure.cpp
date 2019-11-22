@@ -32,7 +32,7 @@ inline static Real surfTensHelper(const IndexInt idx, const int offset, const Gr
 KERNEL(bnd=1, reduce=+) returns(int cnt=0) returns(double sum=0)
 void MakeRhs(
 	const FlagGrid& flags, Grid<Real>& rhs, const MACGrid& vel,
-	const Grid<Real>* perCellCorr, const MACGrid* fractions,
+	const Grid<Real>* perCellCorr, const MACGrid* fractions, const MACGrid* obvel,
 	// note - all of the following are necessary for surface tension
 	const Grid<Real> *phi, const Grid<Real> *curv, const Real surfTens, const Real gfClamp)
 {
@@ -50,6 +50,12 @@ void MakeRhs(
 	} else {
 		set                 = (*fractions)(i,j,k).x * vel(i,j,k).x - (*fractions)(i+1,j,k).x * vel(i+1,j,k).x + (*fractions)(i,j,k).y * vel(i,j,k).y - (*fractions)(i,j+1,k).y * vel(i,j+1,k).y;
 		if(vel.is3D()) set += (*fractions)(i,j,k).z * vel(i,j,k).z - (*fractions)(i,j,k+1).z * vel(i,j,k+1).z;
+
+		// compute divergence from obstacle by using obstacle velocity (optional)
+		if (obvel) {
+			set += (1 - (*fractions)(i,j,k).x) * (*obvel)(i,j,k).x - (1 - (*fractions)(i+1,j,k).x) * (*obvel)(i+1,j,k).x + (1 - (*fractions)(i,j,k).y) * (*obvel)(i,j,k).y - (1 - (*fractions)(i,j+1,k).y) * (*obvel)(i,j+1,k).y;
+			if(obvel->is3D()) set += (1 - (*fractions)(i,j,k).z) * (*obvel)(i,j,k).z - (1 - (*fractions)(i,j,k+1).z) * (*obvel)(i,j,k+1).z;
+		}
 	}
 
 	// compute surface tension effect (optional)
@@ -274,6 +280,7 @@ PYTHON() void computePressureRhs(
 	const Grid<Real>* phi = 0,
 	const Grid<Real>* perCellCorr = 0,
 	const MACGrid* fractions = 0,
+	const MACGrid* obvel = 0,
 	Real gfClamp = 1e-04,
 	Real cgMaxIterFac = 1.5,
 	bool precondition = true, // Deprecated, use preconditioner instead
@@ -285,7 +292,7 @@ PYTHON() void computePressureRhs(
 	const Real surfTens = 0. )
 {
 	// compute divergence and init right hand side
-	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, fractions,  phi, curv, surfTens, gfClamp );
+	MakeRhs kernMakeRhs (flags, rhs, vel, perCellCorr, fractions, obvel, phi, curv, surfTens, gfClamp );
 
 	if(enforceCompatibility)
 		rhs += (Real)(-kernMakeRhs.sum / (Real)kernMakeRhs.cnt);
@@ -470,6 +477,7 @@ PYTHON() void solvePressure(
 	const Grid<Real>* phi = 0,
 	const Grid<Real>* perCellCorr = 0,
 	const MACGrid* fractions = 0,
+	const MACGrid* obvel = 0,
 	Real gfClamp = 1e-04,
 	Real cgMaxIterFac = 1.5,
 	bool precondition = true, // Deprecated, use preconditioner instead
@@ -485,7 +493,7 @@ PYTHON() void solvePressure(
 
 	computePressureRhs(
 		rhs, vel, pressure, flags, cgAccuracy,
-		phi, perCellCorr, fractions, gfClamp,
+		phi, perCellCorr, fractions, obvel, gfClamp,
 		cgMaxIterFac, precondition, preconditioner, enforceCompatibility,
 		useL2Norm, zeroPressureFixing, curv, surfTens);
 

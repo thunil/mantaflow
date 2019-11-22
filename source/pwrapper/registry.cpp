@@ -82,6 +82,7 @@ class WrapperRegistry {
 public:
 	static WrapperRegistry& instance();
 	void addClass(const std::string& name, const std::string& internalName, const std::string& baseclass);
+	void addEnumEntry(const std::string& name, int value);
 	void addExternalInitializer(InitFunc func);
 	void addMethod(const std::string& classname, const std::string& methodname, GenericFunction method);
 	void addOperator(const std::string& classname, const std::string& methodname, OperatorFunction method);
@@ -112,6 +113,7 @@ private:
 	std::vector<std::string> mPaths;
 	std::string mCode, mScriptName;
 	std::vector<std::string> args;
+	std::map<std::string, int> mEnumValues;
 };
 
 //******************************************************************************
@@ -221,6 +223,13 @@ void WrapperRegistry::addClass(const string& pyName, const string& internalName,
 	mClasses[pythonName] = data;
 	if (!baseclass.empty())
 		data->baseclassName = baseclass;    
+}
+
+void WrapperRegistry::addEnumEntry(const string& name, int value) {
+	/// Gather static definitions to add them as static python objects afterwards
+	if ( mEnumValues.insert( std::make_pair( name, value ) ).second == false) {
+		errMsg("Enum entry '"+name+"' already existing...");
+	}
 }
 
 void WrapperRegistry::addExternalInitializer(InitFunc func) {
@@ -402,6 +411,15 @@ void WrapperRegistry::addConstants(PyObject* module) {
 #endif
 	// cuda off for now
 	PyModule_AddObject(module,"CUDA",Manta::toPy<bool>(false));
+
+	// expose enum entries
+	std::map<std::string, int>::iterator it;
+	for ( it = mEnumValues.begin(); it != mEnumValues.end(); it++ )
+	{
+		PyModule_AddObject(module, it->first.c_str(), Manta::toPy(it->second));
+		// Alternative would be:
+		// e.g. PyModule_AddIntConstant(module, "FlagFluid", 1);
+	}
 }
 
 void WrapperRegistry::runPreInit() {
@@ -505,7 +523,7 @@ PyObject* WrapperRegistry::initModule() {
 		return NULL;
 
 	// load classes
-	for(vector<ClassData*>::iterator it = mClassList.begin(); it != mClassList.end(); ++it) {        
+	for(vector<ClassData*>::iterator it = mClassList.begin(); it != mClassList.end(); ++it) {
 		ClassData& data = **it;
 		char* nameptr = (char*)data.pyName.c_str();
 		
@@ -649,6 +667,9 @@ Register::Register(const string& className, const string& property, Getter gette
 }
 Register::Register(const string& className, const string& pyName, const string& baseClass) {
 	WrapperRegistry::instance().addClass(pyName, className, baseClass);
+}
+Register::Register(const string& name, const int value) {
+	WrapperRegistry::instance().addEnumEntry(name, value);
 }
 Register::Register(const string& file, const string& pythonCode) {
 	WrapperRegistry::instance().addPythonCode(file, pythonCode);

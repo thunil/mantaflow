@@ -220,6 +220,12 @@ protected:
 
 };
 
+//! helper to check whether float/double value is non-zero
+inline bool notZero(Real f) {
+    if( std::abs(f) > VECTOR_EPSILON ) return true;
+    return false;
+} 
+
 //************************************************************************
 // Additional operators
 //************************************************************************

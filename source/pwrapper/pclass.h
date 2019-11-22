@@ -71,6 +71,7 @@ public:
 
 	// converters
 	static bool isNullRef(PyObject* o);
+	static bool isNoneRef(PyObject* o);
 	static PbClass* createPyObject(const std::string& classname, const std::string& name, PbArgs& args, PbClass *parent);
 	inline bool canConvertTo(const std::string& classname) { return Pb::canConvert(mPyObject, classname); }
 	

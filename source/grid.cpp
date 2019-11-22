@@ -19,6 +19,9 @@
 #include <sstream>
 #include <cstring>
 
+#include "commonkernels.h"
+
+
 using namespace std;
 namespace Manta {
 
@@ -220,9 +223,20 @@ template<typename T> inline void stomp(T &v, const T &th) { if(v<th) v=0; }
 template<> inline void stomp<Vec3>(Vec3 &v, const Vec3 &th) { if(v[0]<th[0]) v[0]=0; if(v[1]<th[1]) v[1]=0; if(v[2]<th[2]) v[2]=0; }
 KERNEL(idx) template<class T> void knGridStomp(Grid<T>& me, const T& threshold) { stomp(me[idx], threshold); }
 
+KERNEL() template<class T> void knPermuteAxes (Grid<T>& self, Grid<T>& target, int axis0, int axis1, int axis2) {
+	int i0 = axis0 == 0 ? i : (axis0 == 1 ? j : k);
+	int i1 = axis1 == 0 ? i : (axis1 == 1 ? j : k);
+	int i2 = axis2 == 0 ? i : (axis2 == 1 ? j : k);
+	target(i0,i1,i2) = self(i,j,k);
+}
+
 template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
 	knGridSafeDiv<T> (*this, a);
 	return *this;
+}
+
+template<class T> int Grid<T>::getGridType() {
+	return static_cast<int>(mType);
 }
 
 template<class T> void Grid<T>::add(const Grid<T>& a) {
@@ -253,6 +267,24 @@ template<class T> void Grid<T>::clamp(Real min, Real max) {
 }
 template<class T> void Grid<T>::stomp(const T& threshold) {
 	knGridStomp<T>(*this, threshold);
+}
+template<class T> void Grid<T>::permuteAxes(int axis0, int axis1, int axis2) {
+	if(axis0 == axis1 || axis0 == axis2 || axis1 == axis2 || axis0  > 2 || axis1 > 2 || axis2 > 2 || axis0 < 0 || axis1 < 0  || axis2 < 0)
+		return;
+	Vec3i size = mParent->getGridSize();
+	assertMsg( mParent->is2D() ? size.x == size.y : size.x == size.y && size.y == size.z, "Grid must be cubic!");
+	Grid<T> tmp(mParent);
+	knPermuteAxes<T>(*this, tmp, axis0, axis1, axis2);
+	this->swap(tmp);
+}
+template<class T> void Grid<T>::permuteAxesCopyToGrid(int axis0, int axis1, int axis2, Grid<T>& out) {
+	if(axis0 == axis1 || axis0 == axis2 || axis1 == axis2 || axis0  > 2 || axis1 > 2 || axis2 > 2 || axis0 < 0 || axis1 < 0  || axis2 < 0)
+		return;
+	assertMsg( this->getGridType() == out.getGridType(), "Grids must have same data type!");
+	Vec3i size = mParent->getGridSize();
+	Vec3i sizeTarget = out.getParent()->getGridSize();
+	assertMsg( sizeTarget[axis0] == size[0] && sizeTarget[axis1] == size[1] && sizeTarget[axis2] == size[2], "Permuted grids must have the same dimensions!");
+	knPermuteAxes<T>(*this, out, axis0, axis1, axis2);
 }
 
 template<> Real Grid<Real>::getMax() const {
@@ -328,7 +360,7 @@ template<class T> Real Grid<T>::getL2(int bnd) {
 KERNEL(reduce=+) returns(int cnt=0)
 int knCountCells(const FlagGrid& flags, int flag, int bnd, Grid<Real>* mask) { 
 	if(mask) (*mask)(i,j,k) = 0.;
-	if( bnd>0 && (!flags.isInBounds(Vec3i(i,j,k))) ) return;
+	if( bnd>0 && (!flags.isInBounds(Vec3i(i,j,k), bnd)) ) return;
 	if (flags(i,j,k) & flag ) {
 		cnt++; 
 		if(mask) (*mask)(i,j,k) = 1.;
@@ -470,13 +502,17 @@ static inline Real computeUvRamp(Real t) {
 	return uvWeight;
 }
 
-KERNEL() void knResetUvGrid (Grid<Vec3>& target) { target(i,j,k) = Vec3((Real)i,(Real)j,(Real)k); }
-
-PYTHON() void resetUvGrid (Grid<Vec3> &target)
-{
-	knResetUvGrid reset(target); // note, llvm complains about anonymous declaration here... ?
+KERNEL() void knResetUvGrid (Grid<Vec3>& target, const Vec3* offset) {
+	Vec3 coord = Vec3((Real)i,(Real)j,(Real)k);
+	if (offset) coord += (*offset);
+	target(i,j,k) = coord;
 }
-PYTHON() void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv)
+
+PYTHON() void resetUvGrid (Grid<Vec3> &target, const Vec3* offset=NULL)
+{
+	knResetUvGrid reset(target, offset); // note, llvm complains about anonymous declaration here... ?
+}
+PYTHON() void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &uv, const Vec3* offset=NULL)
 {
 	const Real t   = uv.getParent()->getTime();
 	Real  timeOff  = resetTime/(Real)numUvs;
@@ -494,8 +530,8 @@ PYTHON() void updateUvWeight(Real resetTime, int index, int numUvs, Grid<Vec3> &
 	else                           uvWeight /= uvWTotal;
 
 	// check for reset
-	if( currt < lastt ) 
-		knResetUvGrid reset( uv );
+	if( currt < lastt )
+		knResetUvGrid reset(uv, offset);
 
 	// write new weight value to grid
 	uv[0] = Vec3( uvWeight, 0.,0.);
@@ -808,6 +844,29 @@ void markIsolatedFluidCell(FlagGrid &flags, const int mark)
 {
 	knMarkIsolatedFluidCell(flags, mark);
 }
+
+PYTHON()
+void copyMACData(const MACGrid &source, MACGrid &target, const FlagGrid& flags, const int flag, const int bnd)
+{
+	assertMsg (source.getSize().x == target.getSize().x && source.getSize().y == target.getSize().y && source.getSize().z == target.getSize().z, "different grid resolutions " << source.getSize() << " vs " << target.getSize() );
+
+	// Grid<Real> divGrid(target.getParent());
+	// DivergenceOpMAC(divGrid, target);
+	// Real fDivOrig = GridSumSqr(divGrid);
+
+	FOR_IJK_BND(target, bnd)
+	{
+		if(flags.get(i,j,k) & flag)
+		{
+			target(i,j,k) = source(i,j,k);
+		}
+	}
+
+	// DivergenceOpMAC(divGrid, target);
+	// Real fDivTransfer = GridSumSqr(divGrid);
+	// std::cout << "Divergence: " << fDivOrig << " -> " << fDivTransfer << std::endl;
+}
+
 
 // explicit instantiation
 template class Grid<int>;

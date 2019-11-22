@@ -249,10 +249,6 @@ KERNEL() void KnSetWallBcsFrac(const FlagGrid& flags, const MACGrid& vel, MACGri
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACX(i,j,k);
 		velTarget(i,j,k).x = velMAC.x - dot(dphi, velMAC) * dphi.x;
-		if (obvel) { // TODO (sebbas): TBC
-			Vec3 obvelMAC = (*obvel).getAtMACX(i,j,k);
-			velTarget(i,j,k).x += dot(dphi, obvelMAC) * dphi.x;
-		}
 	}
 
 	if( curObs | flags.isObstacle(i,j-1,k) )  { 
@@ -276,10 +272,6 @@ KERNEL() void KnSetWallBcsFrac(const FlagGrid& flags, const MACGrid& vel, MACGri
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACY(i,j,k);
 		velTarget(i,j,k).y = velMAC.y - dot(dphi, velMAC) * dphi.y;
-		if (obvel) { // TODO (sebbas): TBC
-			Vec3 obvelMAC = (*obvel).getAtMACY(i,j,k);
-			velTarget(i,j,k).y += dot(dphi, obvelMAC) * dphi.y;
-		}
 	}
 
 	if( phiObs->is3D() && (curObs | flags.isObstacle(i,j,k-1)) )  {
@@ -304,10 +296,6 @@ KERNEL() void KnSetWallBcsFrac(const FlagGrid& flags, const MACGrid& vel, MACGri
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACZ(i,j,k);
 		velTarget(i,j,k).z = velMAC.z - dot(dphi, velMAC) * dphi.z;
-		if (obvel) { // TODO (sebbas): TBC
-			Vec3 obvelMAC = (*obvel).getAtMACZ(i,j,k);
-			velTarget(i,j,k).z += dot(dphi, obvelMAC) * dphi.z;
-		}
 	}
 	} // not at boundary
 
@@ -385,6 +373,46 @@ PYTHON() void addForceField(const FlagGrid& flags, MACGrid& vel, const Grid<Vec3
 
 PYTHON() void setForceField(const FlagGrid& flags, MACGrid& vel, const Grid<Vec3>& force, const Grid<Real>* region=NULL, bool isMAC=false) {
 	KnApplyForceField(flags, vel, force, region, false, isMAC);
+}
+
+PYTHON() void dissolveSmoke(const FlagGrid& flags, Grid<Real>& density, Grid<Real>* heat=NULL,
+	Grid<Real>* red=NULL, Grid<Real>* green=NULL, Grid<Real>* blue=NULL, int speed=5, bool logFalloff=true)
+{
+	float dydx = 1.0f / (float)speed; // max density/speed = dydx
+	float fac = 1.0f - dydx;
+
+	FOR_IJK_BND(density, 0) {
+		bool curFluid = flags.isFluid(i,j,k);
+		if (!curFluid) continue;
+
+		if (logFalloff) {
+			density(i,j,k) *= fac;
+			if (heat) {
+				(*heat)(i,j,k) *= fac;
+			}
+			if (red) {
+				(*red)(i,j,k) *= fac;
+				(*green)(i,j,k) *= fac;
+				(*blue)(i,j,k) *= fac;
+			}
+		}
+		else { // linear falloff
+			float d = density(i,j,k);
+			density(i,j,k) -= dydx;
+			if (density(i,j,k) < 0.0f)
+				density(i,j,k) = 0.0f;
+			if (heat) {
+				if      (fabs((*heat)(i,j,k)) < dydx) (*heat)(i,j,k) = 0.0f;
+				else if ((*heat)(i,j,k) > 0.0f) (*heat)(i,j,k) -= dydx;
+				else if ((*heat)(i,j,k) < 0.0f) (*heat)(i,j,k) += dydx;
+			}
+			if (red && notZero(d) ) {
+				(*red)(i,j,k)   *= (density(i,j,k)/d);
+				(*green)(i,j,k) *= (density(i,j,k)/d);
+				(*blue)(i,j,k)  *= (density(i,j,k)/d);
+			}
+		}
+	}
 }
 
 } // namespace

@@ -39,6 +39,7 @@ void processKernel(const Block& block, const std::string& code, Sink& sink);
 void processPythonFunction(const Block& block, const std::string& code, Sink& sink, std::vector<Instantiation>& inst);
 void processPythonVariable(const Block& block, Sink& sink);
 void processPythonClass(const Block& block, const std::string& code, Sink& sink, std::vector<Instantiation>& inst);
+void processPythonEnum(Enum& parsed_enum, const std::string& code, Sink& sink, std::vector<Instantiation>& inst);
 void processPythonInstantiation(const Block& block, const Type& aliasType, Sink& sink, std::vector<Instantiation>& inst);
 void processPythonAlias(const Block& block, const Type& aliasType, const std::string& aliasName, Sink& sink);
 void postProcessInstantiations(Sink& sink, std::vector<Instantiation>& inst);

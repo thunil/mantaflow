@@ -129,6 +129,10 @@ bool PbClass::isNullRef(PyObject* obj) {
 	return PyLong_Check(obj) && PyLong_AsDouble(obj)==0;
 }
 
+bool PbClass::isNoneRef(PyObject* obj) {
+	return (obj == Py_None);
+}
+
 void PbClass::registerObject(PyObject* obj, PbArgs* args) {
 	// cross link
 	Pb::setReference(this, obj);

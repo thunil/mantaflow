@@ -17,6 +17,7 @@
 #include <set>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 using namespace std;
 
 // from codegen_kernel
@@ -223,6 +224,10 @@ template $TEMPLATE$
 static bool $NAME$ (PbArgs& A) {
 	return $CHK$;
 }
+);
+
+const string TmpEnumEntry = STR(
+static const Pb::Register _R_$IDX$ ("$ENUMNAME$",$ENUMVALUE$);
 );
 
 //******************************************************
@@ -458,6 +463,120 @@ void processPythonClass(const Block& block, const string& code, Sink& sink, vect
 	// add a define to make commenting out classes, and #ifdefs work correctly
 	sink.inplace << "#define _C_" << cls.name << '\n';
 #	endif
+}
+
+EnumEntry parseEnumContent(string& _code, size_t _cur_pos, int _iLastValue){
+	EnumEntry entry;
+	string token = _code.substr(0, _cur_pos);
+
+	// search for "=" and assign value if found
+	size_t assignment = token.find("=");
+	size_t end_assignment = token.find(",");
+	if(end_assignment == string::npos)
+		end_assignment = token.size()-1;
+	
+	if(assignment != string::npos) {
+		entry.name = token.substr(0, assignment);
+		string str_value = token.substr(assignment + 1, end_assignment - assignment);
+		entry.value = std::atoi(str_value.c_str());
+	}
+	else{
+		entry.name = token.substr(0, end_assignment+1);
+		entry.value = _iLastValue + 1;
+	}
+
+	//std::cout << "\t" << entry.name << ": " << entry.value << std::endl;
+
+	return entry;
+}
+
+void processPythonEnum(Enum& parsed_enum, const string& code, Sink& sink, vector<Instantiation>& inst) {
+	string enum_code = code;
+
+	// Process Enum content
+	// { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4, TypeMAC = 8, TypeLevelset = 16, TypeFlags = 32 }
+
+	/// Remove /* ... */ comments
+	size_t comment_start = enum_code.find("/*");
+	size_t comment_end = string::npos;
+	do {
+		if (comment_start != string::npos){
+			comment_end = enum_code.find("*/", comment_start);
+			enum_code = enum_code.substr(0,comment_start) + enum_code.substr(comment_end+2);
+		}
+	} while( (comment_start = enum_code.find("/*")) != string::npos);
+
+	/// Remove // ... comments
+	comment_start = enum_code.find("//");
+	comment_end = string::npos;	
+	do {
+		if (comment_start != string::npos){
+			comment_end = enum_code.find("\n", comment_start);
+			if(comment_end == string::npos)
+				enum_code = enum_code.substr(0,comment_start);
+			else
+				enum_code = enum_code.substr(0,comment_start) + enum_code.substr(comment_end);
+		}
+	} while( (comment_start = enum_code.find("//")) != string::npos);
+
+	// Clean up code section by removing {} and spaces
+	enum_code.erase(remove_if(enum_code.begin(), enum_code.end(), ::isspace), enum_code.end());
+	enum_code = enum_code.substr(1, enum_code.size()-2);
+	while(enum_code.size()-1 == enum_code.find_last_of(",")){
+		enum_code = enum_code.substr(0, enum_code.size()-1);
+	}
+
+	// Process enum values
+	string delimiter = ",";
+	size_t cur_pos = string::npos;
+	int iLastValue = -1;
+
+	while( (cur_pos = enum_code.find(delimiter)) != string::npos ) {
+		EnumEntry entry = parseEnumContent(enum_code, cur_pos, iLastValue);
+		parsed_enum.entries.push_back(entry);
+
+		iLastValue = entry.value;
+
+		// remove already parsed entries
+		enum_code = enum_code.substr(cur_pos+1);
+	}
+
+	// add last (or only) entry
+	EnumEntry entry = parseEnumContent(enum_code, cur_pos, iLastValue);
+	parsed_enum.entries.push_back(entry);
+
+	if (!sink.isHeader)
+		errMsg(-1, "PYTHON enums can only be defined in header files.");
+	
+	if (gDocMode) {
+		return;
+	}
+
+	sink.inplace << "enum " << parsed_enum.name << " {";
+
+	//sink.link << "#include \"registry.h\"\n";
+	for( size_t i = 0; i < parsed_enum.entries.size(); ++i){
+		EnumEntry& cur_entry = parsed_enum.entries[i];
+
+		stringstream ss;
+		ss << cur_entry.value;
+		string val_str = ss.str();
+
+		// static const Pb::Register _R_$IDX$ ($ENUMNAME$,$ENUMVALUE$);
+		// TmpEnumEntry
+
+		const string table[] = {"ENUMNAME", parsed_enum.name+"_"+cur_entry.name, 
+								"ENUMVALUE", val_str,
+								"" };
+		sink.link << '&' << replaceSet(TmpEnumEntry, table) << '\n';
+
+		string entry_str = cur_entry.name + "=" + val_str;
+		if(i < parsed_enum.entries.size() - 1)
+			entry_str += ",";
+		sink.inplace << entry_str;
+	}
+
+	sink.inplace << "}\n";
 }
 
 void processPythonInstantiation(const Block& block, const Type& aliasType, Sink& sink, vector<Instantiation>& inst) {
