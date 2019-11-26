@@ -348,22 +348,23 @@ PYTHON() void setInitialVelocity(const FlagGrid& flags, MACGrid& vel, const Grid
 }
 
 //! Kernel: gradient norm operator
-KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
+KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str, const Grid<Real>* strGrid) {
 	Vec3 grad = 0.5 * Vec3(        grid(i+1,j,k)-grid(i-1,j,k), 
 								   grid(i,j+1,k)-grid(i,j-1,k), 0.);
 	if(grid.is3D()) grad[2]= 0.5*( grid(i,j,k+1)-grid(i,j,k-1) );
 	normalize(grad);
+	if (strGrid) str += (*strGrid)(i,j,k);
 	force(i,j,k) = str * cross(grad, curl(i,j,k));
 }
 
-PYTHON() void vorticityConfinement(MACGrid& vel, const FlagGrid& flags, Real strength) {
+PYTHON() void vorticityConfinement(MACGrid& vel, const FlagGrid& flags, Real strengthGlobal=0, const Grid<Real>* strengthCell=NULL) {
 	Grid<Vec3> velCenter(flags.getParent()), curl(flags.getParent()), force(flags.getParent());
 	Grid<Real> norm(flags.getParent());
 	
 	GetCentered(velCenter, vel);
 	CurlOp(velCenter, curl);
 	GridNorm(norm, curl);
-	KnConfForce(force, norm, curl, strength);
+	KnConfForce(force, norm, curl, strengthGlobal, strengthCell);
 	KnApplyForceField(flags, vel, force, NULL, true, false);
 }
 

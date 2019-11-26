@@ -50,6 +50,10 @@ noise.timeAnim = 0.2
 # needs positive gravity because of addHeatBuoyancy2()
 gravity = vec3(0,-0.0981,0)
 
+# vorticity
+vortGlobal = 0.1
+vortFlames = 0.5
+
 # initialize domain with boundary
 bWidth=1
 flags.initDomain( boundaryWidth=bWidth )
@@ -90,7 +94,10 @@ while s.frame < frames:
 	if doOpen:
 		resetOutflow( flags=flags, real=density )
 
-	vorticityConfinement( vel=vel, flags=flags, strength=0.1 )
+	# Apply global and fuel-based flame vorticity
+	flame.copyFrom(fuel)
+	flame.multConst(vortFlames) # temporarily misuse flame grid
+	vorticityConfinement( vel=vel, flags=flags, strengthGlobal=vortGlobal, strengthCell=flame)
 
 	addBuoyancy( flags=flags, density=density, vel=vel, gravity=(gravity*smokeDensity ) )
 	addBuoyancy( flags=flags, density=heat,    vel=vel, gravity=(gravity*smokeTempDiff) )
