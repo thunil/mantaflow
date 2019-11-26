@@ -12,8 +12,8 @@ if dim==2:
 s = Solver(name='main', gridSize = gs, dim=dim)
 
 # buoyancy parameters
-smokeDensity = -0.001 # alpha
-smokeTempDiff = 0.1   # beta
+smokeDensity = -0.001
+smokeTempDiff = 0.1
 
 # set time step range
 s.frameLength = 1.2   # length of one frame (in "world time")
@@ -47,10 +47,9 @@ noise.valScale = 1
 noise.valOffset = 0.75
 noise.timeAnim = 0.2
 
-# needs positive gravity because of addHeatBuoyancy2()
 gravity = vec3(0,-0.0981,0)
 
-# vorticity
+# vorticity global is applied to all cells, vorticity flames only to ones with fuel
 vortGlobal = 0.1
 vortFlames = 0.5
 
