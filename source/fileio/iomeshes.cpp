@@ -383,6 +383,8 @@ void readMdataUni(const std::string& name, MeshDataImpl<T>* mdata ) {
 	if (!strcmp(ID, "MD01")) {
 		UniMeshHeader head;
 		assertMsg (gzread(gzf, &head, sizeof(UniMeshHeader)) == sizeof(UniMeshHeader), "can't read file, no header present");
+		mdata->resize(head.dim);
+
 		assertMsg (head.dim == mdata->size() , "mdata size doesn't match");
 #		if FLOATINGPOINT_PRECISION!=1
 		MeshDataImpl<T> temp(mdata->getParent());
