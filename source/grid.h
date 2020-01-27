@@ -173,6 +173,8 @@ public:
 	PYTHON() void mult( const Grid<T>& a);
 	//! multiply each cell by a constant scalar value
 	PYTHON() void multConst(T s);
+	//! safely divide contents of grid (with zero check)
+	PYTHON() Grid<T>& safeDivide( const Grid<T>& a);
 	//! clamp content to range (for vec3, clamps each component separately)
 	PYTHON() void clamp(Real min, Real max);
 	//! reduce small values to zero
@@ -214,7 +216,6 @@ public:
 	template<class S> Grid<T>& operator*=(const S& a);
 	template<class S> Grid<T>& operator/=(const Grid<S>& a);
 	template<class S> Grid<T>& operator/=(const S& a);
-	Grid<T>& safeDivide(const Grid<T>& a);    
 	
 	//! Swap data with another grid (no actual data is moved)
 	void swap(Grid<T>& other);
