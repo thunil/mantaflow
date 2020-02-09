@@ -462,7 +462,6 @@ void correctLevelset(LevelsetGrid& phi, const Grid<Vec3>& pAcc, const Grid<Real>
 					const Real radius, const Real t_low, const Real t_high)
 {
 	if (rAcc(i, j, k) <= VECTOR_EPSILON) return; //outside nothing happens
-	Real x = pAcc(i, j, k).x;
 	
 	// create jacobian of pAcc via central differences
 	Matrix3x3f jacobian = Matrix3x3f(

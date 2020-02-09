@@ -107,7 +107,7 @@ template<> void FluidSolver::freeGrid4dPointer<Vec4>(Vec4* ptr) {
 FluidSolver::FluidSolver(Vec3i gridsize, int dim, int fourthDim)
 	: PbClass(this), mDt(1.0), mTimeTotal(0.), mFrame(0), 
 	  mCflCond(1000), mDtMin(1.), mDtMax(1.), mFrameLength(1.),
-	  mGridSize(gridsize), mDim(dim) , mTimePerFrame(0.), mLockDt(false), mFourthDim(fourthDim)
+	  mTimePerFrame(0.), mGridSize(gridsize), mDim(dim), mLockDt(false), mFourthDim(fourthDim)
 {
 	if(dim==4 && mFourthDim>0) errMsg("Don't create 4D solvers, use 3D with fourth-dim parameter >0 instead.");
 	assertMsg(dim==2 || dim==3, "Only 2D and 3D solvers allowed.");
