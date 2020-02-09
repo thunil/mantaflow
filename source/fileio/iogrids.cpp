@@ -758,13 +758,82 @@ void readGrid4dRaw(const string& name, Grid4d<T>* grid) {
 #if OPENVDB==1
 
 template <class T>
-void writeGridVDB(const string& name, Grid<T>* grid) { 
+void writeGridVDB(const string& name, Grid<T>* grid) {
 	debMsg("Writing grid " << grid->getName() << " to vdb file " << name << " not yet supported!", 1);
 }
 
 template <class T>
 void readGridVDB(const string& name, Grid<T>* grid) {
 	debMsg("Reading grid " << grid->getName() << " from vdb file " << name << " not yet supported!", 1);
+}
+
+template <>
+void writeGridVDB(const string& name, Grid<int>* grid) {
+	debMsg("Writing int grid " << grid->getName() << " to vdb file " << name, 1);
+
+	// Create an empty int32-point grid with background value 0.
+	openvdb::initialize();
+	openvdb::Int32Grid::Ptr gridVDB = openvdb::Int32Grid::create();
+	gridVDB->setTransform( openvdb::math::Transform::createLinearTransform( 1./grid->getSizeX() )); //voxel size
+
+	// Get an accessor for coordinate-based access to voxels.
+	openvdb::Int32Grid::Accessor accessor = gridVDB->getAccessor();
+
+	gridVDB->setGridClass(openvdb::GRID_UNKNOWN);
+
+	// Name the grid "density".
+	gridVDB->setName( grid->getName() );
+
+	openvdb::io::File file(name);
+
+	FOR_IJK(*grid) {
+		openvdb::Coord xyz(i, j, k);
+		accessor.setValue(xyz, (*grid)(i, j, k));
+	}
+
+	// Add the grid pointer to a container.
+	openvdb::GridPtrVec gridsVDB;
+	gridsVDB.push_back(gridVDB);
+
+	// Write out the contents of the container.
+	file.write(gridsVDB);
+	file.close();
+}
+
+template <>
+void readGridVDB(const string& name, Grid<int>* grid) {
+	debMsg("Reading int grid " << grid->getName() << " from vdb file " << name, 1);
+
+	openvdb::initialize();
+	openvdb::io::File file(name);
+	file.open();
+
+	openvdb::GridBase::Ptr baseGrid;
+	for (openvdb::io::File::NameIterator nameIter = file.beginName(); nameIter != file.endName(); ++nameIter)
+	{
+	#ifndef BLENDER
+		// Read in only the grid we are interested in.
+		if (nameIter.gridName() == grid->getName()) {
+			baseGrid = file.readGrid(nameIter.gridName());
+		} else {
+			debMsg("skipping grid " << nameIter.gridName(), 1);
+		}
+	#else
+		// For Blender, skip name check and pick first grid from loop
+		baseGrid = file.readGrid(nameIter.gridName());
+		break;
+	#endif
+	}
+	file.close();
+	openvdb::Int32Grid::Ptr gridVDB = openvdb::gridPtrCast<openvdb::Int32Grid>(baseGrid);
+
+	openvdb::Int32Grid::Accessor accessor = gridVDB->getAccessor();
+
+	FOR_IJK(*grid) {
+		openvdb::Coord xyz(i, j, k);
+		int v = accessor.getValue(xyz);
+		(*grid)(i, j, k) = v;
+	}
 }
 
 template <>
