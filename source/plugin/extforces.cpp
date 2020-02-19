@@ -357,14 +357,14 @@ KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const 
 	force(i,j,k) = str * cross(grad, curl(i,j,k));
 }
 
-PYTHON() void vorticityConfinement(MACGrid& vel, const FlagGrid& flags, Real strengthGlobal=0, const Grid<Real>* strengthCell=NULL) {
+PYTHON() void vorticityConfinement(MACGrid& vel, const FlagGrid& flags, Real strength=0, const Grid<Real>* strengthCell=NULL) {
 	Grid<Vec3> velCenter(flags.getParent()), curl(flags.getParent()), force(flags.getParent());
 	Grid<Real> norm(flags.getParent());
 	
 	GetCentered(velCenter, vel);
 	CurlOp(velCenter, curl);
 	GridNorm(norm, curl);
-	KnConfForce(force, norm, curl, strengthGlobal, strengthCell);
+	KnConfForce(force, norm, curl, strength, strengthCell);
 	KnApplyForceField(flags, vel, force, NULL, true, false);
 }
 

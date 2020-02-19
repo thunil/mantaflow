@@ -96,7 +96,7 @@ while s.frame < frames:
 	# Apply global and fuel-based flame vorticity
 	flame.copyFrom(fuel)
 	flame.multConst(vortFlames) # temporarily misuse flame grid
-	vorticityConfinement( vel=vel, flags=flags, strengthGlobal=vortGlobal, strengthCell=flame)
+	vorticityConfinement( vel=vel, flags=flags, strength=vortGlobal, strengthCell=flame)
 
 	addBuoyancy( flags=flags, density=density, vel=vel, gravity=(gravity*smokeDensity ) )
 	addBuoyancy( flags=flags, density=heat,    vel=vel, gravity=(gravity*smokeTempDiff) )
