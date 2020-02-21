@@ -176,6 +176,7 @@ SET(PP_SOURCES
 	source/mesh.cpp
 	source/particle.cpp
 	source/movingobs.cpp
+	source/fileio/ioutil.cpp
 	source/fileio/iogrids.cpp
 	source/fileio/iomeshes.cpp
 	source/fileio/ioparticles.cpp

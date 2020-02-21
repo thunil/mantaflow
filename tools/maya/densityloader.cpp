@@ -221,7 +221,7 @@ void FluidGridObject::loadDensity(const char* mask, int offset, MTime& time, MOb
 	MFnFluid fluid(obj);
 		
 	// read file
-	gzFile gzf = gzopen(filename, "rb");
+	gzFile gzf = (gzFile) safeGzopen(filename, "rb");
 	if (!gzf) {
         cerr << "can't open file "<< filename << endl;	    
         return;

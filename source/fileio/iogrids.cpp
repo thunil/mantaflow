@@ -248,7 +248,7 @@ void writeGridRaw(const string& name, Grid<T>* grid) {
 	debMsg( "writing grid " << grid->getName() << " to raw file " << name ,1);
 	
 #	if NO_ZLIB!=1
-	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "wb1"); // do some compression
 	if (!gzf) errMsg("writeGridRaw: can't open file " << name);
 	gzwrite(gzf, &((*grid)[0]), sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ());
 	gzclose(gzf);
@@ -262,7 +262,7 @@ void readGridRaw(const string& name, Grid<T>* grid) {
 	debMsg( "reading grid " << grid->getName() << " from raw file " << name ,1);
 	
 #	if NO_ZLIB!=1
-	gzFile gzf = gzopen(name.c_str(), "rb");
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "rb");
 	if (!gzf) errMsg("readGridRaw: can't open file " << name);
 	
 	IndexInt bytes = sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ();
@@ -296,7 +296,7 @@ typedef struct {
 void getUniFileSize(const string& name, int& x, int& y, int& z, int* t, std::string* info) {
 	x = y = z = 0;
 #	if NO_ZLIB!=1
-	gzFile gzf = gzopen(name.c_str(), "rb");
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "rb");
 	if (gzf) { 
 		char ID[5]={0,0,0,0,0};
 		gzread(gzf, ID, 4); 
@@ -381,7 +381,7 @@ void writeGridUni(const string& name, Grid<T>* grid) {
 	else 
 		errMsg("writeGridUni: unknown element type");
 	
-	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "wb1"); // do some compression
 	if (!gzf) errMsg("writeGridUni: can't open file " << name);
 	
 	gzwrite(gzf, ID, 4);
@@ -408,7 +408,7 @@ void readGridUni(const string& name, Grid<T>* grid) {
 	debMsg( "Reading grid " << grid->getName() << " from uni file " << name ,1);
 
 #	if NO_ZLIB!=1
-	gzFile gzf = gzopen(name.c_str(), "rb");
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "rb");
 	if (!gzf) errMsg("readGridUni: can't open file " << name);
 
 	char ID[5]={0,0,0,0,0};
@@ -589,7 +589,7 @@ void writeGrid4dUni(const string& name, Grid4d<T>* grid) {
 	else 
 		errMsg("writeGrid4dUni: unknown element type");
 	
-	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "wb1"); // do some compression
 	if (!gzf) errMsg("writeGrid4dUni: can't open file " << name);
 	
 	gzwrite(gzf, ID, 4);
@@ -625,7 +625,7 @@ void readGrid4dUni(const string& name, Grid4d<T>* grid, int readTslice, Grid4d<T
 
 	// optionally - reuse file handle, if valid one is passed in fileHandle pointer...
 	if( (!fileHandle) || (fileHandle && (*fileHandle == NULL)) ) {
-		gzf = gzopen(name.c_str(), "rb");
+		gzf = (gzFile) safeGzopen(name.c_str(), "rb");
 		if (!gzf) errMsg("readGrid4dUni: can't open file "<<name);
 
 		gzread(gzf, ID, 4);
@@ -725,7 +725,7 @@ void writeGrid4dRaw(const string& name, Grid4d<T>* grid) {
 	debMsg( "writing grid4d " << grid->getName() << " to raw file " << name ,1);
 	
 #	if NO_ZLIB!=1
-	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "wb1"); // do some compression
 	if (!gzf) errMsg("writeGrid4dRaw: can't open file " << name);
 	gzwrite(gzf, &((*grid)[0]), sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ()*grid->getSizeT());
 	gzclose(gzf);
@@ -739,7 +739,7 @@ void readGrid4dRaw(const string& name, Grid4d<T>* grid) {
 	debMsg( "reading grid4d " << grid->getName() << " from raw file " << name ,1);
 	
 #	if NO_ZLIB!=1
-	gzFile gzf = gzopen(name.c_str(), "rb");
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "rb");
 	if (!gzf) errMsg("readGrid4dRaw: can't open file " << name);
 	
 	IndexInt bytes = sizeof(T)*grid->getSizeX()*grid->getSizeY()*grid->getSizeZ()*grid->getSizeT();

@@ -144,7 +144,7 @@ void writeParticlesUni(const std::string& name, const BasicParticleSystem* parts
 	MuTime stamp;
 	head.timestamp = stamp.time;
 	
-	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "wb1"); // do some compression
 	if (!gzf) errMsg("can't open file " << name);
 	
 	gzwrite(gzf, ID, 4);
@@ -172,7 +172,7 @@ void readParticlesUni(const std::string& name, BasicParticleSystem* parts ) {
 	debMsg( "reading particles " << parts->getName() << " from uni file " << name ,1);
 	
 #	if NO_ZLIB!=1
-	gzFile gzf = gzopen(name.c_str(), "rb");
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "rb");
 	if (!gzf) errMsg("can't open file " << name);
 
 	char ID[5]={0,0,0,0,0};
@@ -231,7 +231,7 @@ void writePdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	MuTime stamp;
 	head.timestamp = stamp.time;
 	
-	gzFile gzf = gzopen(name.c_str(), "wb1"); // do some compression
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "wb1"); // do some compression
 	if (!gzf) errMsg("can't open file " << name);
 	gzwrite(gzf, ID, 4);
 
@@ -256,7 +256,7 @@ void readPdataUni(const std::string& name, ParticleDataImpl<T>* pdata ) {
 	debMsg( "reading particle data " << pdata->getName() << " from uni file " << name ,1);
 	
 #	if NO_ZLIB!=1
-	gzFile gzf = gzopen(name.c_str(), "rb");
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "rb");
 	if (!gzf) errMsg("can't open file " << name );
 
 	char ID[5]={0,0,0,0,0};
