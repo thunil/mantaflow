@@ -406,38 +406,51 @@ PYTHON() Real gridMaxDiffVec3(Grid<Vec3>& g1, Grid<Vec3>& g2)
 	return maxVal;
 }
 
+KERNEL() void knCopyMacToVec3(MACGrid &source, Grid<Vec3>& target)
+{
+	target(i,j,k) = source(i,j,k);
+}
 // simple helper functions to copy (convert) mac to vec3 , and levelset to real grids
 // (are assumed to be the same for running the test cases - in general they're not!)
-PYTHON() void copyMacToVec3 (MACGrid &source, Grid<Vec3>& target)
+PYTHON() void copyMacToVec3(MACGrid &source, Grid<Vec3>& target)
 {
-	FOR_IJK(target) {
-		target(i,j,k) = source(i,j,k);
-	}
+	knCopyMacToVec3(source, target);
 }
 
 PYTHON() void convertMacToVec3 (MACGrid &source , Grid<Vec3> &target) { debMsg("Deprecated - do not use convertMacToVec3... use copyMacToVec3 instead",1); copyMacToVec3(source,target); }
 
-//! vec3->mac grid conversion , but with full resampling 
-PYTHON() void resampleVec3ToMac (Grid<Vec3>& source, MACGrid &target ) {
-	FOR_IJK_BND(target,1) {
-		target(i,j,k)[0] = 0.5*(source(i-1,j,k)[0]+source(i,j,k))[0];
-		target(i,j,k)[1] = 0.5*(source(i,j-1,k)[1]+source(i,j,k))[1];
-		if(target.is3D()) {
-		target(i,j,k)[2] = 0.5*(source(i,j,k-1)[2]+source(i,j,k))[2]; }
-	}
+KERNEL(bnd=1)
+void knResampleVec3ToMac(Grid<Vec3>& source, MACGrid &target)
+{
+	target(i,j,k)[0] = 0.5*(source(i-1,j,k)[0]+source(i,j,k))[0];
+	target(i,j,k)[1] = 0.5*(source(i,j-1,k)[1]+source(i,j,k))[1];
+	if(target.is3D()) {
+	target(i,j,k)[2] = 0.5*(source(i,j,k-1)[2]+source(i,j,k))[2]; }
 }
-//! mac->vec3 grid conversion , with full resampling 
-PYTHON() void resampleMacToVec3 (MACGrid &source, Grid<Vec3>& target ) {
-	FOR_IJK_BND(target,1) {
-		target(i,j,k) = source.getCentered(i,j,k);
-	}
+//! vec3->mac grid conversion , but with full resampling 
+PYTHON() void resampleVec3ToMac(Grid<Vec3>& source, MACGrid &target)
+{
+	knResampleVec3ToMac(source, target);
 }
 
-PYTHON() void copyLevelsetToReal (LevelsetGrid &source , Grid<Real> &target)
+KERNEL(bnd=1)
+void knResampleMacToVec3(MACGrid &source, Grid<Vec3>& target)
 {
-	FOR_IJK(target) {
-		target(i,j,k) = source(i,j,k);
-	}
+	target(i,j,k) = source.getCentered(i,j,k);
+}
+//! mac->vec3 grid conversion , with full resampling 
+PYTHON() void resampleMacToVec3 (MACGrid &source, Grid<Vec3>& target)
+{
+	knResampleMacToVec3(source, target);
+}
+
+KERNEL() void knCopyLevelsetToReal(LevelsetGrid &source , Grid<Real> &target)
+{
+	target(i,j,k) = source(i,j,k);
+}
+PYTHON() void copyLevelsetToReal(LevelsetGrid &source , Grid<Real> &target)
+{
+	knCopyLevelsetToReal(source, target);
 }
 
 KERNEL() void knCopyVec3ToReal(Grid<Vec3> &source, Grid<Real> &targetX, Grid<Real> &targetY, Grid<Real> &targetZ)
