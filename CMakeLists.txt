@@ -110,6 +110,9 @@ endif()
 if(BLENDER)
 	add_definitions ( -DBLENDER=1 )
 endif()
+if(BLENDER AND GUI)
+	message(FATAL_ERROR "Cannot activate both BLENDER and GUI")
+endif()
 
 # translate option into python version string
 if(NOT PYTHON_VERSION)
