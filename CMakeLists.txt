@@ -13,39 +13,39 @@
 project (MantaFlow)
 cmake_minimum_required(VERSION 2.8)
 
-SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/tools/cmake/")
-SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
-SET(VERBOSE 1)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/tools/cmake/")
+set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
+set(VERBOSE 1)
 
-SET(MANTAVERSION "0.12")
+set(MANTAVERSION "0.12")
 
 #******************************************************************************
 # Default paths
 # - CMake's path finder is completely useless for Qt5 + Python on Win64
 # - allow override from command line on OsX, eg use "cmake ..  -DCMAKE_PREFIX_PATH=/Users/someone/qt5.2.1/5.2.1/clang_64/
 
-IF(WIN32)
-	SET(WIN_QT_PATH        "C:/Qt/5.9/msvc2013_64_opengl") # qt5/win64
-	SET(WIN_PYTHON_PATH    "C:/Python36") # choose python version with PYTHON_VERSION above
-	SET(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
-	SET(CMAKE_PREFIX_PATH ${WIN_QT_PATH})
-ENDIF()
+if(WIN32)
+	set(WIN_QT_PATH        "C:/Qt/5.9/msvc2013_64_opengl") # qt5/win64
+	set(WIN_PYTHON_PATH    "C:/Python36") # choose python version with PYTHON_VERSION above
+	set(CMAKE_LIBRARY_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
+	set(CMAKE_PREFIX_PATH ${WIN_QT_PATH})
+endif()
 
-IF(APPLE)
-	IF(NOT CMAKE_PREFIX_PATH)
-		SET(CMAKE_PREFIX_PATH "/usr/local/opt/qt5/") #  mac/homebrew (version independent)
-		#SET(CMAKE_PREFIX_PATH "/home/myname/qt/5.5/clang_64") #  other...
-	ENDIF()
-ENDIF()
+if(APPLE)
+	if(NOT CMAKE_PREFIX_PATH)
+		set(CMAKE_PREFIX_PATH "/usr/local/opt/qt5/") #  mac/homebrew (version independent)
+		#set(CMAKE_PREFIX_PATH "/home/myname/qt/5.5/clang_64") #  other...
+	endif()
+endif()
 
 #******************************************************************************
 # setup default params
 
-IF(NOT CMAKE_BUILD_TYPE)
-	SET(CMAKE_BUILD_TYPE "Release")
-ELSE()
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE "Release")
+else()
 	MESSAGE("Build-type: '${CMAKE_BUILD_TYPE}'")
-ENDIF()
+endif()
 
 # compilation versions
 OPTION(DEBUG "Enable debug compilation" OFF)
@@ -74,42 +74,42 @@ OPTION(BUILD_STATIC "Enable building static library" OFF)
 # special option to compile manta without any python, disables python glue code (while trying to keep as much of the rest as possible)
 # this also means: static lib output , instead of executable
 OPTION(NOPYTHON "Compile without python support (limited functionality!)" OFF)
-IF(NOPYTHON)
-	SET(BUILD_STATIC ON)
-ENDIF()
+if(NOPYTHON)
+	set(BUILD_STATIC ON)
+endif()
 
 # check consistency of MT options
-SET(MT OFF)
-SET(MT_TYPE "NONE")
+set(MT OFF)
+set(MT_TYPE "NONE")
 if (TBB)
-	SET (MT_TYPE "TBB")
-	SET (MT ON)
+	set(MT_TYPE "TBB")
+	set(MT ON)
 endif()
 if (OPENMP)
-	SET (MT_TYPE "OPENMP")
-	SET (MT ON)
+	set(MT_TYPE "OPENMP")
+	set(MT ON)
 endif()
 if (TBB AND OPENMP)
 	message(FATAL_ERROR "Cannot activate both OPENMP and TBB")
 endif()
 
 # make sure debug settings match...
-IF(NOT DEBUG)
-	IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-		SET(DEBUG 1)
-	ENDIF()
-ENDIF()
+if(NOT DEBUG)
+	if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+		set(DEBUG 1)
+	endif()
+endif()
 
 add_definitions ( -DMANTAVERSION="${MANTAVERSION}" )
 
-IF(DEBUG)
-	SET(CMAKE_BUILD_TYPE "Debug")
+if(DEBUG)
+	set(CMAKE_BUILD_TYPE "Debug")
 	add_definitions ( -DDEBUG=1 )
-ENDIF()
+endif()
 
-IF(BLENDER)
+if(BLENDER)
 	add_definitions ( -DBLENDER=1 )
-ENDIF()
+endif()
 
 # translate option into python version string
 if(NOT PYTHON_VERSION)
@@ -138,7 +138,7 @@ MESSAGE(STATUS "")
 # Pre-processor
 
 # compile prep
-SET(SOURCES
+set(SOURCES
 	source/preprocessor/main.cpp
 	source/preprocessor/code.cpp
 	source/preprocessor/tokenize.cpp
@@ -156,14 +156,14 @@ endif()
 #******************************************************************************
 # Setup main project
 
-SET(F_LIBS "" )
-SET(F_LIB_PATHS)
-SET(F_LINKADD "") # additional linker flags, not a list
+set(F_LIBS "" )
+set(F_LIB_PATHS)
+set(F_LINKADD "") # additional linker flags, not a list
 set(PP_PATH "pp")
-SET(SILENT_SOURCES)
+set(SILENT_SOURCES)
 
 # need pre-processing
-SET(PP_SOURCES
+set(PP_SOURCES
 	source/general.cpp
 	source/fluidsolver.cpp
 	source/conjugategrad.cpp
@@ -207,7 +207,7 @@ SET(PP_SOURCES
 	source/test.cpp
 )
 
-SET(PP_HEADERS
+set(PP_HEADERS
 	source/general.h
 	source/commonkernels.h
 	source/conjugategrad.h
@@ -243,7 +243,7 @@ set(NOPP_SOURCES
 	source/util/simpleimage.cpp
 )
 
-SET(NOPP_HEADERS
+set(NOPP_HEADERS
 	source/pwrapper/pythonInclude.h
 	source/pwrapper/pclass.h
 	source/pwrapper/registry.h
@@ -284,7 +284,7 @@ if (GUI)
 endif()
 
 # include dirs
-SET(INCLUDE_PATHS
+set(INCLUDE_PATHS
 	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
 	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/util
 	${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/fileio
@@ -303,7 +303,7 @@ if (NOPYTHON)
 		source/util/simpleimage.cpp
 	) 
 	# update paths to use nopython versions
-	SET(INCLUDE_PATHS
+	set(INCLUDE_PATHS
 		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source
 		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/util
 		${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/fileio
@@ -346,7 +346,7 @@ if(MT)
 			add_definitions( /openmp)
 		else()
 			add_definitions(-fopenmp)
-			SET(F_LINKADD "${F_LINKADD} -fopenmp ")
+			set(F_LINKADD "${F_LINKADD} -fopenmp ")
 		endif()
 	endif()
 endif()
@@ -354,7 +354,7 @@ endif()
 #******************************************************************************
 # optional - openvdb support
 
-IF(OPENVDB)
+if(OPENVDB)
 	add_definitions(-DOPENVDB=1)
 	message("Note - mantaflow assumes OpenVDB is installed in '<manta-dir>/openVDB'. For windows you can find an example zip package on the mantaflow homepage under downloads.")
 
@@ -396,7 +396,7 @@ IF(OPENVDB)
 	else()
 		# for open exr - should be in the default path, add includes if necessary
 	endif()
-ENDIF()
+endif()
 
 #******************************************************************************
 # add a target to generate API documentation with Doxygen
@@ -541,14 +541,14 @@ endif()
 #******************************************************************************
 # generate git repository info , currently only for unix systems
 
-IF(NOT WIN32)
+if(NOT WIN32)
 	set(GITINFO "${CMAKE_CURRENT_BINARY_DIR}/${PP_PATH}/source/gitinfo.h")
 	MESSAGE(STATUS "Git info target header ${GITINFO}")
 	add_custom_command(OUTPUT ${GITINFO}
 					   COMMAND python${PYTHON_VER_ID} "${CMAKE_CURRENT_SOURCE_DIR}/tools/getGitVersion.py" "${GITINFO}"
 					   DEPENDS ${PP_SOURCES} ${PP_HEADERS} ${NOPP_SOURCES} ${NOPP_HEADERS} ${QT_SOURCES} ${QT_HEADERS}
 					   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} )
-ENDIF()
+endif()
 
 #******************************************************************************
 # apply preprocessor
@@ -571,13 +571,13 @@ FOREACH(it ${PP_SOURCES} ${PP_HEADERS})
 
 	set(OUTFILES "${CURPP}")
 	if ("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
-		IF(NOT NOPYTHON)
+		if(NOT NOPYTHON)
 			list(APPEND PP_REGS "${CURPP}.reg")
 			list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
-		ENDIF()
+		endif()
 		set_source_files_properties("${CURPP}.reg.cpp" OBJECT_DEPENDS "${CURPP}")
 		list(APPEND OUTFILES "${CURPP}.reg")
-	ENDIF()
+	endif()
 
 	# preprocessor
 	add_custom_command(OUTPUT ${OUTFILES}
@@ -592,7 +592,7 @@ ENDFOREACH(it)
 list(APPEND SOURCES ${PREPPED_SOURCES})
 
 # link reg files , for python glue code
-IF(NOT NOPYTHON)
+if(NOT NOPYTHON)
 	add_custom_command(OUTPUT ${PP_REGCPP}
 					COMMAND prep link ${PP_REGS}
 					DEPENDS prep ${PP_REGS}
@@ -607,7 +607,7 @@ IF(NOT NOPYTHON)
 					WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 					COMMENT "Ensuring registration functions are not removed by compiler")
 	list(APPEND SOURCES ${PP_REGISTER})
-ENDIF()
+endif()
 
 #******************************************************************************
 # QT for GUI
@@ -651,7 +651,7 @@ if(GUI)
 
 	if (APPLE)
 		# mac opengl framework
-		SET(F_LINKADD "${F_LINKADD} -framework OpenGL ")
+		set(F_LINKADD "${F_LINKADD} -framework OpenGL ")
 	else()
 		find_package(OpenGL REQUIRED)
 		list(APPEND F_LIBS ${OPENGL_LIBRARIES})
@@ -661,15 +661,15 @@ endif()
 #******************************************************************************
 # setup executable
 
-SET(EXECCMD manta)
+set(EXECCMD manta)
 
-SET(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${F_LINKADD} ")
-SET(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${F_LINKADD} ")
+set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${F_LINKADD} ")
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${F_LINKADD} ")
 
 include_directories( ${INCLUDE_PATHS})
 link_directories( ${F_LIB_PATHS} )
 
-IF(NOT NOPYTHON)
+if(NOT NOPYTHON)
 	# build regular executable
 
 	if (WIN32)
@@ -683,65 +683,65 @@ IF(NOT NOPYTHON)
 	target_link_libraries( ${EXECCMD} ${F_LIBS} )
 
 	# fix for "el capitan" TBB and changed dynamic library env vars, lookup of TBB can cause problems without @rpath
-	IF(APPLE)
+	if(APPLE)
 		EXEC_PROGRAM(uname ARGS -v  OUTPUT_VARIABLE OSX_VERSION)
 		STRING(REGEX MATCH "[0-9]+" OSX_VERSION ${OSX_VERSION})
-		IF (OSX_VERSION GREATER 14)
+		if(OSX_VERSION GREATER 14)
 			ADD_CUSTOM_COMMAND(TARGET manta   POST_BUILD COMMAND 
 				${CMAKE_INSTALL_NAME_TOOL} -change libtbb.dylib @rpath/libtbb.dylib $<TARGET_FILE:manta> )
-		ENDIF()
-	ENDIF()
+		endif()
+	endif()
 
-ELSEIF(BUILD_STATIC)
+elseif(BUILD_STATIC)
 	# only build static library in nopython mode
-	SET(EXECCMD manta_static)
+	set(EXECCMD manta_static)
 	# only build static library, e.g. for nopython mode
 	ADD_LIBRARY (core OBJECT ${SOURCES} ${GITINFO})
 	ADD_LIBRARY (${EXECCMD} STATIC $<TARGET_OBJECTS:core>)
-ENDIF()
+endif()
 
 # gcc compiler flags 
-IF(NOT WIN32)
-	IF(DEBUG)
+if(NOT WIN32)
+	if(DEBUG)
 		# stricter: no optimizations and inlining
 		set_target_properties(${EXECMD} PROPERTIES COMPILE_FLAGS " -O0 -fno-inline -Wall ")
-	ELSE()
+	else()
 		# non-debug, optimized version
 		set_target_properties(${EXECMD} PROPERTIES COMPILE_FLAGS " -O3 -Wall ")
-	ENDIF()
-ENDIF()
+	endif()
+endif()
 
 # use c++11 for all pre-processed c++ sources
 # TODO, enable by default
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-SET(CPP11_FLAG " ")
+set(CPP11_FLAG " ")
 if(COMPILER_SUPPORTS_CXX11)
-	SET(CPP11_FLAG " -std=c++11 ")
+	set(CPP11_FLAG " -std=c++11 ")
 	set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS ${CPP11_FLAG})
 	add_definitions(-DMANTA_WITHCPP11=1)
 elseif(COMPILER_SUPPORTS_CXX0X)
-	SET(CPP11_FLAG " -std=c++0x ")
+	set(CPP11_FLAG " -std=c++0x ")
 	set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS  ${CPP11_FLAG})
 	add_definitions(-DMANTA_WITHCPP11=1)
 endif()
 
 # necessary for newer LLVM clang versions, to prevent abundance of "Namify" template warnings... for compatibility disable unknown warnings
-IF(APPLE)
+if(APPLE)
 	set_source_files_properties(${PP_REGCPP} ${PREPPED_SOURCES} ${NOPP_SOURCES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  -Wno-unknown-warning-option ${CPP11_FLAG}" )
 	if(GUI)
 		set_source_files_properties(${MOC_OUTFILES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  -Wno-unknown-warning-option ${CPP11_FLAG}" )
-	ENDIF()
-ENDIF()
+	endif()
+endif()
 
 # python debugging
-IF(DEBUG_PYTHON_WITH_RELEASE) 
+if(DEBUG_PYTHON_WITH_RELEASE)
 	add_definitions(-DDEBUG_PYTHON_WITH_RELEASE=1)
-ENDIF()
+endif()
 
 # MSVC compiler settings
-IF(WIN32)
+if(WIN32)
 	# get rid of some MSVC warnings
 	add_definitions( /wd4018 /wd4146 /wd4800 )
 
@@ -765,7 +765,7 @@ IF(WIN32)
 
 	# enable when using Qt creator:
 	#add_definitions(/FS)
-ENDIF()
+endif()
 
 # print debug summary
 # MESSAGE(STATUS "DEBUG Flag-Summary - Includes: '${INCLUDE_PATHS}' | Libs: '${F_LIBS}' | LibPaths: '${F_LIB_PATHS}' ")
