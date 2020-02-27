@@ -17,7 +17,7 @@
 
 // link to omp & tbb for now
 #if OPENMP==1 || TBB==1
-#define MANTA_ENABLE_PARALLEL    0
+#define MANTA_ENABLE_PARALLEL    1
 // allow the preconditioner to be computed in parallel? (can lead to slightly non-deterministic results)
 #define MANTA_ENABLE_PARALLEL_PC 0
 #else
