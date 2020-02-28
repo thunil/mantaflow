@@ -65,6 +65,8 @@ template <class T> void readMdataUni (const std::string& name, MeshDataImpl<T>* 
 
 void getUniFileSize(const std::string& name, int& x, int& y, int& z, int* t = NULL, std::string* info = NULL);
 
+void *safeGzopen(const char *filename, const char *mode);
+
 } // namespace
 
 #endif

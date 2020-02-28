@@ -173,7 +173,6 @@ PYTHON() void getSpiralVelocity(const FlagGrid &flags, MACGrid &vel, Real streng
 	if (with3D) nz = flags.getSizeZ();
 	Real midX = 0.5*(Real)(nx - 1);
 	Real midY = 0.5*(Real)(ny - 1);
-	Real midZ = 0.5*(Real)(nz - 1);
 	for (int i = 0; i < nx; i++) {
 		for (int j = 0; j < ny; j++) {
 			for (int k = 0; k < nz; k++) {

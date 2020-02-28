@@ -266,7 +266,7 @@ bool bobjFluidObject::loadMeshData(const MTime& time,
 	MFnMesh meshFn;
 
 	// open file
-	gzf = gzopen(filename, "rb1");
+	gzf = (gzFile) safeGzopen(filename, "rb1");
 	if (!gzf)
 		bailOut("cannot open file " << filename);
 	

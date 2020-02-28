@@ -151,6 +151,37 @@ PYTHON() void densityInflowMesh(const FlagGrid& flags, Grid<Real>& density, Mesh
 	KnApplyDensity(flags, density, sdf, value, sigma);
 }
 
+KERNEL() void KnResetInObstacle(FlagGrid& flags, MACGrid& vel, Grid<Real>* density, Grid<Real>* heat,
+	Grid<Real>* fuel, Grid<Real>* flame, Grid<Real>* red, Grid<Real>* green, Grid<Real>* blue, Real resetValue)
+{
+	if (!flags.isObstacle(i,j,k)) return;
+	vel(i,j,k).x = resetValue;
+	vel(i,j,k).y = resetValue;
+	vel(i,j,k).z = resetValue;
+
+	if (density) {
+		(*density)(i,j,k) = resetValue;
+	}
+	if (heat) {
+		(*heat)(i,j,k) = resetValue;
+	}
+	if (fuel) {
+		(*fuel)(i,j,k) = resetValue;
+		(*flame)(i,j,k) = resetValue;
+	}
+	if (red) {
+		(*red)(i,j,k) = resetValue;
+		(*green)(i,j,k) = resetValue;
+		(*blue)(i,j,k) = resetValue;
+	}
+}
+
+PYTHON() void resetInObstacle(FlagGrid& flags, MACGrid& vel, Grid<Real>* density, Grid<Real>* heat=NULL,
+	Grid<Real>* fuel=NULL, Grid<Real>* flame=NULL, Grid<Real>* red=NULL, Grid<Real>* green=NULL, Grid<Real>* blue=NULL, Real resetValue=0)
+{
+	KnResetInObstacle(flags, vel, density, heat, fuel, flame, red, green, blue, resetValue);
+}
+
 
 //*****************************************************************************
 

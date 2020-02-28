@@ -157,7 +157,7 @@ void BasicParticleSystem::writeParticlesText(const string name) const
 void BasicParticleSystem::writeParticlesRawPositionsGz(const string name) const
 {
 #	if NO_ZLIB!=1
-	gzFile gzf = gzopen(name.c_str(), "wb1");
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "wb1");
 	if(!gzf) errMsg("can't open file "<<name);
 	for(IndexInt i=0; i<this->size(); ++i) {
 		Vector3D<float> p = toVec3f(this->getPos(i));
@@ -172,7 +172,7 @@ void BasicParticleSystem::writeParticlesRawPositionsGz(const string name) const
 void BasicParticleSystem::writeParticlesRawVelocityGz(const string name) const
 {
 #	if NO_ZLIB!=1
-	gzFile gzf = gzopen(name.c_str(), "wb1");
+	gzFile gzf = (gzFile) safeGzopen(name.c_str(), "wb1");
 	if (!gzf) errMsg("can't open file "<<name);
 	if( mPdataVec3.size() < 1 ) errMsg("no vec3 particle data channel found!");
 	// note , assuming particle data vec3 0 is velocity! make optional...

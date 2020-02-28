@@ -348,22 +348,23 @@ PYTHON() void setInitialVelocity(const FlagGrid& flags, MACGrid& vel, const Grid
 }
 
 //! Kernel: gradient norm operator
-KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
+KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str, const Grid<Real>* strGrid) {
 	Vec3 grad = 0.5 * Vec3(        grid(i+1,j,k)-grid(i-1,j,k), 
 								   grid(i,j+1,k)-grid(i,j-1,k), 0.);
 	if(grid.is3D()) grad[2]= 0.5*( grid(i,j,k+1)-grid(i,j,k-1) );
 	normalize(grad);
+	if (strGrid) str += (*strGrid)(i,j,k);
 	force(i,j,k) = str * cross(grad, curl(i,j,k));
 }
 
-PYTHON() void vorticityConfinement(MACGrid& vel, const FlagGrid& flags, Real strength) {
+PYTHON() void vorticityConfinement(MACGrid& vel, const FlagGrid& flags, Real strength=0, const Grid<Real>* strengthCell=NULL) {
 	Grid<Vec3> velCenter(flags.getParent()), curl(flags.getParent()), force(flags.getParent());
 	Grid<Real> norm(flags.getParent());
 	
 	GetCentered(velCenter, vel);
 	CurlOp(velCenter, curl);
 	GridNorm(norm, curl);
-	KnConfForce(force, norm, curl, strength);
+	KnConfForce(force, norm, curl, strength, strengthCell);
 	KnApplyForceField(flags, vel, force, NULL, true, false);
 }
 
@@ -375,44 +376,47 @@ PYTHON() void setForceField(const FlagGrid& flags, MACGrid& vel, const Grid<Vec3
 	KnApplyForceField(flags, vel, force, region, false, isMAC);
 }
 
+KERNEL() void KnDissolveSmoke(const FlagGrid& flags, Grid<Real>& density, Grid<Real>* heat,
+	Grid<Real>* red, Grid<Real>* green, Grid<Real>* blue, int speed, bool logFalloff, float dydx, float fac) {
+
+	bool curFluid = flags.isFluid(i,j,k);
+	if (!curFluid) return;
+
+	if (logFalloff) {
+		density(i,j,k) *= fac;
+		if (heat) {
+			(*heat)(i,j,k) *= fac;
+		}
+		if (red) {
+			(*red)(i,j,k) *= fac;
+			(*green)(i,j,k) *= fac;
+			(*blue)(i,j,k) *= fac;
+		}
+	}
+	else { // linear falloff
+		float d = density(i,j,k);
+		density(i,j,k) -= dydx;
+		if (density(i,j,k) < 0.0f)
+			density(i,j,k) = 0.0f;
+		if (heat) {
+			if      (fabs((*heat)(i,j,k)) < dydx) (*heat)(i,j,k) = 0.0f;
+			else if ((*heat)(i,j,k) > 0.0f) (*heat)(i,j,k) -= dydx;
+			else if ((*heat)(i,j,k) < 0.0f) (*heat)(i,j,k) += dydx;
+		}
+		if (red && notZero(d) ) {
+			(*red)(i,j,k)   *= (density(i,j,k)/d);
+			(*green)(i,j,k) *= (density(i,j,k)/d);
+			(*blue)(i,j,k)  *= (density(i,j,k)/d);
+		}
+	}
+}
+
 PYTHON() void dissolveSmoke(const FlagGrid& flags, Grid<Real>& density, Grid<Real>* heat=NULL,
 	Grid<Real>* red=NULL, Grid<Real>* green=NULL, Grid<Real>* blue=NULL, int speed=5, bool logFalloff=true)
 {
 	float dydx = 1.0f / (float)speed; // max density/speed = dydx
 	float fac = 1.0f - dydx;
-
-	FOR_IJK_BND(density, 0) {
-		bool curFluid = flags.isFluid(i,j,k);
-		if (!curFluid) continue;
-
-		if (logFalloff) {
-			density(i,j,k) *= fac;
-			if (heat) {
-				(*heat)(i,j,k) *= fac;
-			}
-			if (red) {
-				(*red)(i,j,k) *= fac;
-				(*green)(i,j,k) *= fac;
-				(*blue)(i,j,k) *= fac;
-			}
-		}
-		else { // linear falloff
-			float d = density(i,j,k);
-			density(i,j,k) -= dydx;
-			if (density(i,j,k) < 0.0f)
-				density(i,j,k) = 0.0f;
-			if (heat) {
-				if      (fabs((*heat)(i,j,k)) < dydx) (*heat)(i,j,k) = 0.0f;
-				else if ((*heat)(i,j,k) > 0.0f) (*heat)(i,j,k) -= dydx;
-				else if ((*heat)(i,j,k) < 0.0f) (*heat)(i,j,k) += dydx;
-			}
-			if (red && notZero(d) ) {
-				(*red)(i,j,k)   *= (density(i,j,k)/d);
-				(*green)(i,j,k) *= (density(i,j,k)/d);
-				(*blue)(i,j,k)  *= (density(i,j,k)/d);
-			}
-		}
-	}
+	KnDissolveSmoke(flags, density, heat, red, green, blue, speed, logFalloff, dydx, fac);
 }
 
 } // namespace

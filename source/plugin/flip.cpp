@@ -13,6 +13,7 @@
  ******************************************************************************/
 
 #include "particle.h"
+#include "general.h"
 #include "grid.h"
 #include "commonkernels.h"
 #include "randomstream.h"
@@ -462,7 +463,6 @@ void correctLevelset(LevelsetGrid& phi, const Grid<Vec3>& pAcc, const Grid<Real>
 					const Real radius, const Real t_low, const Real t_high)
 {
 	if (rAcc(i, j, k) <= VECTOR_EPSILON) return; //outside nothing happens
-	Real x = pAcc(i, j, k).x;
 	
 	// create jacobian of pAcc via central differences
 	Matrix3x3f jacobian = Matrix3x3f(
@@ -487,7 +487,7 @@ void correctLevelset(LevelsetGrid& phi, const Grid<Vec3>& pAcc, const Grid<Real>
 		Real t = (t_high - maxEV) / (t_high - t_low);
 		correction = t*t*t - 3 * t*t + 3 * t;
 	}
-	correction = (correction < 0) ? 0 : correction; // enforce correction factor to [0,1] (not explicitly in paper)
+	correction = clamp(correction, Real(0), Real(1)); // enforce correction factor to [0,1] (not explicitly in paper)
 
 	const Vec3 gridPos = Vec3(i, j, k) + Vec3(0.5); // shifted by half cell
 	const Real correctedPhi = fabs(norm(gridPos - pAcc(i, j, k))) - rAcc(i, j, k) * correction;
