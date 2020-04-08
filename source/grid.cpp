@@ -230,6 +230,18 @@ KERNEL() template<class T> void knPermuteAxes (Grid<T>& self, Grid<T>& target, i
 	target(i0,i1,i2) = self(i,j,k);
 }
 
+KERNEL(idx) void knJoinVec(Grid<Vec3>& a, const Grid<Vec3>& b, bool keepMax) {
+	Real a1 = normSquare(a[idx]);
+	Real b1 = normSquare(b[idx]);
+	a[idx] = (keepMax) ? max(a1, b1) : min(a1, b1);
+}
+KERNEL(idx) void knJoinInt(Grid<int>& a, const Grid<int>& b, bool keepMax) {
+	a[idx] = (keepMax) ? max(a[idx], b[idx]) : min(a[idx], b[idx]);
+}
+KERNEL(idx) void knJoinReal(Grid<Real>& a, const Grid<Real>& b, bool keepMax) {
+	a[idx] = (keepMax) ? max(a[idx], b[idx]) : min(a[idx], b[idx]);
+}
+
 template<class T> Grid<T>& Grid<T>::safeDivide (const Grid<T>& a) {
 	knGridSafeDiv<T> (*this, a);
 	return *this;
@@ -285,6 +297,15 @@ template<class T> void Grid<T>::permuteAxesCopyToGrid(int axis0, int axis1, int 
 	Vec3i sizeTarget = out.getParent()->getGridSize();
 	assertMsg( sizeTarget[axis0] == size[0] && sizeTarget[axis1] == size[1] && sizeTarget[axis2] == size[2], "Permuted grids must have the same dimensions!");
 	knPermuteAxes<T>(*this, out, axis0, axis1, axis2);
+}
+template<> void Grid<Vec3>::join(const Grid<Vec3>& a, bool keepMax) {
+	knJoinVec(*this, a, keepMax);
+}
+template<> void Grid<int>::join(const Grid<int>& a, bool keepMax) {
+	knJoinInt(*this, a, keepMax);
+}
+template<> void Grid<Real>::join(const Grid<Real>& a, bool keepMax) {
+	knJoinReal(*this, a, keepMax);
 }
 
 template<> Real Grid<Real>::getMax() const {

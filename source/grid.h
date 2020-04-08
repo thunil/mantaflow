@@ -183,6 +183,8 @@ public:
 	PYTHON() void permuteAxes(int axis0, int axis1, int axis2);
 	//! permute grid axes, e.g. switch y with z (0,2,1)
 	PYTHON() void permuteAxesCopyToGrid(int axis0, int axis1, int axis2, Grid<T>& out);
+	//! join other grid by either keeping min or max value at cell
+	PYTHON() void join(const Grid<T>& a, bool keepMax=true);
 
 	// common compound operators
 	//! get absolute max value in grid 
