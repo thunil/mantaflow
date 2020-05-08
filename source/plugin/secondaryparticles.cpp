@@ -202,12 +202,16 @@ void flipSampleSecondaryParticles(
 	const std::string mode, const FlagGrid &flags, const MACGrid &v, BasicParticleSystem &pts_sec,
 	ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const Real lMin, const Real lMax,
 	const Grid<Real> &potTA, const Grid<Real> &potWC, const Grid<Real> &potKE, const Grid<Real> &neighborRatio,
-	const Real c_s, const Real c_b, const Real k_ta, const Real k_wc, const Real dt, const int itype = FlagGrid::TypeFluid) {
+	const Real c_s, const Real c_b, const Real k_ta, const Real k_wc, const Real dt=0, const int itype = FlagGrid::TypeFluid) {
+
+	float timestep = dt;
+	if (dt <= 0) timestep = flags.getParent()->getDt();
+
 	if (mode == "single") {
-		knFlipSampleSecondaryParticles(flags, v, pts_sec, v_sec, l_sec, lMin, lMax, potTA, potWC, potKE, neighborRatio, c_s, c_b, k_ta, k_wc, dt, itype);
+		knFlipSampleSecondaryParticles(flags, v, pts_sec, v_sec, l_sec, lMin, lMax, potTA, potWC, potKE, neighborRatio, c_s, c_b, k_ta, k_wc, timestep, itype);
 	}
 	else if (mode == "multiple") {
-		knFlipSampleSecondaryParticlesMoreCylinders(flags, v, pts_sec, v_sec, l_sec, lMin, lMax, potTA, potWC, potKE, neighborRatio, c_s, c_b, k_ta, k_wc, dt, itype);
+		knFlipSampleSecondaryParticlesMoreCylinders(flags, v, pts_sec, v_sec, l_sec, lMin, lMax, potTA, potWC, potKE, neighborRatio, c_s, c_b, k_ta, k_wc, timestep, itype);
 	}
 	else {
 		throw std::invalid_argument("Unknown mode: use \"single\" or \"multiple\" instead!");
@@ -420,15 +424,20 @@ PYTHON()
 void flipUpdateSecondaryParticles(
 	const std::string mode, BasicParticleSystem &pts_sec, ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const ParticleDataImpl<Vec3> &f_sec,
 	FlagGrid &flags, const MACGrid &v, const Grid<Real> &neighborRatio,
-	const int radius, const Vec3 gravity,  const Real k_b, const Real k_d,
-	const Real c_s, const Real c_b, const Real dt, const int exclude = ParticleBase::PTRACER, const int antitunneling=0, const int itype = FlagGrid::TypeFluid) {
+	const int radius, const Vec3 gravity, const Real k_b, const Real k_d,
+	const Real c_s, const Real c_b, const Real dt=0, bool scale=true, const int exclude = ParticleBase::PTRACER, const int antitunneling=0, const int itype = FlagGrid::TypeFluid) {
 
-	Vec3 g = gravity / flags.getDx();
+	float gridScale = (scale) ? flags.getParent()->getDx() : 1;
+	Vec3 g = gravity / gridScale;
+
+	float timestep = dt;
+	if (dt <= 0) timestep = flags.getParent()->getDt();
+
 	if (mode == "linear") {
-		knFlipUpdateSecondaryParticlesLinear(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, g, k_b, k_d, c_s, c_b, dt, exclude, antitunneling);
+		knFlipUpdateSecondaryParticlesLinear(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, g, k_b, k_d, c_s, c_b, timestep, exclude, antitunneling);
 	}
 	else if (mode == "cubic") {
-		knFlipUpdateSecondaryParticlesCubic(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, radius, g, k_b, k_d, c_s, c_b, dt, exclude, antitunneling, itype);
+		knFlipUpdateSecondaryParticlesCubic(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, radius, g, k_b, k_d, c_s, c_b, timestep, exclude, antitunneling, itype);
 	}
 	else {
 		throw std::invalid_argument("Unknown mode: use \"linear\" or \"cubic\" instead!");
