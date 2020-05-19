@@ -151,7 +151,7 @@ public:
 	PYTHON() void clear();
 			
 	//! Advect particle in grid velocity field
-	PYTHON() void advectInGrid(const FlagGrid &flags, const MACGrid &vel, const int integrationMode, const bool deleteInObstacle=true, const bool stopInObstacle=true, const ParticleDataImpl<int> *ptype=NULL, const int exclude=0);
+	PYTHON() void advectInGrid(const FlagGrid &flags, const MACGrid &vel, const int integrationMode, const bool deleteInObstacle=true, const bool stopInObstacle=true, const bool skipNew=false, const ParticleDataImpl<int> *ptype=NULL, const int exclude=0);
 	
 	//! Project particles outside obstacles
 	PYTHON() void projectOutside(Grid<Vec3> &gradient);
@@ -441,10 +441,10 @@ void ParticleSystem<S>::transformPositions( Vec3i dimOld, Vec3i dimNew )
 KERNEL(pts) returns(std::vector<Vec3> u(size)) template<class S>
 std::vector<Vec3> GridAdvectKernel(
 	std::vector<S>& p, const MACGrid& vel, const FlagGrid& flags, const Real dt,
-	const bool deleteInObstacle, const bool stopInObstacle,
+	const bool deleteInObstacle, const bool stopInObstacle, const bool skipNew,
 	const ParticleDataImpl<int> *ptype, const int exclude)
 {
-	if ((p[idx].flag & ParticleBase::PDELETE) || (ptype && ((*ptype)[idx] & exclude))) {
+	if ((p[idx].flag & ParticleBase::PDELETE) || (ptype && ((*ptype)[idx] & exclude)) || (skipNew && (p[idx].flag & ParticleBase::PNEW))) {
 		u[idx] = 0.; return;
 	}
 	// special handling
@@ -508,7 +508,7 @@ void KnClampPositions(
 template<class S>
 void ParticleSystem<S>::advectInGrid(
 	const FlagGrid &flags, const MACGrid &vel, const int integrationMode,
-	const bool deleteInObstacle, const bool stopInObstacle,
+	const bool deleteInObstacle, const bool stopInObstacle, const bool skipNew,
 	const ParticleDataImpl<int> *ptype, const int exclude)
 {
 	// position clamp requires old positions, backup
@@ -520,7 +520,7 @@ void ParticleSystem<S>::advectInGrid(
 	}
 
 	// update positions
-	GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle, stopInObstacle, ptype, exclude);
+	GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle, stopInObstacle, skipNew, ptype, exclude);
 	integratePointSet(kernel, integrationMode);
 
 	if(!deleteInObstacle) {
