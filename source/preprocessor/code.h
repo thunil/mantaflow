@@ -18,6 +18,7 @@
 #include <vector>
 
 struct Text {
+	virtual ~Text() {}
 	int line0;
 	std::string minimal, original;
 	void reset() { minimal = original = ""; line0=0; }
