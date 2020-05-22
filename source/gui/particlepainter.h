@@ -14,6 +14,11 @@
 #ifndef _PARTICLEPAINTER_H_
 #define _PARTICLEPAINTER_H_
 
+// OpenGL was deprecated in macOS 10.15. Silencing warnings for now.
+#ifdef __APPLE__
+#   define GL_SILENCE_DEPRECATION
+#endif
+
 #include "painter.h"
 #include "particle.h"
 

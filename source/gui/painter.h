@@ -14,6 +14,11 @@
 #ifndef _PAINTER_H_
 #define _PAINTER_H_
 
+// OpenGL was deprecated in macOS 10.15. Silencing warnings for now.
+#ifdef __APPLE__
+#   define GL_SILENCE_DEPRECATION
+#endif
+
 #include <QWidget>
 #include <QLabel>
 #include <map>
