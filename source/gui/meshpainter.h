@@ -14,7 +14,7 @@
 #ifndef _MESHPAINTER_H_
 #define _MESHPAINTER_H_
 
-// OpenGL was deprecated in macOS 10.15. Silencing warnings for now.
+// OpenGL was deprecated in macOS 10.14. Silencing warnings for now.
 #ifdef __APPLE__
 #   define GL_SILENCE_DEPRECATION
 #endif
