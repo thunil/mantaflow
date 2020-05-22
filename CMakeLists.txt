@@ -507,7 +507,8 @@ if (1)
 
 	set(ZLIB_ADDFLAGS "-Dverbose=-1")
 	if(NOT WIN32)
-		set(ZLIB_ADDFLAGS "-Wno-implicit-function-declaration -Dverbose=-1")
+		# otherwise we get warnings that we could only fix by upgrading zlib to a version > 1.2.8
+		set(ZLIB_ADDFLAGS "-Wno-implicit-function-declaration -Wno-shift-negative-value -Dverbose=-1")
 	endif()
 	set_source_files_properties(${SILENT_SOURCES} PROPERTIES COMPILE_FLAGS "${ZLIB_ADDFLAGS}")
 
