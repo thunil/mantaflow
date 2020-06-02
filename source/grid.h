@@ -135,7 +135,10 @@ public:
 	inline T& operator[](IndexInt idx)             { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
 	//! access data
 	inline const T operator[](IndexInt idx) const  { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
-	
+
+	//! set data
+	inline void set(int i, int j, int k, T& val)              { mData[index(i,j,k)] = val; }
+
 	// interpolated access
 	inline T    getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
 	inline void setInterpolated(const Vec3& pos, const T& val, Grid<Real>& sumBuffer) const { setInterpol<T>(mData, mSize, mStrideZ, pos, val, &sumBuffer[0]); }
