@@ -739,6 +739,11 @@ if(APPLE)
 	endif()
 endif()
 
+# thread support for linux
+IF(NOT APPLE AND NOT WIN32)
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+ENDIF()
+
 # python debugging
 if(DEBUG_PYTHON_WITH_RELEASE)
 	add_definitions(-DDEBUG_PYTHON_WITH_RELEASE=1)
