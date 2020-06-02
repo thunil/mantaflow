@@ -57,6 +57,7 @@ template<> Vec3* fromPyPtr<Vec3>(PyObject* obj, std::vector<void*>* tmp);
 template<> Vec3i* fromPyPtr<Vec3i>(PyObject* obj, std::vector<void*>* tmp);
 template<> Vec4* fromPyPtr<Vec4>(PyObject* obj, std::vector<void*>* tmp);
 template<> Vec4i* fromPyPtr<Vec4i>(PyObject* obj, std::vector<void*>* tmp);
+template<> std::vector<PbClass*>* fromPyPtr<std::vector<PbClass*>>(PyObject* obj, std::vector<void*>* tmp);
 
 PyObject* incref(PyObject* obj);
 template<class T> PyObject* toPy(const T& v) { 
@@ -94,6 +95,8 @@ template<> Vec4 fromPy<Vec4>(PyObject* obj);
 template<> Vec4i fromPy<Vec4i>(PyObject* obj);
 template<> PbType fromPy<PbType>(PyObject* obj);
 template<> PbTypeVec fromPy<PbTypeVec>(PyObject* obj);
+template<> PbClass* fromPy<PbClass*>(PyObject *obj);
+template<> std::vector<PbClass*> fromPy<std::vector<PbClass*>>(PyObject *obj);
 
 template<> PyObject* toPy<int>( const int& v);
 template<> PyObject* toPy<std::string>( const std::string& val);
@@ -106,6 +109,7 @@ template<> PyObject* toPy<Vec4i>( const Vec4i& v);
 template<> PyObject* toPy<Vec4>( const Vec4& v);
 typedef PbClass* PbClass_Ptr;
 template<> PyObject* toPy<PbClass*>( const PbClass_Ptr & obj);
+template<> PyObject* toPy<std::vector<PbClass*>>( const std::vector<PbClass*>& vec);
 
 template<> bool isPy<float>(PyObject* obj);
 template<> bool isPy<double>(PyObject* obj);
@@ -119,6 +123,7 @@ template<> bool isPy<Vec3i>(PyObject* obj);
 template<> bool isPy<Vec4>(PyObject* obj);
 template<> bool isPy<Vec4i>(PyObject* obj);
 template<> bool isPy<PbType>(PyObject* obj);
+template<> bool isPy<std::vector<PbClass*>>(PyObject* obj);
 
 //! Encapsulation of python arguments
 class PbArgs {
