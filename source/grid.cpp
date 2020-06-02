@@ -122,11 +122,11 @@ void Grid<T>::load(string name) {
 		readGridVol(name, this);
 	else if (ext == ".npz")
 		readGridNumpy(name, this);
-#	if OPENVDB==1
-	else if (ext == ".vdb")
-		readGridVDB(name, this);
-#	endif // OPENVDB==1
-	else
+	else if (ext == ".vdb") {
+		std::vector<PbClass*> grids;
+		grids.push_back(this);
+		readGridsVDB(name, &grids);
+	} else
 		errMsg("file '" + name +"' filetype not supported");
 }
 
@@ -141,13 +141,13 @@ void Grid<T>::save(string name) {
 		writeGridUni(name, this);
 	else if (ext == ".vol")
 		writeGridVol(name, this);
-#	if OPENVDB==1
-	else if (ext == ".vdb")
-		writeGridVDB(name, this);
-#	endif // OPENVDB==1
 	else if (ext == ".npz")
 		writeGridNumpy(name, this);
-	else if (ext == ".txt")
+	else if (ext == ".vdb") {
+		std::vector<PbClass*> grids;
+		grids.push_back(this);
+		writeGridsVDB(name, &grids);
+	} else if (ext == ".txt")
 		writeGridTxt(name, this);
 	else
 		errMsg("file '" + name +"' filetype not supported");
