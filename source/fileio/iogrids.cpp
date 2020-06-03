@@ -891,7 +891,7 @@ void writeGridsVDB(const string& filename, std::vector<PbClass*>* grids) {
 
 		} else if (mantaGrid->getType() & GridBase::TypeReal) {
 			debMsg("Writing real grid '" << mantaGrid->getName() << "' to vdb file " << filename, 1);
-			gClass = openvdb::GRID_FOG_VOLUME;
+			gClass = (mantaGrid->getType() & GridBase::TypeLevelset) ? openvdb::GRID_LEVEL_SET : openvdb::GRID_FOG_VOLUME;
 			openvdb::FloatGrid::Ptr vdbFloatGrid = openvdb::FloatGrid::create();
 			Grid<Real>* mantaRealGrid = (Grid<Real>*) mantaGrid;
 			exportVDB<Real, openvdb::FloatGrid>(mantaRealGrid, vdbFloatGrid, gClass);
