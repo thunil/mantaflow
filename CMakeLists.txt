@@ -2,7 +2,7 @@
 #
 # MantaFlow fluid solver framework
 #
-# Copyright 2011-2015 Tobias Pfaff, Nils Thuerey
+# Copyright 2011-2020 Tobias Pfaff, Nils Thuerey
 #
 # This program is free software, distributed under the terms of the
 # Apache License, Version 2.0
@@ -81,15 +81,15 @@ endif()
 # check consistency of MT options
 set(MT OFF)
 set(MT_TYPE "NONE")
-if (TBB)
+if(TBB)
 	set(MT_TYPE "TBB")
 	set(MT ON)
 endif()
-if (OPENMP)
+if(OPENMP)
 	set(MT_TYPE "OPENMP")
 	set(MT ON)
 endif()
-if (TBB AND OPENMP)
+if(TBB AND OPENMP)
 	message(FATAL_ERROR "Cannot activate both OPENMP and TBB")
 endif()
 
@@ -155,7 +155,7 @@ set(SOURCES
 	source/preprocessor/codegen_kernel.cpp
 )
 add_executable(prep ${SOURCES})
-if (NOT WIN32)
+if(NOT WIN32)
 	set_target_properties(prep PROPERTIES COMPILE_FLAGS "-Wall -O2")
 endif()
 
@@ -266,7 +266,7 @@ set(NOPP_HEADERS
 	source/util/solvana.h
 )
 
-if (GUI)
+if(GUI)
 	# need QT preprocessor
 	set(QT_HEADERS
 		source/gui/mainwindow.h
@@ -302,7 +302,7 @@ set(INCLUDE_PATHS
 )
 
 # reduced version without python
-if (NOPYTHON)
+if(NOPYTHON)
 	# replace some of the source lists
 	set(NOPP_SOURCES
 		source/nopython/pclass.cpp
@@ -331,13 +331,11 @@ if(MT)
 		# Intel TBB
 		add_definitions( -DTBB=1 )
 
-		if (DEBUG)
+		if(DEBUG)
 			add_definitions( -DTBB_USE_DEBUG=1 )
-			list(APPEND F_LIBS tbb)
-		else()
-			list(APPEND F_LIBS tbb)
 		endif()
-		if (WIN32)
+		list(APPEND F_LIBS tbb)
+		if(WIN32)
 			find_package(TBB REQUIRED)
 			list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})
 			list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
@@ -350,7 +348,7 @@ if(MT)
 		# OpenMP
 		add_definitions( -DOPENMP=1 )
 
-		if (WIN32)
+		if(WIN32)
 			add_definitions( /openmp)
 		else()
 			add_definitions(-fopenmp)
@@ -382,7 +380,7 @@ if(OPENVDB)
 		list(APPEND F_LIBS ${OPENVDB_LIBRARY})
 		add_definitions(${OPENVDB_DEFINITIONS})
 	else()
-		if (WIN32)
+		if(WIN32)
 			message(FATAL_ERROR "Cannot find OpenVDB")
 		else()
 			message("Warning - OpenVDB not found, trying default paths") 
@@ -392,7 +390,7 @@ if(OPENVDB)
 	endif()
 	
 	# for windos try houdini, otherwise use openExr directly
-	if (WIN32)
+	if(WIN32)
 		find_package(Houdini REQUIRED)
 		if(HOUDINI_FOUND)
 			message("Found Houdini") 
@@ -445,7 +443,7 @@ endif(DOXYGEN_FOUND)
 #set(PYTHON_INCLUDE_DIRS "PYTHON_PATH/include")
 #set(PYTHON_LIBRARIES "PYTHON_PATH/libs/pythonX.Y.lib/so")
 # auto block
-if (WIN32)
+if(WIN32)
 	# convenience override for windows, typically the auto find doesnt work, so fall back to WIN_PYTHON_PATH
 	find_package(PythonLibs ${PYTHON_VER_ID} QUIET)
 	if(NOT PYTHONLIBS_FOUND)
@@ -502,7 +500,7 @@ endif()
 
 #******************************************************************************
 # Z lib compression
-if (1)
+if(1)
 	# default: build from own sources
 	set(ZLIB_SRC adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c
 				 inflate.c infback.c inftrees.c inffast.c trees.c uncompr.c zutil.c)
@@ -519,13 +517,13 @@ if (1)
 
 	list(APPEND INCLUDE_PATHS dependencies/zlib-1.2.8)
 endif()
-if (0)
+if(0)
 	# try to locate and use system libs
 	include(FindZLIB)
 	list(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
 	list(APPEND F_LIBS ${ZLIB_LIBRARIES})
 endif()
-if (0)
+if(0)
 	# disable 
 	add_definitions(-DNO_ZLIB=1)
 endif()
@@ -568,7 +566,7 @@ set(PP_REGCPP)
 set(PP_REGS)
 set(PP_PREPD "0")
 set(PREPPED_SOURCES)
-if (PREPDEBUG)
+if(PREPDEBUG)
 	set(PP_PREPD "1")
 endif()
 FOREACH(it ${PP_SOURCES} ${PP_HEADERS})
@@ -579,7 +577,7 @@ FOREACH(it ${PP_SOURCES} ${PP_HEADERS})
 	string(REPLACE "source/" "" INFILE ${it})
 
 	set(OUTFILES "${CURPP}")
-	if ("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
+	if("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
 		if(NOT NOPYTHON)
 			list(APPEND PP_REGS "${CURPP}.reg")
 			list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
@@ -633,14 +631,13 @@ if(GUI)
 
 	cmake_policy(SET CMP0020 NEW)
 	find_package(Qt5Core QUIET)
-	if (Qt5Core_FOUND)
+	if(Qt5Core_FOUND)
 		message("Using Qt5")
 		find_package(Qt5Widgets REQUIRED)
 		find_package(Qt5OpenGL REQUIRED)
 
 		qt5_wrap_cpp(MOC_OUTFILES ${QT_REMAP} )
 		qt5_add_resources(QT_RES resources/res.qrc )
-		add_definitions(-DGUI=1)
 		add_definitions(${Qt5Widgets_DEFINITIONS})
 		list(APPEND INCLUDE_PATHS ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS})
 		list(APPEND F_LIBS ${Qt5Widgets_LIBRARIES} ${Qt5OpenGL_LIBRARIES})
@@ -658,7 +655,7 @@ if(GUI)
 		list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})
 	endif()
 
-	if (APPLE)
+	if(APPLE)
 		# mac opengl framework
 		set(F_LINKADD "${F_LINKADD} -framework OpenGL ")
 	else()
@@ -681,7 +678,7 @@ link_directories( ${F_LIB_PATHS} )
 if(NOT NOPYTHON)
 	# build regular executable
 
-	if (WIN32)
+	if(WIN32)
 		# make nice folders for Visual Studio
 		set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} ${NOPP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
 		add_executable(${EXECCMD} ${SOURCES} ${PP_SOURCES} ${PP_HEADERS})
@@ -745,9 +742,9 @@ if(APPLE)
 endif()
 
 # thread support for linux
-IF(NOT APPLE AND NOT WIN32)
+if(NOT APPLE AND NOT WIN32)
 	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-ENDIF()
+endif()
 
 # python debugging
 if(DEBUG_PYTHON_WITH_RELEASE)
@@ -770,7 +767,7 @@ if(WIN32)
 	# disable warnings for unsecure functions
 	add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )
 
-	if (BLENDER)
+	if(BLENDER)
 		set(CMAKE_CXX_FLAGS_DEBUG          "/MTd /Od /Ob0 /D_DEBUG /D PLATFORM_WINDOWS /Zi /RTC1  " )
 		set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1 /D NDEBUG /D PLATFORM_WINDOWS            " )
 		set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2 /D NDEBUG /D PLATFORM_WINDOWS            " )
