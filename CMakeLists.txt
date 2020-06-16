@@ -717,27 +717,31 @@ if(NOT WIN32)
 	endif()
 endif()
 
-# use c++11 for all pre-processed c++ sources
-# TODO, enable by default
+# if supported, use c++14 for all pre-processed c++ sources
 include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-set(CPP11_FLAG " ")
-if(COMPILER_SUPPORTS_CXX11)
-	set(CPP11_FLAG " -std=c++11 ")
-	set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS ${CPP11_FLAG})
-	add_definitions(-DMANTA_WITHCPP11=1)
+set(CXX_STANDARD_FLAG " ")
+if(COMPILER_SUPPORTS_CXX14)
+	set(CXX_STANDARD_FLAG " -std=c++14 ")
+elseif(COMPILER_SUPPORTS_CXX11)
+	set(CXX_STANDARD_FLAG " -std=c++11 ")
 elseif(COMPILER_SUPPORTS_CXX0X)
-	set(CPP11_FLAG " -std=c++0x ")
-	set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS  ${CPP11_FLAG})
-	add_definitions(-DMANTA_WITHCPP11=1)
+	set(CXX_STANDARD_FLAG " -std=c++0x ")
+endif()
+set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS ${CXX_STANDARD_FLAG})
+
+# sanity check for openvdb support
+if(OPENVDB AND NOT COMPILER_SUPPORTS_CXX14)
+	message(FATAL_ERROR "Compilation with OpenVDB requires a compiler with C++14 support")
 endif()
 
 # necessary for newer LLVM clang versions, to prevent abundance of "Namify" template warnings... for compatibility disable unknown warnings
 if(APPLE)
-	set_source_files_properties(${PP_REGCPP} ${PREPPED_SOURCES} ${NOPP_SOURCES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  -Wno-unknown-warning-option ${CPP11_FLAG}" )
+	set_source_files_properties(${PP_REGCPP} ${PREPPED_SOURCES} ${NOPP_SOURCES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  -Wno-unknown-warning-option ${CXX_STANDARD_FLAG}" )
 	if(GUI)
-		set_source_files_properties(${MOC_OUTFILES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  -Wno-unknown-warning-option ${CPP11_FLAG}" )
+		set_source_files_properties(${MOC_OUTFILES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  -Wno-unknown-warning-option ${CXX_STANDARD_FLAG}" )
 	endif()
 endif()
 
