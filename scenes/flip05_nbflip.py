@@ -153,5 +153,9 @@ while s.frame < 200:
 		adjustNumber( parts=pp, vel=vel, flags=flags, minParticles=1*minParticles, maxParticles=2*minParticles, phi=phi ) 
 
 	s.step()
-		
-	
+
+	# optionally save some of the simulation objects to an OpenVDB file (requires compilation WITH_OPENVDB=1)
+	if 1:
+		# note: when saving pdata fields, they must be accompanied by and listed before their parent pp
+		objects = [flags, phiParts, phi, pressure, vel, pVel, pp]
+		save( 'fluid_data_%04d.vdb' % s.frame, objects=objects );
