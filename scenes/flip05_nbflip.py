@@ -158,4 +158,4 @@ while s.frame < 200:
 	if 0:
 		# note: when saving pdata fields, they must be accompanied by and listed before their parent pp
 		objects = [flags, phiParts, phi, pressure, vel, pVel, pp]
-		save( 'fluid_data_%04d.vdb' % s.frame, objects=objects );
+		save( name='fluid_data_%04d.vdb' % s.frame, objects=objects )
