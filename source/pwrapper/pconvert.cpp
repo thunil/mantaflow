@@ -101,6 +101,19 @@ template<> PyObject* toPy<std::vector<PbClass*>>(const std::vector<PbClass*>& ve
 	}
 	return listObj;
 }
+template<> PyObject* toPy<std::vector<float>>(const std::vector<float>& vec) {
+	PyObject* listObj = PyList_New( vec.size() );
+	if (!listObj) throw logic_error("Unable to allocate memory for Python list");
+	for (unsigned int i = 0; i < vec.size(); i++) {
+		PyObject *item = toPy<float>(vec[i]);
+		if (!item) {
+			Py_DECREF(listObj);
+			throw logic_error("Unable to allocate memory for Python list");
+		}
+		PyList_SET_ITEM(listObj, i, item);
+	}
+	return listObj;
+}
 
 template<> float fromPy<float>(PyObject* obj) {
 #if PY_MAJOR_VERSION <= 2
@@ -139,6 +152,17 @@ template<> std::vector<PbClass*> fromPy<std::vector<PbClass*>>(PyObject *obj) {
 		for (int i = 0; i < sz; ++i) {
 			PyObject* lobj = PyList_GetItem(obj, i);
 			vec.push_back(fromPy<PbClass*>(lobj));
+		}
+	}
+	return vec;
+}
+template<> std::vector<float> fromPy<std::vector<float>>(PyObject *obj) {
+	std::vector<float> vec;
+	if (PyList_Check(obj)) {
+		int sz = PyList_Size(obj);
+		for (int i = 0; i < sz; ++i) {
+			PyObject* lobj = PyList_GetItem(obj, i);
+			vec.push_back(fromPy<float>(lobj));
 		}
 	}
 	return vec;
@@ -361,6 +385,10 @@ template<> bool isPy<PbType>(PyObject* obj) {
 	return PyType_Check(obj);
 }
 template<> bool isPy<std::vector<PbClass*>>(PyObject* obj) {
+	if (PyList_Check(obj)) return true;
+	return false;
+}
+template<> bool isPy<std::vector<float>>(PyObject* obj) {
 	if (PyList_Check(obj)) return true;
 	return false;
 }
