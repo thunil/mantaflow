@@ -154,7 +154,7 @@ while s.frame < 200:
 
 	s.step()
 
-	# optionally save some of the simulation objects to an OpenVDB file (requires compilation WITH_OPENVDB=1)
+	# optionally save some of the simulation objects to an OpenVDB file (requires compilation with -DOPENVDB=1)
 	if 0:
 		# note: when saving pdata fields, they must be accompanied by and listed before their parent pp
 		objects = [flags, phiParts, phi, pressure, vel, pVel, pp]
