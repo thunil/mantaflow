@@ -186,6 +186,8 @@ set(PP_SOURCES
 	source/fileio/iogrids.cpp
 	source/fileio/iomeshes.cpp
 	source/fileio/ioparticles.cpp
+	source/fileio/iovdb.cpp
+	source/fileio/mantaio.cpp
 	source/noisefield.cpp
 	source/kernel.cpp
 	source/vortexsheet.cpp

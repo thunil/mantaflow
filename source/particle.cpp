@@ -194,13 +194,17 @@ void BasicParticleSystem::load(const string name)
 	string ext = name.substr(name.find_last_of('.'));
 	if(ext == ".uni")
 		readParticlesUni(name, this );
-	else if(ext == ".raw") // raw = uni for now
+	else if (ext == ".vdb") {
+		std::vector<PbClass*> parts;
+		parts.push_back(this);
+		readGridsVDB(name, &parts);
+	} else if(ext == ".raw") // raw = uni for now
 		readParticlesUni(name, this );
 	else
 		errMsg("particle '" + name +"' filetype not supported for loading");
 }
 
-void BasicParticleSystem::save(const string name) const
+void BasicParticleSystem::save(const string name)
 {
 	if(name.find_last_of('.') == string::npos)
 		errMsg("file '" + name + "' does not have an extension");
@@ -211,8 +215,12 @@ void BasicParticleSystem::save(const string name) const
 		writeParticlesUni(name, this);
 	else if(ext == ".raw") // raw = uni for now
 		writeParticlesUni(name, this);
+	else if (ext == ".vdb") {
+		std::vector<PbClass*> parts;
+		parts.push_back(this);
+		writeGridsVDB(name, &parts);
 	// raw data formats, very basic for simple data transfer to other programs
-	else if(ext == ".posgz")
+	} else if(ext == ".posgz")
 		this->writeParticlesRawPositionsGz(name);
 	else if(ext == ".velgz")
 		this->writeParticlesRawVelocityGz(name);
@@ -361,6 +369,11 @@ void ParticleDataImpl<T>::load(string name)
 	string ext = name.substr(name.find_last_of('.'));
 	if(ext == ".uni")
 		readPdataUni<T>(name, this);
+	else if (ext == ".vdb") {
+		std::vector<PbClass*> parts;
+		parts.push_back(this);
+		readGridsVDB(name, &parts);
+	}
 	else if(ext == ".raw") // raw = uni for now
 		readPdataUni<T>(name, this);
 	else
@@ -375,6 +388,11 @@ void ParticleDataImpl<T>::save(string name)
 	string ext = name.substr(name.find_last_of('.'));
 	if(ext == ".uni")
 		writePdataUni<T>(name, this);
+	else if (ext == ".vdb") {
+		std::vector<PbClass*> parts;
+		parts.push_back(this);
+		writeGridsVDB(name, &parts);
+	}
 	else if(ext == ".raw") // raw = uni for now
 		writePdataUni<T>(name, this);
 	else

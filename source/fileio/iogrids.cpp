@@ -22,10 +22,6 @@ extern "C" {
 }
 #endif
 
-#if OPENVDB==1
-#include "openvdb/openvdb.h"
-#endif
-
 #include "cnpy.h"
 #include "mantaio.h"
 #include "grid.h"
@@ -243,12 +239,14 @@ void writeGridTxt(const string& name, Grid<T>* grid) {
 	ofs.close();
 }
 
-void writeGridsTxt(const string& name, std::vector<PbClass*>* grids) {
+int writeGridsTxt(const string& name, std::vector<PbClass*>* grids) {
 	errMsg("writeGridsTxt: writing multiple grids to one .txt file not supported yet");
+	return 0;
 }
 
-void readGridsTxt(const string& name, std::vector<PbClass*>* grids) {
+int readGridsTxt(const string& name, std::vector<PbClass*>* grids) {
 	errMsg("readGridsTxt: writing multiple grids from one .txt file not supported yet");
+	return 0;
 }
 
 template<class T>
@@ -282,12 +280,14 @@ void readGridRaw(const string& name, Grid<T>* grid) {
 #	endif
 }
 
-void writeGridsRaw(const string& name, std::vector<PbClass*>* grids) {
+int writeGridsRaw(const string& name, std::vector<PbClass*>* grids) {
 	errMsg("writeGridsRaw: writing multiple grids to one .raw file not supported yet");
+	return 0;
 }
 
-void readGridsRaw(const string& name, std::vector<PbClass*>* grids) {
+int readGridsRaw(const string& name, std::vector<PbClass*>* grids) {
 	errMsg("readGridsRaw: reading multiple grids from one .raw file not supported yet");
+	return 0;
 }
 
 //! legacy headers for reading old files
@@ -490,12 +490,14 @@ void readGridUni(const string& name, Grid<T>* grid) {
 #	endif
 };
 
-void writeGridsUni(const string& name, std::vector<PbClass*>* grids) {
+int writeGridsUni(const string& name, std::vector<PbClass*>* grids) {
 	errMsg("writeGridsUni: writing multiple grids to one .uni file not supported yet");
+	return 0;
 }
 
-void readGridsUni(const string& name, std::vector<PbClass*>* grids) {
+int readGridsUni(const string& name, std::vector<PbClass*>* grids) {
 	errMsg("readGridsUni: reading multiple grids from one .uni file not supported yet");
+	return 0;
 }
 
 template <class T>
@@ -504,12 +506,14 @@ void writeGridVol(const string& name, Grid<T>* grid) {
 	errMsg("writeGridVol: Type not yet supported!");
 }
 
-void writeGridsVol(const string& name, std::vector<PbClass*>* grids) {
+int writeGridsVol(const string& name, std::vector<PbClass*>* grids) {
 	errMsg("writeGridsVol: writing multiple grids to one .vol file not supported yet");
+	return 0;
 }
 
-void readGridsVol(const string& name, std::vector<PbClass*>* grids) {
+int readGridsVol(const string& name, std::vector<PbClass*>* grids) {
 	errMsg("readGridsVol: reading multiple grids from one .vol file not supported yet");
+	return 0;
 }
 
 struct volHeader { 
@@ -783,219 +787,6 @@ void readGrid4dRaw(const string& name, Grid4d<T>* grid) {
 #	endif
 }
 
-
-//*****************************************************************************
-// optional openvdb export
-
-#if OPENVDB==1
-
-template<class S, class T>
-void convertFrom(S& in, T* out) {
-	errMsg("convertFrom: Unsupported type conversion");
-}
-
-template<>
-void convertFrom(int& in, int* out) {
-	(*out) = in;
-}
-
-template<>
-void convertFrom(float& in, Real* out) {
-	(*out) = (Real) in;
-}
-
-template<>
-void convertFrom(openvdb::Vec3f& in, Vec3* out) {
-	(*out).x = in.x();
-	(*out).y = in.y();
-	(*out).z = in.z();
-}
-
-template<class S, class T>
-void convertTo(S* out, T& in) {
-	errMsg("convertTo: Unsupported type conversion");
-}
-
-template<>
-void convertTo(int* out, int& in) {
-	(*out) = in;
-}
-
-template<>
-void convertTo(float* out, Real& in) {
-	(*out) = (float) in;
-}
-
-template<>
-void convertTo(openvdb::Vec3f* out, Vec3& in) {
-	(*out).x() = in.x;
-	(*out).y() = in.y;
-	(*out).z() = in.z;
-}
-
-template<class GridType, class T>
-void importVDB(typename GridType::Ptr from, Grid<T>* to) {
-	using ValueT = typename GridType::ValueType;
-	typename GridType::Accessor accessor = from->getAccessor();
-
-	FOR_IJK(*to) {
-		openvdb::Coord xyz(i, j, k);
-		ValueT vdbValue = accessor.getValue(xyz);
-		T toMantaValue;
-		convertFrom(vdbValue, &toMantaValue);
-		to->set(i, j, k, toMantaValue);
-	}
-}
-
-template<class T, class GridType>
-void exportVDB(Grid<T>* from, typename GridType::Ptr to, openvdb::GridClass cls) {
-	using ValueT = typename GridType::ValueType;
-	typename GridType::Accessor accessor = to->getAccessor();
-
-	// Note: Velocities currently not scaled.
-	to->setTransform( openvdb::math::Transform::createLinearTransform( 1./from->getSizeX() )); // voxel size
-
-	to->setGridClass(cls);
-	to->setName(from->getName());
-	to->setSaveFloatAsHalf(true); // TODO (sebbas): Make this an option
-
-	FOR_IJK(*from) {
-		openvdb::Coord xyz(i, j, k);
-		T fromMantaValue = (*from)(i, j, k);
-		ValueT vdbValue;
-		convertTo(&vdbValue, fromMantaValue);
-		accessor.setValue(xyz, vdbValue);
-	}
-}
-
-void writeGridsVDB(const string& filename, std::vector<PbClass*>* grids) {
-	openvdb::initialize();
-	openvdb::io::File file(filename);
-	openvdb::GridPtrVec gridsVDB;
-
-	for (std::vector<PbClass*>::iterator iter = grids->begin(); iter != grids->end(); ++iter) {
-		GridBase* mantaGrid = nullptr;
-		if (!(mantaGrid = dynamic_cast<GridBase*>(*iter))) {
-			debMsg("writeGridsVDB: Can only write GridBase objects to .vdb file " << filename, 1);
-			continue;
-		}
-
-		openvdb::GridClass gClass = openvdb::GRID_UNKNOWN;
-		if (mantaGrid->getType() & GridBase::TypeInt) {
-			debMsg("Writing int grid '" << mantaGrid->getName() << "' to vdb file " << filename, 1);
-			gClass = openvdb::GRID_UNKNOWN;
-			openvdb::Int32Grid::Ptr vdbIntGrid = openvdb::Int32Grid::create();
-			Grid<int>* mantaIntGrid = (Grid<int>*) mantaGrid;
-			exportVDB<int, openvdb::Int32Grid>(mantaIntGrid, vdbIntGrid, gClass);
-			gridsVDB.push_back(vdbIntGrid);
-
-		} else if (mantaGrid->getType() & GridBase::TypeReal) {
-			debMsg("Writing real grid '" << mantaGrid->getName() << "' to vdb file " << filename, 1);
-			gClass = (mantaGrid->getType() & GridBase::TypeLevelset) ? openvdb::GRID_LEVEL_SET : openvdb::GRID_FOG_VOLUME;
-			openvdb::FloatGrid::Ptr vdbFloatGrid = openvdb::FloatGrid::create();
-			Grid<Real>* mantaRealGrid = (Grid<Real>*) mantaGrid;
-			exportVDB<Real, openvdb::FloatGrid>(mantaRealGrid, vdbFloatGrid, gClass);
-			gridsVDB.push_back(vdbFloatGrid);
-
-		} else if (mantaGrid->getType() & GridBase::TypeVec3) {
-			debMsg("Writing vec3 grid '" << mantaGrid->getName() << "' to vdb file " << filename, 1);
-			gClass = (mantaGrid->getType() & GridBase::TypeMAC) ? openvdb::GRID_STAGGERED : openvdb::GRID_UNKNOWN;
-			openvdb::Vec3SGrid::Ptr vdbVec3Grid = openvdb::Vec3SGrid::create();
-			Grid<Vec3>* mantaVec3Grid = (Grid<Vec3>*) mantaGrid;
-			exportVDB<Vec3, openvdb::Vec3SGrid>(mantaVec3Grid, vdbVec3Grid, gClass);
-			gridsVDB.push_back(vdbVec3Grid);
-
-		} else {
-			errMsg("writeGridsVDB: unknown grid type");
-		}
-	}
-	if (gridsVDB.size()) {
-		file.setCompression(openvdb::io::COMPRESS_ACTIVE_MASK | openvdb::io::COMPRESS_ZIP); // TODO (sebbas): Make this an option
-		file.write(gridsVDB);
-	}
-	file.close();
-}
-
-void readGridsVDB(const string& filename, std::vector<PbClass*>* grids) {
-	openvdb::initialize();
-	openvdb::io::File file(filename);
-	openvdb::GridPtrVec gridsVDB;
-
-	try {
-		file.setCopyMaxBytes(0);
-		file.open();
-		gridsVDB = *(file.getGrids());
-		openvdb::MetaMap::Ptr metadata = file.getMetadata();
-		(void) metadata; // Unused for now
-	}
-	catch (const openvdb::IoError &e) {
-		debMsg("readGridsVDB: Could not open vdb file " << filename, 1);
-	}
-	file.close();
-
-	for (std::vector<PbClass*>::iterator iter = grids->begin(); iter != grids->end(); ++iter) {
-		GridBase* mantaGrid = nullptr;
-		if (!(mantaGrid = dynamic_cast<GridBase*>(*iter))) {
-			debMsg("readGridsVDB: Can only read GridBase objects from .vdb file " << filename, 1);
-			continue;
-		}
-
-		if (gridsVDB.empty()) {
-			debMsg("readGridsVDB: No vdb grids in file " << filename, 1);
-		}
-		/* If there is just one grid in this file, load it regardless of name match (to vdb caches per grid). */
-		bool onlyGrid = (gridsVDB.size() == 1);
-
-		for (const openvdb::GridBase::Ptr vdbGrid : gridsVDB) {
-			bool nameMatch = (vdbGrid->getName() == mantaGrid->getName());
-
-			/* Sanity checks: Only load valid grids and make sure names match. */
-			if (!vdbGrid) {
-				debMsg("Skipping invalid vdb grid '" << vdbGrid->getName() << "' in file " << filename, 1);
-				continue;
-			}
-			if (!nameMatch && !onlyGrid) {
-				continue;
-			}
-
-			if (mantaGrid->getType() & GridBase::TypeInt) {
-				debMsg("Reading into grid '" << mantaGrid->getName() << "' from int grid '" << vdbGrid->getName() << "' in vdb file " << filename, 1);
-				openvdb::Int32Grid::Ptr vdbIntGrid = openvdb::gridPtrCast<openvdb::Int32Grid>(vdbGrid);
-				Grid<int>* mantaIntGrid = (Grid<int>*) mantaGrid;
-				importVDB<openvdb::Int32Grid, int>(vdbIntGrid, mantaIntGrid);
-
-			} else if (mantaGrid->getType() & GridBase::TypeReal) {
-				debMsg("Reading into grid '" << mantaGrid->getName() << "' from real grid '" << vdbGrid->getName() << "' in vdb file " << filename, 1);
-				openvdb::FloatGrid::Ptr vdbFloatGrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbGrid);
-				Grid<Real>* mantaRealGrid = (Grid<Real>*) mantaGrid;
-				importVDB<openvdb::FloatGrid, Real>(vdbFloatGrid, mantaRealGrid);
-
-			} else if (mantaGrid->getType() & GridBase::TypeVec3) {
-				debMsg("Reading into grid '" << mantaGrid->getName() << "' from vec3 grid '" << vdbGrid->getName() << "' in vdb file " << filename, 1);
-				openvdb::Vec3SGrid::Ptr vdbVec3Grid = openvdb::gridPtrCast<openvdb::Vec3SGrid>(vdbGrid);
-				Grid<Vec3>* mantaVec3Grid = (Grid<Vec3>*) mantaGrid;
-				importVDB<openvdb::Vec3SGrid, Vec3>(vdbVec3Grid, mantaVec3Grid);
-
-			} else {
-				errMsg("readGridsVDB: unknown grid type");
-			}
-		}
-	}
-}
-
-#else
-
-void writeGridsVDB(const string& filename, std::vector<PbClass*>* grids) {
-	errMsg("Cannot save to .vdb file. Mantaflow has not been built with OpenVDB support.");
-}
-
-void readGridsVDB(const string& filename, std::vector<PbClass*>* grids) {
-	errMsg("Cannot load from .vdb file. Mantaflow has not been built with OpenVDB support.");
-}
-
-#endif // OPENVDB==1
-
-
 //*****************************************************************************
 // npz file support (warning - read works, but write generates uncompressed npz; i.e. not recommended for large volumes)
 
@@ -1097,12 +888,14 @@ void readGridNumpy(const string& name, Grid<T>* grid) {
    	memcpy(&((*grid)[0]), gridArr.data<T>(), sizeof(T) * grid->getSizeX() * grid->getSizeY() * grid->getSizeZ() );
 };
 
-void writeGridsNumpy(const string& name, std::vector<PbClass*>* grids) {
+int writeGridsNumpy(const string& name, std::vector<PbClass*>* grids) {
 	errMsg("writeGridsNumpy: writing multiple grids to one .npz file not supported yet");
+	return 0;
 }
 
-void readGridsNumpy(const string& name, std::vector<PbClass*>* grids) {
+int readGridsNumpy(const string& name, std::vector<PbClass*>* grids) {
 	errMsg("readGridsNumpy: reading multiple grids from one .npz file not supported yet");
+	return 0;
 }
 
 // adopted from getUniFileSize
@@ -1149,48 +942,6 @@ KERNEL(idx) void knQuantizeVec3(Grid<Vec3>& grid, Real step) {
 	for(int c=0; c<3; ++c) quantizeReal( grid(idx)[c], step );
 } 
 PYTHON() void quantizeGridVec3(Grid<Vec3>& grid, Real step) { knQuantizeVec3(grid,step); }
-
-PYTHON() void load(const string& name, std::vector<PbClass*>& grids) {
-	if (name.find_last_of('.') == string::npos)
-		errMsg("file '" + name + "' does not have an extension");
-	string ext = name.substr(name.find_last_of('.'));
-
-	if (ext == ".raw")
-		readGridsRaw(name, &grids);
-	else if (ext == ".uni")
-		readGridsUni(name, &grids);
-	else if (ext == ".vol")
-		readGridsVol(name, &grids);
-	if (ext == ".vdb")
-		readGridsVDB(name, &grids);
-	else if (ext == ".npz")
-		readGridsNumpy(name, &grids);
-	else if (ext == ".txt")
-		readGridsTxt(name, &grids);
-	else
-		errMsg("file '" + name +"' filetype not supported");
-}
-
-PYTHON() void save(const string& name, std::vector<PbClass*>& grids) {
-	if (name.find_last_of('.') == string::npos)
-		errMsg("file '" + name + "' does not have an extension");
-	string ext = name.substr(name.find_last_of('.'));
-
-	if (ext == ".raw")
-		writeGridsRaw(name, &grids);
-	else if (ext == ".uni")
-		writeGridsUni(name, &grids);
-	else if (ext == ".vol")
-		writeGridsVol(name, &grids);
-	if (ext == ".vdb")
-		writeGridsVDB(name, &grids);
-	else if (ext == ".npz")
-		writeGridsNumpy(name, &grids);
-	else if (ext == ".txt")
-		writeGridsTxt(name, &grids);
-	else
-		errMsg("file '" + name +"' filetype not supported");
-}
 
 // explicit instantiation
 template void writeGridRaw<int> (const string& name, Grid<int>*  grid);
@@ -1239,18 +990,4 @@ template void readGridNumpy<int>  (const string& name, Grid<int>*  grid);
 template void readGridNumpy<Real> (const string& name, Grid<Real>* grid);
 template void readGridNumpy<Vec3> (const string& name, Grid<Vec3>* grid);
 
-#if OPENVDB==1
-template void importVDB<openvdb::Int32Grid, int>(openvdb::Int32Grid::Ptr from, Grid<int> *to);
-template void importVDB<openvdb::FloatGrid, Real>(openvdb::FloatGrid::Ptr from, Grid<Real> *to);
-template void importVDB<openvdb::Vec3SGrid, Vec3>(openvdb::Vec3SGrid::Ptr from, Grid<Vec3> *to);
-
-template void exportVDB<int, openvdb::Int32Grid>(Grid<int> *from, openvdb::Int32Grid::Ptr to, openvdb::GridClass cls);
-template void exportVDB<Real, openvdb::FloatGrid>(Grid<Real> *from, openvdb::FloatGrid::Ptr to, openvdb::GridClass cls);
-template void exportVDB<Vec3, openvdb::Vec3SGrid>(Grid<Vec3> *from, openvdb::Vec3SGrid::Ptr to, openvdb::GridClass cls);
-#endif // OPENVDB==1
-
 } //namespace
-
-namespace Manta {
-
-}

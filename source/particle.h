@@ -195,7 +195,7 @@ public:
 	PYTHON() BasicParticleSystem(FluidSolver* parent);
 	
 	//! file io
-	PYTHON() void save(const std::string name) const;
+	PYTHON() void save(const std::string name);
 	PYTHON() void load(const std::string name);
 
 	//! save to text file
@@ -313,6 +313,9 @@ public:
 	inline const T& get(const IndexInt idx) const        { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 	inline       T& operator[](const IndexInt idx)       { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 	inline const T& operator[](const IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
+
+	//! set data
+	inline       void set(const IndexInt idx, T& val)    { DEBUG_ONLY(checkPartIndex(idx)); mData[idx] = val; }
 
 	//! set all values to 0, note - different from particleSystem::clear! doesnt modify size of array (has to stay in sync with parent system)
 	PYTHON() void clear();

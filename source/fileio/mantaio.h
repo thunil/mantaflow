@@ -40,29 +40,32 @@ void readBobjFile(const std::string& name, Mesh* mesh, bool append);
 template<class T> void readGridUni (const std::string& name, Grid<T>* grid);
 template<class T> void readGridRaw (const std::string& name, Grid<T>* grid);
 template<class T> void readGridVol (const std::string& name, Grid<T>* grid);
-void readGridsRaw(const std::string& name, std::vector<PbClass*>* grids);
-void readGridsUni(const std::string& name, std::vector<PbClass*>* grids);
-void readGridsVol(const std::string& name, std::vector<PbClass*>* grids);
+int readGridsRaw(const std::string& name, std::vector<PbClass*>* grids);
+int readGridsUni(const std::string& name, std::vector<PbClass*>* grids);
+int readGridsVol(const std::string& name, std::vector<PbClass*>* grids);
+int readGridsTxt(const std::string& name, std::vector<PbClass*>* grids);
 
 template<class T> void writeGridRaw(const std::string& name, Grid<T>* grid);
 template<class T> void writeGridUni(const std::string& name, Grid<T>* grid);
 template<class T> void writeGridVol(const std::string& name, Grid<T>* grid);
 template<class T> void writeGridTxt(const std::string& name, Grid<T>* grid);
-void writeGridsRaw(const std::string& name, std::vector<PbClass*>* grids);
-void writeGridsUni(const std::string& name, std::vector<PbClass*>* grids);
-void writeGridsVol(const std::string& name, std::vector<PbClass*>* grids);
-void writeGridsTxt(const std::string& name, std::vector<PbClass*>* grids);
+int writeGridsRaw(const std::string& name, std::vector<PbClass*>* grids);
+int writeGridsUni(const std::string& name, std::vector<PbClass*>* grids);
+int writeGridsVol(const std::string& name, std::vector<PbClass*>* grids);
+int writeGridsTxt(const std::string& name, std::vector<PbClass*>* grids);
 
 // OpenVDB
-void writeGridsVDB(const std::string& filename, std::vector<PbClass*>* grids);
-void readGridsVDB(const std::string& filename, std::vector<PbClass*>* grids);
+#if OPENVDB==1
+int writeGridsVDB(const std::string& filename, std::vector<PbClass*>* grids, float scale=1.0);
+int readGridsVDB(const std::string& filename, std::vector<PbClass*>* grids, float scale=1.0);
+#endif
 
 // Numpy
 template<class T> void writeGridNumpy(const std::string& name, Grid<T>* grid);
 template<class T> void readGridNumpy (const std::string& name, Grid<T>* grid);
 
-void writeGridsNumpy(const std::string& name, std::vector<PbClass*>* grids);
-void readGridsNumpy(const std::string& name, std::vector<PbClass*>* grids);
+int writeGridsNumpy(const std::string& name, std::vector<PbClass*>* grids);
+int readGridsNumpy(const std::string& name, std::vector<PbClass*>* grids);
 
 // 4D Grids
 template<class T> void writeGrid4dUni(const std::string& name, Grid4d<T>* grid);
@@ -85,6 +88,10 @@ template <class T> void readMdataUni (const std::string& name, MeshDataImpl<T>* 
 // Helpers
 void getUniFileSize(const std::string& name, int& x, int& y, int& z, int* t = NULL, std::string* info = NULL);
 void *safeGzopen(const char *filename, const char *mode);
+#if OPENVDB==1
+template<class S, class T> void convertFrom(S& in, T* out);
+template<class S, class T> void convertTo(S* out, T& in);
+#endif
 
 } // namespace
 
