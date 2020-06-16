@@ -121,6 +121,9 @@ else()
   set(PYTHON_VER_ID ${PYTHON_VERSION})
 endif()
 
+if(OPENVDB AND NOT TBB)
+	message(FATAL_ERROR "Cannot activate OPENVDB without TBB")
+endif()
 
 MESSAGE(STATUS "")
 MESSAGE(STATUS "Options - "
