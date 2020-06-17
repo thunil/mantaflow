@@ -368,6 +368,14 @@ int readObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float
 		const Real dx = object->getParent()->getDx();
 		const Real voxelSize = worldSize * dx;
 
+		// Particle data objects are treated separately - buffered and inserted when reading the particle system
+		if (ParticleDataBase* mantaPPImpl = dynamic_cast<ParticleDataBase*>(*iter)) {
+			debMsg("Buffering particle data '" << mantaPPImpl->getName() << "' from vdb file " << filename, 1);
+			pdbBuffer.push_back(mantaPPImpl);
+			continue;
+		}
+
+		// For every manta object, we loop through the vdb grid list and check for a match
 		for (const openvdb::GridBase::Ptr vdbGrid : gridsVDB) {
 			bool nameMatch = (vdbGrid->getName() == (*iter)->getName());
 
@@ -415,11 +423,6 @@ int readObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float
 				errMsg("readObjectsVDB: Unsupported Python object. Cannot read from .vdb file " << filename);
 				return 0;
 			}
-		}
-		// Particle data will only be read if there is a particle system too.
-		if (ParticleDataBase* mantaPPImpl = dynamic_cast<ParticleDataBase*>(*iter)) {
-			debMsg("Buffering particle data '" << mantaPPImpl->getName() << "' from vdb file " << filename, 1);
-			pdbBuffer.push_back(mantaPPImpl);
 		}
 	}
 
