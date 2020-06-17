@@ -197,7 +197,7 @@ void BasicParticleSystem::load(const string name)
 	else if (ext == ".vdb") {
 		std::vector<PbClass*> parts;
 		parts.push_back(this);
-		readGridsVDB(name, &parts);
+		readObjectsVDB(name, &parts);
 	} else if(ext == ".raw") // raw = uni for now
 		readParticlesUni(name, this );
 	else
@@ -218,7 +218,7 @@ void BasicParticleSystem::save(const string name)
 	else if (ext == ".vdb") {
 		std::vector<PbClass*> parts;
 		parts.push_back(this);
-		writeGridsVDB(name, &parts);
+		writeObjectsVDB(name, &parts);
 	// raw data formats, very basic for simple data transfer to other programs
 	} else if(ext == ".posgz")
 		this->writeParticlesRawPositionsGz(name);
@@ -372,7 +372,7 @@ void ParticleDataImpl<T>::load(string name)
 	else if (ext == ".vdb") {
 		std::vector<PbClass*> parts;
 		parts.push_back(this);
-		readGridsVDB(name, &parts);
+		readObjectsVDB(name, &parts);
 	}
 	else if(ext == ".raw") // raw = uni for now
 		readPdataUni<T>(name, this);
@@ -391,7 +391,7 @@ void ParticleDataImpl<T>::save(string name)
 	else if (ext == ".vdb") {
 		std::vector<PbClass*> parts;
 		parts.push_back(this);
-		writeGridsVDB(name, &parts);
+		writeObjectsVDB(name, &parts);
 	}
 	else if(ext == ".raw") // raw = uni for now
 		writePdataUni<T>(name, this);

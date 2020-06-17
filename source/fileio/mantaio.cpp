@@ -29,7 +29,7 @@ PYTHON() int load(const string& name, std::vector<PbClass*>& objects, float worl
 	else if (ext == ".vol")
 		return readGridsVol(name, &objects);
 	if (ext == ".vdb")
-		return readGridsVDB(name, &objects, worldSize);
+		return readObjectsVDB(name, &objects, worldSize);
 	else if (ext == ".npz")
 		return readGridsNumpy(name, &objects);
 	else if (ext == ".txt")
@@ -51,7 +51,7 @@ PYTHON() int save(const string& name, std::vector<PbClass*>& objects, float worl
 	else if (ext == ".vol")
 		return writeGridsVol(name, &objects);
 	if (ext == ".vdb")
-		return writeGridsVDB(name, &objects, worldSize);
+		return writeObjectsVDB(name, &objects, worldSize);
 	else if (ext == ".npz")
 		return writeGridsNumpy(name, &objects);
 	else if (ext == ".txt")

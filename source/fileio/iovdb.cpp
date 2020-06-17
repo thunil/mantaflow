@@ -249,7 +249,7 @@ static void registerCustomCodecs() {
 	openvdb::points::TypedAttributeArray<int, Codec>::registerType();
 }
 
-int writeGridsVDB(const string& filename, std::vector<PbClass*>* grids, float worldSize) {
+int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float worldSize) {
 	openvdb::initialize();
 	openvdb::io::File file(filename);
 	openvdb::GridPtrVec gridsVDB;
@@ -260,7 +260,7 @@ int writeGridsVDB(const string& filename, std::vector<PbClass*>* grids, float wo
 
 	std::vector<ParticleDataBase*> pdbBuffer;
 
-	for (std::vector<PbClass*>::iterator iter = grids->begin(); iter != grids->end(); ++iter) {
+	for (std::vector<PbClass*>::iterator iter = objects->begin(); iter != objects->end(); ++iter) {
 		openvdb::GridClass gClass = openvdb::GRID_UNKNOWN;
 		openvdb::GridBase::Ptr vdbGrid;
 
@@ -291,7 +291,7 @@ int writeGridsVDB(const string& filename, std::vector<PbClass*>* grids, float wo
 				gridsVDB.push_back(vdbGrid);
 			}
 			else {
-				errMsg("writeGridsVDB: unknown grid type");
+				errMsg("writeObjectsVDB: unknown grid type");
 				return 0;
 			}
 		}
@@ -309,7 +309,7 @@ int writeGridsVDB(const string& filename, std::vector<PbClass*>* grids, float wo
 
 		}
 		else {
-			errMsg("writeGridsVDB: Unsupported Python object. Cannot write to .vdb file " << filename);
+			errMsg("writeObjectsVDB: Unsupported Python object. Cannot write to .vdb file " << filename);
 			return 0;
 		}
 	}
@@ -317,7 +317,7 @@ int writeGridsVDB(const string& filename, std::vector<PbClass*>* grids, float wo
 	// Give out a warning if pData items were present but could not be saved due to missing particle system.
 	if (!pdbBuffer.empty()) {
 		for (ParticleDataBase* pdb : pdbBuffer) {
-			debMsg("writeGridsVDB Warning: Particle data '" << pdb->getName() << "' has not been saved. It's parent particle system was needs to be given too.", 1);
+			debMsg("writeObjectsVDB Warning: Particle data '" << pdb->getName() << "' has not been saved. It's parent particle system was needs to be given too.", 1);
 		}
 	}
 
@@ -329,7 +329,7 @@ int writeGridsVDB(const string& filename, std::vector<PbClass*>* grids, float wo
 	return 1;
 }
 
-int readGridsVDB(const string& filename, std::vector<PbClass*>* grids, float worldSize) {
+int readObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float worldSize) {
 
 	openvdb::initialize();
 	openvdb::io::File file(filename);
@@ -347,7 +347,7 @@ int readGridsVDB(const string& filename, std::vector<PbClass*>* grids, float wor
 		(void) metadata; // Unused for now
 	}
 	catch (const openvdb::IoError &e) {
-		debMsg("readGridsVDB: Could not open vdb file " << filename, 1);
+		debMsg("readObjectsVDB: Could not open vdb file " << filename, 1);
 		file.close();
 		return 0;
 	}
@@ -356,10 +356,10 @@ int readGridsVDB(const string& filename, std::vector<PbClass*>* grids, float wor
 	// A buffer to store a handle to pData objects. These will be read alongside a particle system.
 	std::vector<ParticleDataBase*> pdbBuffer;
 
-	for (std::vector<PbClass*>::iterator iter = grids->begin(); iter != grids->end(); ++iter) {
+	for (std::vector<PbClass*>::iterator iter = objects->begin(); iter != objects->end(); ++iter) {
 
 		if (gridsVDB.empty()) {
-			debMsg("readGridsVDB: No vdb grids in file " << filename, 1);
+			debMsg("readObjectsVDB: No vdb grids in file " << filename, 1);
 		}
 		// If there is just one grid in this file, load it regardless of name match (to vdb caches per grid).
 		bool onlyGrid = (gridsVDB.size() == 1);
@@ -400,7 +400,7 @@ int readGridsVDB(const string& filename, std::vector<PbClass*>* grids, float wor
 					importVDB<openvdb::Vec3SGrid, Vec3>(vdbVec3Grid, mantaVec3Grid);
 				}
 				else {
-					errMsg("readGridsVDB: unknown grid type");
+					errMsg("readObjectsVDB: unknown grid type");
 					return 0;
 				}
 			}
@@ -412,8 +412,8 @@ int readGridsVDB(const string& filename, std::vector<PbClass*>* grids, float wor
 
 			}
 			else {
-				errMsg("readGridsVDB: Unsupported Python object. Cannot read from .vdb file " << filename);
-				return 0;;
+				errMsg("readObjectsVDB: Unsupported Python object. Cannot read from .vdb file " << filename);
+				return 0;
 			}
 		}
 		// Particle data will only be read if there is a particle system too.
@@ -426,7 +426,7 @@ int readGridsVDB(const string& filename, std::vector<PbClass*>* grids, float wor
 	// Give out a warning if pData items were present but could not be read due to missing particle system.
 	if (!pdbBuffer.empty()) {
 		for (ParticleDataBase* pdb : pdbBuffer) {
-			debMsg("readGridsVDB Warning: Particle data '" << pdb->getName() << "' has not been read. The parent particle system needs to be given too.", 1);
+			debMsg("readObjectsVDB Warning: Particle data '" << pdb->getName() << "' has not been read. The parent particle system needs to be given too.", 1);
 		}
 	}
 
@@ -453,12 +453,12 @@ template void exportVDB<Vec3, openvdb::Vec3s>(ParticleDataImpl<Vec3>* from, open
 
 #else
 
-int writeGridsVDB(const string& filename, std::vector<PbClass*>* grids, float worldSize) {
+int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float worldSize) {
 	errMsg("Cannot save to .vdb file. Mantaflow has not been built with OpenVDB support.");
 	return 0;
 }
 
-int readGridsVDB(const string& filename, std::vector<PbClass*>* grids, float worldSize) {
+int readObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float worldSize) {
 	errMsg("Cannot load from .vdb file. Mantaflow has not been built with OpenVDB support.");
 	return 0;
 }

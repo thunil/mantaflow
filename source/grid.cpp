@@ -125,7 +125,7 @@ void Grid<T>::load(string name) {
 	else if (ext == ".vdb") {
 		std::vector<PbClass*> grids;
 		grids.push_back(this);
-		readGridsVDB(name, &grids);
+		readObjectsVDB(name, &grids);
 	} else
 		errMsg("file '" + name +"' filetype not supported");
 }
@@ -146,7 +146,7 @@ void Grid<T>::save(string name) {
 	else if (ext == ".vdb") {
 		std::vector<PbClass*> grids;
 		grids.push_back(this);
-		writeGridsVDB(name, &grids);
+		writeObjectsVDB(name, &grids);
 	} else if (ext == ".txt")
 		writeGridTxt(name, this);
 	else
