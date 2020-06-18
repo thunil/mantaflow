@@ -55,7 +55,7 @@ int writeGridsVol(const std::string& name, std::vector<PbClass*>* grids);
 int writeGridsTxt(const std::string& name, std::vector<PbClass*>* grids);
 
 // OpenVDB
-int writeObjectsVDB(const std::string& filename, std::vector<PbClass*>* objects, float scale=1.0);
+int writeObjectsVDB(const std::string& filename, std::vector<PbClass*>* objects, float scale=1.0, bool skipDeletedParts=false);
 int readObjectsVDB(const std::string& filename, std::vector<PbClass*>* objects, float scale=1.0);
 
 // Numpy

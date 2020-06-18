@@ -164,11 +164,16 @@ typename GridType::Ptr exportVDB(Grid<T>* from, openvdb::GridClass cls, float vo
 }
 
 template<class MantaType, class VDBType>
-void exportVDB(ParticleDataImpl<MantaType>* from, openvdb::points::PointDataGrid::Ptr to, openvdb::tools::PointIndexGrid::Ptr pIndex) {
+void exportVDB(ParticleDataImpl<MantaType>* from, openvdb::points::PointDataGrid::Ptr to, openvdb::tools::PointIndexGrid::Ptr pIndex, bool skipDeletedParts) {
 	std::vector<VDBType> vdbValues;
 	std::string name = from->getName();
 
 	FOR_PARTS(*from) {
+		// Optionally, skip exporting particles that have been marked as deleted
+		BasicParticleSystem* pp = dynamic_cast<BasicParticleSystem*>(from->getParticleSys());
+		if (skipDeletedParts && !pp->isActive(idx)) {
+			continue;
+		}
 		MantaType fromMantaValue = (*from)[idx];
 		VDBType vdbValue;
 		convertTo(&vdbValue, fromMantaValue);
@@ -185,11 +190,15 @@ void exportVDB(ParticleDataImpl<MantaType>* from, openvdb::points::PointDataGrid
 	openvdb::points::populateAttribute<openvdb::points::PointDataTree, openvdb::tools::PointIndexTree, openvdb::points::PointAttributeVector<VDBType>>(to->tree(), pIndex->tree(), name, wrapper);
 }
 
-openvdb::points::PointDataGrid::Ptr exportVDB(BasicParticleSystem* from, std::vector<ParticleDataBase*>& fromPData, openvdb::GridClass cls, float voxelSize) {
+openvdb::points::PointDataGrid::Ptr exportVDB(BasicParticleSystem* from, std::vector<ParticleDataBase*>& fromPData, openvdb::GridClass cls, float voxelSize, bool skipDeletedParts) {
 	std::vector<openvdb::Vec3s> positions;
 	std::vector<int> flags;
 
 	FOR_PARTS(*from) {
+		// Optionally, skip exporting particles that have been marked as deleted
+		if (skipDeletedParts && !from->isActive(idx)) {
+			continue;
+		}
 		Vector3D<float> pos = toVec3f( (*from)[idx].pos );
 		pos *= voxelSize; // convert from grid space to world space
 		openvdb::Vec3s posVDB(pos.x, pos.y, pos.z);
@@ -220,17 +229,17 @@ openvdb::points::PointDataGrid::Ptr exportVDB(BasicParticleSystem* from, std::ve
 		if (pdb->getType() == ParticleDataBase::TypeInt) {
 			debMsg("Writing int particle data '" << pdb->getName() << "'", 1);
 			ParticleDataImpl<int>* pdi = dynamic_cast<ParticleDataImpl<int>*>(pdb);
-			exportVDB<int, int>(pdi, to, pointIndexGrid);
+			exportVDB<int, int>(pdi, to, pointIndexGrid, skipDeletedParts);
 		}
 		else if (pdb->getType() == ParticleDataBase::TypeReal) {
 			debMsg("Writing real particle data '" << pdb->getName() << "'", 1);
 			ParticleDataImpl<Real>* pdi = dynamic_cast<ParticleDataImpl<Real>*>(pdb);
-			exportVDB<Real, float>(pdi, to, pointIndexGrid);
+			exportVDB<Real, float>(pdi, to, pointIndexGrid, skipDeletedParts);
 		}
 		else if (pdb->getType() == ParticleDataBase::TypeVec3) {
 			debMsg("Writing Vec3 particle data '" << pdb->getName() << "'", 1);
 			ParticleDataImpl<Vec3>* pdi = dynamic_cast<ParticleDataImpl<Vec3>*>(pdb);
-			exportVDB<Vec3, openvdb::Vec3s>(pdi, to, pointIndexGrid);
+			exportVDB<Vec3, openvdb::Vec3s>(pdi, to, pointIndexGrid, skipDeletedParts);
 		}
 		else {
 			errMsg("exportVDB: unknown ParticleDataBase type");
@@ -249,7 +258,7 @@ static void registerCustomCodecs() {
 	openvdb::points::TypedAttributeArray<int, Codec>::registerType();
 }
 
-int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float worldSize) {
+int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float worldSize, bool skipDeletedParts) {
 	openvdb::initialize();
 	openvdb::io::File file(filename);
 	openvdb::GridPtrVec gridsVDB;
@@ -297,7 +306,7 @@ int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, floa
 		}
 		else if (BasicParticleSystem* mantaPP = dynamic_cast<BasicParticleSystem*>(*iter)) {
 			debMsg("Writing particle system '" << mantaPP->getName() << "' (and buffered pData) to vdb file " << filename, 1);
-			vdbGrid = exportVDB(mantaPP, pdbBuffer, gClass, voxelSize);
+			vdbGrid = exportVDB(mantaPP, pdbBuffer, gClass, voxelSize, skipDeletedParts);
 			gridsVDB.push_back(vdbGrid);
 			pdbBuffer.clear();
 
@@ -449,14 +458,14 @@ template openvdb::Int32Grid::Ptr exportVDB<int, openvdb::Int32Grid>(Grid<int> *f
 template openvdb::FloatGrid::Ptr exportVDB<Real, openvdb::FloatGrid>(Grid<Real> *from, openvdb::GridClass cls, float voxelSize=1.0);
 template openvdb::Vec3SGrid::Ptr exportVDB<Vec3, openvdb::Vec3SGrid>(Grid<Vec3> *from, openvdb::GridClass cls, float voxelSize=1.0);
 
-openvdb::points::PointDataGrid::Ptr exportVDB(BasicParticleSystem *from, std::vector<ParticleDataBase*>& fromPData, openvdb::GridClass cls=openvdb::GRID_UNKNOWN, float voxelSize=1.0);
-template void exportVDB<int, int>(ParticleDataImpl<int>* from, openvdb::points::PointDataGrid::Ptr to, openvdb::tools::PointIndexGrid::Ptr pIndex);
-template void exportVDB<Real, float>(ParticleDataImpl<Real>* from, openvdb::points::PointDataGrid::Ptr to, openvdb::tools::PointIndexGrid::Ptr pIndex);
-template void exportVDB<Vec3, openvdb::Vec3s>(ParticleDataImpl<Vec3>* from, openvdb::points::PointDataGrid::Ptr to, openvdb::tools::PointIndexGrid::Ptr pIndex);
+openvdb::points::PointDataGrid::Ptr exportVDB(BasicParticleSystem *from, std::vector<ParticleDataBase*>& fromPData, openvdb::GridClass cls=openvdb::GRID_UNKNOWN, float voxelSize=1.0, bool skipDeletedParts=false);
+template void exportVDB<int, int>(ParticleDataImpl<int>* from, openvdb::points::PointDataGrid::Ptr to, openvdb::tools::PointIndexGrid::Ptr pIndex, bool skipDeletedParts=false);
+template void exportVDB<Real, float>(ParticleDataImpl<Real>* from, openvdb::points::PointDataGrid::Ptr to, openvdb::tools::PointIndexGrid::Ptr pIndex, bool skipDeletedParts=false);
+template void exportVDB<Vec3, openvdb::Vec3s>(ParticleDataImpl<Vec3>* from, openvdb::points::PointDataGrid::Ptr to, openvdb::tools::PointIndexGrid::Ptr pIndex, bool skipDeletedParts=false);
 
 #else
 
-int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float worldSize) {
+int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float worldSize, bool skipDeletedParts) {
 	errMsg("Cannot save to .vdb file. Mantaflow has not been built with OpenVDB support.");
 	return 0;
 }

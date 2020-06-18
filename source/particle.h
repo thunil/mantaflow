@@ -289,8 +289,9 @@ public:
 	virtual void resize(IndexInt size)     { assertMsg( false , "Dont use, override..."); return;  }
 	virtual void copyValueSlow(IndexInt from, IndexInt to) { assertMsg( false , "Dont use, override..."); return;  }
 
-	//! set base pointer
+	//! set / get base pointer to parent particle system
 	void setParticleSys(ParticleBase* set) { mpParticleSys = set; }
+	ParticleBase* getParticleSys()         { return mpParticleSys; }
 
 	//! debugging
 	inline void checkPartIndex(IndexInt idx) const;
