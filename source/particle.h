@@ -195,8 +195,8 @@ public:
 	PYTHON() BasicParticleSystem(FluidSolver* parent);
 	
 	//! file io
-	PYTHON() void save(const std::string name);
-	PYTHON() void load(const std::string name);
+	PYTHON() int save(const std::string name);
+	PYTHON() int load(const std::string name);
 
 	//! save to text file
 	void writeParticlesText(const std::string name) const;
@@ -367,8 +367,8 @@ public:
 	PYTHON() void printPdata(IndexInt start=-1, IndexInt stop=-1, bool printIndex=false);
 	
 	//! file io
-	PYTHON() void save(const std::string name);
-	PYTHON() void load(const std::string name);
+	PYTHON() int save(const std::string name);
+	PYTHON() int load(const std::string name);
 
 	//! get data pointer of particle data
 	PYTHON() std::string getDataPointer();

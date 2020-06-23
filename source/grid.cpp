@@ -110,47 +110,49 @@ void Grid<T>::swap(Grid<T>& other) {
 }
 
 template<class T>
-void Grid<T>::load(string name) {
+int Grid<T>::load(string name) {
 	if (name.find_last_of('.') == string::npos)
 		errMsg("file '" + name + "' does not have an extension");
 	string ext = name.substr(name.find_last_of('.'));
 	if (ext == ".raw")
-		readGridRaw(name, this);
+		return readGridRaw(name, this);
 	else if (ext == ".uni")
-		readGridUni(name, this);
+		return readGridUni(name, this);
 	else if (ext == ".vol")
-		readGridVol(name, this);
+		return readGridVol(name, this);
 	else if (ext == ".npz")
-		readGridNumpy(name, this);
+		return readGridNumpy(name, this);
 	else if (ext == ".vdb") {
 		std::vector<PbClass*> grids;
 		grids.push_back(this);
-		readObjectsVDB(name, &grids);
+		return readObjectsVDB(name, &grids);
 	} else
 		errMsg("file '" + name +"' filetype not supported");
+	return 0;
 }
 
 template<class T>
-void Grid<T>::save(string name) {
+int Grid<T>::save(string name) {
 	if (name.find_last_of('.') == string::npos)
 		errMsg("file '" + name + "' does not have an extension");
 	string ext = name.substr(name.find_last_of('.'));
 	if (ext == ".raw")
-		writeGridRaw(name, this);
+		return writeGridRaw(name, this);
 	else if (ext == ".uni")
-		writeGridUni(name, this);
+		return writeGridUni(name, this);
 	else if (ext == ".vol")
-		writeGridVol(name, this);
+		return writeGridVol(name, this);
 	else if (ext == ".npz")
-		writeGridNumpy(name, this);
+		return writeGridNumpy(name, this);
 	else if (ext == ".vdb") {
 		std::vector<PbClass*> grids;
 		grids.push_back(this);
-		writeObjectsVDB(name, &grids);
+		return writeObjectsVDB(name, &grids);
 	} else if (ext == ".txt")
-		writeGridTxt(name, this);
+		return writeGridTxt(name, this);
 	else
 		errMsg("file '" + name +"' filetype not supported");
+	return 0;
 }
 
 //******************************************************************************

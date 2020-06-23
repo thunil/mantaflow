@@ -60,7 +60,7 @@ void *safeGzopen(const char *filename, const char *mode)
 // Convert from OpenVDB value to Manta value.
 template<class S, class T>
 void convertFrom(S& in, T* out) {
-	errMsg("convertFrom Warning: Unsupported type conversion");
+	errMsg("OpenVDB convertFrom Warning: Unsupported type conversion");
 }
 
 template<>
@@ -83,7 +83,7 @@ void convertFrom(openvdb::Vec3s& in, Vec3* out) {
 // Convert to OpenVDB value from Manta value.
 template<class S, class T>
 void convertTo(S* out, T& in) {
-	errMsg("convertTo Warning: Unsupported type conversion");
+	errMsg("OpenVDB convertTo Warning: Unsupported type conversion");
 }
 
 template<>
