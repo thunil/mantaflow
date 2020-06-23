@@ -322,7 +322,9 @@ int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, floa
 		}
 
 		// Set additional grid attributes, e.g. name, grid class, compression level, etc.
-		setGridOptions<openvdb::GridBase>(vdbGrid, objectName, gClass, voxelSize, precisionHalf);
+		if (vdbGrid) {
+			setGridOptions<openvdb::GridBase>(vdbGrid, objectName, gClass, voxelSize, precisionHalf);
+		}
 	}
 
 	// Give out a warning if pData items were present but could not be saved due to missing particle system.
