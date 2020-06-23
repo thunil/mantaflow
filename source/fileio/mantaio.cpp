@@ -39,7 +39,7 @@ PYTHON() int load(const string& name, std::vector<PbClass*>& objects, float worl
 	return 0;
 }
 
-PYTHON() int save(const string& name, std::vector<PbClass*>& objects, float worldSize=1.0, bool skipDeletedParts=false, int compression=COMPRESSION_ZIP) {
+PYTHON() int save(const string& name, std::vector<PbClass*>& objects, float worldSize=1.0, bool skipDeletedParts=false, int compression=COMPRESSION_ZIP, bool precisionHalf=true) {
 	if (name.find_last_of('.') == string::npos)
 		errMsg("file '" + name + "' does not have an extension");
 	string ext = name.substr(name.find_last_of('.'));
@@ -51,7 +51,7 @@ PYTHON() int save(const string& name, std::vector<PbClass*>& objects, float worl
 	else if (ext == ".vol")
 		return writeGridsVol(name, &objects);
 	if (ext == ".vdb")
-		return writeObjectsVDB(name, &objects, worldSize, skipDeletedParts, compression);
+		return writeObjectsVDB(name, &objects, worldSize, skipDeletedParts, compression, precisionHalf);
 	else if (ext == ".npz")
 		return writeGridsNumpy(name, &objects);
 	else if (ext == ".txt")
