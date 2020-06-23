@@ -55,3 +55,7 @@ PtypeBubble  = 4
 PtypeFoam    = 8
 PtypeTracer  = 16
 
+# OpenVDB compression flags
+Compression_Zip = 1
+Compression_Blosc = 2
+

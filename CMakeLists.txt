@@ -65,6 +65,7 @@ OPTION(NUMPY "Compile with numpy integration?" OFF)
 
 # compile with openVDB support
 OPTION(OPENVDB "Exporting OpenVDB files" OFF)
+OPTION(OPENVDB_BLOSC "Enable OpenVDB Blosc compression" OFF)
 
 # further options for blender integration
 OPTION(BLENDER "Compile for Blender integration" OFF)
@@ -402,6 +403,10 @@ if(OPENVDB)
 	else()
 		# for open exr - should be in the default path, add includes if necessary
 	endif()
+endif()
+
+if(OPENVDB_BLOSC)
+	add_definitions(-DOPENVDB_BLOSC=1)
 endif()
 
 #******************************************************************************

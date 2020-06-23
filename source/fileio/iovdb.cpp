@@ -258,7 +258,7 @@ static void registerCustomCodecs() {
 	openvdb::points::TypedAttributeArray<int, Codec>::registerType();
 }
 
-int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float worldSize, bool skipDeletedParts) {
+int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float worldSize, bool skipDeletedParts, int compression) {
 	openvdb::initialize();
 	openvdb::io::File file(filename);
 	openvdb::GridPtrVec gridsVDB;
@@ -330,8 +330,29 @@ int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, floa
 		}
 	}
 
+	// Write only if the is at least one grid, optionally write with compression.
 	if (gridsVDB.size()) {
-		file.setCompression(openvdb::io::COMPRESS_ACTIVE_MASK | openvdb::io::COMPRESS_ZIP); // TODO (sebbas): Make this an option
+		int vdb_flags = openvdb::io::COMPRESS_ACTIVE_MASK;
+		switch (compression) {
+			case COMPRESSION_NONE: {
+				vdb_flags = openvdb::io::COMPRESS_NONE;
+				break;
+			}
+			case COMPRESSION_ZIP: {
+				vdb_flags |= openvdb::io::COMPRESS_ZIP;
+				break;
+			}
+			case COMPRESSION_BLOSC: {
+#if OPENVDB_BLOSC==1
+				vdb_flags |= openvdb::io::COMPRESS_BLOSC;
+#else
+				debMsg("OpenVDB was built without Blosc support, using Zip compression instead", 1);
+				vdb_flags |= openvdb::io::COMPRESS_ZIP;
+#endif // OPENVDB_BLOSC==1
+				break;
+			}
+		}
+		file.setCompression(vdb_flags);
 		file.write(gridsVDB);
 	}
 	file.close();
@@ -465,7 +486,7 @@ template void exportVDB<Vec3, openvdb::Vec3s>(ParticleDataImpl<Vec3>* from, open
 
 #else
 
-int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float worldSize, bool skipDeletedParts) {
+int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, float worldSize, bool skipDeletedParts, int compression) {
 	errMsg("Cannot save to .vdb file. Mantaflow has not been built with OpenVDB support.");
 	return 0;
 }
