@@ -142,16 +142,19 @@ void importVDB(openvdb::points::PointDataGrid::Ptr from, BasicParticleSystem* to
 	}
 }
 
+template<class GridType>
+static void setGridOptions(typename GridType::Ptr grid, string name, openvdb::GridClass cls, float voxelSize, bool precisionHalf) {
+	grid->setTransform(openvdb::math::Transform::createLinearTransform(voxelSize));
+	grid->setGridClass(cls);
+	grid->setName(name);
+	grid->setSaveFloatAsHalf(precisionHalf);
+}
+
 template<class T, class GridType>
-typename GridType::Ptr exportVDB(Grid<T>* from, openvdb::GridClass cls, float voxelSize, bool precisionHalf) {
+typename GridType::Ptr exportVDB(Grid<T>* from) {
 	using ValueT = typename GridType::ValueType;
 	typename GridType::Ptr to = GridType::create();
 	typename GridType::Accessor accessor = to->getAccessor();
-
-	to->setTransform( openvdb::math::Transform::createLinearTransform(voxelSize));
-	to->setGridClass(cls);
-	to->setName(from->getName());
-	to->setSaveFloatAsHalf(precisionHalf);
 
 	FOR_IJK(*from) {
 		openvdb::Coord xyz(i, j, k);
@@ -190,7 +193,7 @@ void exportVDB(ParticleDataImpl<MantaType>* from, openvdb::points::PointDataGrid
 	openvdb::points::populateAttribute<openvdb::points::PointDataTree, openvdb::tools::PointIndexTree, openvdb::points::PointAttributeVector<VDBType>>(to->tree(), pIndex->tree(), name, wrapper);
 }
 
-openvdb::points::PointDataGrid::Ptr exportVDB(BasicParticleSystem* from, std::vector<ParticleDataBase*>& fromPData, openvdb::GridClass cls, float voxelSize, bool skipDeletedParts, bool precisionHalf) {
+openvdb::points::PointDataGrid::Ptr exportVDB(BasicParticleSystem* from, std::vector<ParticleDataBase*>& fromPData, bool skipDeletedParts, float voxelSize) {
 	std::vector<openvdb::Vec3s> positions;
 	std::vector<int> flags;
 
@@ -245,11 +248,6 @@ openvdb::points::PointDataGrid::Ptr exportVDB(BasicParticleSystem* from, std::ve
 			errMsg("exportVDB: unknown ParticleDataBase type");
 		}
 	}
-
-	to->setTransform(transform);
-	to->setSaveFloatAsHalf(precisionHalf);
-	to->setGridClass(cls);
-	to->setName(from->getName());
 	return to;
 }
 
@@ -276,27 +274,28 @@ int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, floa
 		PbClass* object = dynamic_cast<PbClass*>(*iter);
 		const Real dx = object->getParent()->getDx();
 		const Real voxelSize = worldSize * dx;
+		const string objectName = object->getName();
 
 		if (GridBase* mantaGrid = dynamic_cast<GridBase*>(*iter)) {
 
 			if (mantaGrid->getType() & GridBase::TypeInt) {
 				debMsg("Writing int grid '" << mantaGrid->getName() << "' to vdb file " << filename, 1);
 				Grid<int>* mantaIntGrid = (Grid<int>*) mantaGrid;
-				vdbGrid = exportVDB<int, openvdb::Int32Grid>(mantaIntGrid, gClass, voxelSize, precisionHalf);
+				vdbGrid = exportVDB<int, openvdb::Int32Grid>(mantaIntGrid);
 				gridsVDB.push_back(vdbGrid);
 			}
 			else if (mantaGrid->getType() & GridBase::TypeReal) {
 				debMsg("Writing real grid '" << mantaGrid->getName() << "' to vdb file " << filename, 1);
 				gClass = (mantaGrid->getType() & GridBase::TypeLevelset) ? openvdb::GRID_LEVEL_SET : openvdb::GRID_FOG_VOLUME;
 				Grid<Real>* mantaRealGrid = (Grid<Real>*) mantaGrid;
-				vdbGrid = exportVDB<Real, openvdb::FloatGrid>(mantaRealGrid, gClass, voxelSize, precisionHalf);
+				vdbGrid = exportVDB<Real, openvdb::FloatGrid>(mantaRealGrid);
 				gridsVDB.push_back(vdbGrid);
 			}
 			else if (mantaGrid->getType() & GridBase::TypeVec3) {
 				debMsg("Writing vec3 grid '" << mantaGrid->getName() << "' to vdb file " << filename, 1);
 				gClass = (mantaGrid->getType() & GridBase::TypeMAC) ? openvdb::GRID_STAGGERED : openvdb::GRID_UNKNOWN;
 				Grid<Vec3>* mantaVec3Grid = (Grid<Vec3>*) mantaGrid;
-				vdbGrid = exportVDB<Vec3, openvdb::Vec3SGrid>(mantaVec3Grid, gClass, voxelSize, precisionHalf);
+				vdbGrid = exportVDB<Vec3, openvdb::Vec3SGrid>(mantaVec3Grid);
 				gridsVDB.push_back(vdbGrid);
 			}
 			else {
@@ -306,7 +305,7 @@ int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, floa
 		}
 		else if (BasicParticleSystem* mantaPP = dynamic_cast<BasicParticleSystem*>(*iter)) {
 			debMsg("Writing particle system '" << mantaPP->getName() << "' (and buffered pData) to vdb file " << filename, 1);
-			vdbGrid = exportVDB(mantaPP, pdbBuffer, gClass, voxelSize, skipDeletedParts, precisionHalf);
+			vdbGrid = exportVDB(mantaPP, pdbBuffer, skipDeletedParts, voxelSize);
 			gridsVDB.push_back(vdbGrid);
 			pdbBuffer.clear();
 
@@ -321,6 +320,9 @@ int writeObjectsVDB(const string& filename, std::vector<PbClass*>* objects, floa
 			errMsg("writeObjectsVDB: Unsupported Python object. Cannot write to .vdb file " << filename);
 			return 0;
 		}
+
+		// Set additional grid attributes, e.g. name, grid class, compression level, etc.
+		setGridOptions<openvdb::GridBase>(vdbGrid, objectName, gClass, voxelSize, precisionHalf);
 	}
 
 	// Give out a warning if pData items were present but could not be saved due to missing particle system.
@@ -475,11 +477,11 @@ template void importVDB<openvdb::Int32Grid, int>(openvdb::Int32Grid::Ptr from, G
 template void importVDB<openvdb::FloatGrid, Real>(openvdb::FloatGrid::Ptr from, Grid<Real> *to);
 template void importVDB<openvdb::Vec3SGrid, Vec3>(openvdb::Vec3SGrid::Ptr from, Grid<Vec3> *to);
 
-template openvdb::Int32Grid::Ptr exportVDB<int, openvdb::Int32Grid>(Grid<int> *from, openvdb::GridClass cls, float voxelSize=1.0, bool precisionHalf=true);
-template openvdb::FloatGrid::Ptr exportVDB<Real, openvdb::FloatGrid>(Grid<Real> *from, openvdb::GridClass cls, float voxelSize=1.0, bool precisionHalf=true);
-template openvdb::Vec3SGrid::Ptr exportVDB<Vec3, openvdb::Vec3SGrid>(Grid<Vec3> *from, openvdb::GridClass cls, float voxelSize=1.0, bool precisionHalf=true);
+template openvdb::Int32Grid::Ptr exportVDB<int, openvdb::Int32Grid>(Grid<int> *from);
+template openvdb::FloatGrid::Ptr exportVDB<Real, openvdb::FloatGrid>(Grid<Real> *from);
+template openvdb::Vec3SGrid::Ptr exportVDB<Vec3, openvdb::Vec3SGrid>(Grid<Vec3> *from);
 
-openvdb::points::PointDataGrid::Ptr exportVDB(BasicParticleSystem *from, std::vector<ParticleDataBase*>& fromPData, openvdb::GridClass cls=openvdb::GRID_UNKNOWN, float voxelSize=1.0, bool skipDeletedParts=false, bool precisionHalf=true);
+openvdb::points::PointDataGrid::Ptr exportVDB(BasicParticleSystem *from, std::vector<ParticleDataBase*>& fromPData, bool skipDeletedParts=false, float voxelSize=1.0);
 template void exportVDB<int, int>(ParticleDataImpl<int>* from, openvdb::points::PointDataGrid::Ptr to, openvdb::tools::PointIndexGrid::Ptr pIndex, bool skipDeletedParts=false);
 template void exportVDB<Real, float>(ParticleDataImpl<Real>* from, openvdb::points::PointDataGrid::Ptr to, openvdb::tools::PointIndexGrid::Ptr pIndex, bool skipDeletedParts=false);
 template void exportVDB<Vec3, openvdb::Vec3s>(ParticleDataImpl<Vec3>* from, openvdb::points::PointDataGrid::Ptr to, openvdb::tools::PointIndexGrid::Ptr pIndex, bool skipDeletedParts=false);
