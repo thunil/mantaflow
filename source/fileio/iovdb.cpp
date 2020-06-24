@@ -15,6 +15,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 
 #include "mantaio.h"
 #include "grid.h"
