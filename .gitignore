@@ -10,3 +10,15 @@ waveletNoiseTileDouble.bin
 build
 doc
 tensorflow/mantaGen/datasets
+
+# macos
+.DS_Store
+
+# vscode
+\.vscode
+
+# Python
+venv
+__pycache__
+.ipynb_checkpoints
+*.ipynb
