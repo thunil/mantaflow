@@ -33,8 +33,9 @@ endif()
 
 if(APPLE)
 	if(NOT CMAKE_PREFIX_PATH)
-		#set(CMAKE_PREFIX_PATH "/usr/local/opt/qt5/") #  mac/homebrew (version independent)
-		set(CMAKE_PREFIX_PATH "/Users/Cesar/Qt/5.15.0/clang_64/")
+		set(CMAKE_PREFIX_PATH "/usr/local/opt/qt5/")  # mac/homebrew (version independent)
+		#set(CMAKE_PREFIX_PATH "/home/myname/qt/5.5/clang_64") #  other...
+		#set(CMAKE_PREFIX_PATH "/Users/Cesar/Qt/5.15.0/clang_64/")
 	endif()
 endif()
 

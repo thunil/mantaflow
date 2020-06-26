@@ -21,4 +21,4 @@ tensorflow/mantaGen/datasets
 venv
 __pycache__
 .ipynb_checkpoints
-*.ipynb
+# *.ipynb
