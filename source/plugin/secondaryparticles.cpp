@@ -49,7 +49,8 @@ void knFlipComputeSecondaryParticlePotentials(
 	for (IndexInt x = i - radius; x <= i + radius; x++) {
 		for (IndexInt y = j - radius; y <= j + radius; y++) {
 			for (IndexInt z = k - radius; z <= k + radius; z++) {
-				if ((x == i && y == j && z == k) || !flags.isInBounds(Vec3i(x, y, z)) || (flags(x, y, z) & jtype)) continue;
+				//ensure that xyz is in bounds: use bnd=1 to ensure that vel.getCentered() always has a neighbor cell
+				if ((x == i && y == j && z == k) || !flags.isInBounds(Vec3i(x, y, z), 1) || (flags(x, y, z) & jtype)) continue;
 
 				if (flags(x, y, z) & itype) {
 					countFluid++;
