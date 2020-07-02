@@ -154,6 +154,22 @@ void BasicParticleSystem::writeParticlesText(const string name) const
 	ofs.close();
 }
 
+void BasicParticleSystem::writeParticlesNpText(const string name) const
+{
+	Vec3 positions;
+	ofstream ofs(name.c_str());
+	
+	if(!ofs.good()) errMsg("can't open file!");
+
+	for(IndexInt i=0; i < this->size(); ++i) {
+		positions = this->getPos(i);
+		ofs << positions[0] << " " << positions[1] << " " << positions[2];
+		ofs << "\n";
+	}
+	
+	ofs.close();
+}
+
 void BasicParticleSystem::writeParticlesRawPositionsGz(const string name) const
 {
 #	if NO_ZLIB!=1
@@ -207,6 +223,8 @@ void BasicParticleSystem::save(const string name) const
 	string ext = name.substr(name.find_last_of('.'));
 	if(ext == ".txt")
 		this->writeParticlesText(name);
+	else if(ext == ".nptxt")
+		this->writeParticlesNpText(name);
 	else if(ext == ".uni")
 		writeParticlesUni(name, this);
 	else if(ext == ".raw") // raw = uni for now

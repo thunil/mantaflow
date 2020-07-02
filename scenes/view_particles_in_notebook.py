@@ -4,10 +4,12 @@
 from manta import *
 
 # solver params
-dim = 2
+dim = 3
+# dim = 2
 particleNumber = 2
 res = 64
 gs = vec3(res,res,res)
+
 if (dim==2):
 	gs.z=1
 	particleNumber = 3      # use more particles in 2d
@@ -46,10 +48,10 @@ flags.updateFromLevelset(phiInit)
 sampleFlagsWithParticles(flags=flags, parts=pp, discretization=particleNumber, randomness=0.2)
 
 #main loop
-for t in range(20):
+for t in range(200):
 	mantaMsg('\nFrame %i, simulation time %f' % (s.frame, s.timeTotal))
 
-	# APIC
+	# Affine Particle in Cell (APIC) method
 	pp.advectInGrid(flags=flags, vel=vel, integrationMode=IntRK4, deleteInObstacle=False)
 	apicMapPartsToMAC(flags=flags, vel=vel, parts=pp, partVel=pVel, cpx=pCx, cpy=pCy, cpz=pCz, mass=mass)
 	extrapolateMACFromWeight(vel=vel , distance=2, weight=tmpVec3)
@@ -70,8 +72,30 @@ for t in range(20):
 
 	s.step()
 
-	file_name = 'results/particles-frame-%d.txt' % s.frame
+	path = './frames/'
+	file_name = path + 'particles-frame-%d.nptxt' % s.frame
 	pp.save(file_name)
+
+	# The following lines read in the text file exported with BasicParticleSystem and converts it to a NumPy array format.
+	# NumPy is then able to read the file. 
+	# file = open(file_name, 'r')
+	# lines = file.read().split('\n')
+	# file.close()
+	# particles = []
+	# lines.pop(0)
+	# lines.pop()
+
+	# for line in lines:
+	# 	token = line.split(']').pop(0)
+	# 	coordinates = token.split('[').pop(1)
+	# 	coordinates = coordinates.replace('+', '')
+	# 	coordinates = coordinates.replace(',', ' ')
+	# 	particles.append(coordinates + '\n')
+
+	# file = open(file_name, 'w')
+	# file.writelines(particles)
+	# file.close()
+
 	
 
 
