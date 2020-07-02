@@ -154,7 +154,10 @@ void BasicParticleSystem::writeParticlesText(const string name) const
 	ofs.close();
 }
 
-void BasicParticleSystem::writeParticlesNpText(const string name) const
+// The writeParticlesNumPyText method serializes the coordinates of the particles in NumPy text format.
+// The NumPy text files can be read from a Jupyter notebook to instantiate NumPy arrays.
+// The NumPy arrays can be used to visualize the particles in a Jupyter notebook using the K3D library.
+void BasicParticleSystem::writeParticlesNumPyText(const string name) const
 {
 	Vec3 positions;
 	ofstream ofs(name.c_str());
@@ -163,10 +166,9 @@ void BasicParticleSystem::writeParticlesNpText(const string name) const
 
 	for(IndexInt i=0; i < this->size(); ++i) {
 		positions = this->getPos(i);
-		ofs << positions[0] << " " << positions[1] << " " << positions[2];
-		ofs << "\n";
+		ofs << positions[0] << " " << positions[1] << " " << positions[2] << "\n";
 	}
-	
+
 	ofs.close();
 }
 
@@ -224,7 +226,7 @@ void BasicParticleSystem::save(const string name) const
 	if(ext == ".txt")
 		this->writeParticlesText(name);
 	else if(ext == ".nptxt")
-		this->writeParticlesNpText(name);
+		this->writeParticlesNumPyText(name);
 	else if(ext == ".uni")
 		writeParticlesUni(name, this);
 	else if(ext == ".raw") // raw = uni for now

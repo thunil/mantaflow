@@ -72,29 +72,9 @@ for t in range(200):
 
 	s.step()
 
-	path = './frames/'
-	file_name = path + 'particles-frame-%d.nptxt' % s.frame
+	file_name = './frames/' + 'particles-frame-%d.nptxt' % s.frame
 	pp.save(file_name)
-
-	# The following lines read in the text file exported with BasicParticleSystem and converts it to a NumPy array format.
-	# NumPy is then able to read the file. 
-	# file = open(file_name, 'r')
-	# lines = file.read().split('\n')
-	# file.close()
-	# particles = []
-	# lines.pop(0)
-	# lines.pop()
-
-	# for line in lines:
-	# 	token = line.split(']').pop(0)
-	# 	coordinates = token.split('[').pop(1)
-	# 	coordinates = coordinates.replace('+', '')
-	# 	coordinates = coordinates.replace(',', ' ')
-	# 	particles.append(coordinates + '\n')
-
-	# file = open(file_name, 'w')
-	# file.writelines(particles)
-	# file.close()
+	
 
 	
 
