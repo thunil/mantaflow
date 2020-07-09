@@ -104,8 +104,8 @@ public:
 	typedef T BASETYPE;
 	typedef GridBase BASETYPE_GRID;
 	
-	PYTHON() void save(std::string name);
-	PYTHON() void load(std::string name);
+	PYTHON() int save(std::string name);
+	PYTHON() int load(std::string name);
 	
 	//! set all cells to zero
 	PYTHON() void clear();
@@ -135,7 +135,10 @@ public:
 	inline T& operator[](IndexInt idx)             { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
 	//! access data
 	inline const T operator[](IndexInt idx) const  { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
-	
+
+	//! set data
+	inline void set(int i, int j, int k, T& val)              { mData[index(i,j,k)] = val; }
+
 	// interpolated access
 	inline T    getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
 	inline void setInterpolated(const Vec3& pos, const T& val, Grid<Real>& sumBuffer) const { setInterpol<T>(mData, mSize, mStrideZ, pos, val, &sumBuffer[0]); }
@@ -183,6 +186,8 @@ public:
 	PYTHON() void permuteAxes(int axis0, int axis1, int axis2);
 	//! permute grid axes, e.g. switch y with z (0,2,1)
 	PYTHON() void permuteAxesCopyToGrid(int axis0, int axis1, int axis2, Grid<T>& out);
+	//! join other grid by either keeping min or max value at cell
+	PYTHON() void join(const Grid<T>& a, bool keepMax=true);
 
 	// common compound operators
 	//! get absolute max value in grid 

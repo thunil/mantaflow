@@ -164,7 +164,7 @@ int cbDisableConstructor(PyObject* self, PyObject* args, PyObject* kwds) {
 	return -1;
 }
 
-PyMODINIT_FUNC PyInit_Main(void) {
+PyMODINIT_FUNC PyInit_manta_main(void) {
 	MantaEnsureRegistration();
 #if PY_MAJOR_VERSION >= 3
 	return WrapperRegistry::instance().initModule();   
@@ -485,7 +485,7 @@ void WrapperRegistry::construct(const string& scriptname, const vector<string>& 
 	registerDummyTypes();
 	
 	// work around for certain gcc versions, cast to char*
-	PyImport_AppendInittab( (char*)gDefaultModuleName.c_str(), PyInit_Main );
+	PyImport_AppendInittab( (char*)gDefaultModuleName.c_str(), PyInit_manta_main );
 }
 
 inline PyObject* castPy(PyTypeObject* p) { 

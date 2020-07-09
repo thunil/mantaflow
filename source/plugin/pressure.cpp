@@ -419,6 +419,11 @@ PYTHON() void solvePressureSystem(
 		maxIter = 100;
 
 		pmg = gMapMG[parent];
+		// Release MG from previous step if present (e.g. if previous solve was with MGStatic)
+		if (pmg && preconditioner == PcMGDynamic) {
+			releaseMG(parent);
+			pmg = nullptr;
+		}
 		if(!pmg) {
 			pmg = new GridMg(pressure.getSize());
 			gMapMG[parent] = pmg;

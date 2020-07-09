@@ -49,7 +49,8 @@ void knFlipComputeSecondaryParticlePotentials(
 	for (IndexInt x = i - radius; x <= i + radius; x++) {
 		for (IndexInt y = j - radius; y <= j + radius; y++) {
 			for (IndexInt z = k - radius; z <= k + radius; z++) {
-				if ((x == i && y == j && z == k) || !flags.isInBounds(Vec3i(x, y, z)) || (flags(x, y, z) & jtype)) continue;
+				//ensure that xyz is in bounds: use bnd=1 to ensure that vel.getCentered() always has a neighbor cell
+				if ((x == i && y == j && z == k) || !flags.isInBounds(Vec3i(x, y, z), 1) || (flags(x, y, z) & jtype)) continue;
 
 				if (flags(x, y, z) & itype) {
 					countFluid++;
@@ -114,7 +115,7 @@ void knFlipSampleSecondaryParticlesMoreCylinders(
 
 	if (!(flags(i, j, k) & itype)) return;
 
-	RandomStream mRand(9832);
+	static RandomStream mRand(9832);
 	Real radius = 0.25;	//diameter=0.5 => sampling with two cylinders in each dimension since cell size=1
 	for (Real x = i - radius; x <= i + radius; x += 2 * radius) {
 		for (Real y = j - radius; y <= j + radius; y += 2 * radius) {
@@ -171,9 +172,9 @@ void knFlipSampleSecondaryParticles(
 
 	const int n = KE * (k_ta*TA + k_wc*WC) * dt;		//number of secondary particles
 	if (n == 0) return;
-	RandomStream mRand(9832);
+	static RandomStream mRand(9832);
 
-	Vec3 xi = Vec3(i + mRand.getReal(), j + mRand.getReal(), k + mRand.getReal()); //randomized offset uniform in cell
+	Vec3 xi = Vec3(i, j, k) + mRand.getVec3(); //randomized offset uniform in cell
 	Vec3 vi = v.getInterpolated(xi);
 	Vec3 dir = dt*vi;									//direction of movement of current particle
 	Vec3 e1 = getNormalized(Vec3(dir.z, 0, -dir.x));	//perpendicular to dir
@@ -202,12 +203,16 @@ void flipSampleSecondaryParticles(
 	const std::string mode, const FlagGrid &flags, const MACGrid &v, BasicParticleSystem &pts_sec,
 	ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const Real lMin, const Real lMax,
 	const Grid<Real> &potTA, const Grid<Real> &potWC, const Grid<Real> &potKE, const Grid<Real> &neighborRatio,
-	const Real c_s, const Real c_b, const Real k_ta, const Real k_wc, const Real dt, const int itype = FlagGrid::TypeFluid) {
+	const Real c_s, const Real c_b, const Real k_ta, const Real k_wc, const Real dt=0, const int itype = FlagGrid::TypeFluid) {
+
+	float timestep = dt;
+	if (dt <= 0) timestep = flags.getParent()->getDt();
+
 	if (mode == "single") {
-		knFlipSampleSecondaryParticles(flags, v, pts_sec, v_sec, l_sec, lMin, lMax, potTA, potWC, potKE, neighborRatio, c_s, c_b, k_ta, k_wc, dt, itype);
+		knFlipSampleSecondaryParticles(flags, v, pts_sec, v_sec, l_sec, lMin, lMax, potTA, potWC, potKE, neighborRatio, c_s, c_b, k_ta, k_wc, timestep, itype);
 	}
 	else if (mode == "multiple") {
-		knFlipSampleSecondaryParticlesMoreCylinders(flags, v, pts_sec, v_sec, l_sec, lMin, lMax, potTA, potWC, potKE, neighborRatio, c_s, c_b, k_ta, k_wc, dt, itype);
+		knFlipSampleSecondaryParticlesMoreCylinders(flags, v, pts_sec, v_sec, l_sec, lMin, lMax, potTA, potWC, potKE, neighborRatio, c_s, c_b, k_ta, k_wc, timestep, itype);
 	}
 	else {
 		throw std::invalid_argument("Unknown mode: use \"single\" or \"multiple\" instead!");
@@ -420,15 +425,20 @@ PYTHON()
 void flipUpdateSecondaryParticles(
 	const std::string mode, BasicParticleSystem &pts_sec, ParticleDataImpl<Vec3> &v_sec, ParticleDataImpl<Real> &l_sec, const ParticleDataImpl<Vec3> &f_sec,
 	FlagGrid &flags, const MACGrid &v, const Grid<Real> &neighborRatio,
-	const int radius, const Vec3 gravity,  const Real k_b, const Real k_d,
-	const Real c_s, const Real c_b, const Real dt, const int exclude = ParticleBase::PTRACER, const int antitunneling=0, const int itype = FlagGrid::TypeFluid) {
+	const int radius, const Vec3 gravity, const Real k_b, const Real k_d,
+	const Real c_s, const Real c_b, const Real dt=0, bool scale=true, const int exclude = ParticleBase::PTRACER, const int antitunneling=0, const int itype = FlagGrid::TypeFluid) {
 
-	Vec3 g = gravity / flags.getDx();
+	float gridScale = (scale) ? flags.getParent()->getDx() : 1;
+	Vec3 g = gravity / gridScale;
+
+	float timestep = dt;
+	if (dt <= 0) timestep = flags.getParent()->getDt();
+
 	if (mode == "linear") {
-		knFlipUpdateSecondaryParticlesLinear(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, g, k_b, k_d, c_s, c_b, dt, exclude, antitunneling);
+		knFlipUpdateSecondaryParticlesLinear(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, g, k_b, k_d, c_s, c_b, timestep, exclude, antitunneling);
 	}
 	else if (mode == "cubic") {
-		knFlipUpdateSecondaryParticlesCubic(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, radius, g, k_b, k_d, c_s, c_b, dt, exclude, antitunneling, itype);
+		knFlipUpdateSecondaryParticlesCubic(pts_sec, v_sec, l_sec, f_sec, flags, v, neighborRatio, radius, g, k_b, k_d, c_s, c_b, timestep, exclude, antitunneling, itype);
 	}
 	else {
 		throw std::invalid_argument("Unknown mode: use \"linear\" or \"cubic\" instead!");
@@ -453,7 +463,7 @@ void knFlipDeleteParticlesInObstacle(
 	}
 	int gridIndex = flags.index(xidx);
 	//remove particles that penetrate obstacles
-	if (flags[gridIndex] == FlagGrid::TypeObstacle || flags[gridIndex] == FlagGrid::TypeOutflow) {
+	if (flags.isObstacle(gridIndex) || flags.isOutflow(gridIndex)) {
 		pts.kill(idx);
 	}
 }
