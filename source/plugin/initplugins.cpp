@@ -107,19 +107,24 @@ PYTHON() LevelsetGrid obstacleLevelset(const FlagGrid& flags) {
 // blender init functions 
 
 KERNEL() 
-void KnApplyEmission(const FlagGrid& flags, Grid<Real>& density, const Grid<Real>& emission, bool isAbsolute)
+void KnApplyEmission(const FlagGrid& flags, Grid<Real>& target, const Grid<Real>& source, const Grid<Real>* emissionTexture, bool isAbsolute, int type)
 {
-	if (!flags.isFluid(i,j,k) || emission(i,j,k) == 0.) return;
+	// if type is given, only apply emission when celltype matches type from flaggrid
+	// and if emission texture is given, only apply emission when some emission is present at cell (important for emit from particles)
+	bool isInflow = (type & FlagGrid::TypeInflow && flags.isInflow(i,j,k));
+	bool isOutflow = (type & FlagGrid::TypeOutflow && flags.isOutflow(i,j,k));
+	if ( (type && !isInflow && !isOutflow) && (emissionTexture && !(*emissionTexture)(i,j,k)) ) return;
+
 	if (isAbsolute)
-		density(i,j,k) = emission(i,j,k);
+		target(i,j,k) = source(i,j,k);
 	else
-		density(i,j,k) += emission(i,j,k);
+		target(i,j,k) += source(i,j,k);
 }
 
 //! Add emission values
 //isAbsolute: whether to add emission values to existing, or replace
-PYTHON() void applyEmission(FlagGrid& flags, Grid<Real>& density, Grid<Real>& emission, bool isAbsolute) {
-	KnApplyEmission(flags, density, emission, isAbsolute);
+PYTHON() void applyEmission(FlagGrid& flags, Grid<Real>& target, Grid<Real>& source, Grid<Real>* emissionTexture=NULL, bool isAbsolute=true, int type=0) {
+	KnApplyEmission(flags, target, source, emissionTexture, isAbsolute, type);
 }
 
 // blender init functions for meshes
@@ -144,6 +149,37 @@ PYTHON() void densityInflowMesh(const FlagGrid& flags, Grid<Real>& density, Mesh
 	LevelsetGrid sdf(density.getParent(), false);
 	mesh->computeLevelset(sdf, 2., cutoff);
 	KnApplyDensity(flags, density, sdf, value, sigma);
+}
+
+KERNEL() void KnResetInObstacle(FlagGrid& flags, MACGrid& vel, Grid<Real>* density, Grid<Real>* heat,
+	Grid<Real>* fuel, Grid<Real>* flame, Grid<Real>* red, Grid<Real>* green, Grid<Real>* blue, Real resetValue)
+{
+	if (!flags.isObstacle(i,j,k)) return;
+	vel(i,j,k).x = resetValue;
+	vel(i,j,k).y = resetValue;
+	vel(i,j,k).z = resetValue;
+
+	if (density) {
+		(*density)(i,j,k) = resetValue;
+	}
+	if (heat) {
+		(*heat)(i,j,k) = resetValue;
+	}
+	if (fuel) {
+		(*fuel)(i,j,k) = resetValue;
+		(*flame)(i,j,k) = resetValue;
+	}
+	if (red) {
+		(*red)(i,j,k) = resetValue;
+		(*green)(i,j,k) = resetValue;
+		(*blue)(i,j,k) = resetValue;
+	}
+}
+
+PYTHON() void resetInObstacle(FlagGrid& flags, MACGrid& vel, Grid<Real>* density, Grid<Real>* heat=NULL,
+	Grid<Real>* fuel=NULL, Grid<Real>* flame=NULL, Grid<Real>* red=NULL, Grid<Real>* green=NULL, Grid<Real>* blue=NULL, Real resetValue=0)
+{
+	KnResetInObstacle(flags, vel, density, heat, fuel, flame, red, green, blue, resetValue);
 }
 
 
@@ -317,7 +353,7 @@ PYTHON() Vec3 calcCenterOfMass(const Grid<Real>& density)
 
 
 
-inline static Real calcFraction(Real phi1, Real phi2)
+inline static Real calcFraction(Real phi1, Real phi2, Real fracThreshold)
 {
 	if(phi1>0. && phi2>0.) return 1.;
 	if(phi1<0. && phi2<0.) return 0.;
@@ -328,18 +364,18 @@ inline static Real calcFraction(Real phi1, Real phi2)
 	if (denom > -1e-04) return 0.5; 
 
 	Real frac = 1. - phi1/denom;
-	if(frac<0.01) frac = 0.; // stomp small values , dont mark as fluid
+	if(frac<fracThreshold) frac = 0.; // stomp small values , dont mark as fluid
 	return std::min(Real(1), frac );
 }
 
 KERNEL (bnd=1) 
-void KnUpdateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth) {
+void KnUpdateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth, const Real fracThreshold) {
 
 	// walls at domain bounds and inner objects
-	fractions(i,j,k).x = calcFraction( phiObs(i,j,k) , phiObs(i-1,j,k));
-	fractions(i,j,k).y = calcFraction( phiObs(i,j,k) , phiObs(i,j-1,k));
+	fractions(i,j,k).x = calcFraction( phiObs(i,j,k) , phiObs(i-1,j,k), fracThreshold);
+	fractions(i,j,k).y = calcFraction( phiObs(i,j,k) , phiObs(i,j-1,k), fracThreshold);
     if(phiObs.is3D()) {
-	fractions(i,j,k).z = calcFraction( phiObs(i,j,k) , phiObs(i,j,k-1));
+	fractions(i,j,k).z = calcFraction( phiObs(i,j,k) , phiObs(i,j,k-1), fracThreshold);
 	}
 
 	// remaining BCs at the domain boundaries 
@@ -398,13 +434,13 @@ void KnUpdateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid&
 }
 
 //! update fill fraction values
-PYTHON() void updateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth=0) {
+PYTHON() void updateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, MACGrid& fractions, const int &boundaryWidth=0, const Real fracThreshold=0.01) {
 	fractions.setConst( Vec3(0.) );
-	KnUpdateFractions(flags, phiObs, fractions, boundaryWidth);
+	KnUpdateFractions(flags, phiObs, fractions, boundaryWidth, fracThreshold);
 }
 
-KERNEL (bnd=1) 
-void KnUpdateFlagsObs(FlagGrid& flags, const MACGrid* fractions, const Grid<Real>& phiObs, const Grid<Real>* phiOut ) {
+KERNEL (bnd=boundaryWidth)
+void KnUpdateFlagsObs(FlagGrid& flags, const MACGrid* fractions, const Grid<Real>& phiObs, const Grid<Real>* phiOut, const Grid<Real>* phiIn, int boundaryWidth) {
 
 	bool isObs = false;
 	if(fractions) {
@@ -422,17 +458,20 @@ void KnUpdateFlagsObs(FlagGrid& flags, const MACGrid* fractions, const Grid<Real
 	}
 
 	bool isOutflow = false;
- 	if (phiOut && (*phiOut)(i,j,k) < 0.) isOutflow = true;
+	bool isInflow = false;
+	if (phiOut && (*phiOut)(i,j,k) < 0.) isOutflow = true;
+	if (phiIn && (*phiIn)(i,j,k) < 0.) isInflow = true;
 
- 	if (isObs)          flags(i,j,k) = FlagGrid::TypeObstacle;
- 	else if (isOutflow) flags(i,j,k) = (FlagGrid::TypeEmpty | FlagGrid::TypeOutflow);
-  	else                flags(i,j,k) = FlagGrid::TypeEmpty;
+	if (isObs)          flags(i,j,k) = FlagGrid::TypeObstacle;
+	else if (isInflow)  flags(i,j,k) = (FlagGrid::TypeFluid | FlagGrid::TypeInflow);
+	else if (isOutflow) flags(i,j,k) = (FlagGrid::TypeEmpty | FlagGrid::TypeOutflow);
+	else                flags(i,j,k) = FlagGrid::TypeEmpty;
 }
 
 //! update obstacle and outflow flags from levelsets
 //! optionally uses fill fractions for obstacle
-PYTHON() void setObstacleFlags(FlagGrid& flags, const Grid<Real>& phiObs, const MACGrid* fractions=NULL, const Grid<Real>* phiOut=NULL ) {
-	KnUpdateFlagsObs(flags, fractions, phiObs, phiOut );
+PYTHON() void setObstacleFlags(FlagGrid& flags, const Grid<Real>& phiObs, const MACGrid* fractions=NULL, const Grid<Real>* phiOut=NULL, const Grid<Real>* phiIn=NULL, int boundaryWidth=1) {
+	KnUpdateFlagsObs(flags, fractions, phiObs, phiOut, phiIn, boundaryWidth);
 }
 
 

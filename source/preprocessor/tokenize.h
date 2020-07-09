@@ -21,10 +21,10 @@
 enum TokenType { TkNone = 0, TkComment, TkWhitespace, TkCodeBlock, TkDescriptor, TkComma, TkBracketL, 
 				 TkBracketR, TkTBracketL, TkTBracketR, TkPointer, TkRef, TkDoubleColon, TkSemicolon, 
 				 TkSimpleType, TkTypeQualifier, TkConst, TkEnd, TkManta, TkUnsupportedKW, TkClass,
-				 TkInline, TkTemplate, TkStatic, TkVirtual, TkString, TkPublic, TkColon, TkOperator };
+				 TkInline, TkTemplate, TkStatic, TkVirtual, TkString, TkPublic, TkColon, TkOperator, TkEnum };
 
 const std::string unsupportedKeywords[] = {"and", "and", "and_eq", "auto", "bitand", "bitor", "break", 
-	"catch", "const_cast", "continue", "default", "delete", "do", "dynamic_cast", "else", "enum", 
+	"catch", "const_cast", "continue", "default", "delete", "do", "dynamic_cast", "else",
 	"explicit", "export", "extern", "for", "friend", "goto", "if", "mutable", "namespace", "new", 
 	"not", "not_eq", "or", "or_eq", "private", "protected", "register", 
 	"reinterpret_cast", "return", "sizeof", "static_cast", "switch", "this", "throw", "try", "typedef", 

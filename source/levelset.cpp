@@ -111,10 +111,11 @@ KERNEL(idx) void KnJoin(Grid<Real>& a, const Grid<Real>& b) {
 void LevelsetGrid::join(const LevelsetGrid& o) { KnJoin(*this, o); }
 
 //! subtract b, note does not preserve SDF!
-KERNEL(idx) void KnSubtract(Grid<Real>& a, const Grid<Real>& b) {
+KERNEL(idx) void KnSubtract(Grid<Real>& a, const Grid<Real>& b, const FlagGrid* flags, int subtractType) {
+	if(flags && ((*flags)(idx) & subtractType) == 0) return;
 	if(b[idx]<0.) a[idx] = b[idx] * -1.;
 } 
-void LevelsetGrid::subtract(const LevelsetGrid& o) { KnSubtract(*this, o); }
+void LevelsetGrid::subtract(const LevelsetGrid& o, const FlagGrid* flags, const int subtractType) { KnSubtract(*this, o, flags, subtractType); }
 
 //! re-init levelset and extrapolate velocities (in & out)
 //  note - uses flags to identify border (could also be done based on ls values)
@@ -236,15 +237,16 @@ void LevelsetGrid::initFromFlags(const FlagGrid& flags, bool ignoreWalls) {
 	}
 }
 
-void LevelsetGrid::fillHoles(int maxsize) {
-	Real cur, i1, i2, j1, j2, k1, k2;
+void LevelsetGrid::fillHoles(int maxDepth, int boundaryWidth) {
+	Real curVal, i1, i2, j1, j2, k1, k2;
 	Vec3i c, cTmp;
-	std::stack<Vec3i> undo;
-	std::stack<Vec3i> todo;
+	std::stack<Vec3i> undoPos;
+	std::stack<Real> undoVal;
+	std::stack<Vec3i> todoPos;
 
-	FOR_IJK_BND(*this, 1) {
+	FOR_IJK_BND(*this, boundaryWidth) {
 
-		cur = mData[index(i,j,k)];
+		curVal = mData[index(i,j,k)];
 		i1 = mData[index(i-1,j,k)];
 		i2 = mData[index(i+1,j,k)];
 		j1 = mData[index(i,j-1,k)];
@@ -253,55 +255,72 @@ void LevelsetGrid::fillHoles(int maxsize) {
 		k2 = mData[index(i,j,k+1)];
 
 		/* Skip cells inside and cells outside with no inside neighbours early */
-		if (cur < 0.) continue;
-		if (cur > 0. && i1 > 0. && i2 > 0. && j1 > 0. && j2 > 0. && k1 > 0. && k2 > 0.) continue;
-
-		/* Current cell is outside and has inside neighbour(s) */
-		undo.push(Vec3i(i,j,k));
-		todo.push(Vec3i(i,j,k));
+		if (curVal < 0.) continue;
+		if (curVal > 0. && i1 > 0. && i2 > 0. && j1 > 0. && j2 > 0. && k1 > 0. && k2 > 0.) continue;
 
 		/* Cell at c is positive (outside) and has at least one negative (inside) neighbour cell */
 		c = Vec3i(i,j,k);
 
-		/* Enforce negative cell - if search depth gets exceeded this will be reverted to +0.5 */
+		/* Current cell is outside and has inside neighbour(s) */
+		undoPos.push(c);
+		undoVal.push(curVal);
+		todoPos.push(c);
+
+		/* Enforce negative cell - if search depth gets exceeded this will be reverted to the original value */
 		mData[index(c.x, c.y, c.z)] = -0.5;
 
-		while(!todo.empty()) {
+		while(!todoPos.empty()) {
+			todoPos.pop();
 
-			todo.pop();
-
-			/* Add neighbouring positive (inside) cells to stacks */
-			if (c.x > 0 && mData[index(c.x-1, c.y, c.z)] > 0.) { cTmp = Vec3i(c.x-1, c.y, c.z); undo.push(cTmp); todo.push(cTmp); mData[index(cTmp)] = -0.5;}
-			if (c.y > 0 && mData[index(c.x, c.y-1, c.z)] > 0.) { cTmp = Vec3i(c.x, c.y-1, c.z); undo.push(cTmp); todo.push(cTmp); mData[index(cTmp)] = -0.5; }
-			if (c.z > 0 && mData[index(c.x, c.y, c.z-1)] > 0.) { cTmp = Vec3i(c.x, c.y, c.z-1); undo.push(cTmp); todo.push(cTmp); mData[index(cTmp)] = -0.5; }
-			if (c.x < (*this).getSizeX()-1 && mData[index(c.x+1, c.y, c.z)] > 0.) { cTmp = Vec3i(c.x+1, c.y, c.z); undo.push(cTmp); todo.push(cTmp); mData[index(cTmp)] = -0.5; }
-			if (c.y < (*this).getSizeY()-1 && mData[index(c.x, c.y+1, c.z)] > 0.) { cTmp = Vec3i(c.x, c.y+1, c.z); undo.push(cTmp); todo.push(cTmp); mData[index(cTmp)] = -0.5; }
-			if (c.z < (*this).getSizeZ()-1 && mData[index(c.x, c.y, c.z+1)] > 0.) { cTmp = Vec3i(c.x, c.y, c.z+1); undo.push(cTmp); todo.push(cTmp); mData[index(cTmp)] = -0.5; }
+			/* Add neighbouring positive (inside) cells to stacks and set negavtive cell value */
+			if (c.x > 0 && mData[index(c.x-1, c.y, c.z)] > 0.) {
+				cTmp = Vec3i(c.x-1, c.y, c.z); undoPos.push(cTmp); undoVal.push(mData[index(cTmp)]); todoPos.push(cTmp); mData[index(cTmp)] = -0.5;
+			}
+			if (c.y > 0 && mData[index(c.x, c.y-1, c.z)] > 0.) {
+				cTmp = Vec3i(c.x, c.y-1, c.z); undoPos.push(cTmp); undoVal.push(mData[index(cTmp)]); todoPos.push(cTmp); mData[index(cTmp)] = -0.5;
+			}
+			if (c.z > 0 && mData[index(c.x, c.y, c.z-1)] > 0.) {
+				cTmp = Vec3i(c.x, c.y, c.z-1); undoPos.push(cTmp); undoVal.push(mData[index(cTmp)]); todoPos.push(cTmp); mData[index(cTmp)] = -0.5;
+			}
+			if (c.x < (*this).getSizeX()-1 && mData[index(c.x+1, c.y, c.z)] > 0.) {
+				cTmp = Vec3i(c.x+1, c.y, c.z); undoPos.push(cTmp); undoVal.push(mData[index(cTmp)]); todoPos.push(cTmp); mData[index(cTmp)] = -0.5;
+			}
+			if (c.y < (*this).getSizeY()-1 && mData[index(c.x, c.y+1, c.z)] > 0.) {
+				cTmp = Vec3i(c.x, c.y+1, c.z); undoPos.push(cTmp); undoVal.push(mData[index(cTmp)]); todoPos.push(cTmp); mData[index(cTmp)] = -0.5;
+			}
+			if (c.z < (*this).getSizeZ()-1 && mData[index(c.x, c.y, c.z+1)] > 0.) {
+				cTmp = Vec3i(c.x, c.y, c.z+1); undoPos.push(cTmp); undoVal.push(mData[index(cTmp)]); todoPos.push(cTmp); mData[index(cTmp)] = -0.5;
+			}
 
 			/* Restore original value in cells if undo needed ie once cell undo count exceeds given limit */
-			if (undo.size() > maxsize) {
+			if (undoPos.size() > maxDepth) {
 				/* Clear todo stack */
-				while (!todo.empty()) {
-					todo.pop();
+				while (!todoPos.empty()) {
+					todoPos.pop();
 				}
 				/* Clear undo stack and revert value */
-				while (!undo.empty()) {
-					c = undo.top();
-					undo.pop();
-					mData[index(c.x, c.y, c.z)] = 0.5;
+				while (!undoPos.empty()) {
+					c = undoPos.top();
+					curVal = undoVal.top();
+					undoPos.pop();
+					undoVal.pop();
+					mData[index(c.x, c.y, c.z)] = curVal;
 				}
 				break;
 			}
 
 			/* Ensure that undo stack is cleared at the end if no more items in todo stack left */
-			if (todo.empty()) {
-				while (!undo.empty()) {
-					undo.pop();
+			if (todoPos.empty()) {
+				while (!undoPos.empty()) {
+					undoPos.pop();
+				}
+				while (!undoVal.empty()) {
+					undoVal.pop();
 				}
 			}
 			/* Pop value for next while iteration */
 			else {
-				c = todo.top();
+				c = todoPos.top();
 			}
 		}
 	}
@@ -321,9 +340,9 @@ void LevelsetGrid::createMesh(Mesh& mesh) {
 	Grid<int> edgeVY(mParent);
 	Grid<int> edgeVZ(mParent);
 	
-	for(int i=0; i<mSize.x-1; i++)
+	for(int k=0; k<mSize.z-1; k++)
 	for(int j=0; j<mSize.y-1; j++)
-	for(int k=0; k<mSize.z-1; k++) {
+	for(int i=0; i<mSize.x-1; i++) {
 		 Real value[8] = { get(i,j,k),   get(i+1,j,k),   get(i+1,j+1,k),   get(i,j+1,k),
 						   get(i,j,k+1), get(i+1,j,k+1), get(i+1,j+1,k+1), get(i,j+1,k+1) };
 		

@@ -87,6 +87,33 @@ template<> PyObject* toPy<Vec4>(const Vec4& v) {
 template<> PyObject* toPy<PbClass*>(const PbClass_Ptr& obj) {
 	return obj->getPyObject();
 }
+template<> PyObject* toPy<std::vector<PbClass*>>(const std::vector<PbClass*>& vec) {
+	PyObject* listObj = PyList_New( vec.size() );
+	if (!listObj) throw logic_error("Unable to allocate memory for Python list");
+	for (unsigned int i = 0; i < vec.size(); i++) {
+		PbClass* pb = vec[i];
+		PyObject *item = pb->getPyObject();
+		if (!item) {
+			Py_DECREF(listObj);
+			throw logic_error("Unable to allocate memory for Python list");
+		}
+		PyList_SET_ITEM(listObj, i, item);
+	}
+	return listObj;
+}
+template<> PyObject* toPy<std::vector<float>>(const std::vector<float>& vec) {
+	PyObject* listObj = PyList_New( vec.size() );
+	if (!listObj) throw logic_error("Unable to allocate memory for Python list");
+	for (unsigned int i = 0; i < vec.size(); i++) {
+		PyObject *item = toPy<float>(vec[i]);
+		if (!item) {
+			Py_DECREF(listObj);
+			throw logic_error("Unable to allocate memory for Python list");
+		}
+		PyList_SET_ITEM(listObj, i, item);
+	}
+	return listObj;
+}
 
 template<> float fromPy<float>(PyObject* obj) {
 #if PY_MAJOR_VERSION <= 2
@@ -107,6 +134,39 @@ template<> double fromPy<double>(PyObject* obj) {
 template<> PyObject* fromPy<PyObject*>(PyObject *obj) {
 	return obj;
 }
+template<> PbClass* fromPy<PbClass*>(PyObject *obj) {
+	PbClass* pbo = Pb::objFromPy(obj);
+
+	if (!PyType_Check(obj))
+		return pbo;
+
+	const char* tname = ((PyTypeObject*)obj)->tp_name;
+	pbo->setName(tname);
+
+	return pbo;
+}
+template<> std::vector<PbClass*> fromPy<std::vector<PbClass*>>(PyObject *obj) {
+	std::vector<PbClass*> vec;
+	if (PyList_Check(obj)) {
+		int sz = PyList_Size(obj);
+		for (int i = 0; i < sz; ++i) {
+			PyObject* lobj = PyList_GetItem(obj, i);
+			vec.push_back(fromPy<PbClass*>(lobj));
+		}
+	}
+	return vec;
+}
+template<> std::vector<float> fromPy<std::vector<float>>(PyObject *obj) {
+	std::vector<float> vec;
+	if (PyList_Check(obj)) {
+		int sz = PyList_Size(obj);
+		for (int i = 0; i < sz; ++i) {
+			PyObject* lobj = PyList_GetItem(obj, i);
+			vec.push_back(fromPy<float>(lobj));
+		}
+	}
+	return vec;
+}
 template<> int fromPy<int>(PyObject *obj) {
 #if PY_MAJOR_VERSION <= 2
 	if (PyInt_Check(obj)) return PyInt_AsLong(obj);
@@ -122,7 +182,12 @@ template<> int fromPy<int>(PyObject *obj) {
 }
 template<> string fromPy<string>(PyObject *obj) {
 	if (PyUnicode_Check(obj))
+#ifdef BLENDER
+		// Blender is completely UTF-8 based
+		return PyBytes_AsString(PyUnicode_AsUTF8String(obj));
+#else
 		return PyBytes_AsString(PyUnicode_AsLatin1String(obj));
+#endif
 #if PY_MAJOR_VERSION <= 2
 	else if (PyString_Check(obj))
 		return PyString_AsString(obj);
@@ -132,14 +197,19 @@ template<> string fromPy<string>(PyObject *obj) {
 }
 template<> const char* fromPy<const char*>(PyObject *obj) {
 	if (PyUnicode_Check(obj))
+#ifdef BLENDER
+		// Blender is completely UTF-8 based
+		return PyBytes_AsString(PyUnicode_AsUTF8String(obj));
+#else
 		return PyBytes_AsString(PyUnicode_AsLatin1String(obj));
+#endif
 #if PY_MAJOR_VERSION <= 2
 	else if (PyString_Check(obj))
 		return PyString_AsString(obj);
 #endif
 	else errMsg("argument is not a string");
 }
-template<> bool fromPy<bool>(PyObject *obj) { 
+template<> bool fromPy<bool>(PyObject *obj) {
 	if (!PyBool_Check(obj)) errMsg("argument is not a boolean");
 	return PyLong_AsLong(obj) != 0;
 }
@@ -214,11 +284,10 @@ template<> PbTypeVec fromPy<PbTypeVec>(PyObject* obj) {
 
 template<class T> T* tmpAlloc(PyObject* obj,std::vector<void*>* tmp) {
 	if (!tmp) throw Error("dynamic de-ref not supported for this type");
-	void* ptr = malloc(sizeof(T));
-	tmp->push_back(ptr);
 
-	*((T*)ptr) = fromPy<T>(obj); 
-	return (T*)ptr;
+	T* ptr = new T(fromPy<T>(obj));
+	tmp->push_back(ptr);
+	return ptr;
 }
 template<> float* fromPyPtr<float>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<float>(obj,tmp); }
 template<> double* fromPyPtr<double>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<double>(obj,tmp); }
@@ -229,6 +298,7 @@ template<> Vec3* fromPyPtr<Vec3>(PyObject* obj, std::vector<void*>* tmp) { retur
 template<> Vec3i* fromPyPtr<Vec3i>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<Vec3i>(obj,tmp); }
 template<> Vec4* fromPyPtr<Vec4>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<Vec4>(obj,tmp); }
 template<> Vec4i* fromPyPtr<Vec4i>(PyObject* obj, std::vector<void*>* tmp) { return tmpAlloc<Vec4i>(obj,tmp); }
+template<> std::vector<PbClass*>* fromPyPtr<std::vector<PbClass *>>(PyObject *obj, std::vector<void *> *tmp) { return tmpAlloc<std::vector<PbClass *>>(obj, tmp); }
 
 template<> bool isPy<float>(PyObject* obj) {
 #if PY_MAJOR_VERSION <= 2
@@ -314,6 +384,14 @@ template<> bool isPy<Vec4i>(PyObject* obj) {
 template<> bool isPy<PbType>(PyObject* obj) {
 	return PyType_Check(obj);
 }
+template<> bool isPy<std::vector<PbClass*>>(PyObject* obj) {
+	if (PyList_Check(obj)) return true;
+	return false;
+}
+template<> bool isPy<std::vector<float>>(PyObject* obj) {
+	if (PyList_Check(obj)) return true;
+	return false;
+}
 
 //******************************************************************************
 // PbArgs class defs
@@ -325,7 +403,7 @@ PbArgs::PbArgs(PyObject* linarg, PyObject* dict) : mLinArgs(0), mKwds(0) {
 }
 PbArgs::~PbArgs() {
 	for(int i=0; i<(int)mTmpStorage.size(); i++)
-		free(mTmpStorage[i]);
+		operator delete (mTmpStorage[i]);
 	mTmpStorage.clear();
 }
 

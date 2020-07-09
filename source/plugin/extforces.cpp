@@ -57,31 +57,32 @@ KERNEL(bnd=1) void KnApplyForce(const FlagGrid& flags, MACGrid& vel, Vec3 force,
 		vel(i,j,k).z = (additive) ? vel(i,j,k).z+force.z : force.z;
 }
 
-//! add gravity forces to all fluid cells, automatically adapts to different grid sizes
-PYTHON() void addGravity(const FlagGrid& flags, MACGrid& vel, Vec3 gravity, const Grid<Real>* exclude=NULL) {
-	Vec3 f = gravity * flags.getParent()->getDt() / flags.getDx();
+//! add gravity forces to all fluid cells, optionally  adapts to different grid sizes automatically
+PYTHON() void addGravity(const FlagGrid& flags, MACGrid& vel, Vec3 gravity, const Grid<Real>* exclude=NULL, bool scale=true) {
+	float gridScale = (scale) ? flags.getDx() : 1;
+	Vec3 f = gravity * flags.getParent()->getDt() / gridScale;
 	KnApplyForce(flags, vel, f, exclude, true);
 }
-//! add gravity forces to all fluid cells , but dont account for changing cell size
+//! Deprecated: use addGravity(scale=false) instead
 PYTHON() void addGravityNoScale(const FlagGrid& flags, MACGrid& vel, const Vec3& gravity, const Grid<Real>* exclude=NULL) {
-	const Vec3 f = gravity * flags.getParent()->getDt();
-	KnApplyForce(flags, vel, f, exclude, true);
+	addGravity(flags, vel, gravity, exclude, false);
 }
 
 //! kernel to add Buoyancy force 
-KERNEL(bnd=1) void KnAddBuoyancy(const FlagGrid& flags, const Grid<Real>& factor, MACGrid& vel, Vec3 strength) {    
+KERNEL(bnd=1) void KnAddBuoyancy(const FlagGrid& flags, const Grid<Real>& factor, MACGrid& vel, Vec3 strength) {
 	if (!flags.isFluid(i,j,k)) return;
 	if (flags.isFluid(i-1,j,k))
 		vel(i,j,k).x += (0.5 * strength.x) * (factor(i,j,k)+factor(i-1,j,k));
 	if (flags.isFluid(i,j-1,k))
 		vel(i,j,k).y += (0.5 * strength.y) * (factor(i,j,k)+factor(i,j-1,k));
 	if (vel.is3D() && flags.isFluid(i,j,k-1))
-		vel(i,j,k).z += (0.5 * strength.z) * (factor(i,j,k)+factor(i,j,k-1));    
+		vel(i,j,k).z += (0.5 * strength.z) * (factor(i,j,k)+factor(i,j,k-1));
 }
 
-//! add Buoyancy force based on fctor (e.g. smoke density)
-PYTHON() void addBuoyancy(const FlagGrid& flags, const Grid<Real>& density, MACGrid& vel, Vec3 gravity, Real coefficient=1.) {
-	Vec3 f = -gravity * flags.getParent()->getDt() / flags.getParent()->getDx() * coefficient;
+//! add Buoyancy force based on factor (e.g. smoke density), optionally adapts to different grid sizes automatically
+PYTHON() void addBuoyancy(const FlagGrid& flags, const Grid<Real>& density, MACGrid& vel, Vec3 gravity, Real coefficient=1., bool scale=true) {
+	float gridScale = (scale) ? flags.getDx() : 1;
+	Vec3 f = -gravity * flags.getParent()->getDt() / gridScale * coefficient;
 	KnAddBuoyancy(flags,density, vel, f);
 }
 
@@ -249,10 +250,6 @@ KERNEL() void KnSetWallBcsFrac(const FlagGrid& flags, const MACGrid& vel, MACGri
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACX(i,j,k);
 		velTarget(i,j,k).x = velMAC.x - dot(dphi, velMAC) * dphi.x;
-		if (obvel) { // TODO (sebbas): TBC
-			Vec3 obvelMAC = (*obvel).getAtMACX(i,j,k);
-			velTarget(i,j,k).x += dot(dphi, obvelMAC) * dphi.x;
-		}
 	}
 
 	if( curObs | flags.isObstacle(i,j-1,k) )  { 
@@ -276,10 +273,6 @@ KERNEL() void KnSetWallBcsFrac(const FlagGrid& flags, const MACGrid& vel, MACGri
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACY(i,j,k);
 		velTarget(i,j,k).y = velMAC.y - dot(dphi, velMAC) * dphi.y;
-		if (obvel) { // TODO (sebbas): TBC
-			Vec3 obvelMAC = (*obvel).getAtMACY(i,j,k);
-			velTarget(i,j,k).y += dot(dphi, obvelMAC) * dphi.y;
-		}
 	}
 
 	if( phiObs->is3D() && (curObs | flags.isObstacle(i,j,k-1)) )  {
@@ -304,10 +297,6 @@ KERNEL() void KnSetWallBcsFrac(const FlagGrid& flags, const MACGrid& vel, MACGri
 		normalize(dphi); 
 		Vec3 velMAC = vel.getAtMACZ(i,j,k);
 		velTarget(i,j,k).z = velMAC.z - dot(dphi, velMAC) * dphi.z;
-		if (obvel) { // TODO (sebbas): TBC
-			Vec3 obvelMAC = (*obvel).getAtMACZ(i,j,k);
-			velTarget(i,j,k).z += dot(dphi, obvelMAC) * dphi.z;
-		}
 	}
 	} // not at boundary
 
@@ -360,22 +349,23 @@ PYTHON() void setInitialVelocity(const FlagGrid& flags, MACGrid& vel, const Grid
 }
 
 //! Kernel: gradient norm operator
-KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str) {
+KERNEL(bnd=1) void KnConfForce(Grid<Vec3>& force, const Grid<Real>& grid, const Grid<Vec3>& curl, Real str, const Grid<Real>* strGrid) {
 	Vec3 grad = 0.5 * Vec3(        grid(i+1,j,k)-grid(i-1,j,k), 
 								   grid(i,j+1,k)-grid(i,j-1,k), 0.);
 	if(grid.is3D()) grad[2]= 0.5*( grid(i,j,k+1)-grid(i,j,k-1) );
 	normalize(grad);
+	if (strGrid) str += (*strGrid)(i,j,k);
 	force(i,j,k) = str * cross(grad, curl(i,j,k));
 }
 
-PYTHON() void vorticityConfinement(MACGrid& vel, const FlagGrid& flags, Real strength) {
+PYTHON() void vorticityConfinement(MACGrid& vel, const FlagGrid& flags, Real strength=0, const Grid<Real>* strengthCell=NULL) {
 	Grid<Vec3> velCenter(flags.getParent()), curl(flags.getParent()), force(flags.getParent());
 	Grid<Real> norm(flags.getParent());
 	
 	GetCentered(velCenter, vel);
 	CurlOp(velCenter, curl);
 	GridNorm(norm, curl);
-	KnConfForce(force, norm, curl, strength);
+	KnConfForce(force, norm, curl, strength, strengthCell);
 	KnApplyForceField(flags, vel, force, NULL, true, false);
 }
 
@@ -385,6 +375,49 @@ PYTHON() void addForceField(const FlagGrid& flags, MACGrid& vel, const Grid<Vec3
 
 PYTHON() void setForceField(const FlagGrid& flags, MACGrid& vel, const Grid<Vec3>& force, const Grid<Real>* region=NULL, bool isMAC=false) {
 	KnApplyForceField(flags, vel, force, region, false, isMAC);
+}
+
+KERNEL() void KnDissolveSmoke(const FlagGrid& flags, Grid<Real>& density, Grid<Real>* heat,
+	Grid<Real>* red, Grid<Real>* green, Grid<Real>* blue, int speed, bool logFalloff, float dydx, float fac) {
+
+	bool curFluid = flags.isFluid(i,j,k);
+	if (!curFluid) return;
+
+	if (logFalloff) {
+		density(i,j,k) *= fac;
+		if (heat) {
+			(*heat)(i,j,k) *= fac;
+		}
+		if (red) {
+			(*red)(i,j,k) *= fac;
+			(*green)(i,j,k) *= fac;
+			(*blue)(i,j,k) *= fac;
+		}
+	}
+	else { // linear falloff
+		float d = density(i,j,k);
+		density(i,j,k) -= dydx;
+		if (density(i,j,k) < 0.0f)
+			density(i,j,k) = 0.0f;
+		if (heat) {
+			if      (fabs((*heat)(i,j,k)) < dydx) (*heat)(i,j,k) = 0.0f;
+			else if ((*heat)(i,j,k) > 0.0f) (*heat)(i,j,k) -= dydx;
+			else if ((*heat)(i,j,k) < 0.0f) (*heat)(i,j,k) += dydx;
+		}
+		if (red && notZero(d) ) {
+			(*red)(i,j,k)   *= (density(i,j,k)/d);
+			(*green)(i,j,k) *= (density(i,j,k)/d);
+			(*blue)(i,j,k)  *= (density(i,j,k)/d);
+		}
+	}
+}
+
+PYTHON() void dissolveSmoke(const FlagGrid& flags, Grid<Real>& density, Grid<Real>* heat=NULL,
+	Grid<Real>* red=NULL, Grid<Real>* green=NULL, Grid<Real>* blue=NULL, int speed=5, bool logFalloff=true)
+{
+	float dydx = 1.0f / (float)speed; // max density/speed = dydx
+	float fac = 1.0f - dydx;
+	KnDissolveSmoke(flags, density, heat, red, green, blue, speed, logFalloff, dydx, fac);
 }
 
 } // namespace

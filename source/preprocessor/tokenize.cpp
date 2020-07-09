@@ -256,6 +256,9 @@ void convertKeywords(vector<Token>& tokens) {
 				tokens[i].type = TkManta;
 			else if (t == "struct" || t == "class" || t == "typename")
 				tokens[i].type = TkClass;
+			else if (t == "enum"){
+				tokens[i].type = TkEnum;
+			}
 			else if (t == "inline")
 				tokens[i].type = TkInline;
 			else if (t == "public")
@@ -353,7 +356,7 @@ void processText(const string& text, int baseline, Sink& sink, const Class* pare
 					convertKeywords(tokens);
 					parseBlock(word, tokens, parent, sink, inst); 
 				} else {
-					newText << word;                    
+					newText << word;
 					newText << c; 
 				}
 				word = "";         

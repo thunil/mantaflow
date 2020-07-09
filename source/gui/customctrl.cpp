@@ -83,8 +83,11 @@ void TextSlider::attach(QBoxLayout* layout) {
 void TextSlider::update(int val) {
 	float v = get();
 	QString num;
-	num.sprintf("%.2g", v);
-	mLabel->setText(mSName + ":  " + num);    
+	QTextStream out(&num);
+	out.setRealNumberNotation(QTextStream::SmartNotation);
+	out.setRealNumberPrecision(2);
+	out << v;
+	mLabel->setText(mSName + ":  " + num);
 }
 
 float TextSlider::get() {
@@ -178,6 +181,9 @@ void Gui::setCamRot(float x, float y, float z) {
 }
 void Gui::windowSize(int w, int h) {
 	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "windowSize", Q_ARG(int, w), Q_ARG(int, h));    
+}
+void Gui::setPlane(int plane) {
+	QMetaObject::invokeMethod(mGuiPtr->getWindow(), "setPlane", Q_ARG(int, plane));
 }
 
 PbClass* Gui::addControl(PbType t) {

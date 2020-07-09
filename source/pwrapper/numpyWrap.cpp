@@ -64,8 +64,12 @@ PyArrayContainer::ExtractData(void *_pParentPyArray)
 {
 	PyArrayObject *pParent = reinterpret_cast<PyArrayObject *>(pParentPyArray);
 
-	pData = PyArray_DATA(pParent);
-	TotalSize = PyArray_SIZE(pParent);
+	int numDims = PyArray_NDIM(pParent);
+	long* pDims = (long*)PyArray_DIMS(pParent);
+
+	pData 		= PyArray_DATA(pParent);
+	TotalSize 	= PyArray_SIZE(pParent);
+	Dims 		= std::vector<long>(&pDims[0], &pDims[numDims]);
 
 	int iDataType = PyArray_TYPE(pParent);
 	switch(iDataType) {
@@ -87,16 +91,18 @@ PyArrayContainer::ExtractData(void *_pParentPyArray)
 // ------------------------------------------------------------------------
 // Conversion Functions
 // ------------------------------------------------------------------------
+
 template<>
 PyArrayContainer
 fromPy<PyArrayContainer>(PyObject *obj)
 {
 	if(PyArray_API == NULL) {
-#if PY_VERSION_HEX >= 0x03000000
-		import_array(); // python 3 uses the return value
-#else
+		// python 3 uses the return value
+#		if PY_VERSION_HEX >= 0x03000000
+		import_array();
+#		else
 		initNumpy();
-#endif
+#		endif
 	}
 
 	if(!PyArray_Check(obj)) {

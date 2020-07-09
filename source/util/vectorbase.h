@@ -15,7 +15,7 @@
 #define _VECTORBASE_H
 
 // get rid of windos min/max defines
-#if defined(WIN32) || defined(_WIN32)
+#if (defined(WIN32) || defined(_WIN32)) && !defined(NOMINMAX)
 #	define NOMINMAX
 #endif
 
@@ -219,6 +219,12 @@ public:
 protected:
 
 };
+
+//! helper to check whether float/double value is non-zero
+inline bool notZero(Real f) {
+    if( std::abs(f) > VECTOR_EPSILON ) return true;
+    return false;
+} 
 
 //************************************************************************
 // Additional operators

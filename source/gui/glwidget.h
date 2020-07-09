@@ -14,6 +14,11 @@
 #ifndef _GLWIDGET_H__
 #define _GLWIDGET_H__
 
+// OpenGL was deprecated in macOS 10.14. Silencing warnings for now.
+#ifdef __APPLE__
+#   define GL_SILENCE_DEPRECATION
+#endif
+
 #include <QGLWidget>
 #include <QtOpenGL>
 #include "vectorbase.h"
@@ -38,6 +43,8 @@ public:
 
 	void setCamPos(Vec3 pos) { mCamPos = pos; }
 	void setCamRot(Vec3 pos) { mRotX = pos.x; mRotY = pos.y; }
+
+	void setPlane(int plane) { updatePlane(plane); }
 
 public slots:
 	void setViewport(const Vec3i& gridsize);

@@ -36,7 +36,10 @@ for t in range(400):
 
 	if t<300:
 		source.applyToGrid(grid=density, value=1)
-		
+
+	# optionally, dissolve smoke
+	#dissolveSmoke(flags=flags, density=density, speed=4)
+
 	advectSemiLagrange(flags=flags, vel=vel, grid=density, order=2) 
 	advectSemiLagrange(flags=flags, vel=vel, grid=vel,     order=2)
 	resetOutflow(flags=flags,real=density) 

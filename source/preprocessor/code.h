@@ -18,6 +18,7 @@
 #include <vector>
 
 struct Text {
+	virtual ~Text() {}
 	int line0;
 	std::string minimal, original;
 	void reset() { minimal = original = ""; line0=0; }
@@ -102,6 +103,20 @@ struct Class : Text {
 	std::string fullName() const { return isTemplated() ? (name+"<"+templateTypes.names()+">") : name; }
 	inline bool isTemplated() const { return !templateTypes.empty(); }
 	virtual std::string dynamicClass() { return "Class"; }
+};
+
+struct EnumEntry : Text {
+	EnumEntry() {};
+
+	std::string name;
+	int value;
+};
+
+struct Enum : Text {
+	Enum() {};
+
+	std::string name;
+	std::vector<EnumEntry> entries;
 };
 
 struct Block : Text {

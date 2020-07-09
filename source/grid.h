@@ -22,22 +22,22 @@
 
 namespace Manta {
 class LevelsetGrid;
-	
+
 //! Base class for all grids
 PYTHON() class GridBase : public PbClass {
 public:
-	enum GridType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4, TypeMAC = 8, TypeLevelset = 16, TypeFlags = 32 };
+	PYTHON() enum GridType { TypeNone = 0, TypeReal = 1, TypeInt = 2, TypeVec3 = 4, TypeMAC = 8, TypeLevelset = 16, TypeFlags = 32 };
 		
 	PYTHON() GridBase(FluidSolver* parent);
 	
 	//! Get the grids X dimension
-	inline int getSizeX() const { return mSize.x; }
+	PYTHON() inline int getSizeX() const { return mSize.x; }
 	//! Get the grids Y dimension
-	inline int getSizeY() const { return mSize.y; }
+	PYTHON() inline int getSizeY() const { return mSize.y; }
 	//! Get the grids Z dimension
-	inline int getSizeZ() const { return mSize.z; }
+	PYTHON() inline int getSizeZ() const { return mSize.z; }
 	//! Get the grids dimensions
-	inline Vec3i getSize() const { return mSize; }
+	PYTHON() inline Vec3i getSize() const { return mSize; }
 	
 	//! Get Stride in X dimension
 	inline IndexInt getStrideX() const { return 1; }
@@ -60,11 +60,11 @@ public:
 	inline bool isInBounds(const Vec3& p, int bnd = 0) const { return isInBounds(toVec3i(p), bnd); }
 	//! Check if linear index is in the range of the array
 	inline bool isInBounds(IndexInt idx) const;
-	
+
 	//! Get the type of grid
 	inline GridType getType() const { return mType; }
 	//! Check dimensionality
-	inline bool is3D() const { return m3D; }
+	PYTHON() inline bool is3D() const { return m3D; }
 	
 	//! Get index into the data
 	inline IndexInt index(int i, int j, int k) const { DEBUG_ONLY(checkIndex(i,j,k)); return (IndexInt)i + (IndexInt)mSize.x * j + (IndexInt)mStrideZ * k; }
@@ -72,9 +72,9 @@ public:
 	inline IndexInt index(const Vec3i& pos) const    { DEBUG_ONLY(checkIndex(pos.x,pos.y,pos.z)); return (IndexInt)pos.x + (IndexInt)mSize.x * pos.y + (IndexInt)mStrideZ * pos.z; }
 
 	//! grid4d compatibility functions 
-	inline bool is4D() const { return false; }
-	inline int getSizeT() const { return 1; }
-	inline int getStrideT() const { return 0; }
+	PYTHON() inline bool is4D() const { return false; }
+	PYTHON() inline int getSizeT() const { return 1; }
+	PYTHON() inline int getStrideT() const { return 0; }
 	inline int index(int i, int j, int k, int unused) const { return index(i,j,k); }
 	inline bool isInBounds(int i,int j, int k, int t, int bnd) const { if(t!=0) return false; return isInBounds( Vec3i(i,j,k), bnd ); }
 
@@ -104,8 +104,8 @@ public:
 	typedef T BASETYPE;
 	typedef GridBase BASETYPE_GRID;
 	
-	PYTHON() void save(std::string name);
-	PYTHON() void load(std::string name);
+	PYTHON() int save(std::string name);
+	PYTHON() int load(std::string name);
 	
 	//! set all cells to zero
 	PYTHON() void clear();
@@ -135,7 +135,10 @@ public:
 	inline T& operator[](IndexInt idx)             { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
 	//! access data
 	inline const T operator[](IndexInt idx) const  { DEBUG_ONLY(checkIndex(idx)); return mData[idx]; }
-	
+
+	//! set data
+	inline void set(int i, int j, int k, T& val)              { mData[index(i,j,k)] = val; }
+
 	// interpolated access
 	inline T    getInterpolated(const Vec3& pos) const { return interpol<T>(mData, mSize, mStrideZ, pos); }
 	inline void setInterpolated(const Vec3& pos, const T& val, Grid<Real>& sumBuffer) const { setInterpol<T>(mData, mSize, mStrideZ, pos, val, &sumBuffer[0]); }
@@ -157,6 +160,9 @@ public:
 
 	// helper functions to work with grids in scene files 
 
+	//! get grid type
+	PYTHON() int getGridType();
+
 	//! add/subtract other grid
 	PYTHON() void add(const Grid<T>& a);
 	PYTHON() void sub(const Grid<T>& a);
@@ -170,11 +176,19 @@ public:
 	PYTHON() void mult( const Grid<T>& a);
 	//! multiply each cell by a constant scalar value
 	PYTHON() void multConst(T s);
+	//! safely divide contents of grid (with zero check)
+	PYTHON() Grid<T>& safeDivide( const Grid<T>& a);
 	//! clamp content to range (for vec3, clamps each component separately)
 	PYTHON() void clamp(Real min, Real max);
 	//! reduce small values to zero
 	PYTHON() void stomp(const T& threshold);
-	
+	//! permute grid axes, e.g. switch y with z (0,2,1)
+	PYTHON() void permuteAxes(int axis0, int axis1, int axis2);
+	//! permute grid axes, e.g. switch y with z (0,2,1)
+	PYTHON() void permuteAxesCopyToGrid(int axis0, int axis1, int axis2, Grid<T>& out);
+	//! join other grid by either keeping min or max value at cell
+	PYTHON() void join(const Grid<T>& a, bool keepMax=true);
+
 	// common compound operators
 	//! get absolute max value in grid 
 	PYTHON() Real getMaxAbs() const;
@@ -207,7 +221,6 @@ public:
 	template<class S> Grid<T>& operator*=(const S& a);
 	template<class S> Grid<T>& operator/=(const Grid<S>& a);
 	template<class S> Grid<T>& operator/=(const S& a);
-	Grid<T>& safeDivide(const Grid<T>& a);    
 	
 	//! Swap data with another grid (no actual data is moved)
 	void swap(Grid<T>& other);
@@ -276,7 +289,7 @@ public:
             mType = (GridType)(TypeFlags | TypeInt); }	
 
 	//! types of cells, in/outflow can be combined, e.g., TypeFluid|TypeInflow
-	enum CellType { 
+	PYTHON() enum CellType { 
 		TypeNone     = 0,
 		TypeFluid    = 1,
 		TypeObstacle = 2,

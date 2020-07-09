@@ -82,6 +82,7 @@ class WrapperRegistry {
 public:
 	static WrapperRegistry& instance();
 	void addClass(const std::string& name, const std::string& internalName, const std::string& baseclass);
+	void addEnumEntry(const std::string& name, int value);
 	void addExternalInitializer(InitFunc func);
 	void addMethod(const std::string& classname, const std::string& methodname, GenericFunction method);
 	void addOperator(const std::string& classname, const std::string& methodname, OperatorFunction method);
@@ -106,12 +107,14 @@ private:
 	void registerOperators(ClassData* cls);
 	void addParentMethods(ClassData* cls, ClassData* base);
 	WrapperRegistry();
+	~WrapperRegistry();
 	std::map<std::string, ClassData*> mClasses;
 	std::vector<ClassData*> mClassList;
 	std::vector<InitFunc> mExtInitializers;
 	std::vector<std::string> mPaths;
 	std::string mCode, mScriptName;
 	std::vector<std::string> args;
+	std::map<std::string, int> mEnumValues;
 };
 
 //******************************************************************************
@@ -161,7 +164,7 @@ int cbDisableConstructor(PyObject* self, PyObject* args, PyObject* kwds) {
 	return -1;
 }
 
-PyMODINIT_FUNC PyInit_Main(void) {
+PyMODINIT_FUNC PyInit_manta_main(void) {
 	MantaEnsureRegistration();
 #if PY_MAJOR_VERSION >= 3
 	return WrapperRegistry::instance().initModule();   
@@ -176,6 +179,12 @@ PyMODINIT_FUNC PyInit_Main(void) {
 WrapperRegistry::WrapperRegistry() {
 	addClass("__modclass__", "__modclass__" , "");
 	addClass("PbClass", "PbClass", "");
+}
+
+WrapperRegistry::~WrapperRegistry() {
+	// Some static constructions may have called WrapperRegistry.instance() and added
+	// own classes, functions, etc. Ensure everything is cleaned up properly.
+	cleanup();
 }
 
 ClassData* WrapperRegistry::getOrConstructClass(const string& classname) {
@@ -221,6 +230,13 @@ void WrapperRegistry::addClass(const string& pyName, const string& internalName,
 	mClasses[pythonName] = data;
 	if (!baseclass.empty())
 		data->baseclassName = baseclass;    
+}
+
+void WrapperRegistry::addEnumEntry(const string& name, int value) {
+	/// Gather static definitions to add them as static python objects afterwards
+	if ( mEnumValues.insert( std::make_pair( name, value ) ).second == false) {
+		errMsg("Enum entry '"+name+"' already existing...");
+	}
 }
 
 void WrapperRegistry::addExternalInitializer(InitFunc func) {
@@ -402,6 +418,15 @@ void WrapperRegistry::addConstants(PyObject* module) {
 #endif
 	// cuda off for now
 	PyModule_AddObject(module,"CUDA",Manta::toPy<bool>(false));
+
+	// expose enum entries
+	std::map<std::string, int>::iterator it;
+	for ( it = mEnumValues.begin(); it != mEnumValues.end(); it++ )
+	{
+		PyModule_AddObject(module, it->first.c_str(), Manta::toPy(it->second));
+		// Alternative would be:
+		// e.g. PyModule_AddIntConstant(module, "FlagFluid", 1);
+	}
 }
 
 void WrapperRegistry::runPreInit() {
@@ -460,7 +485,7 @@ void WrapperRegistry::construct(const string& scriptname, const vector<string>& 
 	registerDummyTypes();
 	
 	// work around for certain gcc versions, cast to char*
-	PyImport_AppendInittab( (char*)gDefaultModuleName.c_str(), PyInit_Main );
+	PyImport_AppendInittab( (char*)gDefaultModuleName.c_str(), PyInit_manta_main );
 }
 
 inline PyObject* castPy(PyTypeObject* p) { 
@@ -505,7 +530,7 @@ PyObject* WrapperRegistry::initModule() {
 		return NULL;
 
 	// load classes
-	for(vector<ClassData*>::iterator it = mClassList.begin(); it != mClassList.end(); ++it) {        
+	for(vector<ClassData*>::iterator it = mClassList.begin(); it != mClassList.end(); ++it) {
 		ClassData& data = **it;
 		char* nameptr = (char*)data.pyName.c_str();
 		
@@ -649,6 +674,9 @@ Register::Register(const string& className, const string& property, Getter gette
 }
 Register::Register(const string& className, const string& pyName, const string& baseClass) {
 	WrapperRegistry::instance().addClass(pyName, className, baseClass);
+}
+Register::Register(const string& name, const int value) {
+	WrapperRegistry::instance().addEnumEntry(name, value);
 }
 Register::Register(const string& file, const string& pythonCode) {
 	WrapperRegistry::instance().addPythonCode(file, pythonCode);

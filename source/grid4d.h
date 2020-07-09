@@ -31,15 +31,15 @@ public:
 	PYTHON() Grid4dBase(FluidSolver* parent);
 	
 	//! Get the grids X dimension
-	inline int getSizeX() const { return mSize.x; }
+	PYTHON() inline int getSizeX() const { return mSize.x; }
 	//! Get the grids Y dimension
-	inline int getSizeY() const { return mSize.y; }
+	PYTHON() inline int getSizeY() const { return mSize.y; }
 	//! Get the grids Z dimension
-	inline int getSizeZ() const { return mSize.z; }
+	PYTHON() inline int getSizeZ() const { return mSize.z; }
 	//! Get the grids T dimension
-	inline int getSizeT() const { return mSize.t; }
+	PYTHON() inline int getSizeT() const { return mSize.t; }
 	//! Get the grids dimensions
-	inline Vec4i getSize() const { return mSize; }
+	PYTHON() inline Vec4i getSize() const { return mSize; }
 	
 	//! Get Stride in X dimension
 	inline IndexInt getStrideX() const { return 1; }
@@ -68,8 +68,8 @@ public:
 	//! Get the type of grid
 	inline Grid4dType getType() const { return mType; }
 	//! Check dimensionality
-	inline bool is3D() const { return true; }
-	inline bool is4D() const { return true; }
+	PYTHON() inline bool is3D() const { return true; }
+	PYTHON() inline bool is4D() const { return true; }
 
 	//! 3d compatibility
 	inline bool isInBounds(int i,int j, int k, int t, int bnd) const { return isInBounds( Vec4i(i,j,k,t), bnd ); }
@@ -102,8 +102,8 @@ public:
 	typedef T BASETYPE;
 	typedef Grid4dBase BASETYPE_GRID;
 	
-	PYTHON() void save(std::string name);
-	PYTHON() void load(std::string name);
+	PYTHON() int save(std::string name);
+	PYTHON() int load(std::string name);
 	
 	//! set all cells to zero
 	PYTHON() void clear();

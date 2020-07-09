@@ -77,9 +77,9 @@ inline bool _chklevel(int level=0) { return gDebugLevel >= level; }
 #define assertMsg(cond,msg)  if(!(cond)) throwError(msg)
 #define assertDeb(cond,msg)  DEBUG_ONLY( assertMsg(cond,msg) )
 
-// for compatibility with blender, blender only defines WITH_MANTA, make sure we have "BLENDER"
+// for compatibility with blender, blender only defines WITH_FLUID, make sure we have "BLENDER"
 #ifndef BLENDER
-#ifdef WITH_MANTA
+#ifdef WITH_FLUID
 #define BLENDER 1
 #endif
 #endif

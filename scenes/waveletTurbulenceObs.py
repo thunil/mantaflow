@@ -104,11 +104,12 @@ energy    = sm.create(RealGrid)
 tempFlag  = sm.create(FlagGrid)
 
 # wavelet turbulence noise field
-xl_wltnoise = NoiseField( parent=xl, loadFromFile=True)
-# scale according to lowres sim , smaller numbers mean larger vortices
-# note - this noise is parented to xl solver, thus will automatically rescale
-xl_wltnoise.posScale = vec3( int(1.0*gs.x) ) * 0.5
-xl_wltnoise.timeAnim = 0.1
+if(upres>0):
+	xl_wltnoise = NoiseField( parent=xl, loadFromFile=True)
+	# scale according to lowres sim , smaller numbers mean larger vortices
+	# note - this noise is parented to xl solver, thus will automatically rescale
+	xl_wltnoise.posScale = vec3( int(1.0*gs.x) ) * 0.5
+	xl_wltnoise.timeAnim = 0.1
 
 # setup user interface
 if (GUI):

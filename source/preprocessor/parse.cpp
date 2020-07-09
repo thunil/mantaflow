@@ -244,6 +244,21 @@ Class parseClass(TokenPointer& parentPtr) {
 	return cur;
 }
 
+Enum parseEnum(TokenPointer& parentPtr) {
+	Enum cur;
+	TokenPointer tk(parentPtr, &cur);
+
+	tkAssert(tk.curType() == TkEnum, "");
+	tk.next();
+	tkAssert(tk.curType() == TkDescriptor, "malformed preprocessor keyword block. Expected 'PYTHON enum name {}'");
+	cur.name = tk.cur().text;
+	tk.next();
+	tkAssert(tk.curType() == TkCodeBlock && tk.isLast(), "Malformed PYTHON enum, expected PYTHON enum name { assignments }");
+
+	return cur;
+}
+
+
 // Parse syntax KEYWORD(opt1, opt2, ...) STATEMENTS [ {} or ; ]    
 void parseBlock(const string& kw, const vector<Token>& tokens, const Class* parent, Sink& sink, vector<Instantiation>& inst) {
 	Block block = Block();
@@ -266,11 +281,11 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
 		// return values
 		while (tk.curType() == TkDescriptor && tk.cur().text == "returns") {
 			tk.next();
-			tkAssert(tk.curType() == TkBracketL, "expext opening bracket");
+			tkAssert(tk.curType() == TkBracketL, "expect opening bracket");
 			tk.next();
 			block.locals.push_back(parseArgument(tk, true, true));
 			tkAssert(tk.curType() == TkBracketR, "expected closing bracket");
-			tk.next();            
+			tk.next();
 		}
 
 		block.func = parseFunction(tk, true, true, true);
@@ -313,7 +328,7 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
 		if (tk.curType() == TkTemplate) {
 			TokenPointer t2(tk, &templText);
 			t2.next();
-			templTypes = parseTypeList(t2);            
+			templTypes = parseTypeList(t2);
 		}
 
 		// python class
@@ -323,6 +338,10 @@ void parseBlock(const string& kw, const vector<Token>& tokens, const Class* pare
 			block.cls.prequel(&templText);
 			tkAssert(tk.curType() == TkCodeBlock && tk.isLast(), "malformed preprocessor keyword block. Expected 'PYTHON class name : public X {}'");
 			processPythonClass(block, tk.cur().text, sink, inst);
+		}
+		else if (tk.curType() == TkEnum) { // python enum
+			Enum code_enum = parseEnum(tk);
+			processPythonEnum(code_enum, tk.cur().text, sink, inst);
 		}
 		else // function or member
 		{
