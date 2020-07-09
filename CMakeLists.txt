@@ -17,7 +17,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/tools/cmake/")
 set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 set(VERBOSE 1)
 
-set(MANTAVERSION "0.12")
+set(MANTAVERSION "0.13")
 
 #******************************************************************************
 # Default paths
