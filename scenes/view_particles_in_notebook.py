@@ -72,7 +72,7 @@ for t in range(200):
 
 	s.step()
 
-	file_name = './frames/' + 'particles-frame-%d.nptxt' % s.frame
+	file_name = './frames/particles-frame-%d.nptxt' % s.frame
 	pp.save(file_name)
 	
 
