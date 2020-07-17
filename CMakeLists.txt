@@ -2,7 +2,7 @@
 #
 # MantaFlow fluid solver framework
 #
-# Copyright 2011-2015 Tobias Pfaff, Nils Thuerey
+# Copyright 2011-2020 Tobias Pfaff, Nils Thuerey
 #
 # This program is free software, distributed under the terms of the
 # Apache License, Version 2.0
@@ -17,7 +17,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/tools/cmake/")
 set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
 set(VERBOSE 1)
 
-set(MANTAVERSION "0.12")
+set(MANTAVERSION "0.13")
 
 #******************************************************************************
 # Default paths
@@ -66,6 +66,7 @@ OPTION(NUMPY "Compile with numpy integration?" OFF)
 
 # compile with openVDB support
 OPTION(OPENVDB "Exporting OpenVDB files" OFF)
+OPTION(OPENVDB_BLOSC "Enable OpenVDB Blosc compression" OFF)
 
 # further options for blender integration
 OPTION(BLENDER "Compile for Blender integration" OFF)
@@ -82,15 +83,15 @@ endif()
 # check consistency of MT options
 set(MT OFF)
 set(MT_TYPE "NONE")
-if (TBB)
+if(TBB)
 	set(MT_TYPE "TBB")
 	set(MT ON)
 endif()
-if (OPENMP)
+if(OPENMP)
 	set(MT_TYPE "OPENMP")
 	set(MT ON)
 endif()
-if (TBB AND OPENMP)
+if(TBB AND OPENMP)
 	message(FATAL_ERROR "Cannot activate both OPENMP and TBB")
 endif()
 
@@ -122,6 +123,9 @@ else()
   set(PYTHON_VER_ID ${PYTHON_VERSION})
 endif()
 
+if(OPENVDB AND NOT TBB)
+	message(FATAL_ERROR "Cannot activate OPENVDB without TBB")
+endif()
 
 MESSAGE(STATUS "")
 MESSAGE(STATUS "Options - "
@@ -153,7 +157,7 @@ set(SOURCES
 	source/preprocessor/codegen_kernel.cpp
 )
 add_executable(prep ${SOURCES})
-if (NOT WIN32)
+if(NOT WIN32)
 	set_target_properties(prep PROPERTIES COMPILE_FLAGS "-Wall -O2")
 endif()
 
@@ -184,6 +188,8 @@ set(PP_SOURCES
 	source/fileio/iogrids.cpp
 	source/fileio/iomeshes.cpp
 	source/fileio/ioparticles.cpp
+	source/fileio/iovdb.cpp
+	source/fileio/mantaio.cpp
 	source/noisefield.cpp
 	source/kernel.cpp
 	source/vortexsheet.cpp
@@ -262,7 +268,7 @@ set(NOPP_HEADERS
 	source/util/solvana.h
 )
 
-if (GUI)
+if(GUI)
 	# need QT preprocessor
 	set(QT_HEADERS
 		source/gui/mainwindow.h
@@ -298,7 +304,7 @@ set(INCLUDE_PATHS
 )
 
 # reduced version without python
-if (NOPYTHON)
+if(NOPYTHON)
 	# replace some of the source lists
 	set(NOPP_SOURCES
 		source/nopython/pclass.cpp
@@ -327,13 +333,11 @@ if(MT)
 		# Intel TBB
 		add_definitions( -DTBB=1 )
 
-		if (DEBUG)
+		if(DEBUG)
 			add_definitions( -DTBB_USE_DEBUG=1 )
-			list(APPEND F_LIBS tbb)
-		else()
-			list(APPEND F_LIBS tbb)
 		endif()
-		if (WIN32)
+		list(APPEND F_LIBS tbb)
+		if(WIN32)
 			find_package(TBB REQUIRED)
 			list(APPEND INCLUDE_PATHS ${TBB_INCLUDE_DIRS})
 			list(APPEND F_LIB_PATHS ${TBB_LIBRARY_DIRS})
@@ -346,7 +350,7 @@ if(MT)
 		# OpenMP
 		add_definitions( -DOPENMP=1 )
 
-		if (WIN32)
+		if(WIN32)
 			add_definitions( /openmp)
 		else()
 			add_definitions(-fopenmp)
@@ -378,7 +382,7 @@ if(OPENVDB)
 		list(APPEND F_LIBS ${OPENVDB_LIBRARY})
 		add_definitions(${OPENVDB_DEFINITIONS})
 	else()
-		if (WIN32)
+		if(WIN32)
 			message(FATAL_ERROR "Cannot find OpenVDB")
 		else()
 			message("Warning - OpenVDB not found, trying default paths") 
@@ -388,7 +392,7 @@ if(OPENVDB)
 	endif()
 	
 	# for windos try houdini, otherwise use openExr directly
-	if (WIN32)
+	if(WIN32)
 		find_package(Houdini REQUIRED)
 		if(HOUDINI_FOUND)
 			message("Found Houdini") 
@@ -400,6 +404,10 @@ if(OPENVDB)
 	else()
 		# for open exr - should be in the default path, add includes if necessary
 	endif()
+endif()
+
+if(OPENVDB_BLOSC)
+	add_definitions(-DOPENVDB_BLOSC=1)
 endif()
 
 #******************************************************************************
@@ -441,38 +449,38 @@ endif(DOXYGEN_FOUND)
 set(PYTHON_INCLUDE_DIRS "/Users/Cesar/anaconda3/include/python3.7m/")
 set(PYTHON_LIBRARIES "/Users/Cesar/anaconda3/lib/libpython3.7m.dylib")
 # auto block
-# if (WIN32)
-# 	# convenience override for windows, typically the auto find doesnt work, so fall back to WIN_PYTHON_PATH
-# 	find_package(PythonLibs ${PYTHON_VER_ID} QUIET)
-# 	if(NOT PYTHONLIBS_FOUND)
-# 		set(PYTHON_INCLUDE_DIRS "${WIN_PYTHON_PATH}/include")
-# 		set(PYTHON_LIBRARIES "${WIN_PYTHON_PATH}/libs/python${PYTHON_VER_ID}.lib")
-# 	endif()
-# else()
-# 	# try to configure from python itself first
-# 	execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('INCLUDEPY'))" OUTPUT_VARIABLE PYTHON_INCLUDE_DIRS) 
-# 	execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LIBDIR'))"    OUTPUT_VARIABLE PYTHON_LIB1) 
-# 	if(APPLE)
-# 		# LDLIBRARY doesnt seem to work for Macs...
-# 		set(PYTHON_LIB2 "../Python")
-# 	else()
-# 		execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LDLIBRARY'))" OUTPUT_VARIABLE PYTHON_LIB2) 
-# 	endif()
-# 	set(PYTHON_LIBRARIES "${PYTHON_LIB1}/${PYTHON_LIB2}")
-# 	if(EXISTS "${PYTHON_INCLUDE_DIRS}" AND EXISTS "${PYTHON_LIBRARIES}")
-# 		message("Found python configuration")
-# 	else()
-# 		# otherwise, fall back to cmake find
-# 		if(NOT PYTHON_VERSION)
-# 			find_package(PythonLibs REQUIRED) # use any
-# 		else()
-# 			find_package(PythonLibs ${PYTHON_VER_ID} EXACT QUIET) # fixed version
-# 		endif()
-# 		if(NOT PYTHONLIBS_FOUND)
-# 			message(FATAL_ERROR "No python found, please manually set PYTHON_VERSION for cmake, or PYTHON_ paths in CMakeLists.txt")
-# 		endif()
-# 	endif()
-# endif()
+if(WIN32)
+	# convenience override for windows, typically the auto find doesnt work, so fall back to WIN_PYTHON_PATH
+	find_package(PythonLibs ${PYTHON_VER_ID} QUIET)
+	if(NOT PYTHONLIBS_FOUND)
+		set(PYTHON_INCLUDE_DIRS "${WIN_PYTHON_PATH}/include")
+		set(PYTHON_LIBRARIES "${WIN_PYTHON_PATH}/libs/python${PYTHON_VER_ID}.lib")
+	endif()
+else()
+	# try to configure from python itself first
+	execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('INCLUDEPY'))" OUTPUT_VARIABLE PYTHON_INCLUDE_DIRS) 
+	execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LIBDIR'))"    OUTPUT_VARIABLE PYTHON_LIB1) 
+	if(APPLE)
+		# LDLIBRARY doesnt seem to work for Macs...
+		set(PYTHON_LIB2 "../Python")
+	else()
+		execute_process(COMMAND python${PYTHON_VER_ID} -c "import sys,sysconfig; sys.stdout.write(sysconfig.get_config_var('LDLIBRARY'))" OUTPUT_VARIABLE PYTHON_LIB2) 
+	endif()
+	set(PYTHON_LIBRARIES "${PYTHON_LIB1}/${PYTHON_LIB2}")
+	if(EXISTS "${PYTHON_INCLUDE_DIRS}" AND EXISTS "${PYTHON_LIBRARIES}")
+		message("Found python configuration")
+	else()
+		# otherwise, fall back to cmake find
+		if(NOT PYTHON_VERSION)
+			find_package(PythonLibs REQUIRED) # use any
+		else()
+			find_package(PythonLibs ${PYTHON_VER_ID} EXACT QUIET) # fixed version
+		endif()
+		if(NOT PYTHONLIBS_FOUND)
+			message(FATAL_ERROR "No python found, please manually set PYTHON_VERSION for cmake, or PYTHON_ paths in CMakeLists.txt")
+		endif()
+	endif()
+endif()
 # end auto block, python config done
 list(APPEND INCLUDE_PATHS ${PYTHON_INCLUDE_DIRS})
 list(APPEND F_LIBS ${PYTHON_LIBRARIES})
@@ -498,7 +506,7 @@ endif()
 
 #******************************************************************************
 # Z lib compression
-if (1)
+if(1)
 	# default: build from own sources
 	set(ZLIB_SRC adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c
 				 inflate.c infback.c inftrees.c inffast.c trees.c uncompr.c zutil.c)
@@ -508,19 +516,20 @@ if (1)
 
 	set(ZLIB_ADDFLAGS "-Dverbose=-1")
 	if(NOT WIN32)
-		set(ZLIB_ADDFLAGS "-Wno-implicit-function-declaration -Dverbose=-1")
+		# otherwise we get warnings that we could only fix by upgrading zlib to a version > 1.2.8
+		set(ZLIB_ADDFLAGS "-Wno-implicit-function-declaration -Wno-shift-negative-value -Dverbose=-1")
 	endif()
 	set_source_files_properties(${SILENT_SOURCES} PROPERTIES COMPILE_FLAGS "${ZLIB_ADDFLAGS}")
 
 	list(APPEND INCLUDE_PATHS dependencies/zlib-1.2.8)
 endif()
-if (0)
+if(0)
 	# try to locate and use system libs
 	include(FindZLIB)
 	list(APPEND INCLUDE_PATHS ${ZLIB_INCLUDE_DIR})
 	list(APPEND F_LIBS ${ZLIB_LIBRARIES})
 endif()
-if (0)
+if(0)
 	# disable 
 	add_definitions(-DNO_ZLIB=1)
 endif()
@@ -563,7 +572,7 @@ set(PP_REGCPP)
 set(PP_REGS)
 set(PP_PREPD "0")
 set(PREPPED_SOURCES)
-if (PREPDEBUG)
+if(PREPDEBUG)
 	set(PP_PREPD "1")
 endif()
 FOREACH(it ${PP_SOURCES} ${PP_HEADERS})
@@ -574,7 +583,7 @@ FOREACH(it ${PP_SOURCES} ${PP_HEADERS})
 	string(REPLACE "source/" "" INFILE ${it})
 
 	set(OUTFILES "${CURPP}")
-	if ("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
+	if("${CUREXT}" STREQUAL ".h" OR "${CUREXT}" STREQUAL ".py")
 		if(NOT NOPYTHON)
 			list(APPEND PP_REGS "${CURPP}.reg")
 			list(APPEND PP_REGCPP "${CURPP}.reg.cpp")
@@ -628,14 +637,13 @@ if(GUI)
 
 	cmake_policy(SET CMP0020 NEW)
 	find_package(Qt5Core QUIET)
-	if (Qt5Core_FOUND)
+	if(Qt5Core_FOUND)
 		message("Using Qt5")
 		find_package(Qt5Widgets REQUIRED)
 		find_package(Qt5OpenGL REQUIRED)
 
 		qt5_wrap_cpp(MOC_OUTFILES ${QT_REMAP} )
 		qt5_add_resources(QT_RES resources/res.qrc )
-		add_definitions(-DGUI=1)
 		add_definitions(${Qt5Widgets_DEFINITIONS})
 		list(APPEND INCLUDE_PATHS ${Qt5Widgets_INCLUDE_DIRS} ${Qt5OpenGL_INCLUDE_DIRS})
 		list(APPEND F_LIBS ${Qt5Widgets_LIBRARIES} ${Qt5OpenGL_LIBRARIES})
@@ -653,7 +661,7 @@ if(GUI)
 		list(APPEND SOURCES ${MOC_OUTFILES} ${QT_RES})
 	endif()
 
-	if (APPLE)
+	if(APPLE)
 		# mac opengl framework
 		set(F_LINKADD "${F_LINKADD} -framework OpenGL ")
 	else()
@@ -676,7 +684,7 @@ link_directories( ${F_LIB_PATHS} )
 if(NOT NOPYTHON)
 	# build regular executable
 
-	if (WIN32)
+	if(WIN32)
 		# make nice folders for Visual Studio
 		set_source_files_properties(${PP_SOURCES} ${PP_HEADERS} ${NOPP_HEADERS} PROPERTIES HEADER_FILE_ONLY TRUE)
 		add_executable(${EXECCMD} ${SOURCES} ${PP_SOURCES} ${PP_HEADERS})
@@ -715,28 +723,37 @@ if(NOT WIN32)
 	endif()
 endif()
 
-# use c++11 for all pre-processed c++ sources
-# TODO, enable by default
+# if supported, use c++14 for all pre-processed c++ sources
 include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-set(CPP11_FLAG " ")
-if(COMPILER_SUPPORTS_CXX11)
-	set(CPP11_FLAG " -std=c++11 ")
-	set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS ${CPP11_FLAG})
-	add_definitions(-DMANTA_WITHCPP11=1)
+set(CXX_STANDARD_FLAG " ")
+if(COMPILER_SUPPORTS_CXX14)
+	set(CXX_STANDARD_FLAG " -std=c++14 ")
+elseif(COMPILER_SUPPORTS_CXX11)
+	set(CXX_STANDARD_FLAG " -std=c++11 ")
 elseif(COMPILER_SUPPORTS_CXX0X)
-	set(CPP11_FLAG " -std=c++0x ")
-	set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS  ${CPP11_FLAG})
-	add_definitions(-DMANTA_WITHCPP11=1)
+	set(CXX_STANDARD_FLAG " -std=c++0x ")
+endif()
+set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS ${CXX_STANDARD_FLAG})
+
+# sanity check for openvdb support
+if(OPENVDB AND NOT COMPILER_SUPPORTS_CXX14)
+	message(FATAL_ERROR "Compilation with OpenVDB requires a compiler with C++14 support")
 endif()
 
 # necessary for newer LLVM clang versions, to prevent abundance of "Namify" template warnings... for compatibility disable unknown warnings
 if(APPLE)
-	set_source_files_properties(${PP_REGCPP} ${PREPPED_SOURCES} ${NOPP_SOURCES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  -Wno-unknown-warning-option ${CPP11_FLAG}" )
+	set_source_files_properties(${PP_REGCPP} ${PREPPED_SOURCES} ${NOPP_SOURCES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  -Wno-unknown-warning-option ${CXX_STANDARD_FLAG}" )
 	if(GUI)
-		set_source_files_properties(${MOC_OUTFILES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  -Wno-unknown-warning-option ${CPP11_FLAG}" )
+		set_source_files_properties(${MOC_OUTFILES} PROPERTIES COMPILE_FLAGS " -Wno-undefined-var-template  -Wno-unknown-warning-option ${CXX_STANDARD_FLAG}" )
 	endif()
+endif()
+
+# thread support for linux
+if(NOT APPLE AND NOT WIN32)
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif()
 
 # python debugging
@@ -760,7 +777,7 @@ if(WIN32)
 	# disable warnings for unsecure functions
 	add_definitions( /D "_CRT_SECURE_NO_WARNINGS" )
 
-	if (BLENDER)
+	if(BLENDER)
 		set(CMAKE_CXX_FLAGS_DEBUG          "/MTd /Od /Ob0 /D_DEBUG /D PLATFORM_WINDOWS /Zi /RTC1  " )
 		set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1 /D NDEBUG /D PLATFORM_WINDOWS            " )
 		set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2 /D NDEBUG /D PLATFORM_WINDOWS            " )

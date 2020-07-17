@@ -151,7 +151,7 @@ public:
 	PYTHON() void clear();
 			
 	//! Advect particle in grid velocity field
-	PYTHON() void advectInGrid(const FlagGrid &flags, const MACGrid &vel, const int integrationMode, const bool deleteInObstacle=true, const bool stopInObstacle=true, const ParticleDataImpl<int> *ptype=NULL, const int exclude=0);
+	PYTHON() void advectInGrid(const FlagGrid &flags, const MACGrid &vel, const int integrationMode, const bool deleteInObstacle=true, const bool stopInObstacle=true, const bool skipNew=false, const ParticleDataImpl<int> *ptype=NULL, const int exclude=0);
 	
 	//! Project particles outside obstacles
 	PYTHON() void projectOutside(Grid<Vec3> &gradient);
@@ -195,8 +195,8 @@ public:
 	PYTHON() BasicParticleSystem(FluidSolver* parent);
 	
 	//! file io
-	PYTHON() void save(const std::string name) const;
-	PYTHON() void load(const std::string name);
+	PYTHON() int save(const std::string name);
+	PYTHON() int load(const std::string name);
 
 	//! save to text file
 	void writeParticlesText(const std::string name) const;
@@ -293,8 +293,9 @@ public:
 	virtual void resize(IndexInt size)     { assertMsg( false , "Dont use, override..."); return;  }
 	virtual void copyValueSlow(IndexInt from, IndexInt to) { assertMsg( false , "Dont use, override..."); return;  }
 
-	//! set base pointer
+	//! set / get base pointer to parent particle system
 	void setParticleSys(ParticleBase* set) { mpParticleSys = set; }
+	ParticleBase* getParticleSys()         { return mpParticleSys; }
 
 	//! debugging
 	inline void checkPartIndex(IndexInt idx) const;
@@ -317,6 +318,9 @@ public:
 	inline const T& get(const IndexInt idx) const        { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 	inline       T& operator[](const IndexInt idx)       { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
 	inline const T& operator[](const IndexInt idx) const { DEBUG_ONLY(checkPartIndex(idx)); return mData[idx]; }
+
+	//! set data
+	inline       void set(const IndexInt idx, T& val)    { DEBUG_ONLY(checkPartIndex(idx)); mData[idx] = val; }
 
 	//! set all values to 0, note - different from particleSystem::clear! doesnt modify size of array (has to stay in sync with parent system)
 	PYTHON() void clear();
@@ -367,8 +371,8 @@ public:
 	PYTHON() void printPdata(IndexInt start=-1, IndexInt stop=-1, bool printIndex=false);
 	
 	//! file io
-	PYTHON() void save(const std::string name);
-	PYTHON() void load(const std::string name);
+	PYTHON() int save(const std::string name);
+	PYTHON() int load(const std::string name);
 
 	//! get data pointer of particle data
 	PYTHON() std::string getDataPointer();
@@ -445,10 +449,10 @@ void ParticleSystem<S>::transformPositions( Vec3i dimOld, Vec3i dimNew )
 KERNEL(pts) returns(std::vector<Vec3> u(size)) template<class S>
 std::vector<Vec3> GridAdvectKernel(
 	std::vector<S>& p, const MACGrid& vel, const FlagGrid& flags, const Real dt,
-	const bool deleteInObstacle, const bool stopInObstacle,
+	const bool deleteInObstacle, const bool stopInObstacle, const bool skipNew,
 	const ParticleDataImpl<int> *ptype, const int exclude)
 {
-	if ((p[idx].flag & ParticleBase::PDELETE) || (ptype && ((*ptype)[idx] & exclude))) {
+	if ((p[idx].flag & ParticleBase::PDELETE) || (ptype && ((*ptype)[idx] & exclude)) || (skipNew && (p[idx].flag & ParticleBase::PNEW))) {
 		u[idx] = 0.; return;
 	}
 	// special handling
@@ -512,7 +516,7 @@ void KnClampPositions(
 template<class S>
 void ParticleSystem<S>::advectInGrid(
 	const FlagGrid &flags, const MACGrid &vel, const int integrationMode,
-	const bool deleteInObstacle, const bool stopInObstacle,
+	const bool deleteInObstacle, const bool stopInObstacle, const bool skipNew,
 	const ParticleDataImpl<int> *ptype, const int exclude)
 {
 	// position clamp requires old positions, backup
@@ -524,7 +528,7 @@ void ParticleSystem<S>::advectInGrid(
 	}
 
 	// update positions
-	GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle, stopInObstacle, ptype, exclude);
+	GridAdvectKernel<S> kernel(mData, vel, flags, getParent()->getDt(), deleteInObstacle, stopInObstacle, skipNew, ptype, exclude);
 	integratePointSet(kernel, integrationMode);
 
 	if(!deleteInObstacle) {
@@ -621,12 +625,12 @@ void ParticleSystem<S>::compress() {
 //! insert buffered positions as new particles, update additional particle data
 template<class S>
 void ParticleSystem<S>::insertBufferedParticles() {
+	// clear new flag everywhere
+	for(IndexInt i=0; i<(IndexInt)mData.size(); ++i) mData[i].flag &= ~PNEW;
+
 	if(mNewBufferPos.size()==0) return;
 	IndexInt newCnt = mData.size();
 	resizeAll(newCnt + mNewBufferPos.size());
-
-	// clear new flag everywhere
-	for(IndexInt i=0; i<(IndexInt)mData.size(); ++i) mData[i].flag &= ~PNEW;
 
 	for(IndexInt i=0; i<(IndexInt)mNewBufferPos.size(); ++i) {
 		int flag = (mNewBufferFlag.size() > 0) ? mNewBufferFlag[i] : 0;

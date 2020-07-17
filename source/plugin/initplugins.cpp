@@ -439,8 +439,8 @@ PYTHON() void updateFractions(const FlagGrid& flags, const Grid<Real>& phiObs, M
 	KnUpdateFractions(flags, phiObs, fractions, boundaryWidth, fracThreshold);
 }
 
-KERNEL (bnd=1) 
-void KnUpdateFlagsObs(FlagGrid& flags, const MACGrid* fractions, const Grid<Real>& phiObs, const Grid<Real>* phiOut, const Grid<Real>* phiIn) {
+KERNEL (bnd=boundaryWidth)
+void KnUpdateFlagsObs(FlagGrid& flags, const MACGrid* fractions, const Grid<Real>& phiObs, const Grid<Real>* phiOut, const Grid<Real>* phiIn, int boundaryWidth) {
 
 	bool isObs = false;
 	if(fractions) {
@@ -470,8 +470,8 @@ void KnUpdateFlagsObs(FlagGrid& flags, const MACGrid* fractions, const Grid<Real
 
 //! update obstacle and outflow flags from levelsets
 //! optionally uses fill fractions for obstacle
-PYTHON() void setObstacleFlags(FlagGrid& flags, const Grid<Real>& phiObs, const MACGrid* fractions=NULL, const Grid<Real>* phiOut=NULL, const Grid<Real>* phiIn=NULL) {
-	KnUpdateFlagsObs(flags, fractions, phiObs, phiOut, phiIn);
+PYTHON() void setObstacleFlags(FlagGrid& flags, const Grid<Real>& phiObs, const MACGrid* fractions=NULL, const Grid<Real>* phiOut=NULL, const Grid<Real>* phiIn=NULL, int boundaryWidth=1) {
+	KnUpdateFlagsObs(flags, fractions, phiObs, phiOut, phiIn, boundaryWidth);
 }
 
 

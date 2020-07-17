@@ -57,31 +57,32 @@ KERNEL(bnd=1) void KnApplyForce(const FlagGrid& flags, MACGrid& vel, Vec3 force,
 		vel(i,j,k).z = (additive) ? vel(i,j,k).z+force.z : force.z;
 }
 
-//! add gravity forces to all fluid cells, automatically adapts to different grid sizes
-PYTHON() void addGravity(const FlagGrid& flags, MACGrid& vel, Vec3 gravity, const Grid<Real>* exclude=NULL) {
-	Vec3 f = gravity * flags.getParent()->getDt() / flags.getDx();
+//! add gravity forces to all fluid cells, optionally  adapts to different grid sizes automatically
+PYTHON() void addGravity(const FlagGrid& flags, MACGrid& vel, Vec3 gravity, const Grid<Real>* exclude=NULL, bool scale=true) {
+	float gridScale = (scale) ? flags.getDx() : 1;
+	Vec3 f = gravity * flags.getParent()->getDt() / gridScale;
 	KnApplyForce(flags, vel, f, exclude, true);
 }
-//! add gravity forces to all fluid cells , but dont account for changing cell size
+//! Deprecated: use addGravity(scale=false) instead
 PYTHON() void addGravityNoScale(const FlagGrid& flags, MACGrid& vel, const Vec3& gravity, const Grid<Real>* exclude=NULL) {
-	const Vec3 f = gravity * flags.getParent()->getDt();
-	KnApplyForce(flags, vel, f, exclude, true);
+	addGravity(flags, vel, gravity, exclude, false);
 }
 
 //! kernel to add Buoyancy force 
-KERNEL(bnd=1) void KnAddBuoyancy(const FlagGrid& flags, const Grid<Real>& factor, MACGrid& vel, Vec3 strength) {    
+KERNEL(bnd=1) void KnAddBuoyancy(const FlagGrid& flags, const Grid<Real>& factor, MACGrid& vel, Vec3 strength) {
 	if (!flags.isFluid(i,j,k)) return;
 	if (flags.isFluid(i-1,j,k))
 		vel(i,j,k).x += (0.5 * strength.x) * (factor(i,j,k)+factor(i-1,j,k));
 	if (flags.isFluid(i,j-1,k))
 		vel(i,j,k).y += (0.5 * strength.y) * (factor(i,j,k)+factor(i,j-1,k));
 	if (vel.is3D() && flags.isFluid(i,j,k-1))
-		vel(i,j,k).z += (0.5 * strength.z) * (factor(i,j,k)+factor(i,j,k-1));    
+		vel(i,j,k).z += (0.5 * strength.z) * (factor(i,j,k)+factor(i,j,k-1));
 }
 
-//! add Buoyancy force based on fctor (e.g. smoke density)
-PYTHON() void addBuoyancy(const FlagGrid& flags, const Grid<Real>& density, MACGrid& vel, Vec3 gravity, Real coefficient=1.) {
-	Vec3 f = -gravity * flags.getParent()->getDt() / flags.getParent()->getDx() * coefficient;
+//! add Buoyancy force based on factor (e.g. smoke density), optionally adapts to different grid sizes automatically
+PYTHON() void addBuoyancy(const FlagGrid& flags, const Grid<Real>& density, MACGrid& vel, Vec3 gravity, Real coefficient=1., bool scale=true) {
+	float gridScale = (scale) ? flags.getDx() : 1;
+	Vec3 f = -gravity * flags.getParent()->getDt() / gridScale * coefficient;
 	KnAddBuoyancy(flags,density, vel, f);
 }
 

@@ -102,8 +102,8 @@ public:
 	typedef T BASETYPE;
 	typedef Grid4dBase BASETYPE_GRID;
 	
-	PYTHON() void save(std::string name);
-	PYTHON() void load(std::string name);
+	PYTHON() int save(std::string name);
+	PYTHON() int load(std::string name);
 	
 	//! set all cells to zero
 	PYTHON() void clear();

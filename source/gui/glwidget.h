@@ -14,6 +14,11 @@
 #ifndef _GLWIDGET_H__
 #define _GLWIDGET_H__
 
+// OpenGL was deprecated in macOS 10.14. Silencing warnings for now.
+#ifdef __APPLE__
+#   define GL_SILENCE_DEPRECATION
+#endif
+
 #include <QGLWidget>
 #include <QtOpenGL>
 #include "vectorbase.h"
