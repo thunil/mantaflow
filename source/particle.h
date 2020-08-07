@@ -200,6 +200,10 @@ public:
 
 	//! save to text file
 	void writeParticlesText(const std::string name) const;
+
+	//! save to NumPy text file
+	void writeParticlesNumPyText(const std::string name) const;
+
 	//! other output formats
 	void writeParticlesRawPositionsGz(const std::string name) const;
 	void writeParticlesRawVelocityGz(const std::string name) const;
