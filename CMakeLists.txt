@@ -203,6 +203,7 @@ set(PP_SOURCES
 	source/plugin/fire.cpp
 	source/plugin/fluidguiding.cpp
 	source/plugin/kepsilon.cpp
+	source/plugin/implicitdensityprojection.cpp
 	source/plugin/initplugins.cpp
 	source/plugin/meshplugins.cpp
 	source/plugin/pressure.cpp
