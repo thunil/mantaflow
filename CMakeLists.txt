@@ -33,8 +33,9 @@ endif()
 
 if(APPLE)
 	if(NOT CMAKE_PREFIX_PATH)
-		set(CMAKE_PREFIX_PATH "/usr/local/opt/qt5/") #  mac/homebrew (version independent)
+		set(CMAKE_PREFIX_PATH "/usr/local/opt/qt5/")  # mac/homebrew (version independent)
 		#set(CMAKE_PREFIX_PATH "/home/myname/qt/5.5/clang_64") #  other...
+		#set(CMAKE_PREFIX_PATH "/Users/Cesar/Qt/5.15.0/clang_64/")
 	endif()
 endif()
 
@@ -446,8 +447,8 @@ endif(DOXYGEN_FOUND)
 
 # Python 
 # note - if configuration fails, comment out the auto block below, and manually set the following two paths:
-#set(PYTHON_INCLUDE_DIRS "PYTHON_PATH/include")
-#set(PYTHON_LIBRARIES "PYTHON_PATH/libs/pythonX.Y.lib/so")
+set(PYTHON_INCLUDE_DIRS "/Users/Cesar/anaconda3/include/python3.7m/")
+set(PYTHON_LIBRARIES "/Users/Cesar/anaconda3/lib/libpython3.7m.dylib")
 # auto block
 if(WIN32)
 	# convenience override for windows, typically the auto find doesnt work, so fall back to WIN_PYTHON_PATH
