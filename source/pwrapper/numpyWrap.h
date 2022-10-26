@@ -60,7 +60,7 @@ namespace Manta
 			void *pData;
 			NumpyTypes DataType;
 			unsigned int TotalSize;
-			std::vector<long> Dims;
+			std::vector<int> Dims;
 		private:
 			void *pParentPyArray;
 	};
