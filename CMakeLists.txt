@@ -725,22 +725,19 @@ endif()
 
 # if supported, use c++14 for all pre-processed c++ sources
 include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++23" COMPILER_SUPPORTS_CXX23)
 CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
 set(CXX_STANDARD_FLAG " ")
-if(COMPILER_SUPPORTS_CXX14)
-	set(CXX_STANDARD_FLAG " -std=c++14 ")
-elseif(COMPILER_SUPPORTS_CXX11)
-	set(CXX_STANDARD_FLAG " -std=c++11 ")
-elseif(COMPILER_SUPPORTS_CXX0X)
-	set(CXX_STANDARD_FLAG " -std=c++0x ")
+
+if(COMPILER_SUPPORTS_CXX23)
+	set(CXX_STANDARD_FLAG " -std=c++23 ")
 endif()
 set_source_files_properties(${PREPPED_SOURCES} ${PP_REGCPP} PROPERTIES COMPILE_FLAGS ${CXX_STANDARD_FLAG})
 
-# sanity check for openvdb support
-if(OPENVDB AND NOT COMPILER_SUPPORTS_CXX14)
-	message(FATAL_ERROR "Compilation with OpenVDB requires a compiler with C++14 support")
+if(NOT COMPILER_SUPPORTS_CXX23)
+	message(FATAL_ERROR "Hypot requires a compiler with C++23 support")
 endif()
 
 # necessary for newer LLVM clang versions, to prevent abundance of "Namify" template warnings... for compatibility disable unknown warnings

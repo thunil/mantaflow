@@ -378,9 +378,9 @@ inline const Vector3D<S>& projectNormalTo ( const Vector3D<S>& v, const Vector3D
 //! (clamps to 0 and 1 with VECTOR_EPSILON)
 template<class S>
 inline S norm ( const Vector3D<S>& v ) {
-	S l = v.x*v.x + v.y*v.y + v.z*v.z;
-	if     (        l      <= VECTOR_EPSILON*VECTOR_EPSILON ) return(0.);
-	return ( fabs ( l-1. ) <  VECTOR_EPSILON*VECTOR_EPSILON ) ? 1. : sqrt ( l );
+	S l = std::hypot(v.x, v.y, v.z);
+	if     (        l      <= VECTOR_EPSILON) return (0.);
+	return ( fabs ( l-1. ) <  VECTOR_EPSILON) ? 1. : l;
 }
 
 //! Compute squared magnitude
@@ -398,12 +398,12 @@ inline Real normSquare(const int v) { return square(v); }
 //! Returns a normalized vector
 template<class S>
 inline Vector3D<S> getNormalized ( const Vector3D<S>& v ) {
-	S l = v.x*v.x + v.y*v.y + v.z*v.z;
-	if ( fabs ( l-1. ) < VECTOR_EPSILON*VECTOR_EPSILON )
+	S l = std::hypot(v.x, v.y, v.z);
+	if ( fabs ( l-1. ) < VECTOR_EPSILON )
 		return v; /* normalized "enough"... */
-	else if ( l > VECTOR_EPSILON*VECTOR_EPSILON )
+	else if ( l > VECTOR_EPSILON )
 	{
-		S fac = 1./sqrt ( l );
+		S fac = 1./l;
 		return Vector3D<S> ( v.x*fac, v.y*fac, v.z*fac );
 	}
 	else
@@ -415,11 +415,11 @@ inline Vector3D<S> getNormalized ( const Vector3D<S>& v ) {
 template<class S>
 inline S normalize ( Vector3D<S> &v ) {
 	S norm;
-	S l = v.x*v.x + v.y*v.y + v.z*v.z;
-	if ( fabs ( l-1. ) < VECTOR_EPSILON*VECTOR_EPSILON ) {
+	S l = std::hypot(v.x, v.y, v.z);
+	if ( fabs ( l-1. ) < VECTOR_EPSILON ) {
 		norm = 1.;
-	} else if ( l > VECTOR_EPSILON*VECTOR_EPSILON ) {
-		norm = sqrt ( l );
+	} else if ( l > VECTOR_EPSILON ) {
+		norm = l;
 		v *= 1./norm;        
 	} else {
 		v = Vector3D<S>::Zero;
