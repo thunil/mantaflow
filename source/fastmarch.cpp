@@ -231,22 +231,25 @@ template class FastMarch<FmHeapEntryOut, +1>;
 KERNEL(bnd=1)
 void knExtrapolateMACSimple (MACGrid& vel, int distance , Grid<int>& tmp , const int d , const int c ) 
 {
-	static const Vec3i nb[6] = { 
-		Vec3i(1 ,0,0), Vec3i(-1,0,0),
-		Vec3i(0,1 ,0), Vec3i(0,-1,0),
-		Vec3i(0,0,1 ), Vec3i(0,0,-1) };
-	const int dim = (vel.is3D() ? 3:2);
-
 	if (tmp(i,j,k) != 0) return;
 
+	static const Vec3i nb[6] = {
+		Vec3i(i+1, j,   k),
+		Vec3i(i-1, j,   k),
+		Vec3i(i,   j+1, k),
+		Vec3i(i,   j-1, k),
+		Vec3i(i,   j,   k+1),
+		Vec3i(i,   j,   k-1)};
+	const int dim = (vel.is3D() ? 6:4);
+
 	// copy from initialized neighbors
-	Vec3i p(i,j,k);
+	static const Vec3i p(i,j,k);
 	int nbs = 0;
 	Real avgVel = 0.;
-	for (int n=0; n<2*dim; ++n) {
-		if (tmp(p+nb[n]) == d) {
+	for (int n=0; n<dim; ++n) {
+		if (tmp(nb[n]) == d) {
 			//vel(p)[c] = (c+1.)*0.1;
-			avgVel += vel(p+nb[n])[c];
+			avgVel += vel(nb[n])[c];
 			nbs++;
 		}
 	}
