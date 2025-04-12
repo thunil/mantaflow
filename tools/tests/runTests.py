@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #
 # Simple script to run all base tests
 # The test scripts are named test_XXXX_description.py

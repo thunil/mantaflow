@@ -10,8 +10,8 @@
 #
 #******************************************************************************
 
+cmake_minimum_required(VERSION 3.5)
 project (MantaFlow)
-cmake_minimum_required(VERSION 2.8)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/tools/cmake/")
 set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true)
@@ -117,13 +117,9 @@ endif()
 
 # translate option into python version string
 if(NOT PYTHON_VERSION)
-  set(PYTHON_VER_ID) # use any...
+  set(PYTHON_VER_ID 3) # use version 3
 else()
   set(PYTHON_VER_ID ${PYTHON_VERSION})
-endif()
-
-if(OPENVDB AND NOT TBB)
-	message(FATAL_ERROR "Cannot activate OPENVDB without TBB")
 endif()
 
 MESSAGE(STATUS "")
@@ -387,7 +383,7 @@ if(OPENVDB)
 		else()
 			message("Warning - OpenVDB not found, trying default paths") 
 			# might be in path...
-			list(APPEND F_LIBS Half openvdb tbb)
+			list(APPEND F_LIBS Imath openvdb tbb)
 		endif()
 	endif()
 	
@@ -399,7 +395,7 @@ if(OPENVDB)
 			list(APPEND INCLUDE_PATHS ${HOUDINI_INCLUDE_DIRS})
 			list(APPEND INCLUDE_PATHS ${HOUDINI_INCLUDE_DIRS}/OpenEXR)
 			list(APPEND F_LIB_PATHS ${HOUDINI_LIBRARY_DIRS})
-			list(APPEND F_LIBS "Half.lib")
+			list(APPEND F_LIBS "Imath.lib")
 		endif()
 	else()
 		# for open exr - should be in the default path, add includes if necessary

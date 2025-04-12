@@ -3,7 +3,7 @@ import os
 # assume it's called from tools/tests
 os.chdir("../../tensorflow")
 
-pyExe = "python"
+pyExe = "python3"
 mantaExe = "/Users/sinithue/devel/manta/buildMaster/manta"
 dataPath = "./data"
 
