@@ -277,7 +277,7 @@ void projectImg( SimpleImage& img, const Grid<Real>& val, int shadeMode=0, Real 
 
 	} // 3d
 
-	img.mapRange( 1./scale );
+	img.mapRange( scale );
 }
 
 

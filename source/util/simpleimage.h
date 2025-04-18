@@ -106,11 +106,11 @@ class SimpleImage {
 					get(i,j) *= f;
 				}
 		}
-		// map 0-f to 0-1 range, clamp
+		// map 0-1/f to 0-1 range, clamp
 		void mapRange(Real f) {
 			for (int j=0; j<mSize[1]; j++) 
 				for (int i=0; i<mSize[0]; i++) { 
-					get(i,j) /= f;
+					get(i,j) *= f;
 					for(int c=0; c<3; ++c)
 						get(i,j)[c] = clamp( get(i,j)[c], (Real)0.,(Real)1.);
 				}
