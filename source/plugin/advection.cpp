@@ -345,15 +345,15 @@ Vec3 getBulkVel(const FlagGrid& flags, const MACGrid& vel, int i, int j, int k){
 //! extrapolate normal velocity components into outflow cell
 KERNEL() void extrapolateVelConvectiveBC(const FlagGrid& flags, const MACGrid& vel, MACGrid& velDst, const MACGrid& velPrev, Real timeStep) {
 	if (flags.isOutflow(i, j, k)) {
-		Vec3 bulkVel = getBulkVel(flags, vel, i, j, k);
-		int dim = flags.is3D() ? 3 : 2;
+		const Vec3 bulkVel = getBulkVel(flags, vel, i, j, k);
+		const int dim = flags.is3D() ? 3 : 2;
 		const Vec3i cur = Vec3i(i, j, k);
 		Vec3i low, up, flLow, flUp;
 		int cnt = 0;
 		// iterate over each velocity component x, y, z
 		for (int c = 0; c < dim; c++) {
 			low = up = flLow = flUp = cur;
-			Real factor = timeStep * max((Real)1.0, bulkVel[c]); // prevent the extrapolated velocity from exploding when bulk velocity below 1
+			Real factor = timeStep * max((Real)1.0, abs(bulkVel[c])); // prevent the extrapolated velocity from exploding when bulk velocity below 1
 			low[c] = flLow[c] = cur[c] - 1;
 			up[c] = flUp[c] = cur[c] + 1;
 			// iterate over bWidth to allow for extrapolation into more distant outflow cells; hard-coded extrapolation distance of two cells
